@@ -38,7 +38,7 @@ export type RouteChangeEvent = CustomEvent<RouteChangeEventDetail>;
 /////////////////////////////////////////////////////////////////////
 
 type NavigationResult =
-	| { json: GetRouteDataOutput; props: NavigateProps }
+	| { json: GetRouteDataOutput; props: NavigateProps; cssBundlePromises: Array<any> }
 	| { redirectData: RedirectData }
 	| undefined;
 
@@ -146,6 +146,7 @@ async function __completeNavigation(x: NavigationResult) {
 			json: x.json,
 			navigationType: x.props.navigationType,
 			runHistoryOptions: x.props,
+			cssBundlePromises: x.cssBundlePromises,
 		});
 		setLoadingStatus({ type: x.props.navigationType, value: false });
 	} catch (error) {
@@ -178,10 +179,49 @@ async function __fetchRouteData(
 			return { redirectData };
 		}
 
-		const json = await response.json();
+		const json = (await response.json()) as GetRouteDataOutput | undefined;
 		if (!json) throw new Error("No JSON response");
 
-		return { json, props };
+		// __TODO we should maybe do IDs here or something that is
+		// easier to query, because in dev-time the cache buster
+		// search param will mess up the existence check
+
+		// Add missing deps modulepreload links
+		for (const x of json.deps ?? []) {
+			const href = resolvePublicHref(x);
+			if (document.querySelector(`link[href="${href}"]`)) {
+				continue;
+			}
+			const newLink = document.createElement("link");
+			newLink.rel = "modulepreload";
+			newLink.href = href;
+			document.head.appendChild(newLink);
+		}
+
+		// Create an array to store promises for CSS bundle preloads
+		const cssBundlePromises = [];
+
+		// Add missing css bundle preload links
+		for (const x of json.cssBundles ?? []) {
+			const href = resolvePublicHref(x);
+			if (document.querySelector(`link[href="${href}"]`)) {
+				continue;
+			}
+			const newLink = document.createElement("link");
+			newLink.rel = "preload";
+			newLink.href = href;
+			newLink.as = "style";
+			document.head.appendChild(newLink);
+
+			// Create a promise for this CSS bundle preload
+			const preloadPromise = new Promise((resolve, reject) => {
+				newLink.onload = resolve;
+				newLink.onerror = reject;
+			});
+			cssBundlePromises.push(preloadPromise);
+		}
+
+		return { json, props, cssBundlePromises };
 	} catch (error) {
 		if (!isAbortError(error)) {
 			LogError("Navigation failed", error);
@@ -251,10 +291,14 @@ export function getPrefetchHandlers<E extends Event>(input: GetPrefetchHandlersI
 					return;
 				}
 
-				if (!("json" in prerenderResult)) throw new Error("No JSON response");
+				if (!("json" in prerenderResult)) {
+					throw new Error("No JSON response");
+				}
+
 				await __completeNavigation({
 					json: prerenderResult.json,
 					props: { ...prerenderResult.props, navigationType: "userNavigation" },
+					cssBundlePromises: prerenderResult.cssBundlePromises,
 				});
 
 				await input.afterRender?.(e);
@@ -682,10 +726,12 @@ export const addRouteChangeListener = makeListenerAdder<RouteChangeEventDetail>(
 function resolvePublicHref(href: string): string {
 	let baseURL = internal_RiverClientGlobal.get("viteDevURL");
 	if (!baseURL) {
-		baseURL = window.location.origin + "/public";
+		baseURL = "/public";
 	}
-	const url = baseURL + href;
-	if (import.meta.env.DEV) return url + "?t=" + Date.now();
+	const url = href.startsWith("/") ? baseURL + href : baseURL + "/" + href;
+	if (import.meta.env.DEV) {
+		return url + "?t=" + Date.now();
+	}
 	return url;
 }
 
@@ -693,6 +739,7 @@ async function __reRenderApp({
 	json,
 	navigationType,
 	runHistoryOptions,
+	cssBundlePromises,
 }: {
 	json: GetRouteDataOutput;
 	navigationType: NavigationType;
@@ -701,47 +748,13 @@ async function __reRenderApp({
 		scrollStateToRestore?: ScrollState;
 		replace?: boolean;
 	};
+	cssBundlePromises: Array<any>;
 }) {
 	// Changing the title instantly makes it feel faster
 	// The temp textarea trick is to decode any HTML entities in the title
 	const tempTxt = document.createElement("textarea");
 	tempTxt.innerHTML = json.title ?? "";
 	document.title = tempTxt.value;
-
-	// Add missing deps modulepreload links
-	for (const x of json.deps ?? []) {
-		const href = "/public/" + x;
-		if (document.querySelector(`link[href="${href}"]`)) {
-			continue;
-		}
-		const newLink = document.createElement("link");
-		newLink.rel = "modulepreload";
-		newLink.href = href;
-		document.head.appendChild(newLink);
-	}
-
-	// Create an array to store promises for CSS bundle preloads
-	const cssBundlePromises = [];
-
-	// Add missing css bundle preload links
-	for (const x of json.cssBundles ?? []) {
-		const href = "/public/" + x;
-		if (document.querySelector(`link[href="${href}"]`)) {
-			continue;
-		}
-		const newLink = document.createElement("link");
-		newLink.rel = "preload";
-		newLink.href = href;
-		newLink.as = "style";
-		document.head.appendChild(newLink);
-
-		// Create a promise for this CSS bundle preload
-		const preloadPromise = new Promise((resolve, reject) => {
-			newLink.onload = resolve;
-			newLink.onerror = reject;
-		});
-		cssBundlePromises.push(preloadPromise);
-	}
 
 	// NOW ACTUALLY SET EVERYTHING
 	const identicalKeysToSet = [
