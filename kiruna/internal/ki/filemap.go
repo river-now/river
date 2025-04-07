@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -99,7 +100,7 @@ func (c *Config) getInitialPublicFileMapDetails() (*publicFileMapDetails, error)
 		if (!window.kiruna) window.kiruna = {};
 		function getPublicURL(originalPublicURL) { 
 			if (originalPublicURL.startsWith("/")) originalPublicURL = originalPublicURL.slice(1);
-			return "/public/" + (kirunaPublicFileMap[originalPublicURL] || originalPublicURL);
+			return "%s" + (kirunaPublicFileMap[originalPublicURL] || originalPublicURL);
 		}
 		window.kiruna.getPublicURL = getPublicURL;` + "\n"
 
@@ -113,7 +114,7 @@ func (c *Config) getInitialPublicFileMapDetails() (*publicFileMapDetails, error)
 	scriptEl := htmlutil.Element{
 		Tag:        "script",
 		Attributes: map[string]string{"type": "module"},
-		InnerHTML:  template.HTML(fmt.Sprintf(innerHTMLFormatStr, publicFileMapURL)),
+		InnerHTML:  template.HTML(fmt.Sprintf(innerHTMLFormatStr, publicFileMapURL, c._uc.Core.PublicPathPrefix)),
 	}
 
 	sha256Hash, err := htmlutil.AddSha256HashInline(&scriptEl, true)
@@ -158,8 +159,8 @@ func (c *Config) getInitialPublicFileMapURL() (string, error) {
 		return "", err
 	}
 
-	return "/" + filepath.Join(
-		PUBLIC,
+	return path.Join(
+		c._uc.Core.PublicPathPrefix,
 		c._dist.S().Static.S().Assets.S().Public.S().PublicInternal.LastSegment(),
 		string(content),
 	), nil

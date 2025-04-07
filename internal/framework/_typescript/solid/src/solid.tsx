@@ -1,10 +1,10 @@
-import { createEffect, createMemo, createSignal, ErrorBoundary, type JSX, Show } from "solid-js";
 import {
 	addRouteChangeListener,
 	internal_RiverClientGlobal as ctx,
+	type RootOutletProps,
 	type RouteChangeEvent,
-} from "../../client/index.ts";
-import type { RootOutletProps } from "../../client/src/impl_helpers.ts";
+} from "@sjc5/river/client";
+import { createEffect, createMemo, createSignal, ErrorBoundary, type JSX, Show } from "solid-js";
 
 let shouldScroll = false;
 

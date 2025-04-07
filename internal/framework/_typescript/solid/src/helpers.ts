@@ -1,7 +1,12 @@
+import {
+	addRouteChangeListener,
+	getCurrentRiverData,
+	type Route,
+	type RouteProps,
+	type UntypedLoader,
+} from "@sjc5/river/client";
 import { createSignal } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
-import { addRouteChangeListener, getCurrentRiverData } from "../../client/index.ts";
-import type { Route, RouteProps, UntypedLoader } from "../../client/src/impl_helpers.ts";
 import { loadersData } from "./solid.tsx";
 
 export type RiverRouteProps<

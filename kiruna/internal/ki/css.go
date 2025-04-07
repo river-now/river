@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -61,7 +62,7 @@ func (c *Config) getInitialStyleSheetURL() (string, error) {
 		return "", err
 	}
 
-	return "/" + filepath.Join(PUBLIC, string(content)), nil
+	return path.Join(c._uc.Core.PublicPathPrefix, string(content)), nil
 }
 
 func (c *Config) GetStyleSheetLinkElement() template.HTML {

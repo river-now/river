@@ -1,12 +1,12 @@
 /// <reference types="vite/client" />
 
-import { createBrowserHistory, type Update } from "history";
 import {
 	getAnchorDetailsFromEvent,
 	getHrefDetails,
 	getIsErrorRes,
 	getIsGETRequest,
-} from "../../../../../kit/_typescript/url/url.ts";
+} from "@sjc5/river/kit/url";
+import { createBrowserHistory, type Update } from "history";
 import { parseFetchResponseForRedirectData, type RedirectData } from "./redirects.ts";
 import {
 	type GetRouteDataOutput,
@@ -154,6 +154,23 @@ async function __completeNavigation(x: NavigationResult) {
 	}
 }
 
+function getMaybeNewPreloadLink(x: string) {
+	const href = resolvePublicURL(x).href;
+	const existing: HTMLLinkElement | null = document.querySelector(
+		`link[href^="${href.split("?")[0]}"]`, // without search params
+	);
+	if (existing) {
+		if (existing.href !== href) {
+			existing.remove();
+		} else {
+			return undefined;
+		}
+	}
+	const newLink = document.createElement("link");
+	newLink.href = href;
+	return newLink;
+}
+
 async function __fetchRouteData(
 	controller: AbortController,
 	props: NavigateProps,
@@ -182,19 +199,17 @@ async function __fetchRouteData(
 		const json = (await response.json()) as GetRouteDataOutput | undefined;
 		if (!json) throw new Error("No JSON response");
 
-		// __TODO we should maybe do IDs here or something that is
-		// easier to query, because in dev-time the cache buster
-		// search param will mess up the existence check
+		// deps are only present in prod because they stem from the rollup metafile
+		// (same for CSS bundles -- vite handles them in dev)
+		// so in dev, to get similar behavior, we use the importURLs
+		// (which is a subset of what the deps would be in prod)
+		const depsToPreload = import.meta.env.DEV ? [...new Set(json.importURLs)] : json.deps;
 
 		// Add missing deps modulepreload links
-		for (const x of json.deps ?? []) {
-			const href = resolvePublicHref(x);
-			if (document.querySelector(`link[href="${href}"]`)) {
-				continue;
-			}
-			const newLink = document.createElement("link");
+		for (const x of depsToPreload ?? []) {
+			const newLink = getMaybeNewPreloadLink(x);
+			if (!newLink) continue;
 			newLink.rel = "modulepreload";
-			newLink.href = href;
 			document.head.appendChild(newLink);
 		}
 
@@ -203,13 +218,9 @@ async function __fetchRouteData(
 
 		// Add missing css bundle preload links
 		for (const x of json.cssBundles ?? []) {
-			const href = resolvePublicHref(x);
-			if (document.querySelector(`link[href="${href}"]`)) {
-				continue;
-			}
-			const newLink = document.createElement("link");
+			const newLink = getMaybeNewPreloadLink(x);
+			if (!newLink) continue;
 			newLink.rel = "preload";
-			newLink.href = href;
 			newLink.as = "style";
 			document.head.appendChild(newLink);
 
@@ -723,14 +734,17 @@ export const addRouteChangeListener = makeListenerAdder<RouteChangeEventDetail>(
 // RE-RENDER APP
 /////////////////////////////////////////////////////////////////////
 
-function resolvePublicHref(href: string): string {
+function resolvePublicURL(href: string): URL {
 	let baseURL = internal_RiverClientGlobal.get("viteDevURL");
 	if (!baseURL) {
-		baseURL = "/public";
+		baseURL = window.location.origin + internal_RiverClientGlobal.get("publicPathPrefix");
 	}
-	const url = href.startsWith("/") ? baseURL + href : baseURL + "/" + href;
+	if (baseURL.endsWith("/")) {
+		baseURL = baseURL.slice(0, -1);
+	}
+	const url = new URL(href.startsWith("/") ? baseURL + href : baseURL + "/" + href);
 	if (import.meta.env.DEV) {
-		return url + "?t=" + Date.now();
+		url.searchParams.set("_rd", latestHMRTimestamp.toString());
 	}
 	return url;
 }
@@ -754,7 +768,7 @@ async function __reRenderApp({
 	// The temp textarea trick is to decode any HTML entities in the title
 	const tempTxt = document.createElement("textarea");
 	tempTxt.innerHTML = json.title ?? "";
-	document.title = tempTxt.value;
+	if (document.title !== tempTxt.value) document.title = tempTxt.value;
 
 	// NOW ACTUALLY SET EVERYTHING
 	const identicalKeysToSet = [
@@ -827,7 +841,7 @@ async function __reRenderApp({
 			}
 			const newLink = document.createElement("link");
 			newLink.rel = "stylesheet";
-			newLink.href = "/public/" + x;
+			newLink.href = internal_RiverClientGlobal.get("publicPathPrefix") + x;
 			newLink.setAttribute(cssBundleDataAttr, x);
 			document.head.appendChild(newLink);
 		}
@@ -1050,10 +1064,13 @@ export function getRootEl() {
 	return document.getElementById("river-root") as HTMLDivElement;
 }
 
+let latestHMRTimestamp = Date.now();
+
 export async function initClient(renderFn: () => void) {
 	if (import.meta.hot) {
 		import.meta.hot.on("vite:afterUpdate", () => {
-			LogInfo("HMR update detected");
+			latestHMRTimestamp = Date.now();
+			LogInfo("HMR update detected", latestHMRTimestamp);
 		});
 	}
 
@@ -1076,7 +1093,7 @@ async function handleComponents() {
 
 	const dedupedModules = await Promise.all(
 		dedupedImportURLs.map((x) => {
-			return import(/* @vite-ignore */ resolvePublicHref(x));
+			return import(/* @vite-ignore */ resolvePublicURL(x).href);
 		}),
 	);
 	const modulesMap = new Map(dedupedImportURLs.map((url, index) => [url, dedupedModules[index]]));

@@ -133,7 +133,7 @@ func (h *River[C]) GetUIHandler(nestedRouter *mux.NestedRouter, coreDataTask *Co
 
 		if !h._isDev {
 			rootTemplateData["RiverBodyScripts"] = template.HTML(
-				fmt.Sprintf(`<script type="module" src="/public/%s"></script>`, h._clientEntryOut),
+				fmt.Sprintf(`<script type="module" src="%s%s"></script>`, h.Kiruna.GetPublicPathPrefix(), h._clientEntryOut),
 			)
 		} else {
 			opts := viteutil.ToDevScriptsOptions{ClientEntry: h._clientEntrySrc}

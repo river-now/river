@@ -1,4 +1,4 @@
-import { getHrefDetails, getIsGETRequest } from "../../../../../kit/_typescript/url/url.ts";
+import { getHrefDetails, getIsGETRequest } from "@sjc5/river/kit/url";
 import { LogInfo } from "./utils.ts";
 
 export type RedirectData = { href: string } & (

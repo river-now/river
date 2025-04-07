@@ -10,8 +10,6 @@ import (
 	"github.com/sjc5/river/kit/mux"
 )
 
-// __TODO pull the "/public/" from the kiruna instance instead
-
 type SSRInnerHTMLInput struct {
 	RiverSymbolStr      string
 	IsDev               bool
@@ -26,6 +24,7 @@ type SSRInnerHTMLInput struct {
 	CoreData            any
 	Deps                []string
 	CSSBundles          []string
+	PublicPathPrefix    string
 }
 
 // Sadly, must include the script tags so html/template parses this correctly.
@@ -35,8 +34,9 @@ const ssrInnerHTMLTmplStr = `<script>
 	globalThis[Symbol.for("{{.RiverSymbolStr}}")] = {};
 	const x = globalThis[Symbol.for("{{.RiverSymbolStr}}")];
 	x.isDev = {{.IsDev}};
-	x.buildID = {{.BuildID}};
 	x.viteDevURL = {{.ViteDevURL}};
+	x.publicPathPrefix = "{{.PublicPathPrefix}}";
+	x.buildID = {{.BuildID}};
 	x.loadersData = {{.LoadersData}};
 	x.importURLs = {{.ImportURLs}};
 	x.exportKeys = {{.ExportKeys}};
@@ -46,18 +46,18 @@ const ssrInnerHTMLTmplStr = `<script>
 	x.coreData = {{.CoreData}};
 	if (!x.isDev) {
 		const deps = {{.Deps}};
-		deps.forEach(x => {
-			const link = document.createElement('link');
-			link.rel = 'modulepreload';
-			link.href = "/public/" + x;
+		deps.forEach((y) => {
+			const link = document.createElement("link");
+			link.rel = "modulepreload";
+			link.href = x.publicPathPrefix + y;
 			document.head.appendChild(link);
 		});
 		const cssBundles = {{.CSSBundles}};
-		cssBundles.forEach(x => {
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = "/public/" + x;
-			link.setAttribute("data-river-css-bundle", x);
+		cssBundles.forEach((y) => {
+			const link = document.createElement("link");
+			link.rel = "stylesheet";
+			link.href = x.publicPathPrefix + y;
+			link.setAttribute("data-river-css-bundle", y);
 			document.head.appendChild(link);
 		});
 	}
@@ -87,6 +87,7 @@ func (h *River[C]) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOu
 		CoreData:            routeData.CoreData,
 		Deps:                routeData.Deps,
 		CSSBundles:          routeData.CSSBundles,
+		PublicPathPrefix:    h.Kiruna.GetPublicPathPrefix(),
 	}
 	if err := ssrInnerTmpl.Execute(&htmlBuilder, dto); err != nil {
 		errMsg := fmt.Sprintf("could not execute SSR inner HTML template: %v", err)

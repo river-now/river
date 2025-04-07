@@ -1,5 +1,5 @@
+import { type LinkPropsBase, makeFinalLinkProps } from "@sjc5/river/client";
 import { type ComponentProps, useMemo } from "react";
-import { type LinkPropsBase, makeFinalLinkProps } from "../../client/src/impl_helpers.ts";
 
 export function Link(
 	props: ComponentProps<"a"> &

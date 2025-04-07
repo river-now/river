@@ -1,13 +1,13 @@
-import { atom, useAtom } from "jotai";
-import { type JSX, useEffect, useMemo, useState } from "react";
-import { flushSync } from "react-dom";
-import { jsonDeepEquals } from "../../../../../kit/_typescript/json/json.ts";
 import {
 	addRouteChangeListener,
 	internal_RiverClientGlobal as ctx,
 	getCurrentRiverData,
-} from "../../client/index.ts";
-import type { RootOutletProps } from "../../client/src/impl_helpers.ts";
+	type RootOutletProps,
+} from "@sjc5/river/client";
+import { jsonDeepEquals } from "@sjc5/river/kit/json";
+import { atom, useAtom } from "jotai";
+import { type JSX, useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 
 let shouldScroll = false;
 

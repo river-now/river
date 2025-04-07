@@ -33,6 +33,7 @@ export const RIVER_SYMBOL = Symbol.for("__river_internal__");
 export type RiverClientGlobal = shared & {
 	isDev: boolean;
 	viteDevURL: string;
+	publicPathPrefix: string;
 };
 
 export function __getRiverClientGlobal() {

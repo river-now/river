@@ -55,7 +55,7 @@ func TestGetStyleSheetURL(t *testing.T) {
 	env.createTestFile(t, "dist/static/internal/normal_css_file_ref.txt", normalCSSFile)
 
 	result := env.config.GetStyleSheetURL()
-	expected := "/public/" + normalCSSFile
+	expected := "/bob/" + normalCSSFile
 	if result != expected {
 		t.Errorf("GetStyleSheetURL() = %v, want: %v", result, expected)
 	}
@@ -69,7 +69,7 @@ func TestGetStyleSheetLinkElement(t *testing.T) {
 	env.createTestFile(t, "dist/static/internal/normal_css_file_ref.txt", normalCSSFile)
 
 	result := env.config.GetStyleSheetLinkElement()
-	expected := template.HTML(`<link rel="stylesheet" href="/public/` + normalCSSFile + `" id="` + StyleSheetElementID + `" />`)
+	expected := template.HTML(`<link rel="stylesheet" href="/bob/` + normalCSSFile + `" id="` + StyleSheetElementID + `" />`)
 	if result != expected {
 		t.Errorf("GetStyleSheetLinkElement() = %v, want: %v", result, expected)
 	}
