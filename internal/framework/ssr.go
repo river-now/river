@@ -21,7 +21,7 @@ type SSRInnerHTMLInput struct {
 	OutermostErrorIndex int
 	SplatValues         SplatValues
 	Params              mux.Params
-	CoreData            any
+	HasRootData         bool
 	Deps                []string
 	CSSBundles          []string
 	PublicPathPrefix    string
@@ -43,7 +43,7 @@ const ssrInnerHTMLTmplStr = `<script>
 	x.outermostErrorIndex = {{.OutermostErrorIndex}};
 	x.splatValues = {{.SplatValues}};
 	x.params = {{.Params}};
-	x.coreData = {{.CoreData}};
+	x.hasRootData = {{.HasRootData}};
 	if (!x.isDev) {
 		const deps = {{.Deps}};
 		deps.forEach((y) => {
@@ -70,7 +70,7 @@ type GetSSRInnerHTMLOutput struct {
 	Sha256Hash string
 }
 
-func (h *River[C]) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOutput, error) {
+func (h *River) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOutput, error) {
 	var htmlBuilder strings.Builder
 
 	dto := SSRInnerHTMLInput{
@@ -84,7 +84,7 @@ func (h *River[C]) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOu
 		OutermostErrorIndex: routeData.OutermostErrorIndex,
 		SplatValues:         routeData.SplatValues,
 		Params:              routeData.Params,
-		CoreData:            routeData.CoreData,
+		HasRootData:         routeData.HasRootData,
 		Deps:                routeData.Deps,
 		CSSBundles:          routeData.CSSBundles,
 		PublicPathPrefix:    h.Kiruna.GetPublicPathPrefix(),

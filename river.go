@@ -10,7 +10,7 @@ import (
 /////////////////////////////////////////////////////////////////////
 
 type (
-	River[C any] = framework.River[C]
+	River        = framework.River
 	HeadBlock    = htmlutil.Element
 	AdHocType    = framework.AdHocType
 	BuildOptions = framework.BuildOptions

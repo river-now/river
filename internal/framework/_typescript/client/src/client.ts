@@ -778,7 +778,7 @@ async function __reRenderApp({
 		"outermostErrorIndex",
 		"splatValues",
 		"params",
-		"coreData",
+		"hasRootData",
 	] as const satisfies ReadonlyArray<keyof RiverClientGlobal>;
 
 	for (const key of identicalKeysToSet) {
@@ -1110,11 +1110,15 @@ async function handleComponents() {
 }
 
 export function getCurrentRiverData<T = any>() {
+	let rootData: T | null = null;
+	if (internal_RiverClientGlobal.get("hasRootData")) {
+		rootData = internal_RiverClientGlobal.get("loadersData")[0];
+	}
 	return {
 		buildID: internal_RiverClientGlobal.get("buildID") || "",
 		splatValues: internal_RiverClientGlobal.get("splatValues") || [],
 		params: internal_RiverClientGlobal.get("params") || {},
-		coreData: (internal_RiverClientGlobal.get("coreData") || null) as T | null,
+		rootData,
 	};
 }
 

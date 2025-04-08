@@ -30,6 +30,10 @@ type Matcher struct {
 	quiet bool
 }
 
+func (m *Matcher) GetExplicitIndexSegment() string {
+	return m.explicitIndexSegment
+}
+
 type Match struct {
 	*RegisteredPattern
 	params      Params

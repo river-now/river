@@ -25,6 +25,7 @@ type ActivePathData struct {
 	SplatValues         SplatValues
 	Params              mux.Params
 	Deps                []string
+	HasRootData         bool
 }
 
 type gmpdItem struct {
@@ -48,7 +49,7 @@ type uiRoutesData struct {
 }
 
 // Returns nil if no match is found
-func (h *River[C]) getUIRoutesData(
+func (h *River) getUIRoutesData(
 	w http.ResponseWriter, r *http.Request, nestedRouter *mux.NestedRouter, tasksCtx *tasks.TasksCtx,
 ) *uiRoutesData {
 
@@ -98,6 +99,13 @@ func (h *River[C]) getUIRoutesData(
 	}
 
 	_tasks_results := mux.RunNestedTasks(nestedRouter, tasksCtx, r, item._match_results)
+
+	var hasRootData bool
+	if len(item._match_results.Matches) > 0 &&
+		item._match_results.Matches[0].NormalizedPattern() == "" &&
+		_tasks_results.GetHasTaskHandler(0) {
+		hasRootData = true
+	}
 
 	_merged_response_proxy := response.MergeProxyResponses(_tasks_results.ResponseProxies...)
 	if _merged_response_proxy != nil {
@@ -165,6 +173,7 @@ func (h *River[C]) getUIRoutesData(
 			// LoadersErrMsgs:      loadersErrs[:outermostErrorIndex+1],
 			LoadersErrs: loadersErrs[:outermostErrorIndex+1],
 			HeadBlocks:  headblocks,
+			HasRootData: hasRootData,
 		}
 
 		return &uiRoutesData{activePathData: apd, found: true}
@@ -186,6 +195,7 @@ func (h *River[C]) getUIRoutesData(
 		// LoadersErrMsgs:      loadersErrMsgs,
 		LoadersErrs: loadersErrs,
 		HeadBlocks:  headblocks,
+		HasRootData: hasRootData,
 	}
 
 	return &uiRoutesData{activePathData: apd, found: true}

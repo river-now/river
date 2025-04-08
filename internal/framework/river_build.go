@@ -44,7 +44,7 @@ type PathsFile struct {
 	DepToCSSBundleMap map[string]string `json:"depToCSSBundleMap,omitempty"`
 }
 
-func (h *River[C]) writePathsToDisk_StageOne() error {
+func (h *River) writePathsToDisk_StageOne() error {
 	pathsJSONOut_StageOne := filepath.Join(h.Kiruna.GetPrivateStaticDir(), "river_out", RiverPathsStageOneJSONFileName)
 	err := os.MkdirAll(filepath.Dir(pathsJSONOut_StageOne), os.ModePerm)
 	if err != nil {
@@ -146,7 +146,7 @@ export function riverVitePlugin(): Plugin {
 
 var vitePluginTemplate = template.Must(template.New("vitePlugin").Parse(vitePluginTemplateStr))
 
-func (h *River[C]) toRollupOptions(entrypoints []string, fileMap map[string]string) (string, error) {
+func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string) (string, error) {
 	var sb stringsutil.Builder
 
 	sb.Return()
@@ -247,7 +247,7 @@ func (h *River[C]) toRollupOptions(entrypoints []string, fileMap map[string]stri
 	return sb.String(), nil
 }
 
-func (h *River[C]) handleViteConfigHelper(extraTS string) error {
+func (h *River) handleViteConfigHelper(extraTS string) error {
 	entrypoints := h.getEntrypoints()
 
 	publicFileMap, err := h.Kiruna.GetSimplePublicFileMapBuildtime()
@@ -295,7 +295,7 @@ type NodeScriptResultItem struct {
 
 type NodeScriptResult []NodeScriptResultItem
 
-func (h *River[C]) Build(opts *BuildOptions) error {
+func (h *River) Build(opts *BuildOptions) error {
 	a := time.Now()
 
 	h.mu.Lock()
@@ -458,11 +458,11 @@ const routes = RoutesBuilder();
 	return nil
 }
 
-func (h *River[C]) toStaticPublicOutDir() string {
+func (h *River) toStaticPublicOutDir() string {
 	return filepath.Join(h.Kiruna.GetPublicStaticDir(), kiruna.PrehashedDirname)
 }
 
-func (h *River[C]) getViteDevURL() string {
+func (h *River) getViteDevURL() string {
 	if !h._isDev {
 		return ""
 	}
@@ -521,7 +521,7 @@ func cleanStaticPublicOutDir(staticPublicOutDir string) error {
 /////// GET ENTRYPOINTS
 /////////////////////////////////////////////////////////////////////
 
-func (h *River[C]) getEntrypoints() []string {
+func (h *River) getEntrypoints() []string {
 	entryPoints := make(map[string]struct{}, len(h._paths)+1)
 	entryPoints[h.Kiruna.GetRiverClientEntry()] = struct{}{}
 	for _, path := range h._paths {
@@ -541,7 +541,7 @@ func (h *River[C]) getEntrypoints() []string {
 /////// TO PATHS FILE -- STAGE TWO
 /////////////////////////////////////////////////////////////////////
 
-func (h *River[C]) toPathsFile_StageTwo() (*PathsFile, error) {
+func (h *River) toPathsFile_StageTwo() (*PathsFile, error) {
 	riverClientEntryOut := ""
 	riverClientEntryDeps := []string{}
 	depToCSSBundleMap := make(map[string]string)

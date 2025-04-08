@@ -30,11 +30,18 @@ var mutationMethods = map[string]struct{}{
 	http.MethodPost: {}, http.MethodPut: {}, http.MethodPatch: {}, http.MethodDelete: {},
 }
 
-func (h *River[C]) GenerateTypeScript(opts *TSGenOptions) (string, error) {
+func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 	var collection []tsgen.CollectionItem
 
 	allLoaders := opts.UIRouter.AllRoutes()
 	allActions := opts.ActionsRouter.AllRoutes()
+
+	expectedRootDataPattern := ""
+	if opts.UIRouter.GetExplicitIndexSegment() != "" {
+		expectedRootDataPattern = "/"
+	}
+
+	var foundRootData bool
 
 	var seen = map[string]struct{}{}
 
@@ -49,6 +56,10 @@ func (h *River[C]) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 			item.PhantomTypes = map[string]AdHocType{
 				"phantomOutputType": {TypeInstance: loader.O()},
 			}
+		}
+		if pattern == expectedRootDataPattern {
+			foundRootData = true
+			item.ArbitraryProperties["isRootData"] = true
 		}
 		collection = append(collection, item)
 		seen[pattern] = struct{}{}
@@ -142,19 +153,20 @@ func (h *River[C]) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 
 	extraTSToUse := rpc.BuildFromCategories(categories)
 
+	if foundRootData {
+		extraTSToUse += "\nexport type RootData = Extract<(typeof routes)[number], { isRootData: true }>[\"phantomOutputType\"];\n"
+	} else {
+		extraTSToUse += "\nexport type RootData = null;\n"
+	}
+
 	if opts.ExtraTSCode != "" {
 		extraTSToUse += "\n" + opts.ExtraTSCode
 	}
 
-	adHocTypes := append(opts.AdHocTypes, &AdHocType{
-		TypeInstance: h._get_core_data_zero(),
-		TSTypeName:   "CoreData",
-	})
-
 	return tsgen.GenerateTSContent(tsgen.Opts{
 		Collection:        collection,
 		CollectionVarName: base.CollectionVarName,
-		AdHocTypes:        adHocTypes,
+		AdHocTypes:        opts.AdHocTypes,
 		ExtraTSCode:       extraTSToUse,
 	})
 }

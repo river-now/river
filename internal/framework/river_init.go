@@ -11,7 +11,7 @@ import (
 	"github.com/sjc5/river/kit/mux"
 )
 
-func (h *River[C]) Init(isDev bool) {
+func (h *River) Init(isDev bool) {
 	if err := h.initInner(isDev); err != nil {
 		errMsg := fmt.Sprintf("Error initializing River: %v", err)
 		if isDev {
@@ -25,7 +25,7 @@ func (h *River[C]) Init(isDev bool) {
 }
 
 // RUNTIME! Gets called from the handler maker, which gets called by the user's router init function.
-func (h *River[C]) validateAndDecorateNestedRouter(nestedRouter *mux.NestedRouter) {
+func (h *River) validateAndDecorateNestedRouter(nestedRouter *mux.NestedRouter) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	if nestedRouter == nil {
@@ -58,7 +58,7 @@ func PrettyPrintFS(fsys fs.FS) error {
 	})
 }
 
-func (h *River[C]) initInner(isDev bool) error {
+func (h *River) initInner(isDev bool) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h._isDev = isDev
@@ -97,7 +97,7 @@ func (h *River[C]) initInner(isDev bool) error {
 	return nil
 }
 
-func (h *River[C]) getBasePaths_StageOneOrTwo(isDev bool) (*PathsFile, error) {
+func (h *River) getBasePaths_StageOneOrTwo(isDev bool) (*PathsFile, error) {
 	fileToUse := RiverPathsStageOneJSONFileName
 	if !isDev {
 		fileToUse = RiverPathsStageTwoJSONFileName

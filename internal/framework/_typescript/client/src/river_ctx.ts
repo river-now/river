@@ -16,7 +16,7 @@ type shared = {
 	outermostErrorIndex: number;
 	params: Record<string, string>;
 	splatValues: Array<string>;
-	coreData: any;
+	hasRootData: boolean;
 	buildID: string;
 	activeErrorBoundaries: Array<any> | null;
 	activeComponents: Array<any> | null;

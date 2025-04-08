@@ -2,7 +2,7 @@ package framework
 
 import "github.com/sjc5/river/kit/matcher"
 
-func (h *River[C]) getDeps(_matches []*matcher.Match) []string {
+func (h *River) getDeps(_matches []*matcher.Match) []string {
 	var deps []string
 	seen := make(map[string]struct{}, len(_matches))
 	handleDeps := func(src []string) {
@@ -27,7 +27,7 @@ func (h *River[C]) getDeps(_matches []*matcher.Match) []string {
 }
 
 // order matters
-func (h *River[C]) getCSSBundles(deps []string) []string {
+func (h *River) getCSSBundles(deps []string) []string {
 	cssBundles := make([]string, 0, len(deps))
 	// first, client entry CSS
 	if x, exists := h._depToCSSBundleMap[h._clientEntryOut]; exists {

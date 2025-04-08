@@ -8,7 +8,6 @@ import (
 
 	"github.com/sjc5/river/kiruna"
 	"github.com/sjc5/river/kit/colorlog"
-	"github.com/sjc5/river/kit/genericsutil"
 	"github.com/sjc5/river/kit/htmlutil"
 	"github.com/sjc5/river/kit/mux"
 )
@@ -58,7 +57,7 @@ var UIVariants = struct {
 	Solid:  "solid",
 }
 
-type River[C any] struct {
+type River struct {
 	Kiruna               *kiruna.Kiruna
 	GetDefaultHeadBlocks func(r *http.Request) ([]*htmlutil.Element, error)
 	GetRootTemplateData  func(r *http.Request) (map[string]any, error)
@@ -73,10 +72,4 @@ type River[C any] struct {
 	_depToCSSBundleMap map[string]string
 	_rootTemplate      *template.Template
 	_privateFS         fs.FS
-}
-
-type RiverAny interface{ _get_core_data_zero() any }
-
-func (h *River[C]) _get_core_data_zero() any {
-	return genericsutil.Zero[C]()
 }

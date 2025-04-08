@@ -8,26 +8,22 @@ import (
 	"net/http"
 
 	"github.com/sjc5/river/kit/cryptoutil"
-	"github.com/sjc5/river/kit/genericsutil"
 	"github.com/sjc5/river/kit/headblocks"
 	"github.com/sjc5/river/kit/mux"
 	"github.com/sjc5/river/kit/response"
-	"github.com/sjc5/river/kit/tasks"
 	"github.com/sjc5/river/kit/viteutil"
 	"golang.org/x/sync/errgroup"
 )
 
-type CoreDataTask[C any] = tasks.RegisteredTask[genericsutil.None, C]
-
 var headblocksInstance = headblocks.New("river")
 
-func (h *River[C]) GetUIHandler(nestedRouter *mux.NestedRouter, coreDataTask *CoreDataTask[C]) http.Handler {
+func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 	h.validateAndDecorateNestedRouter(nestedRouter)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		res := response.New(w)
 
-		uiRouteData, err := h.getUIRouteData(w, r, nestedRouter, coreDataTask)
+		uiRouteData, err := h.getUIRouteData(w, r, nestedRouter)
 
 		if err != nil && isErrNotFound(err) {
 			// __TODO -- optionally client redirect to a specific 404 page
@@ -63,7 +59,19 @@ func (h *River[C]) GetUIHandler(nestedRouter *mux.NestedRouter, coreDataTask *Co
 			routeDataHash = cryptoutil.Sha256Hash(jsonBytes)
 		}
 
-		if GetIsJSONRequest(r) {
+		isJSON := GetIsJSONRequest(r)
+		isHTML := !isJSON
+		currentCacheControlHeader := w.Header().Get("Cache-Control")
+
+		// for HTML responses, and for any JSON responses without
+		// explicit overrides, we want to use "private, no-cache"
+		// to prevent any problematic accidental caching while still
+		// allowing browser-level 304 responses to work as intended
+		if isHTML || currentCacheControlHeader == "" {
+			res.SetHeader("Cache-Control", "private, no-cache")
+		}
+
+		if isJSON {
 			if h.Kiruna.GetRiverAutoETags() {
 				etag = fmt.Sprintf(`"json-%x"`, routeDataHash)
 				res.SetETag(etag)
@@ -178,7 +186,7 @@ func GetIsJSONRequest(r *http.Request) bool {
 	return r.URL.Query().Get("river-json") == "1"
 }
 
-func (h *River[C]) GetActionsHandler(router *mux.Router) http.Handler {
+func (h *River) GetActionsHandler(router *mux.Router) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		res := response.New(w)
 		res.SetHeader("X-River-Build-Id", h._buildID)

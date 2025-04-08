@@ -12,7 +12,7 @@ import { flushSync } from "react-dom";
 let shouldScroll = false;
 
 const importURLsAtom = atom(ctx.get("importURLs"));
-const coreDataAtom = atom(ctx.get("coreData"));
+const rootDataAtom = atom(ctx.get("hasRootData") ? ctx.get("loadersData")[0] : null);
 const paramsAtom = atom(ctx.get("params") ?? {});
 const splatValuesAtom = atom(ctx.get("splatValues") ?? []);
 export const loadersDataAtom = atom(ctx.get("loadersData"));
@@ -43,7 +43,7 @@ export function RiverRootOutlet(props: RootOutletProps<JSX.Element>): JSX.Elemen
 	}, [currentImportURL, currentExportKey]);
 
 	const [importURLs, setImportURLs] = useAtom(importURLsAtom);
-	const [coreData, setCoreData] = useAtom(coreDataAtom);
+	const [rootData, setRootData] = useAtom(rootDataAtom);
 	const [params, setParams] = useAtom(paramsAtom);
 	const [splatValues, setSplatValues] = useAtom(splatValuesAtom);
 	const [loadersData, setLoadersData] = useAtom(loadersDataAtom);
@@ -54,7 +54,7 @@ export function RiverRootOutlet(props: RootOutletProps<JSX.Element>): JSX.Elemen
 		if (idx === 0) {
 			return addRouteChangeListener((e) => {
 				const newImportURLs = ctx.get("importURLs");
-				const newCoreData = ctx.get("coreData");
+				const newRootData = ctx.get(ctx.get("hasRootData") ? ctx.get("loadersData")[0] : null);
 				const newParams = ctx.get("params") ?? {};
 				const newSplatValues = ctx.get("splatValues") ?? [];
 				const newLoadersData = ctx.get("loadersData");
@@ -62,7 +62,7 @@ export function RiverRootOutlet(props: RootOutletProps<JSX.Element>): JSX.Elemen
 
 				flushSync(() => {
 					if (!jsonDeepEquals(importURLs, newImportURLs)) setImportURLs(newImportURLs);
-					if (!jsonDeepEquals(coreData, newCoreData)) setCoreData(newCoreData);
+					if (!jsonDeepEquals(rootData, newRootData)) setRootData(newRootData);
 					if (!jsonDeepEquals(params, newParams)) setParams(newParams);
 					if (!jsonDeepEquals(splatValues, newSplatValues)) setSplatValues(newSplatValues);
 					if (!jsonDeepEquals(loadersData, newLoadersData)) setLoadersData(newLoadersData);

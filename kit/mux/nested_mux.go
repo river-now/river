@@ -38,6 +38,10 @@ func (nr *NestedRouter) IsRegistered(pattern string) bool {
 	return exists
 }
 
+func (nr *NestedRouter) GetExplicitIndexSegment() string {
+	return nr._matcher.GetExplicitIndexSegment()
+}
+
 /////////////////////////////////////////////////////////////////////
 /////// NEW ROUTER
 /////////////////////////////////////////////////////////////////////
@@ -139,6 +143,12 @@ type NestedTasksResults struct {
 	Map             map[string]*NestedTasksResult
 	Slice           []*NestedTasksResult
 	ResponseProxies []*response.Proxy
+	_task_indices   map[int]int // Maps match index to task index
+}
+
+func (ntr *NestedTasksResults) GetHasTaskHandler(i int) bool {
+	_, ok := ntr._task_indices[i]
+	return ok
 }
 
 // Second return value (bool) indicates matches found
@@ -179,7 +189,7 @@ func RunNestedTasks(
 	// First, identify which matches have tasks that need to be run
 	_tasks_with_input := make([]tasks.AnyPreparedTask, 0, len(matches))
 	_results.ResponseProxies = make([]*response.Proxy, 0, len(matches))
-	_task_indices := make(map[int]int) // Maps match index to task index
+	_results._task_indices = make(map[int]int) // Maps match index to task index
 
 	for i, _match := range matches {
 		_response_proxy := response.NewProxy()
@@ -213,7 +223,7 @@ func RunNestedTasks(
 		}
 
 		_tasks_with_input = append(_tasks_with_input, tasks.PrepAny(tasksCtx, _task, _rd))
-		_task_indices[i] = len(_tasks_with_input) - 1 // Store the mapping between match index and task index
+		_results._task_indices[i] = len(_tasks_with_input) - 1 // Store the mapping between match index and task index
 	}
 
 	// Only run parallelPreload if we have tasks to run
@@ -222,7 +232,7 @@ func RunNestedTasks(
 	}
 
 	// Process task results for matches that had tasks
-	for matchIdx, taskIdx := range _task_indices {
+	for matchIdx, taskIdx := range _results._task_indices {
 		_res := _results.Slice[matchIdx]
 		_data, err := _tasks_with_input[taskIdx].GetAny()
 		_res._data = _data
