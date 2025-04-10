@@ -16,10 +16,14 @@ import (
 var Log = colorlog.New("viteutil")
 
 type BuildCtx struct {
-	mu   *sync.Mutex
+	mu   *sync.RWMutex
 	cmd  *exec.Cmd
 	opts *BuildCtxOptions
 	port int
+}
+
+func (c *BuildCtx) GetPort() int {
+	return c.port
 }
 
 type BuildCtxOptions struct {
@@ -43,8 +47,9 @@ func NewBuildCtx(opts *BuildCtxOptions) *BuildCtx {
 		port = 5173
 	}
 	return &BuildCtx{
-		mu:   &sync.Mutex{},
+		mu:   &sync.RWMutex{},
 		opts: opts,
+		port: port,
 	}
 }
 
@@ -74,14 +79,15 @@ func (c *BuildCtx) DevBuild() error {
 
 	c.prep_cmd()
 
-	vitePort, err := InitPort(c.port)
+	var err error
+	c.port, err = InitPort(c.port)
 	if err != nil {
 		Log.Error(fmt.Sprintf("Error initializing vite port: %s", err))
 		return err
 	}
 
 	c.cmd.Args = append(c.cmd.Args, "vite",
-		"--port", fmt.Sprintf("%d", vitePort),
+		"--port", fmt.Sprintf("%d", c.port),
 		"--clearScreen", "false",
 		"--strictPort", "true",
 	)
@@ -102,23 +108,23 @@ func (c *BuildCtx) DevBuild() error {
 }
 
 func (c *BuildCtx) Wait() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	if c.cmd != nil && c.cmd.Process != nil {
+	if c.cmd != nil && c.cmd.Process != nil && c.cmd.ProcessState == nil {
 		if err := c.cmd.Wait(); err != nil {
-			Log.Error(fmt.Sprintf("Error waiting for vite process: %s", err))
+			Log.Info(fmt.Sprintf("viteutil: BuildCtx: Wait: %s", err))
 		}
 	}
 }
 
 func (c *BuildCtx) Cleanup() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	if c.cmd != nil && c.cmd.Process != nil {
+	if c.cmd != nil && c.cmd.Process != nil && c.cmd.ProcessState == nil {
 		if err := grace.TerminateProcess(c.cmd.Process, 3*time.Second, nil); err != nil {
-			Log.Warn(fmt.Sprintf("Cleanup: Error terminating vite process: %s", err))
+			Log.Info(fmt.Sprintf("viteutil: BuildCtx: Cleanup: %s", err))
 		} else {
 			Log.Info("Cleanup: Terminated vite process", "pid", c.cmd.Process.Pid)
 		}

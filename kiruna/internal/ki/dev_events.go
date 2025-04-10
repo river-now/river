@@ -25,20 +25,19 @@ func (c *Config) process_batched_events(events []fsnotify.Event) {
 	isGoOrNeedsHardReloadEvenIfNonGo := false
 
 	for _, evt := range fileChanges {
-		fileInfo, _ := os.Stat(evt.Name) // no need to check error, because we want to process either way
-
-		if fileInfo == nil {
-			continue
-		}
-
 		isConfig := filepath.Join(c.cleanWatchRoot, evt.Name) == cleanConfigFile
 		isWriteOrCreate := evt.Has(fsnotify.Write) || evt.Has(fsnotify.Create)
 		if isConfig && isWriteOrCreate {
-			c.handler_user_config_update()
+			c.Logger.Info("[watcher]", "op", evt.Op.String(), "filename", evt.Name)
+			c.MustStartDev(must_start_dev_opts{is_rebuild: true})
 			return
 		}
 
-		if fileInfo.IsDir() {
+		// no need to check error, because we want to process either way
+		file_info_maybe_nil, _ := os.Stat(evt.Name)
+		is_dir := file_info_maybe_nil != nil && file_info_maybe_nil.IsDir()
+
+		if is_dir {
 			if evt.Has(fsnotify.Create) || evt.Has(fsnotify.Rename) {
 				if err := c.add_directory_to_watcher(evt.Name); err != nil {
 					c.Logger.Error(fmt.Sprintf("error: failed to add directory to watcher: %v", err))
@@ -123,6 +122,11 @@ func (c *Config) process_batched_events(events []fsnotify.Event) {
 	for _, evtDetails := range relevantFileChanges {
 		c.Logger.Info("[watcher]", "op", evtDetails.evt.Op.String(), "filename", evtDetails.evt.Name)
 
+		if evtDetails.is_full_dev_reset {
+			c.MustStartDev(must_start_dev_opts{is_rebuild: true})
+			return
+		}
+
 		err := c.mustHandleFileChange(evtDetails, hasMultipleEvents)
 		if err != nil {
 			c.Logger.Error(fmt.Sprintf("error: failed to handle file change: %v", err))
@@ -141,7 +145,13 @@ func (c *Config) process_batched_events(events []fsnotify.Event) {
 
 	if hasMultipleEvents {
 		c.Logger.Info("Hard reloading browser")
-		c.must_reload_broadcast(refreshFilePayload{ChangeType: changeTypeOther}, true)
+		c.must_reload_broadcast(
+			refreshFilePayload{ChangeType: changeTypeOther},
+			must_reload_broadcast_opts{
+				wait_for_app:  true,
+				wait_for_vite: c.isUsingVite(),
+			},
+		)
 	}
 }
 
@@ -241,13 +251,25 @@ func (c *Config) mustHandleFileChange(
 
 	if wfc.RunClientDefinedRevalidateFunc {
 		c.Logger.Info("Running client-defined revalidate function")
-		c.must_reload_broadcast(refreshFilePayload{ChangeType: changeTypeRevalidate}, true)
+		c.must_reload_broadcast(
+			refreshFilePayload{ChangeType: changeTypeRevalidate},
+			must_reload_broadcast_opts{
+				wait_for_app:  true,
+				wait_for_vite: c.isUsingVite(),
+			},
+		)
 		return nil
 	}
 
 	if !evtDetails.isKirunaCSS || needsHardReloadEvenIfNonGo {
 		c.Logger.Info("Hard reloading browser")
-		c.must_reload_broadcast(refreshFilePayload{ChangeType: changeTypeOther}, true)
+		c.must_reload_broadcast(
+			refreshFilePayload{ChangeType: changeTypeOther},
+			must_reload_broadcast_opts{
+				wait_for_app:  true,
+				wait_for_vite: c.isUsingVite(),
+			},
+		)
 		return nil
 	}
 	// At this point, we know it's a CSS file
@@ -257,7 +279,6 @@ func (c *Config) mustHandleFileChange(
 		cssType = changeTypeCriticalCSS
 	}
 
-	c.Logger.Info("Hot reloading browser (CSS)")
 	rfp := refreshFilePayload{
 		ChangeType: cssType,
 
@@ -265,7 +286,11 @@ func (c *Config) mustHandleFileChange(
 		CriticalCSS:  base64.StdEncoding.EncodeToString([]byte(c.GetCriticalCSS())),
 		NormalCSSURL: c.GetStyleSheetURL(),
 	}
-	c.must_reload_broadcast(rfp, false)
+	c.Logger.Info("Hot reloading browser (CSS)")
+	c.must_reload_broadcast(rfp, must_reload_broadcast_opts{
+		wait_for_app:  false,
+		wait_for_vite: false,
+	})
 
 	return nil
 }

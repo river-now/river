@@ -12,7 +12,7 @@ import (
 // JSONBodyInto decodes an HTTP request body into a struct and validates it.
 func JSONBodyInto(r *http.Request, destStructPtr any) error {
 	if err := json.NewDecoder(r.Body).Decode(destStructPtr); err != nil {
-		return fmt.Errorf("error decoding JSON: %w", err)
+		return &ValidationError{Err: fmt.Errorf("error decoding JSON: %w", err)}
 	}
 	if err := attemptValidation("validate.JSONBodyInto", destStructPtr); err != nil {
 		return err
@@ -23,7 +23,7 @@ func JSONBodyInto(r *http.Request, destStructPtr any) error {
 // JSONBytesInto decodes a byte slice containing JSON data into a struct and validates it.
 func JSONBytesInto(data []byte, destStructPtr any) error {
 	if err := json.Unmarshal(data, destStructPtr); err != nil {
-		return fmt.Errorf("error decoding JSON: %w", err)
+		return &ValidationError{Err: fmt.Errorf("error decoding JSON: %w", err)}
 	}
 	if err := attemptValidation("validate.JSONBytesInto", destStructPtr); err != nil {
 		return err
@@ -34,7 +34,7 @@ func JSONBytesInto(data []byte, destStructPtr any) error {
 // JSONStrInto decodes a string containing JSON data into a struct and validates it.
 func JSONStrInto(data string, destStructPtr any) error {
 	if err := json.Unmarshal([]byte(data), destStructPtr); err != nil {
-		return fmt.Errorf("error decoding JSON: %w", err)
+		return &ValidationError{Err: fmt.Errorf("error decoding JSON: %w", err)}
 	}
 	if err := attemptValidation("validate.JSONStrInto", destStructPtr); err != nil {
 		return err
@@ -45,10 +45,10 @@ func JSONStrInto(data string, destStructPtr any) error {
 // URLSearchParamsInto parses the URL parameters of an HTTP request into a struct and validates it.
 func URLSearchParamsInto(r *http.Request, destStructPtr any) error {
 	if err := parseURLValues(r.URL.Query(), destStructPtr); err != nil {
-		return fmt.Errorf("error parsing URL parameters: %w", err)
+		return &ValidationError{Err: fmt.Errorf("error parsing URL parameters: %w", err)}
 	}
 	if err := attemptValidation("validate.URLSearchParamsInto", destStructPtr); err != nil {
-		return fmt.Errorf("error validating URL parameters: %w", err)
+		return err
 	}
 	return nil
 }

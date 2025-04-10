@@ -38,8 +38,13 @@ export type RouteChangeEvent = CustomEvent<RouteChangeEventDetail>;
 /////////////////////////////////////////////////////////////////////
 
 type NavigationResult =
-	| { json: GetRouteDataOutput; props: NavigateProps; cssBundlePromises: Array<any> }
-	| { redirectData: RedirectData }
+	| {
+			response: Response;
+			json: GetRouteDataOutput;
+			props: NavigateProps;
+			cssBundlePromises: Array<any>;
+	  }
+	| { response: Response; redirectData: RedirectData }
 	| undefined;
 
 export type NavigationControl = {
@@ -141,6 +146,11 @@ async function __completeNavigation(x: NavigationResult) {
 		await effectuateRedirectDataResult(x.redirectData);
 		return;
 	}
+	const oldID = internal_RiverClientGlobal.get("buildID");
+	const newID = x.response.headers.get(buildIDHeader) || "";
+	if (newID && newID !== oldID) {
+		dispatchBuildIDEvent({ newID, oldID, fromGETAction: false });
+	}
 	try {
 		await __reRenderApp({
 			json: x.json,
@@ -193,7 +203,7 @@ async function __fetchRouteData(
 		}
 
 		if (redirectData?.status === "should") {
-			return { redirectData };
+			return { redirectData, response };
 		}
 
 		const json = (await response.json()) as GetRouteDataOutput | undefined;
@@ -232,7 +242,7 @@ async function __fetchRouteData(
 			cssBundlePromises.push(preloadPromise);
 		}
 
-		return { json, props, cssBundlePromises };
+		return { response, json, props, cssBundlePromises };
 	} catch (error) {
 		if (!isAbortError(error)) {
 			LogError("Navigation failed", error);
@@ -307,6 +317,7 @@ export function getPrefetchHandlers<E extends Event>(input: GetPrefetchHandlersI
 				}
 
 				await __completeNavigation({
+					response: prerenderResult.response,
 					json: prerenderResult.json,
 					props: { ...prerenderResult.props, navigationType: "userNavigation" },
 					cssBundlePromises: prerenderResult.cssBundlePromises,
@@ -539,21 +550,16 @@ export async function submit<T = any>(
 	}
 
 	try {
+		const isGET = getIsGETRequest(requestInit);
 		const json = await submitRes.response.json();
 
-		const error = "error" in json ? json.error : undefined;
-		if (error) {
-			LogError(error);
-			return { success: false, error: error };
-		}
-
-		if (!submitRes.alreadyRevalidated && !getIsGETRequest(requestInit)) {
+		if (!submitRes.alreadyRevalidated && !isGET) {
 			await revalidate();
 		}
 
 		return {
 			success: true,
-			data: json.data as T,
+			data: json as T,
 		};
 	} catch (e) {
 		return {
@@ -580,10 +586,11 @@ async function submitInner(
 	const { abortController, didAbort } = handleSubmissionController(submissionKey);
 
 	const urlToUse = new URL(url, window.location.href);
-	urlToUse.searchParams.set("river-json", "1");
 
 	const headers = new Headers(requestInit.headers);
 	requestInit.headers = headers;
+
+	const isGET = getIsGETRequest(requestInit);
 
 	try {
 		const { redirectData, response } = await handleRedirects({
@@ -591,6 +598,12 @@ async function submitInner(
 			url: urlToUse,
 			requestInit,
 		});
+
+		const oldID = internal_RiverClientGlobal.get("buildID");
+		const newID = response?.headers.get(buildIDHeader) || "";
+		if (newID && newID !== oldID) {
+			dispatchBuildIDEvent({ newID, oldID, fromGETAction: isGET });
+		}
 
 		const redirected = redirectData?.status === "did";
 
@@ -606,7 +619,7 @@ async function submitInner(
 		}
 
 		if (didAbort) {
-			if (!getIsGETRequest(requestInit)) {
+			if (!isGET) {
 				// resets status bool
 				await revalidate();
 			}
@@ -742,11 +755,7 @@ function resolvePublicURL(href: string): URL {
 	if (baseURL.endsWith("/")) {
 		baseURL = baseURL.slice(0, -1);
 	}
-	const url = new URL(href.startsWith("/") ? baseURL + href : baseURL + "/" + href);
-	if (import.meta.env.DEV) {
-		url.searchParams.set("_rd", latestHMRTimestamp.toString());
-	}
-	return url;
+	return new URL(href.startsWith("/") ? baseURL + href : baseURL + "/" + href);
 }
 
 async function __reRenderApp({
@@ -786,13 +795,6 @@ async function __reRenderApp({
 	}
 
 	await handleComponents();
-
-	const oldID = internal_RiverClientGlobal.get("buildID");
-	const newID = json.buildID;
-	if (newID !== oldID) {
-		dispatchBuildIDEvent({ newID, oldID });
-		internal_RiverClientGlobal.set("buildID", json.buildID);
-	}
 
 	let scrollStateToDispatch: ScrollState | undefined;
 
@@ -1126,11 +1128,14 @@ export function getCurrentRiverData<T = any>() {
 // BUILD ID
 /////////////////////////////////////////////////////////////////////
 
+const buildIDHeader = "X-River-Build-Id";
+
 const BUILD_ID_EVENT_KEY = "river:build-id";
 
-type BuildIDEvent = { oldID: string; newID: string };
+type BuildIDEvent = { oldID: string; newID: string; fromGETAction: boolean };
 
 function dispatchBuildIDEvent(detail: BuildIDEvent) {
+	internal_RiverClientGlobal.set("buildID", detail.newID);
 	window.dispatchEvent(new CustomEvent(BUILD_ID_EVENT_KEY, { detail }));
 }
 

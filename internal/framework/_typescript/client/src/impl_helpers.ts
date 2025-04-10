@@ -4,11 +4,11 @@
 
 import { getPrefetchHandlers, makeLinkClickListenerFn } from "./client.ts";
 
-export type UntypedLoader = { _type: string; pattern: string; phantomOutputType: any };
+export type RiverUntypedLoader = { _type: string; pattern: string; phantomOutputType: any };
 
-export type RouteProps<
+export type RiverRoutePropsGeneric<
 	JSXElement,
-	T extends UntypedLoader,
+	T extends RiverUntypedLoader,
 	Pattern extends T["pattern"] = T["pattern"],
 > = {
 	idx: number;
@@ -16,13 +16,13 @@ export type RouteProps<
 	__phantom_pattern: Pattern;
 } & Record<string, any>;
 
-export type Route<
+export type RiverRouteGeneric<
 	JSXElement,
-	T extends UntypedLoader,
+	T extends RiverUntypedLoader,
 	Pattern extends T["pattern"] = T["pattern"],
-> = (props: RouteProps<JSXElement, T, Pattern>) => JSXElement;
+> = (props: RiverRoutePropsGeneric<JSXElement, T, Pattern>) => JSXElement;
 
-export type RootOutletProps<JSXElement> = {
+export type RiverRootOutletPropsGeneric<JSXElement> = {
 	idx?: number;
 	defaultServerErrorComponent?: () => JSXElement;
 };
@@ -34,7 +34,7 @@ export type RootOutletProps<JSXElement> = {
 // __TODO add prefetch = "render" and prefetch = "viewport" options, a la Remix
 // __TODO don't link prefetch where you already are -- eg make an exception for window.location.pathname
 
-export type LinkPropsBase<LinkClickCallback> = {
+export type RiverLinkPropsBase<LinkClickCallback> = {
 	href?: string;
 	prefetch?: "intent";
 	prefetchTimeout?: number;
@@ -43,7 +43,7 @@ export type LinkPropsBase<LinkClickCallback> = {
 	afterRender?: LinkClickCallback;
 } & Record<string, any>;
 
-function linkPropsToPrefetchObj<LinkClickCallback>(props: LinkPropsBase<LinkClickCallback>) {
+function linkPropsToPrefetchObj<LinkClickCallback>(props: RiverLinkPropsBase<LinkClickCallback>) {
 	if (!props.href || props.prefetch !== "intent") {
 		return undefined;
 	}
@@ -57,7 +57,9 @@ function linkPropsToPrefetchObj<LinkClickCallback>(props: LinkPropsBase<LinkClic
 	});
 }
 
-function linkPropsToClickListenerFn<LinkClickCallback>(props: LinkPropsBase<LinkClickCallback>) {
+function linkPropsToClickListenerFn<LinkClickCallback>(
+	props: RiverLinkPropsBase<LinkClickCallback>,
+) {
 	return makeLinkClickListenerFn({
 		beforeBegin: props.beforeBegin as any,
 		beforeRender: props.beforeRender as any,
@@ -83,7 +85,7 @@ const standardCamelHandlerKeys = {
 } satisfies handlerKeys;
 
 export function makeFinalLinkProps<LinkClickCallback>(
-	props: LinkPropsBase<LinkClickCallback>,
+	props: RiverLinkPropsBase<LinkClickCallback>,
 	keys: {
 		onPointerEnter: string;
 		onFocus: string;

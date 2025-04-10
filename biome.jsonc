@@ -7,7 +7,13 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!**/node_modules", "!npm_dist", "!kiruna/configschema/*schema.json"]
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!npm_dist",
+			"!kiruna/configschema/*schema.json",
+			"!site"
+		]
 	},
 	"formatter": {
 		"enabled": true,

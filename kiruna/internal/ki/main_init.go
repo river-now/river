@@ -11,6 +11,8 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
+const __internal_full_dev_reset_less_go_mrkr = "__internal_full_dev_reset_less_go_mrkr"
+
 /////////////////////////////////////////////////////////////////////
 /////// MAIN INIT
 /////////////////////////////////////////////////////////////////////
@@ -107,8 +109,14 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 	}
 
 	c.defaultWatchedFiles = []WatchedFile{
-		{Pattern: filepath.Join(c.cleanSources.PrivateStatic, "**/*"), RestartApp: true},
-		{Pattern: filepath.Join(c.cleanSources.PublicStatic, "**/*"), RestartApp: true},
+		{
+			Pattern:       filepath.Join(c.cleanSources.PrivateStatic, "**/*"),
+			OnChangeHooks: []OnChangeHook{{Cmd: __internal_full_dev_reset_less_go_mrkr}},
+		},
+		{
+			Pattern:       filepath.Join(c.cleanSources.PublicStatic, "**/*"),
+			OnChangeHooks: []OnChangeHook{{Cmd: __internal_full_dev_reset_less_go_mrkr}},
+		},
 	}
 
 	includeDefaults := true
@@ -124,8 +132,7 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 
 		c.defaultWatchedFiles = append(c.defaultWatchedFiles, WatchedFile{
 			Pattern:       relClientRouteDefsFile,
-			RestartApp:    true,
-			OnChangeHooks: []OnChangeHook{{Cmd: "DevBuildHook", Timing: "pre"}},
+			OnChangeHooks: []OnChangeHook{{Cmd: __internal_full_dev_reset_less_go_mrkr}},
 		})
 
 		c.defaultWatchedFiles = append(c.defaultWatchedFiles, WatchedFile{

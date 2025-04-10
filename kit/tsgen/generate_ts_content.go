@@ -44,8 +44,11 @@ func GenerateTSContent(opts Opts) (string, error) {
 		write(&f, collection, 2)
 	}
 
-	write(&f, Comment("Ad Hoc Types:"), 2)
-	write(&f, getExports(merged), 2)
+	adHocTypes := getExports(merged)
+	if len(strings.TrimSpace(adHocTypes)) > 0 {
+		write(&f, Comment("Ad Hoc Types:"), 2)
+		write(&f, adHocTypes, 2)
+	}
 
 	extraTSTrimmed := strings.TrimSpace(opts.ExtraTSCode)
 	if extraTSTrimmed != "" {

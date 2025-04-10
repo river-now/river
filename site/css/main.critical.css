@@ -1,0 +1,16 @@
+:root {
+	color-scheme: light dark;
+}
+html.light {
+	color-scheme: light;
+}
+html.dark {
+	color-scheme: dark;
+}
+html {
+	font-family: monospace;
+	font-size: 16px;
+}
+p {
+	line-height: 1.7;
+}

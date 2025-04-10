@@ -1,9 +1,11 @@
-import { type LinkPropsBase, makeFinalLinkProps } from "@sjc5/river/client";
+import { makeFinalLinkProps, type RiverLinkPropsBase } from "@sjc5/river/client";
 import { type ComponentProps, useMemo } from "react";
 
-export function Link(
+export function RiverLink(
 	props: ComponentProps<"a"> &
-		LinkPropsBase<(e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => void | Promise<void>>,
+		RiverLinkPropsBase<
+			(e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => void | Promise<void>
+		>,
 ) {
 	const finalLinkProps = useMemo(() => makeFinalLinkProps(props), [props]);
 

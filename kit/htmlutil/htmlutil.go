@@ -3,7 +3,9 @@ package htmlutil
 import (
 	"fmt"
 	"html/template"
+	"maps"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/sjc5/river/kit/bytesutil"
@@ -95,8 +97,10 @@ func RenderElementToBuilder(el *Element, htmlBuilder *strings.Builder) error {
 	htmlBuilder.WriteString(el.Tag)
 
 	if hasAttributes {
-		for key, value := range attributes {
-			writeAttribute(htmlBuilder, key, value)
+		keys := slices.Collect(maps.Keys(attributes))
+		sort.Strings(keys)
+		for _, key := range keys {
+			writeAttribute(htmlBuilder, key, attributes[key])
 		}
 	}
 
@@ -136,9 +140,7 @@ func EscapeAllIntoNewMap(el *Element) map[string]string {
 	for k, v := range el.Attributes {
 		attributes[k] = template.HTMLEscapeString(v)
 	}
-	for k, v := range el.TrustedAttributes {
-		attributes[k] = v
-	}
+	maps.Copy(attributes, el.TrustedAttributes)
 	return attributes
 }
 

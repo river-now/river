@@ -3,6 +3,7 @@ package mux
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"path/filepath"
 
@@ -14,6 +15,15 @@ import (
 	"github.com/sjc5/river/kit/tasks"
 	"github.com/sjc5/river/kit/validate"
 )
+
+/*
+
+Order of registration of handlers does not matter. Order of middleware
+registration DOES matter. For traditional middleware, it will run sequentially,
+first to last. For task middleware, they will run with maximum parallelism, but
+their response proxies will be merged according to the rules of response.Proxy.
+
+*/
 
 /////////////////////////////////////////////////////////////////////
 /////// VARIOUS TYPES (CORE)
@@ -92,10 +102,18 @@ type Options struct {
 	DynamicParamPrefixRune rune // Optional. Defaults to ':'.
 	SplatSegmentRune       rune // Optional. Defaults to '*'.
 
+	// Required. Do validation or whatever you want here, and mutate the
+	// input ptr to the desired value (this is what will ultimately be
+	// returned by c.Input()).
 	MarshalInput func(r *http.Request, inputPtr any) error
 
 	// If set to true, task handlers will automatically add a strong ETag
-	// (SHA-256 hash) to successful JSON responses. Has no effect on HTTP handlers.
+	// (SHA-256 hash) to successful GET/HEAD JSON responses.
+	//
+	// The request cookie will be taken into account in the hash. If any
+	// cookie changes, the ETag will change. Usually this is what you want.
+	//
+	// Has no effect on HTTP handlers.
 	// Defaults to false.
 	AutoTaskHandlerETags bool
 }
@@ -463,6 +481,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_req_data_getter, ok := _method_matcher._req_data_getters[_orig_pattern]
 	if !ok {
+		log.Println("Internal server error: no request data getter found")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -470,10 +489,12 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_handler_req_data_marker, err := _req_data_getter._get_req_data(r, _match)
 	if err != nil {
 		if validate.IsValidationError(err) {
+			log.Println("Validation error:", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
+		log.Println("Internal server error:", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -500,12 +521,14 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		_prepared_task := tasks.PrepAny(_tasks_ctx, _route._get_task_handler(), _handler_req_data_marker._get_underlying_req_data_instance())
 		if ok := _tasks_ctx.ParallelPreload(_prepared_task); !ok {
+			log.Println("Error preloading task")
 			res.InternalServerError()
 			return
 		}
 
 		_data, err := _prepared_task.GetAny()
 		if err != nil {
+			log.Println("Error getting task data:", err)
 			res.InternalServerError()
 			return
 		}
@@ -519,12 +542,21 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		_json_bytes, err := json.Marshal(_data)
 		if err != nil {
+			log.Println("Error marshalling JSON:", err)
 			res.InternalServerError()
 			return
 		}
 
-		if rt._auto_task_handler_etags {
-			etag := response.ToQuotedSha256Etag(_json_bytes)
+		_is_getish := r.Method == http.MethodGet || r.Method == http.MethodHead
+		if _is_getish && rt._auto_task_handler_etags {
+			_hash_input := []byte(r.Header.Get("Cookie"))
+			if len(_hash_input) > 4096 {
+				log.Println("Cookie too large")
+				res.InternalServerError()
+				return
+			}
+			_hash_input = append(_hash_input, _json_bytes...)
+			etag := response.ToQuotedSha256Etag(_hash_input)
 			res.SetETag(etag)
 			if response.ShouldReturn304Conservative(r, etag) {
 				res.NotModified()
@@ -651,7 +683,7 @@ func _to_req_data_getter_impl[I any, O any](_route *Route[I, O]) _Req_Data_Gette
 		func(r *http.Request, _match *matcher.BestMatch) (*ReqData[I], error) {
 			_req_data := _req_data_starter[I](_match, _route._router._tasks_registry, r)
 			_input_ptr := _route.IPtr()
-			if _route._router._marshal_input != nil {
+			if _route._router._marshal_input != nil && !genericsutil.IsNone(_route.I()) {
 				if err := _route._router._marshal_input(_req_data.Request(), _input_ptr); err != nil {
 					return nil, err
 				}

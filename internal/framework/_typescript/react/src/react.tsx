@@ -1,8 +1,9 @@
 import {
+	addBuildIDListener,
 	addRouteChangeListener,
 	internal_RiverClientGlobal as ctx,
 	getCurrentRiverData,
-	type RootOutletProps,
+	type RiverRootOutletPropsGeneric,
 } from "@sjc5/river/client";
 import { jsonDeepEquals } from "@sjc5/river/kit/json";
 import { atom, useAtom } from "jotai";
@@ -18,7 +19,7 @@ const splatValuesAtom = atom(ctx.get("splatValues") ?? []);
 export const loadersDataAtom = atom(ctx.get("loadersData"));
 export const currentRiverDataAtom = atom(getCurrentRiverData());
 
-export function RiverRootOutlet(props: RootOutletProps<JSX.Element>): JSX.Element {
+export function RiverRootOutlet(props: RiverRootOutletPropsGeneric<JSX.Element>): JSX.Element {
 	const idx = props.idx ?? 0;
 	const [currentImportURL, setCurrentImportURL] = useState(ctx.get("importURLs")?.[idx]);
 	const [currentExportKey, setCurrentExportKey] = useState(ctx.get("exportKeys")?.[idx]);
@@ -79,6 +80,19 @@ export function RiverRootOutlet(props: RootOutletProps<JSX.Element>): JSX.Elemen
 						}
 					});
 				}
+			});
+		}
+	}, [idx]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
+	useEffect(() => {
+		// __TODO mirror this in Solid impl
+		if (idx === 0) {
+			return addBuildIDListener((e) => {
+				if (!e.detail.fromGETAction) return;
+				flushSync(() => {
+					setCurrentRiverData(getCurrentRiverData());
+				});
 			});
 		}
 	}, [idx]);

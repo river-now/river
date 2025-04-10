@@ -1,7 +1,7 @@
 import {
 	addRouteChangeListener,
 	internal_RiverClientGlobal as ctx,
-	type RootOutletProps,
+	type RiverRootOutletPropsGeneric,
 	type RouteChangeEvent,
 } from "@sjc5/river/client";
 import { createEffect, createMemo, createSignal, ErrorBoundary, type JSX, Show } from "solid-js";
@@ -17,7 +17,7 @@ addRouteChangeListener((e) => {
 	setLoadersData(ctx.get("loadersData"));
 });
 
-export function RiverRootOutlet(props: RootOutletProps<JSX.Element>): JSX.Element {
+export function RiverRootOutlet(props: RiverRootOutletPropsGeneric<JSX.Element>): JSX.Element {
 	const idx = props.idx ?? 0;
 	const [currentImportURL, setCurrentImportURL] = createSignal(ctx.get("importURLs")?.[idx]);
 	const [currentExportKey, setCurrentExportKey] = createSignal(ctx.get("exportKeys")?.[idx]);

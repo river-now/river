@@ -10,6 +10,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/sjc5/river/kit/dirs"
 	"github.com/sjc5/river/kit/safecache"
+	"github.com/sjc5/river/kit/viteutil"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -105,6 +106,7 @@ type Config struct {
 	_uc            *UserConfig
 
 	_rebuild_cleanup_chan chan struct{}
+	_vite_dev_ctx         *viteutil.BuildCtx
 }
 
 type CleanSources struct {

@@ -106,6 +106,12 @@ export function riverVitePlugin(): Plugin {
 				},
 				server: {
 					...c.server,
+					headers: {
+						...c.server?.headers,
+						// ensure versions of dynamic imports without the latest
+						// hmr updates are not cached by the browser during dev
+						"cache-control": "no-store",
+					},
 					watch: {
 						...c.server?.watch,
 						ignored: [
@@ -133,7 +139,7 @@ export function riverVitePlugin(): Plugin {
 				assetRegex,
 				(original, _, assetPath) => {
 					const hashed = (publicFileMap as Record<string, string>)[assetPath];
-					if (!hashed) return original;
+					if (!hashed) return '\"' + assetPath + '\"';
 					return {{.Tick}}"/{{.PublicDir}}/${hashed}"{{.Tick}};
 				},
 			);
@@ -310,7 +316,7 @@ func (h *River) Build(opts *BuildOptions) error {
 	}
 	h._buildID = buildID
 
-	Log.Info("Building River...", "buildID", h._buildID)
+	Log.Info("START building River", "buildID", h._buildID)
 
 	esbuildResult := esbuild.Build(esbuild.BuildOptions{
 		EntryPoints: []string{h.Kiruna.GetRiverClientRouteDefsFile()},

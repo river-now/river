@@ -57,7 +57,7 @@ func (c *Config) Build(opts BuildOptions) error {
 	a := time.Now()
 
 	if !opts.CSSHotReload {
-		c.Logger.Info("Building Kiruna...",
+		c.Logger.Info("START building Kiruna",
 			"recompile_go_binary", opts.RecompileGoBinary,
 			"is_dev_rebuild", opts.is_dev_rebuild,
 		)
@@ -503,8 +503,6 @@ func (c *Config) processFile(
 			return nil
 		}
 	}
-
-	// fmt.Println(fi.path)
 
 	var distPath string
 	if opts.writeWithHash {

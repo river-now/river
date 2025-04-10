@@ -7,13 +7,14 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/sjc5/river/kit/cryptoutil"
 	"github.com/sjc5/river/kit/headblocks"
 	"github.com/sjc5/river/kit/mux"
 	"github.com/sjc5/river/kit/response"
 	"github.com/sjc5/river/kit/viteutil"
 	"golang.org/x/sync/errgroup"
 )
+
+const buildIDHeader = "X-River-Build-Id"
 
 var headblocksInstance = headblocks.New("river")
 
@@ -22,6 +23,7 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		res := response.New(w)
+		res.SetHeader(buildIDHeader, h._buildID)
 
 		uiRouteData, err := h.getUIRouteData(w, r, nestedRouter)
 
@@ -44,36 +46,34 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 
 		routeData := uiRouteData.uiRouteOutput
 
-		// Used for eTag handling for both JSON and HTTP responses
-		jsonBytes, err := json.Marshal(routeData)
-		if err != nil {
-			Log.Error(fmt.Sprintf("Error marshalling JSON: %v\n", err))
-			res.InternalServerError()
-			return
-		}
-
-		var etag string
-		var routeDataHash []byte
-
-		if h.Kiruna.GetRiverAutoETags() {
-			routeDataHash = cryptoutil.Sha256Hash(jsonBytes)
-		}
-
 		isJSON := GetIsJSONRequest(r)
-		isHTML := !isJSON
 		currentCacheControlHeader := w.Header().Get("Cache-Control")
 
-		// for HTML responses, and for any JSON responses without
-		// explicit overrides, we want to use "private, no-cache"
-		// to prevent any problematic accidental caching while still
-		// allowing browser-level 304 responses to work as intended
-		if isHTML || currentCacheControlHeader == "" {
-			res.SetHeader("Cache-Control", "private, no-cache")
+		if currentCacheControlHeader == "" {
+			if isJSON {
+				res.SetHeader("Cache-Control", "private, max-age=0, must-revalidate, no-cache")
+			} else {
+				res.SetHeader("Cache-Control", "private, max-age=0, must-revalidate, no-cache, no-store")
+			}
 		}
 
 		if isJSON {
+			jsonBytes, err := json.Marshal(routeData)
+			if err != nil {
+				Log.Error(fmt.Sprintf("Error marshalling JSON: %v\n", err))
+				res.InternalServerError()
+				return
+			}
+
 			if h.Kiruna.GetRiverAutoETags() {
-				etag = fmt.Sprintf(`"json-%x"`, routeDataHash)
+				hashInput := []byte(r.Header.Get("Cookie"))
+				if len(hashInput) > 4096 {
+					Log.Error("Cookie too large")
+					res.InternalServerError()
+					return
+				}
+				hashInput = append(hashInput, jsonBytes...)
+				etag := response.ToQuotedSha256Etag(hashInput)
 				res.SetETag(etag)
 				if response.ShouldReturn304Conservative(r, etag) {
 					res.NotModified()
@@ -169,15 +169,6 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 			res.InternalServerError()
 		}
 
-		if h.Kiruna.GetRiverAutoETags() {
-			etag = fmt.Sprintf(`"html-%x"`, routeDataHash)
-			res.SetETag(etag)
-			if response.ShouldReturn304Conservative(r, etag) {
-				res.NotModified()
-				return
-			}
-		}
-
 		res.HTMLBytes(buf.Bytes())
 	})
 }
@@ -189,7 +180,7 @@ func GetIsJSONRequest(r *http.Request) bool {
 func (h *River) GetActionsHandler(router *mux.Router) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		res := response.New(w)
-		res.SetHeader("X-River-Build-Id", h._buildID)
+		res.SetHeader(buildIDHeader, h._buildID)
 		router.ServeHTTP(w, r)
 	})
 }

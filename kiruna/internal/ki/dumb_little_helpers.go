@@ -109,22 +109,39 @@ func (c *Config) add_directory_to_watcher(path string) error {
 /////////////////////////////////////////////////////////////////////
 
 func (c *Config) wait_for_app_readiness() bool {
+	return c.wait_for_readiness(fmt.Sprintf(
+		"http://localhost:%d%s",
+		MustGetAppPort(),
+		c._uc.Watch.HealthcheckEndpoint,
+	))
+}
+
+func (c *Config) wait_for_vite_readiness() bool {
+	return c.wait_for_readiness(fmt.Sprintf(
+		"http://localhost:%d/@vite/client",
+		c._vite_dev_ctx.GetPort(),
+	))
+}
+
+func (c *Config) wait_for_readiness(url string) bool {
 	maxReadinessAttempts := 100
 	baseReadinessDelay := 20 * time.Millisecond
 
-	for attempts := range maxReadinessAttempts {
-		url := fmt.Sprintf(
-			"http://localhost:%d%s",
-			MustGetAppPort(),
-			c._uc.Watch.HealthcheckEndpoint,
-		)
+	var total_delay time.Duration
 
+	for attempts := range maxReadinessAttempts {
 		resp, err := http.Get(url)
 		if err == nil && resp.StatusCode == http.StatusOK {
 			return true
 		}
 
 		delay := baseReadinessDelay + time.Duration(attempts)*baseReadinessDelay
+
+		total_delay += delay
+		if total_delay > 3*time.Second {
+			return false
+		}
+
 		time.Sleep(delay)
 	}
 	return false
@@ -178,13 +195,23 @@ func (c *Config) send_rebuilding_signal() {
 /////// MUST RELOAD BROADCAST
 /////////////////////////////////////////////////////////////////////
 
-func (c *Config) must_reload_broadcast(rfp refreshFilePayload, with_wait bool) {
+type must_reload_broadcast_opts struct {
+	wait_for_app  bool
+	wait_for_vite bool
+}
+
+func (c *Config) must_reload_broadcast(rfp refreshFilePayload, opts must_reload_broadcast_opts) {
 	if !c.is_using_browser() {
 		return
 	}
-	if with_wait {
+	if opts.wait_for_app {
 		if ok := c.wait_for_app_readiness(); !ok {
-			c.panic("app never became ready", nil)
+			c.panic("app server never became ready", nil)
+		}
+	}
+	if opts.wait_for_vite {
+		if ok := c.wait_for_vite_readiness(); !ok {
+			c.panic("vite never became ready", nil)
 		}
 	}
 	c.browserTabManager.broadcast <- rfp

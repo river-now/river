@@ -120,11 +120,11 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 		categories = append(categories, rpc.CategorySpecificOptions{
 			BaseOptions:          base,
 			CategoryValue:        "loader",
-			ItemTypeNameSingular: "Loader",
-			ItemTypeNamePlural:   "Loaders",
-			KeyUnionTypeName:     "LoaderPattern",
+			ItemTypeNameSingular: "RiverLoader",
+			ItemTypeNamePlural:   "RiverLoaders",
+			KeyUnionTypeName:     "RiverLoaderPattern",
 			InputUnionTypeName:   "",
-			OutputUnionTypeName:  "LoaderOutput",
+			OutputUnionTypeName:  "RiverLoaderOutput",
 			SkipInput:            true,
 		})
 	}
@@ -132,31 +132,31 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 		categories = append(categories, rpc.CategorySpecificOptions{
 			BaseOptions:          base,
 			CategoryValue:        "query",
-			ItemTypeNameSingular: "Query",
-			ItemTypeNamePlural:   "Queries",
-			KeyUnionTypeName:     "QueryPattern",
-			InputUnionTypeName:   "QueryInput",
-			OutputUnionTypeName:  "QueryOutput",
+			ItemTypeNameSingular: "RiverQuery",
+			ItemTypeNamePlural:   "RiverQueries",
+			KeyUnionTypeName:     "RiverQueryPattern",
+			InputUnionTypeName:   "RiverQueryInput",
+			OutputUnionTypeName:  "RiverQueryOutput",
 		})
 	}
 	if hasMutations {
 		categories = append(categories, rpc.CategorySpecificOptions{
 			BaseOptions:          base,
 			CategoryValue:        "mutation",
-			ItemTypeNameSingular: "Mutation",
-			ItemTypeNamePlural:   "Mutations",
-			KeyUnionTypeName:     "MutationPattern",
-			InputUnionTypeName:   "MutationInput",
-			OutputUnionTypeName:  "MutationOutput",
+			ItemTypeNameSingular: "RiverMutation",
+			ItemTypeNamePlural:   "RiverMutations",
+			KeyUnionTypeName:     "RiverMutationPattern",
+			InputUnionTypeName:   "RiverMutationInput",
+			OutputUnionTypeName:  "RiverMutationOutput",
 		})
 	}
 
 	extraTSToUse := rpc.BuildFromCategories(categories)
 
 	if foundRootData {
-		extraTSToUse += "\nexport type RootData = Extract<(typeof routes)[number], { isRootData: true }>[\"phantomOutputType\"];\n"
+		extraTSToUse += "export type RiverRootData = Extract<(typeof routes)[number], { isRootData: true }>[\"phantomOutputType\"];\n"
 	} else {
-		extraTSToUse += "\nexport type RootData = null;\n"
+		extraTSToUse += "export type RiverRootData = null;\n"
 	}
 
 	if opts.ExtraTSCode != "" {

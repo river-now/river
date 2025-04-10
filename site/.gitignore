@@ -1,0 +1,10 @@
+# Kiruna
+**/kiruna_dist/static/*
+!**/kiruna_dist/static/.keep
+**/kiruna_dist/main
+
+# River
+**/river_out*
+
+# Tailwind
+./css/tailwind-output.css

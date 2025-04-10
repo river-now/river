@@ -76,7 +76,7 @@ func (h *River) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOutpu
 	dto := SSRInnerHTMLInput{
 		RiverSymbolStr:      RiverSymbolStr,
 		IsDev:               h._isDev,
-		BuildID:             routeData.BuildID,
+		BuildID:             h._buildID,
 		ViteDevURL:          routeData.ViteDevURL,
 		LoadersData:         routeData.LoadersData,
 		ImportURLs:          routeData.ImportURLs,

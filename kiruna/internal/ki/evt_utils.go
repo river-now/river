@@ -18,6 +18,7 @@ type EvtDetails struct {
 	isKirunaCSS         bool
 	wfc                 *WatchedFile
 	isNonEmptyCHMODOnly bool
+	is_full_dev_reset   bool
 }
 
 func (c *Config) getEvtDetails(evt fsnotify.Event) *EvtDetails {
@@ -67,6 +68,16 @@ func (c *Config) getEvtDetails(evt fsnotify.Event) *EvtDetails {
 		isIgnored = true
 	}
 
+	var is_full_dev_reset bool
+	if matchingWatchedFile != nil {
+		for _, hook := range matchingWatchedFile.OnChangeHooks {
+			if hook.Cmd == __internal_full_dev_reset_less_go_mrkr {
+				is_full_dev_reset = true
+				break
+			}
+		}
+	}
+
 	return &EvtDetails{
 		evt:                 &evt,
 		isOther:             isOther,
@@ -77,6 +88,7 @@ func (c *Config) getEvtDetails(evt fsnotify.Event) *EvtDetails {
 		isNormalCSS:         isNormalCSS,
 		wfc:                 matchingWatchedFile,
 		isNonEmptyCHMODOnly: c.getIsNonEmptyCHMODOnly(evt),
+		is_full_dev_reset:   is_full_dev_reset,
 	}
 }
 

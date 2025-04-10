@@ -18,8 +18,6 @@ var (
 )
 
 type UIRouteOutput struct {
-	BuildID string `json:"buildID,omitempty"`
-
 	HasRootData bool    `json:"hasRootData,omitempty"`
 	LoadersData []any   `json:"loadersData,omitempty"`
 	LoadersErrs []error `json:"loadersErrs,omitempty"`
@@ -98,8 +96,6 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 	headBlocks := headblocks.ToHeadBlocks(hb)
 
 	uiRouteOutput := &UIRouteOutput{
-		BuildID: h._buildID,
-
 		HasRootData: activePathData.HasRootData,
 		LoadersData: activePathData.LoadersData,
 		LoadersErrs: activePathData.LoadersErrs,

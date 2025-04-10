@@ -1,0 +1,33 @@
+{
+	"$schema": "./go/app/kiruna_dist/static/internal/schema.json",
+	"Core": {
+		"DevBuildHook": "go run ./go/cmd/build --dev --hook",
+		"ProdBuildHook": "go run ./go/cmd/build --hook",
+		"MainAppEntry": "./go/cmd/app",
+		"DistDir": "./go/app/kiruna_dist",
+		"StaticAssetDirs": {
+			"Private": "./static/private",
+			"Public": "./static/public"
+		},
+		"CSSEntryFiles": {
+			"Critical": "./css/main.critical.css",
+			"NonCritical": "./css/main.css"
+		},
+		"PublicPathPrefix": "/public/"
+	},
+	"River": {
+		"UIVariant": "solid",
+		"HTMLTemplateLocation": "index.go.html",
+		"ClientEntry": "./ts/entry.tsx",
+		"ClientRouteDefsFile": "./ts/routes.ts",
+		"TSGenOutPath": "./ts/river.gen.ts",
+		"PublicURLFuncName": "hashedURL",
+		"AutoETags": true
+	},
+	"Vite": {
+		"JSPackageManagerBaseCmd": "pnpm"
+	},
+	"Watch": {
+		"HealthcheckEndpoint": "/healthz"
+	}
+}
