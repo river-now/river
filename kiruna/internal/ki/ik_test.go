@@ -74,8 +74,8 @@ func setupTestEnv(t *testing.T) *testEnv {
 	c.fileSemaphore = semaphore.NewWeighted(100)
 
 	// Set up embedded FS
-	c.DistFS = os.DirFS(filepath.Join(testRootDir, "dist"))
-	c.EmbedDirective = "static"
+	c.StaticFS = os.DirFS(filepath.Join(testRootDir, "dist"))
+	c.StaticFSEmbedDirective = "static"
 
 	// Initialize safecache
 	c.runtime_cache = runtimeCache{

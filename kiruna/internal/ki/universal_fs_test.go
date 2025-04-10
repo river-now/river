@@ -139,7 +139,7 @@ func TestGetIsUsingEmbeddedFS(t *testing.T) {
 	}
 
 	// Test when DistFS is nil
-	env.config.DistFS = nil
+	env.config.StaticFS = nil
 	if env.config.get_is_using_embedded_fs() {
 		t.Errorf("getIsUsingEmbeddedFS() = true, want false when DistFS is nil")
 	}

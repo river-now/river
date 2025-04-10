@@ -34,13 +34,16 @@ var River = &river.River{
 	},
 }
 
+//go:embed kiruna.config.json
+var configBytes []byte
+
 //go:embed all:kiruna_dist/static
-var embedFS embed.FS
+var staticFS embed.FS
 
 var Kiruna = kiruna.New(&kiruna.Config{
-	ConfigFile:     "./kiruna.config.json",
-	EmbedDirective: "all:kiruna_dist/static",
-	DistFS:         embedFS,
+	ConfigBytes:            configBytes,
+	StaticFS:               staticFS,
+	StaticFSEmbedDirective: "all:kiruna_dist/static",
 })
 
 var Log = colorlog.New("app server")

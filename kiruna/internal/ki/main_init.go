@@ -2,7 +2,6 @@ package ki
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 
 	"github.com/fsnotify/fsnotify"
@@ -23,9 +22,6 @@ type MainInitOptions struct {
 }
 
 func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
-	var err error
-	var file []byte
-
 	// LOGGER
 	if c.Logger == nil {
 		c.Logger = colorlog.New("kiruna")
@@ -34,11 +30,8 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 	c.fileSemaphore = semaphore.NewWeighted(100)
 
 	// USER CONFIG
-	if file, err = os.ReadFile(c.ConfigFile); err != nil {
-		c.panic("failed to read user config", err)
-	}
 	c._uc = new(UserConfig)
-	if err = json.Unmarshal(file, c._uc); err != nil {
+	if err := json.Unmarshal(c.ConfigBytes, c._uc); err != nil {
 		c.panic("failed to unmarshal user config", err)
 	}
 

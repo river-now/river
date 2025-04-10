@@ -92,11 +92,11 @@ type Config struct {
 	// Only relevant in prod (in dev mode, the real disk FS is always used).
 	// If nil in prod, you need to make sure that you ship the dist directory
 	// with your binary. For simplicity, we recommend using the embedded FS.
-	DistFS         fs.FS
-	EmbedDirective string
-	ConfigFile     string
-	Logger         *slog.Logger
-	FilesToVendor  [][2]string // __TODO move to json config
+	StaticFS               fs.FS
+	StaticFSEmbedDirective string
+	ConfigBytes            []byte
+	Logger                 *slog.Logger
+	FilesToVendor          [][2]string // __TODO move to json config
 
 	dev
 	runtime
@@ -156,6 +156,7 @@ type UserConfig struct {
 }
 
 type UserConfigCore struct {
+	ConfigLocation   string
 	DevBuildHook     string
 	ProdBuildHook    string
 	MainAppEntry     string
@@ -167,7 +168,7 @@ type UserConfigCore struct {
 }
 
 func (c *Config) GetConfigFile() string {
-	return c.ConfigFile
+	return c._uc.Core.ConfigLocation
 }
 
 type StaticAssetDirs struct {

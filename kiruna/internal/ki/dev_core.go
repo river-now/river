@@ -55,7 +55,7 @@ func (c *Config) MustStartDev(_opts ...must_start_dev_opts) {
 		go c._vite_dev_ctx.Wait()
 	}
 
-	if opts.recompile_go {
+	if !opts.is_rebuild || opts.recompile_go {
 		// compile go binary now because we didn't above
 		if err := c.compile_go_binary(); err != nil {
 			c.panic("failed to compile go binary", err)

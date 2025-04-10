@@ -11,7 +11,7 @@ import (
 )
 
 func (c *Config) get_is_using_embedded_fs() bool {
-	return c.DistFS != nil
+	return c.StaticFS != nil
 }
 
 func (c *Config) get_initial_base_dir_fs() (fs.FS, error) {
@@ -65,7 +65,7 @@ func (c *Config) get_initial_base_fs() (fs.FS, error) {
 
 	// If we are using the embedded file system, we should use the dist file system
 	if c.get_is_using_embedded_fs() {
-		directive := c.EmbedDirective
+		directive := c.StaticFSEmbedDirective
 
 		if directive == "" {
 			c.Logger.Warn("no embed directive set in Kiruna.New -- assuming 'static'")
@@ -81,7 +81,7 @@ func (c *Config) get_initial_base_fs() (fs.FS, error) {
 		// //go:embed kiruna
 		// That means that the kiruna folder itself (not just its contents) is embedded.
 		// So we have to drop down into the kiruna folder here.
-		embeddedFS, err := fs.Sub(c.DistFS, directive)
+		embeddedFS, err := fs.Sub(c.StaticFS, directive)
 		if err != nil {
 			return nil, err
 		}

@@ -97,6 +97,8 @@ export function riverVitePlugin(): Plugin {
 					...c.server,
 					headers: {
 						...c.server?.headers,
+						// ensure versions of dynamic imports without the latest
+						// hmr updates are not cached by the browser during dev
 						"cache-control": "no-store",
 					},
 					watch: {
@@ -106,7 +108,7 @@ export function riverVitePlugin(): Plugin {
 							...[
 								"**/*.go",
 								"**/static/private",
-								"**/kiruna.config.json",
+								"**/go/app/kiruna.config.json",
 								"**/ts/river.gen.ts",
 								"**/ts/routes.ts"
 							],

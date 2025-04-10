@@ -12,8 +12,6 @@ import (
 )
 
 func (c *Config) process_batched_events(events []fsnotify.Event) {
-	cleanConfigFile := filepath.Clean(c.ConfigFile)
-
 	fileChanges := make(map[string]fsnotify.Event)
 	for _, evt := range events {
 		fileChanges[evt.Name] = evt
@@ -25,7 +23,7 @@ func (c *Config) process_batched_events(events []fsnotify.Event) {
 	isGoOrNeedsHardReloadEvenIfNonGo := false
 
 	for _, evt := range fileChanges {
-		isConfig := filepath.Join(c.cleanWatchRoot, evt.Name) == cleanConfigFile
+		isConfig := filepath.Join(c.cleanWatchRoot, evt.Name) == c.GetConfigFile()
 		isWriteOrCreate := evt.Has(fsnotify.Write) || evt.Has(fsnotify.Create)
 		if isConfig && isWriteOrCreate {
 			c.Logger.Info("[watcher]", "op", evt.Op.String(), "filename", evt.Name)
