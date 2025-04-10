@@ -5,7 +5,11 @@
 		"watchPatterns": ["/site/**"]
 	},
 	"deploy": {
-		"region": "us-east4-eqdc4a",
+		"multiRegionConfig": {
+			"us-east4-eqdc4a": {
+				"numReplicas": 1
+			}
+		},
 		"healthcheckPath": "/healthz",
 		"healthcheckTimeout": 30,
 		"restartPolicyType": "ON_FAILURE",
