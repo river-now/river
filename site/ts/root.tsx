@@ -2,6 +2,26 @@ import { setTheme, THEMES } from "@sjc5/river/kit/theme";
 import { RiverLink } from "@sjc5/river/solid";
 import { type RouteProps, theme, useCurrentAppData } from "./app_utils.ts";
 
+const theme_to_label_map = {
+	[THEMES.Light]: hashedURL("sun.svg"),
+	[THEMES.Dark]: hashedURL("moon.svg"),
+	[THEMES.System]: hashedURL("desktop.svg"),
+};
+
+for (const url of Object.values(theme_to_label_map)) {
+	preload_img(url);
+}
+
+// __TODO move to kit
+function preload_img(url: string) {
+	const img = new Image();
+	img.src = url;
+	return new Promise((resolve, reject) => {
+		img.onload = resolve;
+		img.onerror = reject;
+	});
+}
+
 export function Root(props: RouteProps<"">) {
 	return (
 		<>
@@ -42,9 +62,3 @@ export function Root(props: RouteProps<"">) {
 		</>
 	);
 }
-
-const theme_to_label_map = {
-	[THEMES.Light]: hashedURL("sun.svg"),
-	[THEMES.Dark]: hashedURL("moon.svg"),
-	[THEMES.System]: hashedURL("desktop.svg"),
-};

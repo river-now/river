@@ -165,17 +165,9 @@ async function __completeNavigation(x: NavigationResult) {
 }
 
 function getMaybeNewPreloadLink(x: string) {
-	const href = resolvePublicURL(x).href;
-	const existing: HTMLLinkElement | null = document.querySelector(
-		`link[href^="${href.split("?")[0]}"]`, // without search params
-	);
-	if (existing) {
-		if (existing.href !== href) {
-			existing.remove();
-		} else {
-			return undefined;
-		}
-	}
+	const href = resolvePublicHref(x);
+	const existing = document.querySelector(`link[href="${CSS.escape(href)}"]`);
+	if (existing) return;
 	const newLink = document.createElement("link");
 	newLink.href = href;
 	return newLink;
@@ -747,7 +739,7 @@ export const addRouteChangeListener = makeListenerAdder<RouteChangeEventDetail>(
 // RE-RENDER APP
 /////////////////////////////////////////////////////////////////////
 
-function resolvePublicURL(href: string): URL {
+function resolvePublicHref(href: string): string {
 	let baseURL = internal_RiverClientGlobal.get("viteDevURL");
 	if (!baseURL) {
 		baseURL = window.location.origin + internal_RiverClientGlobal.get("publicPathPrefix");
@@ -755,7 +747,7 @@ function resolvePublicURL(href: string): URL {
 	if (baseURL.endsWith("/")) {
 		baseURL = baseURL.slice(0, -1);
 	}
-	return new URL(href.startsWith("/") ? baseURL + href : baseURL + "/" + href);
+	return href.startsWith("/") ? baseURL + href : baseURL + "/" + href;
 }
 
 async function __reRenderApp({
@@ -1095,7 +1087,7 @@ async function handleComponents() {
 
 	const dedupedModules = await Promise.all(
 		dedupedImportURLs.map((x) => {
-			return import(/* @vite-ignore */ resolvePublicURL(x).href);
+			return import(/* @vite-ignore */ resolvePublicHref(x));
 		}),
 	);
 	const modulesMap = new Map(dedupedImportURLs.map((url, index) => [url, dedupedModules[index]]));

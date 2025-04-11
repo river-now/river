@@ -181,7 +181,7 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	sb.Line("} as const;")
 
 	sb.Return()
-	sb.Write("const publicFileMap = ")
+	sb.Write("export const publicFileMap = ")
 	mapAsJSON, err := json.MarshalIndent(fileMap, "", "\t")
 	if err != nil {
 		return "", fmt.Errorf("error marshalling map to JSON: %v", err)

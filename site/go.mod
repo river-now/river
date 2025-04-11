@@ -2,7 +2,7 @@ module site
 
 go 1.24.0
 
-// replace github.com/sjc5/river => ../
+replace github.com/sjc5/river => ../
 
 require (
 	github.com/go-chi/chi/v5 v5.2.1
