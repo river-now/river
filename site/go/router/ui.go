@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"site/go/app"
 
 	"github.com/sjc5/river/kit/mux"
@@ -15,6 +16,9 @@ func newLoader[O any](pattern string, f mux.TaskHandlerFunc[mux.None, O]) *mux.T
 }
 
 var _ = newLoader("", func(c *mux.NestedReqData) (string, error) {
+	r := c.Request()
+	match := r.Header.Get("If-None-Match")
+	fmt.Println(r.URL.Path, "If-None-Match:", match)
 	return app.SiteTitle, nil
 })
 

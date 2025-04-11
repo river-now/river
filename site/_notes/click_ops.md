@@ -18,3 +18,10 @@
   check the box to preserve the full query string (in "Rules" section)
 - Check the box to "Add security headers" (in "Rules" settings)
 - Turn off websockets and IP geolocation (in "Network" settings)
+- Add a "Cache Rule" to respect origin:
+  - All incoming requests
+  - Eligible for cache
+  - Edge TTL: use cache-control header, else bypass
+  - Browser TTL: respect origin TTL
+  - Cache key: sort query string
+  - Use strong ETag headers
