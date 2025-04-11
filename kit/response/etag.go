@@ -35,7 +35,7 @@ func ShouldReturn304Conservative(r *http.Request, etag string) bool {
 	}
 
 	for tag := range strings.SplitSeq(match, ",") {
-		if strings.TrimSpace(tag) == etag {
+		if strings.TrimPrefix(strings.TrimSpace(tag), "W/") == etag {
 			return true
 		}
 	}
