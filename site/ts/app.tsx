@@ -19,7 +19,7 @@ export function Home(props: RouteProps<"/">) {
 			<Link
 				href="/start"
 				type="button"
-				class="py-4 px-6 bg-[var(--resolved-green)] text-white dark:text-black rounded-lg shadow-md hover:opacity-80 hover:outline-2 outline-black dark:outline-white outline-offset-2 active:opacity-100 cursor-pointer uppercase tracking-wider font-bold"
+				class="py-4 px-6 bg-[var(--dark-green)] dark:bg-[var(--light-green)] text-white dark:text-black rounded-lg shadow-md hover:opacity-80 hover:outline-2 outline-black dark:outline-white outline-offset-2 active:opacity-100 cursor-pointer uppercase tracking-wider font-bold"
 			>
 				Get Started
 			</Link>

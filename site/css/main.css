@@ -1,1 +1,12 @@
 @import url("./nprogress.css");
+
+:root {
+	--code-bg: #304745;
+	--code-fg: white;
+}
+
+.code {
+	background: var(--code-bg);
+	color: var(--code-fg);
+	outline: 2px solid var(--code-bg);
+}

@@ -75,7 +75,7 @@ export function Root(props: RouteProps<"">) {
 						href="https://x.com/riverframework"
 						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
 						target="_blank"
-						rel="noopener noreferrer"
+						rel="noreferrer"
 					>
 						X
 					</a>
@@ -84,7 +84,7 @@ export function Root(props: RouteProps<"">) {
 						href="https://github.com/sjc5/river"
 						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
 						target="_blank"
-						rel="noopener noreferrer"
+						rel="noreferrer"
 					>
 						GitHub
 					</a>

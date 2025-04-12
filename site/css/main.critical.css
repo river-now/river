@@ -1,11 +1,8 @@
 :root {
 	color-scheme: light dark;
-	--bg: light-dark(#eee, #222);
-	--bg-2: light-dark(white, #111);
+	--bg: light-dark(white, #111);
 	--dark-green: #064929;
 	--light-green: #4bba5b;
-	--resolved-green: light-dark(var(--dark-green), var(--light-green));
-	--resolved-green-opposite: light-dark(var(--light-green), var(--dark-green));
 }
 html.light {
 	color-scheme: light;
@@ -20,6 +17,7 @@ html {
 html,
 body {
 	height: 100%;
+	background: var(--bg);
 }
 html,
 body,
@@ -30,9 +28,14 @@ main {
 	flex-grow: 1;
 }
 main {
-	background: var(--bg-2);
 	margin: 1rem;
 }
 p {
-	line-height: 1.7;
+	font-size: 17px;
+	line-height: 1.8;
+	margin-bottom: 1rem;
+}
+.content {
+	max-width: 640px;
+	margin: 2rem auto;
 }
