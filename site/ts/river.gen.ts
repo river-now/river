@@ -52,7 +52,7 @@ const rollupOptions = {
 	},
 } as const;
 
-const publicFileMap = {
+export const staticPublicAssetMap = {
 	"desktop.svg": "desktop_eebc981612eb.svg",
 	"full-logo.svg": "full-logo_e0ea7a3d3cf2.svg",
 	"logo.svg": "logo_d9b0e1618362.svg",
@@ -60,7 +60,7 @@ const publicFileMap = {
 	"sun.svg": "sun_338b26f6045d.svg"
 } as const;
 
-export type StaticPublicAsset = keyof typeof publicFileMap;
+export type StaticPublicAsset = keyof typeof staticPublicAssetMap;
 
 declare global {
 	function hashedURL(staticPublicAsset: StaticPublicAsset): string;
@@ -133,7 +133,7 @@ export function riverVitePlugin(): Plugin {
 			const replacedCode = code.replace(
 				assetRegex,
 				(original, _, assetPath) => {
-					const hashed = (publicFileMap as Record<string, string>)[assetPath];
+					const hashed = (staticPublicAssetMap as Record<string, string>)[assetPath];
 					if (!hashed) return '\"' + assetPath + '\"';
 					return `"/public/${hashed}"`;
 				},

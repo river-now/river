@@ -138,7 +138,7 @@ export function riverVitePlugin(): Plugin {
 			const replacedCode = code.replace(
 				assetRegex,
 				(original, _, assetPath) => {
-					const hashed = (publicFileMap as Record<string, string>)[assetPath];
+					const hashed = (staticPublicAssetMap as Record<string, string>)[assetPath];
 					if (!hashed) return '\"' + assetPath + '\"';
 					return {{.Tick}}"/{{.PublicDir}}/${hashed}"{{.Tick}};
 				},
@@ -181,14 +181,14 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	sb.Line("} as const;")
 
 	sb.Return()
-	sb.Write("export const publicFileMap = ")
+	sb.Write("export const staticPublicAssetMap = ")
 	mapAsJSON, err := json.MarshalIndent(fileMap, "", "\t")
 	if err != nil {
 		return "", fmt.Errorf("error marshalling map to JSON: %v", err)
 	}
 	sb.Line(string(mapAsJSON) + " as const;")
 	sb.Return()
-	sb.Line("export type StaticPublicAsset = keyof typeof publicFileMap;")
+	sb.Line("export type StaticPublicAsset = keyof typeof staticPublicAssetMap;")
 
 	sb.Return()
 

@@ -86,7 +86,6 @@ export function RiverRootOutlet(props: RiverRootOutletPropsGeneric<JSX.Element>)
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	useEffect(() => {
-		// __TODO mirror this in Solid impl
 		if (idx === 0) {
 			return addBuildIDListener((e) => {
 				if (!e.detail.fromGETAction) return;

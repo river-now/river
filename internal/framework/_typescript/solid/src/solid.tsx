@@ -1,6 +1,8 @@
 import {
+	addBuildIDListener,
 	addRouteChangeListener,
 	internal_RiverClientGlobal as ctx,
+	getCurrentRiverData,
 	type RiverRootOutletPropsGeneric,
 	type RouteChangeEvent,
 } from "@sjc5/river/client";
@@ -12,9 +14,19 @@ const [latestEvent, setLatestEvent] = createSignal<RouteChangeEvent | null>(null
 const [loadersData, setLoadersData] = createSignal(ctx.get("loadersData"));
 export { loadersData };
 
+const [currentRiverData, setCurrentRiverData] = createSignal(getCurrentRiverData());
+export { currentRiverData };
+addRouteChangeListener(() => setCurrentRiverData(getCurrentRiverData()));
+
 addRouteChangeListener((e) => {
 	setLatestEvent(e);
 	setLoadersData(ctx.get("loadersData"));
+	setCurrentRiverData(getCurrentRiverData());
+});
+
+addBuildIDListener((e) => {
+	if (!e.detail.fromGETAction) return;
+	setCurrentRiverData(getCurrentRiverData());
 });
 
 export function RiverRootOutlet(props: RiverRootOutletPropsGeneric<JSX.Element>): JSX.Element {

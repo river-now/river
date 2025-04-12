@@ -26,7 +26,7 @@ func (m *Matcher) FindNestedMatches(realPath string) (*FindNestedMatchesResults,
 		if rr, ok := m.staticPatterns["/"]; ok {
 			matches[rr.normalizedPattern] = &Match{RegisteredPattern: rr}
 		}
-		return flattenAndSortMatches(matches)
+		return flattenAndSortMatches(matches, realPath)
 	}
 
 	var pb strings.Builder
@@ -76,7 +76,7 @@ func (m *Matcher) FindNestedMatches(realPath string) (*FindNestedMatchesResults,
 	}
 
 	if len(matches) < 2 {
-		return flattenAndSortMatches(matches)
+		return flattenAndSortMatches(matches, realPath)
 	}
 
 	var longestSegmentLen int
@@ -102,7 +102,7 @@ func (m *Matcher) FindNestedMatches(realPath string) (*FindNestedMatchesResults,
 	}
 
 	if len(matches) < 2 {
-		return flattenAndSortMatches(matches)
+		return flattenAndSortMatches(matches, realPath)
 	}
 
 	// if the longest segment length items are (1) dynamic, (2) splat, or (3) index, remove them as follows:
@@ -124,7 +124,7 @@ func (m *Matcher) FindNestedMatches(realPath string) (*FindNestedMatchesResults,
 		}
 	}
 
-	return flattenAndSortMatches(matches)
+	return flattenAndSortMatches(matches, realPath)
 }
 
 func (m *Matcher) dfsNestedMatches(
@@ -211,7 +211,7 @@ func (m *Matcher) dfsNestedMatches(
 	}
 }
 
-func flattenAndSortMatches(matches matchesMap) (*FindNestedMatchesResults, bool) {
+func flattenAndSortMatches(matches matchesMap, realPath string) (*FindNestedMatchesResults, bool) {
 	var results []*Match
 	for _, match := range matches {
 		results = append(results, match)
@@ -231,6 +231,12 @@ func flattenAndSortMatches(matches matchesMap) (*FindNestedMatchesResults, bool)
 	})
 
 	if len(results) == 0 {
+		return nil, false
+	}
+
+	// if not slash route and solely matched "", then invalid
+	isNotSlashRoute := realPath != "" && realPath != "/"
+	if isNotSlashRoute && len(results) == 1 && results[0].normalizedPattern == "" {
 		return nil, false
 	}
 

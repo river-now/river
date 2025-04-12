@@ -1,13 +1,13 @@
 import {
 	addRouteChangeListener,
-	getCurrentRiverData,
+	type getCurrentRiverData,
 	type RiverRouteGeneric,
 	type RiverRoutePropsGeneric,
 	type RiverUntypedLoader,
 } from "@sjc5/river/client";
-import { createSignal } from "solid-js";
+import { type Accessor, createSignal } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
-import { loadersData } from "./solid.tsx";
+import { currentRiverData, loadersData } from "./solid.tsx";
 
 export type RiverRouteProps<
 	T extends RiverUntypedLoader = RiverUntypedLoader,
@@ -20,9 +20,7 @@ export type RiverRoute<
 > = RiverRouteGeneric<JSX.Element, T, Pattern>;
 
 export function makeTypedUseCurrentRiverData<RD>() {
-	const [currentRiverData, setCurrentRiverData] = createSignal(getCurrentRiverData<RD>());
-	addRouteChangeListener(() => setCurrentRiverData(getCurrentRiverData<RD>()));
-	return currentRiverData;
+	return currentRiverData as Accessor<ReturnType<typeof getCurrentRiverData<RD>>>;
 }
 
 export function makeTypedUseLoaderData<T extends RiverUntypedLoader>() {
