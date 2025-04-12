@@ -6,7 +6,7 @@ replace github.com/river-now/river => ../
 
 require (
 	github.com/go-chi/chi/v5 v5.2.1
-	github.com/river-now/river v0.17.0-pre.9
+	github.com/river-now/river v0.17.0-pre.14
 )
 
 require (
