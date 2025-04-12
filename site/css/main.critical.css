@@ -39,3 +39,8 @@ p {
 	max-width: 640px;
 	margin: 2rem auto;
 }
+@media screen and (max-width: 640px) {
+	.content {
+		margin: 1rem auto;
+	}
+}
