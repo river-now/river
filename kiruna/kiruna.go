@@ -5,8 +5,8 @@ import (
 	"io/fs"
 	"net/http"
 
-	"github.com/sjc5/river/kiruna/internal/ki"
-	"github.com/sjc5/river/kit/middleware"
+	"github.com/river-now/river/kiruna/internal/ki"
+	"github.com/river-now/river/kit/middleware"
 )
 
 type (

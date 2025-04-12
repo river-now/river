@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/sjc5/river/kit/htmlutil"
-	"github.com/sjc5/river/kit/lru"
-	"github.com/sjc5/river/kit/matcher"
-	"github.com/sjc5/river/kit/mux"
-	"github.com/sjc5/river/kit/response"
-	"github.com/sjc5/river/kit/tasks"
+	"github.com/river-now/river/kit/htmlutil"
+	"github.com/river-now/river/kit/lru"
+	"github.com/river-now/river/kit/matcher"
+	"github.com/river-now/river/kit/mux"
+	"github.com/river-now/river/kit/response"
+	"github.com/river-now/river/kit/tasks"
 )
 
 type SplatValues []string

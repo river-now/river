@@ -1,9 +1,9 @@
-import { addThemeChangeListener, getTheme } from "@sjc5/river/kit/theme";
+import { addThemeChangeListener, getTheme } from "river.now/kit/theme";
 import {
 	makeTypedUseCurrentRiverData,
 	makeTypedUseLoaderData,
 	type RiverRouteProps,
-} from "@sjc5/river/solid";
+} from "river.now/solid";
 import { createSignal } from "solid-js";
 import type { RiverLoader, RiverLoaderPattern, RiverRootData } from "./river.gen.ts";
 

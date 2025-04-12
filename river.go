@@ -1,8 +1,8 @@
 package river
 
 import (
-	"github.com/sjc5/river/internal/framework"
-	"github.com/sjc5/river/kit/htmlutil"
+	"github.com/river-now/river/internal/framework"
+	"github.com/river-now/river/kit/htmlutil"
 )
 
 /////////////////////////////////////////////////////////////////////

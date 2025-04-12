@@ -1,6 +1,6 @@
 package framework
 
-import "github.com/sjc5/river/kit/matcher"
+import "github.com/river-now/river/kit/matcher"
 
 func (h *River) getDeps(_matches []*matcher.Match) []string {
 	var deps []string

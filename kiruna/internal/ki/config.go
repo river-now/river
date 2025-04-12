@@ -8,9 +8,9 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/sjc5/river/kit/dirs"
-	"github.com/sjc5/river/kit/safecache"
-	"github.com/sjc5/river/kit/viteutil"
+	"github.com/river-now/river/kit/dirs"
+	"github.com/river-now/river/kit/safecache"
+	"github.com/river-now/river/kit/viteutil"
 	"golang.org/x/sync/semaphore"
 )
 

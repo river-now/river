@@ -3,7 +3,7 @@ package ki
 import (
 	"path/filepath"
 
-	"github.com/sjc5/river/kit/viteutil"
+	"github.com/river-now/river/kit/viteutil"
 )
 
 func (c *Config) isUsingVite() bool {

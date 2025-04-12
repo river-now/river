@@ -1,5 +1,5 @@
-import { makeFinalLinkProps, type RiverLinkPropsBase } from "@sjc5/river/client";
 import { type ComponentProps, useMemo } from "react";
+import { makeFinalLinkProps, type RiverLinkPropsBase } from "river.now/client";
 
 export function RiverLink(
 	props: ComponentProps<"a"> &

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sjc5/river/kit/executil"
+	"github.com/river-now/river/kit/executil"
 	"golang.org/x/sync/errgroup"
 )
 

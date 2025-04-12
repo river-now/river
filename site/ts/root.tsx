@@ -1,4 +1,4 @@
-import { setTheme, THEMES } from "@sjc5/river/kit/theme";
+import { setTheme, THEMES } from "river.now/kit/theme";
 import { Link } from "./app_link.tsx";
 import { type RouteProps, theme, useCurrentAppData } from "./app_utils.ts";
 
@@ -81,7 +81,7 @@ export function Root(props: RouteProps<"">) {
 					</a>
 
 					<a
-						href="https://github.com/sjc5/river"
+						href="https://github.com/river-now/river"
 						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
 						target="_blank"
 						rel="noreferrer"

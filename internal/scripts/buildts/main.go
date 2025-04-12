@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	esbuild "github.com/evanw/esbuild/pkg/api"
-	"github.com/sjc5/river/kit/executil"
+	"github.com/river-now/river/kit/executil"
 )
 
 var targetDir = "./npm_dist"
@@ -48,7 +48,7 @@ func buildKit() {
 			"./kit/_typescript/theme/theme.ts",
 			"./kit/_typescript/url/url.ts",
 		},
-		External: []string{"@sjc5/river"},
+		External: []string{"river.now"},
 		Outdir:   "./npm_dist/kit/_typescript",
 		Tsconfig: tsconfig,
 	})
@@ -66,7 +66,7 @@ func buildClient() {
 		Write:       true,
 		Bundle:      true,
 		EntryPoints: []string{"./internal/framework/_typescript/client/index.ts"},
-		External:    []string{"@sjc5/river"},
+		External:    []string{"river.now"},
 		Outdir:      "./npm_dist/internal/framework/_typescript/client",
 		Tsconfig:    tsconfig,
 	})
@@ -84,7 +84,7 @@ func buildReact() {
 		Write:       true,
 		Bundle:      true,
 		EntryPoints: []string{"./internal/framework/_typescript/react/index.tsx"},
-		External:    []string{"@sjc5/river", "jotai", "react", "react-dom"},
+		External:    []string{"river.now", "jotai", "react", "react-dom"},
 		Outdir:      "./npm_dist/internal/framework/_typescript/react",
 		Tsconfig:    tsconfig,
 	})

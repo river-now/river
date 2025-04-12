@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sjc5/river/kit/dirs"
+	"github.com/river-now/river/kit/dirs"
 )
 
 type Dist struct {

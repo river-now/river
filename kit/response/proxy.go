@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/sjc5/river/kit/htmlutil"
+	"github.com/river-now/river/kit/htmlutil"
 )
 
 // For usage in JSON API handlers that may run in parallel or

@@ -12,12 +12,12 @@ import (
 	"time"
 
 	esbuild "github.com/evanw/esbuild/pkg/api"
-	"github.com/sjc5/river/kiruna/internal/ki/configschema"
-	"github.com/sjc5/river/kit/errutil"
-	"github.com/sjc5/river/kit/esbuildutil"
-	"github.com/sjc5/river/kit/executil"
-	"github.com/sjc5/river/kit/fsutil"
-	"github.com/sjc5/river/kit/typed"
+	"github.com/river-now/river/kiruna/internal/ki/configschema"
+	"github.com/river-now/river/kit/errutil"
+	"github.com/river-now/river/kit/esbuildutil"
+	"github.com/river-now/river/kit/executil"
+	"github.com/river-now/river/kit/fsutil"
+	"github.com/river-now/river/kit/typed"
 	"golang.org/x/sync/errgroup"
 )
 

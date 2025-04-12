@@ -6,8 +6,8 @@ import (
 	"html/template"
 	"strings"
 
-	"github.com/sjc5/river/kit/htmlutil"
-	"github.com/sjc5/river/kit/mux"
+	"github.com/river-now/river/kit/htmlutil"
+	"github.com/river-now/river/kit/mux"
 )
 
 type SSRInnerHTMLInput struct {

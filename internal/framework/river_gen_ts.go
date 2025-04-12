@@ -3,9 +3,9 @@ package framework
 import (
 	"net/http"
 
-	"github.com/sjc5/river/kit/mux"
-	"github.com/sjc5/river/kit/rpc"
-	"github.com/sjc5/river/kit/tsgen"
+	"github.com/river-now/river/kit/mux"
+	"github.com/river-now/river/kit/rpc"
+	"github.com/river-now/river/kit/tsgen"
 )
 
 type AdHocType = rpc.AdHocType

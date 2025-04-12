@@ -3,8 +3,8 @@ package healthcheck
 import (
 	"net/http"
 
-	"github.com/sjc5/river/kit/middleware"
-	"github.com/sjc5/river/kit/response"
+	"github.com/river-now/river/kit/middleware"
+	"github.com/river-now/river/kit/response"
 )
 
 // Healthz is a middleware that responds with an HTTP 200 OK status code and the

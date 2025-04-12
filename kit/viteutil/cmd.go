@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sjc5/river/kit/colorlog"
-	"github.com/sjc5/river/kit/grace"
+	"github.com/river-now/river/kit/colorlog"
+	"github.com/river-now/river/kit/grace"
 )
 
 var Log = colorlog.New("viteutil")

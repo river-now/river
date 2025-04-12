@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sjc5/river/kit/stringsutil"
+	"github.com/river-now/river/kit/stringsutil"
 )
 
 const (

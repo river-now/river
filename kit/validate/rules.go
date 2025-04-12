@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sjc5/river/kit/set"
+	"github.com/river-now/river/kit/set"
 )
 
 func (c *AnyChecker) If(condition bool, f func(*AnyChecker) *AnyChecker) *AnyChecker {

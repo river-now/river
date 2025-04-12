@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sjc5/river/kit/executil"
+	"github.com/river-now/river/kit/executil"
 )
 
 func (c *Config) get_is_using_embedded_fs() bool {

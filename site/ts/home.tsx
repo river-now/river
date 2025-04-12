@@ -1,4 +1,4 @@
-import { RiverRootOutlet } from "@sjc5/river/solid";
+import { RiverRootOutlet } from "river.now/solid";
 import "../css/tailwind-output.css";
 import { Link } from "./app_link.tsx";
 import type { RouteProps } from "./app_utils.ts";

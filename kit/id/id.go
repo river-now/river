@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"strings"
 
-	"github.com/sjc5/river/kit/bytesutil"
+	"github.com/river-now/river/kit/bytesutil"
 )
 
 // New generates a cryptographically random string ID of length idLen,

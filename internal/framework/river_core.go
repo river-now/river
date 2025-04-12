@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/sjc5/river/kiruna"
-	"github.com/sjc5/river/kit/colorlog"
-	"github.com/sjc5/river/kit/htmlutil"
-	"github.com/sjc5/river/kit/mux"
+	"github.com/river-now/river/kiruna"
+	"github.com/river-now/river/kit/colorlog"
+	"github.com/river-now/river/kit/htmlutil"
+	"github.com/river-now/river/kit/mux"
 )
 
 const (

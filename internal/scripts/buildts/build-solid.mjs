@@ -11,7 +11,7 @@ await build({
 	write: true,
 	bundle: true,
 	entryPoints: ["./internal/framework/_typescript/solid/index.tsx"],
-	external: ["@sjc5/river", "solid-js"],
+	external: ["river.now", "solid-js"],
 	outdir: "./npm_dist/internal/framework/_typescript/solid",
 	tsconfig: "./internal/framework/_typescript/solid/tsconfig.json",
 });

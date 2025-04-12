@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/sjc5/river/kit/bytesutil"
-	"github.com/sjc5/river/kit/cryptoutil"
+	"github.com/river-now/river/kit/bytesutil"
+	"github.com/river-now/river/kit/cryptoutil"
 )
 
 ////////////////////////////////////////////////////////////////////

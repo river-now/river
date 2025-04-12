@@ -15,7 +15,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/sjc5/river/kit/genericsutil"
+	"github.com/river-now/river/kit/genericsutil"
 )
 
 /////////////////////////////////////////////////////////////////////

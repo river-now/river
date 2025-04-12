@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	t "github.com/sjc5/river/kit/cliutil"
-	"github.com/sjc5/river/kit/stringsutil"
+	t "github.com/river-now/river/kit/cliutil"
+	"github.com/river-now/river/kit/stringsutil"
 )
 
 func main() {

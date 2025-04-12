@@ -1,11 +1,11 @@
+import { useAtomValue } from "jotai";
+import type { JSX } from "react";
 import type {
 	getCurrentRiverData,
 	RiverRouteGeneric,
 	RiverRoutePropsGeneric,
 	RiverUntypedLoader,
-} from "@sjc5/river/client";
-import { useAtomValue } from "jotai";
-import type { JSX } from "react";
+} from "river.now/client";
 import { currentRiverDataAtom, loadersDataAtom } from "./react.tsx";
 
 export type RiverRouteProps<

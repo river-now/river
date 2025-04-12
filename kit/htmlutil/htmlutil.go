@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sjc5/river/kit/bytesutil"
-	"github.com/sjc5/river/kit/cryptoutil"
-	"github.com/sjc5/river/kit/id"
+	"github.com/river-now/river/kit/bytesutil"
+	"github.com/river-now/river/kit/cryptoutil"
+	"github.com/river-now/river/kit/id"
 )
 
 // Element is a structure for defining HTML elements. For both Attributes and

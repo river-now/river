@@ -95,13 +95,13 @@ experience. All yours for the taking.
 ## Go
 
 ```sh
-go get github.com/sjc5/river
+go get github.com/river-now/river
 ```
 
 ## TypeScript
 
 ```sh
-npm i -D @sjc5/river
+npm i -D river.now
 ```
 
 Why a dev dependency? Because it is more explicit about what is actually

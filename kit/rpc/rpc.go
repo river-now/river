@@ -4,7 +4,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/sjc5/river/kit/tsgen"
+	"github.com/river-now/river/kit/tsgen"
 )
 
 const CollectionVarName = "routes"

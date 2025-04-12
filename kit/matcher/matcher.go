@@ -3,7 +3,7 @@ package matcher
 import (
 	"strings"
 
-	"github.com/sjc5/river/kit/opt"
+	"github.com/river-now/river/kit/opt"
 )
 
 type (

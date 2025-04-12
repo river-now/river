@@ -3,7 +3,7 @@ package router
 import (
 	"site/go/app"
 
-	"github.com/sjc5/river/kit/mux"
+	"github.com/river-now/river/kit/mux"
 )
 
 var UIRouter = mux.NewNestedRouter(&mux.NestedOptions{TasksRegistry: sharedTasksRegistry})

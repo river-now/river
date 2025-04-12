@@ -4,7 +4,7 @@ import {
 	type RiverRouteGeneric,
 	type RiverRoutePropsGeneric,
 	type RiverUntypedLoader,
-} from "@sjc5/river/client";
+} from "river.now/client";
 import { type Accessor, createSignal } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
 import { currentRiverData, loadersData } from "./solid.tsx";

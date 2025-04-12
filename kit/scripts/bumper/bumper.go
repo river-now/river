@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	t "github.com/sjc5/river/kit/cliutil"
+	t "github.com/river-now/river/kit/cliutil"
 )
 
 func Run() {

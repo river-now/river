@@ -1,4 +1,4 @@
-import type { RiverRoutes } from "@sjc5/river/client";
+import type { RiverRoutes } from "river.now/client";
 
 declare const routes: RiverRoutes;
 

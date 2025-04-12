@@ -10,8 +10,8 @@ import (
 	"site/go/router"
 	"time"
 
-	"github.com/sjc5/river/kiruna"
-	"github.com/sjc5/river/kit/grace"
+	"github.com/river-now/river/kiruna"
+	"github.com/river-now/river/kit/grace"
 )
 
 func Serve() {

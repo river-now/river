@@ -1,7 +1,7 @@
 package ki
 
 import (
-	"github.com/sjc5/river/kit/dirs"
+	"github.com/river-now/river/kit/dirs"
 )
 
 const (

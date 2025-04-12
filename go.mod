@@ -1,4 +1,4 @@
-module github.com/sjc5/river
+module github.com/river-now/river
 
 go 1.24.0
 

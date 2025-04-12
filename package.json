@@ -1,10 +1,10 @@
 {
-	"name": "@sjc5/river",
+	"name": "river.now",
 	"version": "0.17.0-pre.12",
 	"type": "module",
 	"license": "BSD-3-Clause",
 	"repository": {
-		"url": "https://github.com/sjc5/river",
+		"url": "https://github.com/river-now/river",
 		"type": "git"
 	},
 	"exports": {

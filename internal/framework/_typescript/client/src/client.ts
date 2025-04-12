@@ -1,12 +1,12 @@
 /// <reference types="vite/client" />
 
+import { createBrowserHistory, type Update } from "history";
 import {
 	getAnchorDetailsFromEvent,
 	getHrefDetails,
 	getIsErrorRes,
 	getIsGETRequest,
-} from "@sjc5/river/kit/url";
-import { createBrowserHistory, type Update } from "history";
+} from "river.now/kit/url";
 import { parseFetchResponseForRedirectData, type RedirectData } from "./redirects.ts";
 import {
 	type GetRouteDataOutput,
@@ -803,9 +803,9 @@ async function __reRenderApp({
 
 		if (navigationType === "userNavigation" || navigationType === "redirect") {
 			if (href !== location.href && !replace) {
-				customHistory.push(href);
+				getHistoryInstance().push(href);
 			} else {
-				customHistory.replace(href);
+				getHistoryInstance().replace(href);
 			}
 			scrollStateToDispatch = { x: 0, y: 0 };
 		}
@@ -1009,13 +1009,17 @@ const scrollStateMapSubKey = {
 // CUSTOM HISTORY
 /////////////////////////////////////////////////////////////////////
 
-let customHistory: ReturnType<typeof createBrowserHistory>;
-let lastKnownCustomLocation: (typeof customHistory)["location"];
+let __customHistory: ReturnType<typeof createBrowserHistory>;
+let lastKnownCustomLocation: (typeof __customHistory)["location"];
+
+export function getHistoryInstance() {
+	if (!__customHistory) __customHistory = createBrowserHistory();
+	return __customHistory;
+}
 
 function initCustomHistory() {
-	customHistory = createBrowserHistory();
-	lastKnownCustomLocation = customHistory.location;
-	customHistory.listen(customHistoryListener);
+	lastKnownCustomLocation = getHistoryInstance().location;
+	getHistoryInstance().listen(customHistoryListener);
 	setNativeScrollRestorationToManual();
 }
 
@@ -1048,10 +1052,6 @@ async function customHistoryListener({ action, location }: Update) {
 
 	// now set lastKnownCustomLocation to new location
 	lastKnownCustomLocation = location;
-}
-
-export function getHistoryInstance() {
-	return customHistory;
 }
 
 /////////////////////////////////////////////////////////////////////

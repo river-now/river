@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sjc5/river/kit/validate"
+	"github.com/river-now/river/kit/validate"
 )
 
 type FirstName string

@@ -3,8 +3,8 @@ package ki
 import (
 	"net/http"
 
-	"github.com/sjc5/river/kit/middleware"
-	"github.com/sjc5/river/kit/response"
+	"github.com/river-now/river/kit/middleware"
+	"github.com/river-now/river/kit/response"
 )
 
 func (c *Config) FaviconRedirect() middleware.Middleware {

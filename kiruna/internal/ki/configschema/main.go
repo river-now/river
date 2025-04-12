@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sjc5/river/kit/jsonschema"
+	"github.com/river-now/river/kit/jsonschema"
 )
 
 func Write(target string) error {

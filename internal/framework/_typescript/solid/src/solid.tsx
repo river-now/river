@@ -5,7 +5,7 @@ import {
 	getCurrentRiverData,
 	type RiverRootOutletPropsGeneric,
 	type RouteChangeEvent,
-} from "@sjc5/river/client";
+} from "river.now/client";
 import { createEffect, createMemo, createSignal, ErrorBoundary, type JSX, Show } from "solid-js";
 
 let shouldScroll = false;

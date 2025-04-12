@@ -1,7 +1,7 @@
 package ki
 
 import (
-	"github.com/sjc5/river/kit/tsgen"
+	"github.com/river-now/river/kit/tsgen"
 )
 
 // If you pass nil to this function, it will return a pointer to a new Statements

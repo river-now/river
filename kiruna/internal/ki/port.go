@@ -3,7 +3,7 @@ package ki
 import (
 	"log"
 
-	"github.com/sjc5/river/kit/port"
+	"github.com/river-now/river/kit/port"
 )
 
 const (

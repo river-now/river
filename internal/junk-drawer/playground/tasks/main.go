@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/sjc5/river/kit/tasks"
+	"github.com/river-now/river/kit/tasks"
 )
 
 var tasksRegistry = tasks.NewRegistry()

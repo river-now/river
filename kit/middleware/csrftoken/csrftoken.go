@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/sjc5/river/kit/response"
+	"github.com/river-now/river/kit/response"
 )
 
 type (

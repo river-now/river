@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sjc5/river/kit/fsutil"
+	"github.com/river-now/river/kit/fsutil"
 )
 
 // GenerateTSToFile generates a TypeScript file from the provided Opts.

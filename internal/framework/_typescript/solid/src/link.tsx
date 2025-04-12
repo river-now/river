@@ -1,4 +1,4 @@
-import { makeFinalLinkProps, type RiverLinkPropsBase } from "@sjc5/river/client";
+import { makeFinalLinkProps, type RiverLinkPropsBase } from "river.now/client";
 import { createMemo, type JSX } from "solid-js";
 
 export function RiverLink(

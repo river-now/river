@@ -5,7 +5,7 @@ package safecache
 import (
 	"sync"
 
-	"github.com/sjc5/river/kit/typed"
+	"github.com/river-now/river/kit/typed"
 )
 
 // Cache is a generic, thread-safe cache that ensures initialization occurs only

@@ -5,9 +5,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/sjc5/river/kit/mux"
-	"github.com/sjc5/river/kit/tasks"
-	"github.com/sjc5/river/kit/validate"
+	"github.com/river-now/river/kit/mux"
+	"github.com/river-now/river/kit/tasks"
+	"github.com/river-now/river/kit/validate"
 )
 
 var tasksRegistry = tasks.NewRegistry()

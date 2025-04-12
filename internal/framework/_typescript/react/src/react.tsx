@@ -1,14 +1,14 @@
+import { atom, useAtom } from "jotai";
+import { type JSX, useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import {
 	addBuildIDListener,
 	addRouteChangeListener,
 	internal_RiverClientGlobal as ctx,
 	getCurrentRiverData,
 	type RiverRootOutletPropsGeneric,
-} from "@sjc5/river/client";
-import { jsonDeepEquals } from "@sjc5/river/kit/json";
-import { atom, useAtom } from "jotai";
-import { type JSX, useEffect, useMemo, useState } from "react";
-import { flushSync } from "react-dom";
+} from "river.now/client";
+import { jsonDeepEquals } from "river.now/kit/json";
 
 let shouldScroll = false;
 

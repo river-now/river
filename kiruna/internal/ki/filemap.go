@@ -12,8 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sjc5/river/kit/fsutil"
-	"github.com/sjc5/river/kit/htmlutil"
+	"github.com/river-now/river/kit/fsutil"
+	"github.com/river-now/river/kit/htmlutil"
 )
 
 const (

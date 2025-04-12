@@ -1,4 +1,4 @@
-import { addBuildIDListener, getRootEl, initClient } from "@sjc5/river/client";
+import { addBuildIDListener, getRootEl, initClient } from "river.now/client";
 import { render } from "solid-js/web";
 import { App } from "./home.tsx";
 

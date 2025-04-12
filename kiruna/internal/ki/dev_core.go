@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/sjc5/river/kit/port"
+	"github.com/river-now/river/kit/port"
 )
 
 type must_start_dev_opts struct {

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sjc5/river/kit/htmlutil"
+	"github.com/river-now/river/kit/htmlutil"
 )
 
 const (

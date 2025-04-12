@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sjc5/river/kit/colorlog"
+	"github.com/river-now/river/kit/colorlog"
 )
 
 type OrchestrateOptions struct {

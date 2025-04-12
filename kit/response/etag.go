@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sjc5/river/kit/cryptoutil"
+	"github.com/river-now/river/kit/cryptoutil"
 )
 
 func (res *Response) SetETag(etag string) *Response {

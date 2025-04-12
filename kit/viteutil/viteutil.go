@@ -10,9 +10,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/sjc5/river/kit/htmlutil"
-	"github.com/sjc5/river/kit/port"
-	"github.com/sjc5/river/kit/stringsutil"
+	"github.com/river-now/river/kit/htmlutil"
+	"github.com/river-now/river/kit/port"
+	"github.com/river-now/river/kit/stringsutil"
 )
 
 type ManifestChunk struct {

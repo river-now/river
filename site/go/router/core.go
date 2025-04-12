@@ -4,10 +4,10 @@ import (
 	"site/go/app"
 
 	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/sjc5/river/kit/middleware/healthcheck"
-	"github.com/sjc5/river/kit/middleware/robotstxt"
-	"github.com/sjc5/river/kit/mux"
-	"github.com/sjc5/river/kit/tasks"
+	"github.com/river-now/river/kit/middleware/healthcheck"
+	"github.com/river-now/river/kit/middleware/robotstxt"
+	"github.com/river-now/river/kit/mux"
+	"github.com/river-now/river/kit/tasks"
 )
 
 var sharedTasksRegistry = tasks.NewRegistry()

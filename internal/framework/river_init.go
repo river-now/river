@@ -8,7 +8,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	"github.com/sjc5/river/kit/mux"
+	"github.com/river-now/river/kit/mux"
 )
 
 func (h *River) Init(isDev bool) {

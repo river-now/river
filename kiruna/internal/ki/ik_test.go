@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sjc5/river/kit/colorlog"
-	"github.com/sjc5/river/kit/safecache"
+	"github.com/river-now/river/kit/colorlog"
+	"github.com/river-now/river/kit/safecache"
 	"golang.org/x/sync/semaphore"
 )
 

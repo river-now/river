@@ -11,7 +11,7 @@ import (
 	"crypto/sha256"
 	"errors"
 
-	"github.com/sjc5/river/kit/bytesutil"
+	"github.com/river-now/river/kit/bytesutil"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/nacl/auth"
 )

@@ -4,10 +4,10 @@ import (
 	"embed"
 	"net/http"
 
-	"github.com/sjc5/river"
-	"github.com/sjc5/river/kiruna"
-	"github.com/sjc5/river/kit/colorlog"
-	"github.com/sjc5/river/kit/theme"
+	"github.com/river-now/river"
+	"github.com/river-now/river/kiruna"
+	"github.com/river-now/river/kit/colorlog"
+	"github.com/river-now/river/kit/theme"
 )
 
 const (

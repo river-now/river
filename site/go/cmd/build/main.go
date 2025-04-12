@@ -4,8 +4,8 @@ import (
 	"site/go/app"
 	"site/go/router"
 
-	"github.com/sjc5/river"
-	"github.com/sjc5/river/kit/tsgen"
+	"github.com/river-now/river"
+	"github.com/river-now/river/kit/tsgen"
 )
 
 func main() {

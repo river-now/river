@@ -7,10 +7,10 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/sjc5/river/kit/headblocks"
-	"github.com/sjc5/river/kit/mux"
-	"github.com/sjc5/river/kit/response"
-	"github.com/sjc5/river/kit/viteutil"
+	"github.com/river-now/river/kit/headblocks"
+	"github.com/river-now/river/kit/mux"
+	"github.com/river-now/river/kit/response"
+	"github.com/river-now/river/kit/viteutil"
 	"golang.org/x/sync/errgroup"
 )
 

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/sjc5/river/kit/errutil"
-	"github.com/sjc5/river/kit/headblocks"
-	"github.com/sjc5/river/kit/htmlutil"
-	"github.com/sjc5/river/kit/mux"
+	"github.com/river-now/river/kit/errutil"
+	"github.com/river-now/river/kit/headblocks"
+	"github.com/river-now/river/kit/htmlutil"
+	"github.com/river-now/river/kit/mux"
 	"golang.org/x/sync/errgroup"
 )
 

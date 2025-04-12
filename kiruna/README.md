@@ -1,7 +1,7 @@
 # 🏔️ Kiruna
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/sjc5/river/kiruna.svg)](https://pkg.go.dev/github.com/sjc5/river/kiruna)
-[![Go Report Card](https://goreportcard.com/badge/github.com/sjc5/river/kiruna)](https://goreportcard.com/report/github.com/sjc5/river/kiruna)
+[![Go Reference](https://pkg.go.dev/badge/github.com/river-now/river/kiruna.svg)](https://pkg.go.dev/github.com/river-now/river/kiruna)
+[![Go Report Card](https://goreportcard.com/badge/github.com/river-now/river/kiruna)](https://goreportcard.com/report/github.com/river-now/river/kiruna)
 
 <img src="kiruna-banner.webp" alt="Kiruna logo banner">
 
@@ -101,7 +101,7 @@ package platform
 import (
 	"your-module-name/dist"
 
-	"github.com/sjc5/river/kiruna"
+	"github.com/river-now/river/kiruna"
 )
 
 var Kiruna = kiruna.New(&kiruna.Config{
@@ -122,7 +122,7 @@ var Kiruna = kiruna.New(&kiruna.Config{
 Now go get Kiruna and tidy up:
 
 ```sh
-go get github.com/sjc5/river
+go get github.com/river-now/river
 go mod tidy
 ```
 
@@ -166,7 +166,7 @@ import (
 	"net/http"
 	"your-module-name/internal/platform"
 
-	"github.com/sjc5/river/kiruna"
+	"github.com/river-now/river/kiruna"
 )
 
 func main() {
@@ -260,7 +260,7 @@ package main
 import (
 	"your-module-name/internal/platform"
 
-	"github.com/sjc5/river/kiruna"
+	"github.com/river-now/river/kiruna"
 )
 
 func main() {

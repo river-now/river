@@ -1,5 +1,5 @@
-import { addStatusListener, getStatus, type StatusEvent } from "@sjc5/river/client";
 import NProgress from "nprogress";
+import { addStatusListener, getStatus, type StatusEvent } from "river.now/client";
 
 let debounceStartTimer: number | null = null;
 let debounceEndTimer: number | null = null;

@@ -15,14 +15,14 @@ import (
 	"time"
 
 	esbuild "github.com/evanw/esbuild/pkg/api"
-	"github.com/sjc5/river/kiruna"
-	"github.com/sjc5/river/kit/esbuildutil"
-	"github.com/sjc5/river/kit/id"
-	"github.com/sjc5/river/kit/matcher"
-	"github.com/sjc5/river/kit/mux"
-	"github.com/sjc5/river/kit/stringsutil"
-	"github.com/sjc5/river/kit/tsgen"
-	"github.com/sjc5/river/kit/viteutil"
+	"github.com/river-now/river/kiruna"
+	"github.com/river-now/river/kit/esbuildutil"
+	"github.com/river-now/river/kit/id"
+	"github.com/river-now/river/kit/matcher"
+	"github.com/river-now/river/kit/mux"
+	"github.com/river-now/river/kit/stringsutil"
+	"github.com/river-now/river/kit/tsgen"
+	"github.com/river-now/river/kit/viteutil"
 )
 
 const (

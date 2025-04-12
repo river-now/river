@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sjc5/river/kit/htmltestutil"
+	"github.com/river-now/river/kit/htmltestutil"
 )
 
 func TestTemplates(t *testing.T) {
