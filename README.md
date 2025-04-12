@@ -2,7 +2,7 @@
 
 <img src="/river-banner.webp" alt="River logo banner">
 
-## Explainer
+## Introduction
 
 River is a framework for writing modern, type-safe web applications with Go and
 TypeScript. River provides the benefits of modern web development frameworks
