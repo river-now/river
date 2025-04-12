@@ -14,6 +14,12 @@ importers:
       '@tailwindcss/cli':
         specifier: ^4.1.3
         version: 4.1.3
+      '@types/nprogress':
+        specifier: ^0.2.3
+        version: 0.2.3
+      nprogress:
+        specifier: ^0.2.0
+        version: 0.2.0
       solid-js:
         specifier: 1.9.5
         version: 1.9.5
@@ -555,6 +561,9 @@ packages:
   '@types/estree@1.0.7':
     resolution: {integrity: sha512-w28IoSUCJpidD/TGviZwwMJckNESJZXFu7NBZ5YJ4mEUnNraUn9Pm8HSZm/jDF1pDWYKspWE7oVphigUPRakIQ==}
 
+  '@types/nprogress@0.2.3':
+    resolution: {integrity: sha512-k7kRA033QNtC+gLc4VPlfnue58CM1iQLgn1IMAU8VPHGOj7oIHPp9UlhedEnD/Gl8evoCjwkZjlBORtZ3JByUA==}
+
   babel-plugin-jsx-dom-expressions@0.39.7:
     resolution: {integrity: sha512-8GzVmFla7jaTNWW8W+lTMl9YGva4/06CtwJjySnkYtt8G1v9weCzc2SuF1DfrudcCNb2Doetc1FRg33swBYZCA==}
     peerDependencies:
@@ -769,6 +778,9 @@ packages:
 
   node-releases@2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
+
+  nprogress@0.2.0:
+    resolution: {integrity: sha512-I19aIingLgR1fmhftnbWWO3dXc0hSxqHQHQb3H8m+K3TnEn/iSeTZZOyvKXWqQESMwuUVnatlCnZdLBZZt2VSA==}
 
   parse5@7.2.1:
     resolution: {integrity: sha512-BuBYQYlv1ckiPdQi/ohiivi9Sagc9JG+Ozs0r7b/0iK3sKmrb0b9FdWdBbOdx6hBCM/F9Ir82ofnBhtZOjCRPQ==}
@@ -1316,6 +1328,8 @@ snapshots:
 
   '@types/estree@1.0.7': {}
 
+  '@types/nprogress@0.2.3': {}
+
   babel-plugin-jsx-dom-expressions@0.39.7(@babel/core@7.26.10):
     dependencies:
       '@babel/core': 7.26.10
@@ -1495,6 +1509,8 @@ snapshots:
   node-addon-api@7.1.1: {}
 
   node-releases@2.0.19: {}
+
+  nprogress@0.2.0: {}
 
   parse5@7.2.1:
     dependencies:

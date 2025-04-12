@@ -7,10 +7,13 @@ tailwind-prod:
 tailwind-dev:
 	@pnpx @tailwindcss/cli -i ./css/tailwind-input.css -o ./css/tailwind-output.css --watch
 
-serve-dev: pre
+serve-dev:
 	@go run ./go/cmd/build --dev
 
-dev: tailwind-dev serve-dev
+dev-inner: tailwind-dev serve-dev
+
+dev: pre
+	@make dev-inner -j
 
 build-prod: pre tailwind-prod
 	@go run ./go/cmd/build

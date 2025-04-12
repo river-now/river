@@ -1,6 +1,10 @@
 import { setTheme, THEMES } from "@sjc5/river/kit/theme";
-import { RiverLink } from "@sjc5/river/solid";
+import { Link } from "./app_link.tsx";
 import { type RouteProps, theme, useCurrentAppData } from "./app_utils.ts";
+
+// lazy load the nprogress module because it's not that important,
+// but we still want it on every page
+import("./global_loader.ts");
 
 const theme_to_label_map = {
 	[THEMES.Light]: hashedURL("sun.svg"),
@@ -28,7 +32,7 @@ export function Root(props: RouteProps<"">) {
 			<nav class="w-full sticky top-0 bg-white dark:bg-[#111] z-50">
 				<div class="flex items-center max-w-full mx-auto p-4 border-b border-[#7777]">
 					<h1 class="flex">
-						<RiverLink href="/" class="inline-flex items-center gap-3">
+						<Link href="/" class="inline-flex items-center gap-3">
 							<img class="w-10 sm:w-14" src={hashedURL("logo.svg")} alt="River logo" />
 							<div class="flex gap-2 items-baseline">
 								<div class="sm:text-xl">{useCurrentAppData().rootData?.SiteTitle}</div>
@@ -36,7 +40,7 @@ export function Root(props: RouteProps<"">) {
 									({useCurrentAppData().rootData?.LatestVersion})
 								</div>
 							</div>
-						</RiverLink>
+						</Link>
 					</h1>
 
 					<button
@@ -62,9 +66,9 @@ export function Root(props: RouteProps<"">) {
 					</button>
 				</div>
 				<div class="flex items-center max-w-full mx-auto px-4 py-1 border-b border-[#7777] gap-4">
-					<RiverLink href="/start" class="text-sm opacity-70 hover:opacity-[unset] hover:underline">
+					<Link href="/start" class="text-sm opacity-70 hover:opacity-[unset] hover:underline">
 						Get Started
-					</RiverLink>
+					</Link>
 
 					<div class="flex-1" />
 					<a

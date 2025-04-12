@@ -1,5 +1,6 @@
-import { RiverLink, RiverRootOutlet } from "@sjc5/river/solid";
+import { RiverRootOutlet } from "@sjc5/river/solid";
 import "../css/tailwind-output.css";
+import { Link } from "./app_link.tsx";
 import type { RouteProps } from "./app_utils.ts";
 
 export function App() {
@@ -15,13 +16,13 @@ export function Home(props: RouteProps<"/">) {
 				<FancySpan>TypeScript</FancySpan>.
 			</h2>
 
-			<RiverLink
+			<Link
 				href="/start"
 				type="button"
 				class="py-4 px-6 bg-[var(--resolved-green)] text-white dark:text-black rounded-lg shadow-md hover:opacity-80 hover:outline-2 outline-black dark:outline-white outline-offset-2 active:opacity-100 cursor-pointer uppercase tracking-wider font-bold"
 			>
 				Get Started
-			</RiverLink>
+			</Link>
 		</div>
 	);
 }

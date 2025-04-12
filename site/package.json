@@ -3,6 +3,8 @@
 	"devDependencies": {
 		"@sjc5/river": "link:../",
 		"@tailwindcss/cli": "^4.1.3",
+		"@types/nprogress": "^0.2.3",
+		"nprogress": "^0.2.0",
 		"solid-js": "1.9.5",
 		"tailwindcss": "^4.1.3",
 		"typescript": "5.8.2",
