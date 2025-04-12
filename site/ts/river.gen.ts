@@ -55,7 +55,7 @@ import type { Plugin } from "vite";
 const rollupOptions = {
 	input: [
 		"./ts/entry.tsx",
-		"ts/app.tsx",
+		"ts/home.tsx",
 		"ts/root.tsx",
 		"ts/start.tsx",
 	] as string[],

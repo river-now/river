@@ -1,14 +1,15 @@
 :root {
 	color-scheme: light dark;
-	--bg: light-dark(white, #111);
 	--dark-green: #064929;
 	--light-green: #4bba5b;
 }
 html.light {
 	color-scheme: light;
+	--bg: white;
 }
 html.dark {
 	color-scheme: dark;
+	--bg: #111;
 }
 html {
 	font-family: monospace;
