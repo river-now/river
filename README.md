@@ -1,4 +1,4 @@
-# River 🛶
+# 🧰 River
 
 <img src="/river-banner.webp" alt="River logo banner">
 
@@ -10,8 +10,8 @@ without the downsides of isomorphic JavaScript and component hydration patterns.
 
 Core Features:
 
-- Full Vite integration
-- Nested routing using concurrent Go-based loaders
+- Seamless Vite integration
+- Nested routing with concurrent Go-based loaders
 - Blazing fast TypeScript type generation
 - Hybrid-SSR architecture
 - React, Preact, and Solid support
@@ -22,6 +22,7 @@ Optional Extras:
 - Link pre-fetching on hover
 - Ability to deeply integrate the build and dev refresh cycle with any upstream
   dependencies in any language, via our Kiruna build helper
+- Much, much more
 
 While River currently supports React, Preact, and Solid, 95% of River's client
 architecture just uses vanilla browser APIs, making it pretty trivial to support
@@ -31,7 +32,7 @@ model. Even our Link components are light wrappers over a vanilla core.
 Our core philosophy is simple: You don't need backend JS to build a fully modern
 and performant web application.
 
-Yes, it is possible to great performance and SEO scores, a fully type-safe
+Yes, it is possible to get great performance and SEO scores, a fully type-safe
 application, and a frictionless full-stack developer experience, all without
 backend JS.
 
@@ -104,10 +105,9 @@ npm i -D @sjc5/river
 ```
 
 Why a dev dependency? Because it is more explicit about what is actually
-happening. The normal/dev dependency distinction in your package.json is a
-NodeJS concept, not a browser concept. River is both targeted at browsers (not
-NodeJS) and is shipped as pure TypeScript source (meaning you must have a
-dev-time build step to prepare the code for browser consumption). By convention,
-and for explicitness, River projects will usually declare all dependencies as
-dev dependencies to make it clear that they are being transformed before being
+happening. The `"dependencies"`/`"devDependencies"` distinction in your
+`package.json` is a NodeJS concept, not a browser JavaScript concept. For
+explicitness, and because River's npm modules are targeted at browsers (not
+NodeJS), River projects will usually declare all dependencies as dev
+dependencies to make it clear that they are being transformed before being
 shipped to the browser.
