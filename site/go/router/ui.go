@@ -22,7 +22,7 @@ type RootData struct {
 var _ = newLoader("", func(c *mux.NestedReqData) (*RootData, error) {
 	return &RootData{
 		SiteTitle:     app.SiteTitle,
-		LatestVersion: "v0.17.0-pre.11", // __TODO set this dynamically
+		LatestVersion: "v0.17.0-pre.12", // __TODO set this dynamically
 	}, nil
 })
 
