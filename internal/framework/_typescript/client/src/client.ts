@@ -747,7 +747,11 @@ function resolvePublicHref(href: string): string {
 	if (baseURL.endsWith("/")) {
 		baseURL = baseURL.slice(0, -1);
 	}
-	return href.startsWith("/") ? baseURL + href : baseURL + "/" + href;
+	let final = href.startsWith("/") ? baseURL + href : baseURL + "/" + href;
+	if (import.meta.env.DEV) {
+		final += "?__river_dev=1";
+	}
+	return final;
 }
 
 async function __reRenderApp({

@@ -14,8 +14,16 @@ func newLoader[O any](pattern string, f mux.TaskHandlerFunc[mux.None, O]) *mux.T
 	return loaderTask
 }
 
-var _ = newLoader("", func(c *mux.NestedReqData) (string, error) {
-	return app.SiteTitle, nil
+type RootData struct {
+	SiteTitle     string
+	LatestVersion string
+}
+
+var _ = newLoader("", func(c *mux.NestedReqData) (*RootData, error) {
+	return &RootData{
+		SiteTitle:     app.SiteTitle,
+		LatestVersion: "v0.17.0-pre.11", // __TODO set this dynamically
+	}, nil
 })
 
 var _ = newLoader("/", func(c *mux.NestedReqData) (string, error) {

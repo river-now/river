@@ -6,5 +6,6 @@ const rootComp = routes.Component({ module: import("./root.tsx"), export: "Root"
 
 routes.Register("", rootComp);
 routes.Register("/", { module: import("./app.tsx"), export: "Home" });
+routes.Register("/start", { module: import("./start.tsx"), export: "Start" });
 
 export default routes;

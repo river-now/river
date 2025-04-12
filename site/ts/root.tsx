@@ -25,38 +25,69 @@ function preload_img(url: string) {
 export function Root(props: RouteProps<"">) {
 	return (
 		<>
-			<nav class="flex items-center max-w-full mx-auto p-4 border-b border-[#7777] fixed top-0 left-0 w-full">
-				<h1 class="flex">
-					<RiverLink href="/" class="inline-flex items-center gap-4">
-						<img class="w-18" src={hashedURL("logo.svg")} alt="River logo" />
-						<span class="text-2xl">{useCurrentAppData().rootData}</span>
-					</RiverLink>
-				</h1>
+			<nav class="w-full sticky top-0 bg-white dark:bg-[#111] z-50">
+				<div class="flex items-center max-w-full mx-auto p-4 border-b border-[#7777]">
+					<h1 class="flex">
+						<RiverLink href="/" class="inline-flex items-center gap-3">
+							<img class="w-10 sm:w-14" src={hashedURL("logo.svg")} alt="River logo" />
+							<div class="flex gap-2 items-baseline">
+								<div class="sm:text-xl">{useCurrentAppData().rootData?.SiteTitle}</div>
+								<div class="text-xs opacity-70 hidden sm:block">
+									({useCurrentAppData().rootData?.LatestVersion})
+								</div>
+							</div>
+						</RiverLink>
+					</h1>
 
-				<button
-					type="button"
-					title="Change theme"
-					class="cursor-pointer ml-auto text-3xl"
-					onClick={() => {
-						if (theme() === "dark") {
-							setTheme(THEMES.Light);
-							return;
-						}
-						if (theme() === "light") {
-							setTheme(THEMES.System);
-							return;
-						}
-						if (theme() === "system") {
-							setTheme(THEMES.Dark);
-							return;
-						}
-					}}
-				>
-					<img src={theme_to_label_map[theme()]} alt="Theme icon" class="w-6 h-6 dark:invert" />
-				</button>
+					<button
+						type="button"
+						title="Change theme"
+						class="cursor-pointer ml-auto"
+						onClick={() => {
+							if (theme() === "dark") {
+								setTheme(THEMES.Light);
+								return;
+							}
+							if (theme() === "light") {
+								setTheme(THEMES.System);
+								return;
+							}
+							if (theme() === "system") {
+								setTheme(THEMES.Dark);
+								return;
+							}
+						}}
+					>
+						<img src={theme_to_label_map[theme()]} alt="Theme icon" class="w-5 h-5 dark:invert" />
+					</button>
+				</div>
+				<div class="flex items-center max-w-full mx-auto px-4 py-1 border-b border-[#7777] gap-4">
+					<RiverLink href="/start" class="text-sm opacity-70 hover:opacity-[unset] hover:underline">
+						Get Started
+					</RiverLink>
+
+					<div class="flex-1" />
+					<a
+						href="https://x.com/riverframework"
+						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						X
+					</a>
+
+					<a
+						href="https://github.com/sjc5/river"
+						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						GitHub
+					</a>
+				</div>
 			</nav>
 
-			<main class="mt-18 p-4">
+			<main>
 				<props.Outlet />
 			</main>
 		</>

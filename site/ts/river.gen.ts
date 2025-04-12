@@ -11,14 +11,28 @@ const routes = [
 		_type: "loader",
 		isRootData: true,
 		pattern: "",
-		phantomOutputType: null as unknown as string,
+		phantomOutputType: null as unknown as RootData,
 	},
 	{
 		_type: "loader",
 		pattern: "/",
 		phantomOutputType: null as unknown as string,
 	},
+	{
+		_type: "loader",
+		pattern: "/start",
+		phantomOutputType: undefined,
+	},
 ] as const;
+
+/**********************************************************************
+/ Ad Hoc Types:
+/*********************************************************************/
+
+export type RootData = {
+	SiteTitle: string;
+	LatestVersion: string;
+};
 
 /**********************************************************************
 / Extra TS Code:
@@ -43,6 +57,7 @@ const rollupOptions = {
 		"./ts/entry.tsx",
 		"ts/app.tsx",
 		"ts/root.tsx",
+		"ts/start.tsx",
 	] as string[],
 	preserveEntrySignatures: "exports-only",
 	output: {
