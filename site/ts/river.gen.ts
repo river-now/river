@@ -84,14 +84,17 @@ declare global {
 export function riverVitePlugin(): Plugin {
 	return {
 		name: "river-vite-plugin",
-		config(c) {
+		config(c, { command }) {
 			const mp = c.build?.modulePreload;
 			const roi = c.build?.rollupOptions?.input;
 			const ign = c.server?.watch?.ignored;
 			const dedupe = c.resolve?.dedupe;
 
+			const isDev = command === "serve";
+
 			return {
 				...c,
+				base: isDev ? "/" : "/public/",
 				build: {
 					target: "es2022",
 					...c.build,

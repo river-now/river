@@ -80,14 +80,17 @@ const vitePluginTemplateStr = `
 export function riverVitePlugin(): Plugin {
 	return {
 		name: "river-vite-plugin",
-		config(c) {
+		config(c, { command }) {
 			const mp = c.build?.modulePreload;
 			const roi = c.build?.rollupOptions?.input;
 			const ign = c.server?.watch?.ignored;
 			const dedupe = c.resolve?.dedupe;
 
+			const isDev = command === "serve";
+
 			return {
 				...c,
+				base: isDev ? "/" : "{{.PublicPathPrefix}}",
 				build: {
 					target: "es2022",
 					...c.build,
@@ -238,11 +241,12 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	stringifiedIgnore += ignoreTabs + "]"
 
 	err = vitePluginTemplate.Execute(&buf, map[string]any{
-		"FuncName":    h.Kiruna.GetRiverPublicURLFuncName(),
-		"PublicDir":   publicPrefixToUse,
-		"Tick":        tick,
-		"IgnoredList": template.HTML(stringifiedIgnore),
-		"DedupeList":  template.HTML(stringifiedDedupeBytes),
+		"FuncName":         h.Kiruna.GetRiverPublicURLFuncName(),
+		"PublicDir":        publicPrefixToUse,
+		"PublicPathPrefix": h.Kiruna.GetPublicPathPrefix(),
+		"Tick":             tick,
+		"IgnoredList":      template.HTML(stringifiedIgnore),
+		"DedupeList":       template.HTML(stringifiedDedupeBytes),
 	})
 	if err != nil {
 		return "", fmt.Errorf("error executing template: %v", err)

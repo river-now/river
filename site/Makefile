@@ -20,4 +20,4 @@ build-prod: pre tailwind-prod
 
 # call with `make run-prod port=whatever`
 run-prod:
-	@PORT=$(port) ./go/app/kiruna_dist/main
+	@PORT=$(PORT) ./go/app/kiruna_dist/main

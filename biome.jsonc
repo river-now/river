@@ -12,7 +12,10 @@
 			"!**/node_modules",
 			"!npm_dist",
 			"!kiruna/configschema/*schema.json",
-			"!site"
+			"!site/**/kiruna_dist",
+			"!site/**/river_out*",
+			"!site/**/river.gen.ts",
+			"!site/css/tailwind-output.css"
 		]
 	},
 	"formatter": {
