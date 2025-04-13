@@ -71,16 +71,20 @@ function linkPropsToClickListenerFn<LinkClickCallback>(
 type handlerKeys = {
 	onPointerEnter: string;
 	onFocus: string;
+	onTouchStart: string;
 	onPointerLeave: string;
 	onBlur: string;
+	onTouchCancel: string;
 	onClick: string;
 };
 
 const standardCamelHandlerKeys = {
 	onPointerEnter: "onPointerEnter",
 	onFocus: "onFocus",
+	onTouchStart: "onTouchStart",
 	onPointerLeave: "onPointerLeave",
 	onBlur: "onBlur",
+	onTouchCancel: "onTouchCancel",
 	onClick: "onClick",
 } satisfies handlerKeys;
 
@@ -89,8 +93,10 @@ export function makeFinalLinkProps<LinkClickCallback>(
 	keys: {
 		onPointerEnter: string;
 		onFocus: string;
+		onTouchStart: string;
 		onPointerLeave: string;
 		onBlur: string;
+		onTouchCancel: string;
 		onClick: string;
 	} = standardCamelHandlerKeys,
 ) {
@@ -106,6 +112,10 @@ export function makeFinalLinkProps<LinkClickCallback>(
 			prefetchObj?.start(e);
 			if (isFn(props[keys.onFocus])) props[keys.onFocus](e);
 		},
+		onTouchStart: (e: any) => {
+			prefetchObj?.start(e);
+			if (isFn(props[keys.onTouchStart])) props[keys.onTouchStart](e);
+		},
 		onPointerLeave: (e: any) => {
 			prefetchObj?.stop();
 			if (isFn(props[keys.onPointerLeave])) props[keys.onPointerLeave](e);
@@ -113,6 +123,10 @@ export function makeFinalLinkProps<LinkClickCallback>(
 		onBlur: (e: any) => {
 			prefetchObj?.stop();
 			if (isFn(props[keys.onBlur])) props[keys.onBlur](e);
+		},
+		onTouchCancel: (e: any) => {
+			prefetchObj?.stop();
+			if (isFn(props[keys.onTouchCancel])) props[keys.onTouchCancel](e);
 		},
 		onClick: async (e: any) => {
 			if (isFn(props[keys.onClick])) props[keys.onClick](e);

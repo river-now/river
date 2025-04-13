@@ -5,6 +5,13 @@
 	--code-fg: white;
 }
 
+a,
+button,
+input[type="button"],
+input[type="submit"] {
+	touch-action: manipulation;
+}
+
 .code {
 	background: var(--code-bg);
 	color: var(--code-fg);
