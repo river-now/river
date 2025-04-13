@@ -3,6 +3,7 @@
 /////////////////////////////////////////////////////////////////////
 
 import { getPrefetchHandlers, makeLinkClickListenerFn } from "./client.ts";
+import { internal_RiverClientGlobal } from "./river_ctx.ts";
 
 export type RiverUntypedLoader = { _type: string; pattern: string; phantomOutputType: any };
 
@@ -71,7 +72,6 @@ function linkPropsToClickListenerFn<LinkClickCallback>(
 type handlerKeys = {
 	onPointerEnter: string;
 	onFocus: string;
-	onTouchStart: string;
 	onPointerLeave: string;
 	onBlur: string;
 	onTouchCancel: string;
@@ -81,7 +81,6 @@ type handlerKeys = {
 const standardCamelHandlerKeys = {
 	onPointerEnter: "onPointerEnter",
 	onFocus: "onFocus",
-	onTouchStart: "onTouchStart",
 	onPointerLeave: "onPointerLeave",
 	onBlur: "onBlur",
 	onTouchCancel: "onTouchCancel",
@@ -93,7 +92,6 @@ export function makeFinalLinkProps<LinkClickCallback>(
 	keys: {
 		onPointerEnter: string;
 		onFocus: string;
-		onTouchStart: string;
 		onPointerLeave: string;
 		onBlur: string;
 		onTouchCancel: string;
@@ -112,12 +110,10 @@ export function makeFinalLinkProps<LinkClickCallback>(
 			prefetchObj?.start(e);
 			if (isFn(props[keys.onFocus])) props[keys.onFocus](e);
 		},
-		onTouchStart: (e: any) => {
-			prefetchObj?.start(e);
-			if (isFn(props[keys.onTouchStart])) props[keys.onTouchStart](e);
-		},
 		onPointerLeave: (e: any) => {
-			prefetchObj?.stop();
+			// we don't want to stop on a touch device, because this triggers
+			// even when the user "clicks" on the link for some reason
+			if (!internal_RiverClientGlobal.get("isTouchDevice")) prefetchObj?.stop();
 			if (isFn(props[keys.onPointerLeave])) props[keys.onPointerLeave](e);
 		},
 		onBlur: (e: any) => {

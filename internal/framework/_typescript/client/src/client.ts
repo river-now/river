@@ -1093,7 +1093,16 @@ export async function initClient(renderFn: () => void) {
 	renderFn();
 
 	// INSTANTIATE GLOBAL EVENT LISTENERS
-	__addAnchorClickListener();
+	__addAnchorClickListener(); // boost
+
+	window.addEventListener(
+		"touchstart",
+		() => {
+			LogInfo("Touch device detected");
+			internal_RiverClientGlobal.set("isTouchDevice", true);
+		},
+		{ once: true },
+	);
 }
 
 async function handleComponents() {

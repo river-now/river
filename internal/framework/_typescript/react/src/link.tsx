@@ -15,7 +15,6 @@ export function RiverLink(
 			{...(props as any)}
 			onPointerEnter={finalLinkProps.onPointerEnter}
 			onFocus={finalLinkProps.onFocus}
-			onTouchStart={finalLinkProps.onTouchStart}
 			onPointerLeave={finalLinkProps.onPointerLeave}
 			onBlur={finalLinkProps.onBlur}
 			onTouchCancel={finalLinkProps.onTouchCancel}

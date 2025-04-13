@@ -34,6 +34,7 @@ export type RiverClientGlobal = shared & {
 	isDev: boolean;
 	viteDevURL: string;
 	publicPathPrefix: string;
+	isTouchDevice: boolean;
 };
 
 export function __getRiverClientGlobal() {
