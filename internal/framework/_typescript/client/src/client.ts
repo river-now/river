@@ -380,6 +380,17 @@ export function getPrefetchHandlers<E extends Event>(input: GetPrefetchHandlersI
 			return;
 		}
 
+		const anchorDetails = getAnchorDetailsFromEvent(e as unknown as MouseEvent);
+		if (!anchorDetails) {
+			return;
+		}
+
+		const { isEligibleForDefaultPrevention, isInternal } = anchorDetails;
+
+		if (!isEligibleForDefaultPrevention || !isInternal) {
+			return;
+		}
+
 		e.preventDefault();
 		setLoadingStatus({ type: "userNavigation", value: true });
 
