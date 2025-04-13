@@ -1,7 +1,4 @@
-package jsonschema
-
-/*-------------------------------------------------------------------
-
+/*
 NOTE:
 
 This package primarily exists for Kiruna's JSON schema generation.
@@ -9,8 +6,8 @@ It does not -- and probably won't ever -- cover the entire JSON
 schema spec (or anywhere near it).
 
 Buyer beware.
-
--------------------------------------------------------------------*/
+*/
+package jsonschema
 
 import (
 	"fmt"

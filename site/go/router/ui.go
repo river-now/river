@@ -3,6 +3,7 @@ package router
 import (
 	"site/go/app"
 
+	"github.com/river-now/river"
 	"github.com/river-now/river/kit/mux"
 )
 
@@ -19,10 +20,12 @@ type RootData struct {
 	LatestVersion string
 }
 
+var currentNPMVersion = "v" + river.Internal__GetCurrentNPMVersion()
+
 var _ = newLoader("", func(c *mux.NestedReqData) (*RootData, error) {
 	return &RootData{
 		SiteTitle:     app.SiteTitle,
-		LatestVersion: "v0.17.0", // __TODO set this dynamically
+		LatestVersion: currentNPMVersion,
 	}, nil
 })
 

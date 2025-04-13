@@ -1,16 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"os"
 	"strings"
 
 	t "github.com/river-now/river/kit/cliutil"
-	"github.com/river-now/river/kit/stringsutil"
+	"github.com/river-now/river/kit/parseutil"
 )
 
 func main() {
-	lines, versionLine, currentVersion := parsePackageJSON("./package.json")
+	lines, versionLine, currentVersion := parseutil.PackageJSONFromFile("./package.json")
 
 	// Show current tag
 	t.Plain("current version: ")
@@ -57,7 +56,7 @@ func main() {
 	}
 
 	// Sanity check
-	_, _, newCurrentVersion := parsePackageJSON("./package.json")
+	_, _, newCurrentVersion := parseutil.PackageJSONFromFile("./package.json")
 	if newCurrentVersion != trimmedVersion {
 		t.Exit("failed to update version", nil)
 	}
@@ -96,35 +95,4 @@ func main() {
 
 	t.Plain("npm publish done")
 	t.NewLine()
-}
-
-func parsePackageJSON(targetFile string) ([]string, int, string) {
-	file, err := os.ReadFile(targetFile)
-	if err != nil {
-		panic(err)
-	}
-	content := string(file)
-	lines, err := stringsutil.CollectLines(content)
-	if err != nil {
-		panic(err)
-	}
-	versionLine := -1
-	for i, line := range lines {
-		if strings.HasPrefix(strings.TrimSpace(line), `"version":`) {
-			versionLine = i
-			break
-		}
-	}
-	if versionLine == -1 {
-		panic("version line not found")
-	}
-	versionMap := make(map[string]any)
-	if err = json.Unmarshal(file, &versionMap); err != nil {
-		panic(err)
-	}
-	currentVersion := versionMap["version"].(string)
-	if currentVersion == "" {
-		panic("version not found")
-	}
-	return lines, versionLine, currentVersion
 }
