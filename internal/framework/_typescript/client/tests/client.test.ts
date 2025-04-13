@@ -11,25 +11,25 @@ import { __getRiverClientGlobal, RIVER_SYMBOL } from "../src/river_ctx.ts";
 let dom: JSDOM;
 let mockGlobal: any;
 
+function setup() {
+	dom = new JSDOM("<!DOCTYPE html><body></body>", { url: "https://example.com" });
+	global.window = dom.window as unknown as Window & typeof globalThis;
+	global.document = dom.window.document;
+	mockGlobal = {};
+	(globalThis as any)[RIVER_SYMBOL] = mockGlobal;
+}
+
+function teardown() {
+	delete (globalThis as any)[RIVER_SYMBOL];
+	dom.window.close();
+	global.window = undefined as any;
+	global.document = undefined as any;
+}
+
 describe("__getRiverClientGlobal", () => {
-	beforeEach(() => {
-		// Set up JSDOM environment
-		dom = new JSDOM("<!DOCTYPE html><body></body>", { url: "https://example.com" });
-		global.window = dom.window as unknown as Window & typeof globalThis;
-		global.document = dom.window.document;
+	beforeEach(setup);
 
-		// Set up mock global state
-		mockGlobal = {};
-		(globalThis as any)[RIVER_SYMBOL] = mockGlobal;
-	});
-
-	afterEach(() => {
-		// Clean up global state and JSDOM
-		delete (globalThis as any)[RIVER_SYMBOL];
-		dom.window.close();
-		global.window = undefined as any;
-		global.document = undefined as any;
-	});
+	afterEach(teardown);
 
 	it("should get a value from the global state", () => {
 		mockGlobal.params = { key: "value" };
@@ -59,18 +59,12 @@ describe("beginNavigation", () => {
 		navigationState.navigations.clear();
 		navigationState.activeUserNavigation = null;
 		mockSetStatus = vi.fn();
-
-		// Set up JSDOM environment
-		dom = new JSDOM("<!DOCTYPE html><body></body>", { url: "https://example.com" });
-		global.window = dom.window as unknown as Window & typeof globalThis;
-		global.document = dom.window.document;
+		setup();
 	});
 
 	afterEach(() => {
 		vi.restoreAllMocks(); // Restore any mocked functions
-		dom.window.close(); // Clean up JSDOM environment
-		global.window = undefined as any;
-		global.document = undefined as any;
+		teardown();
 	});
 
 	it("should start a new user navigation", () => {

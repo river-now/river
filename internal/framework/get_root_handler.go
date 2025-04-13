@@ -46,7 +46,7 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 
 		routeData := uiRouteData.uiRouteOutput
 
-		isJSON := GetIsJSONRequest(r)
+		isJSON := IsJSONRequest(r)
 		currentCacheControlHeader := w.Header().Get("Cache-Control")
 
 		if currentCacheControlHeader == "" {
@@ -173,8 +173,14 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 	})
 }
 
-func GetIsJSONRequest(r *http.Request) bool {
-	return r.URL.Query().Get("river-json") == "1"
+// If true, may or may not be from an up-to-date client.
+func IsJSONRequest(r *http.Request) bool {
+	return r.URL.Query().Get("river_json") != ""
+}
+
+// If true, guaranteed to be from a client with knowledge of the latest build ID.
+func (h *River) IsCurrentBuildJSONRequest(r *http.Request) bool {
+	return r.URL.Query().Get("river_json") == h._buildID
 }
 
 func (h *River) GetActionsHandler(router *mux.Router) http.Handler {

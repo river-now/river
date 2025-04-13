@@ -20,7 +20,7 @@ type (
 )
 
 var (
-	GetIsJSONRequest = framework.GetIsJSONRequest
+	IsJSONRequest = framework.IsJSONRequest
 )
 
 //go:embed package.json

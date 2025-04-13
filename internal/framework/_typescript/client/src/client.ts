@@ -179,7 +179,7 @@ async function __fetchRouteData(
 ): Promise<NavigationResult | undefined> {
 	try {
 		const url = new URL(props.href, window.location.href);
-		url.searchParams.set("river-json", "1");
+		url.searchParams.set("river_json", internal_RiverClientGlobal.get("buildID") || "1");
 
 		const { redirectData, response } = await handleRedirects({
 			abortController: controller,

@@ -23,6 +23,18 @@ type RootData struct {
 var currentNPMVersion = "v" + river.Internal__GetCurrentNPMVersion()
 
 var _ = newLoader("", func(c *mux.NestedReqData) (*RootData, error) {
+	r := c.Request()
+
+	// We don't want to cache HTML, so that user theme settings do not get
+	// CDN-cached, and to ensure that fresh page loads always get the latest
+	// version of the site. But we can cache JSON requests because no data
+	// returned in the JSON for this site is user-specific. However, because
+	// the build ID serves as a cache discriminator (e.g., river_json=1234),
+	// we don't want to cache requests with stale build IDs from this build.
+	if app.River.IsCurrentBuildJSONRequest(r) {
+		c.ResponseProxy().SetHeader("Cache-Control", "public, max-age=5, must-revalidate")
+	}
+
 	return &RootData{
 		SiteTitle:     app.SiteTitle,
 		LatestVersion: currentNPMVersion,
