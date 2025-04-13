@@ -62,7 +62,7 @@ npmbump:
 	@go run ./internal/scripts/npm_bumper
 
 docker-site:
-	@docker build -t river-site .
+	@docker build -t river-site -f Dockerfile.site .
 
 docker-run-site:
 	docker run -d -p $(port):$(port) -e PORT=$(port) river-site
