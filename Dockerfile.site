@@ -39,6 +39,6 @@ FROM alpine:latest as server
 WORKDIR /app
 RUN apk --no-cache add ca-certificates
 COPY --from=backend-builder /monorepo/__main .
-RUN adduser -D myuser
-USER myuser
+RUN adduser -D serveruser
+USER serveruser
 ENTRYPOINT ["/app/__main"]
