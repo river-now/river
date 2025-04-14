@@ -10,7 +10,7 @@ export {
 	getRootEl,
 	getStatus,
 	initClient,
-	makeLinkClickListenerFn,
+	makeLinkOnClickFn,
 	navigate,
 	type RouteChangeEvent,
 	revalidate,

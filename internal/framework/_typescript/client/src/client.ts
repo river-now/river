@@ -276,7 +276,7 @@ function handleNavError(error: unknown, props: NavigateProps) {
 // PREFETCH
 /////////////////////////////////////////////////////////////////////
 
-type GetPrefetchHandlersInput<E extends Event> = LinkClickListenerCallbacksBase<E> & {
+type GetPrefetchHandlersInput<E extends Event> = LinkOnClickCallbacksBase<E> & {
 	href: string;
 	timeout?: number;
 };
@@ -430,20 +430,6 @@ export function getPrefetchHandlers<E extends Event>(input: GetPrefetchHandlersI
 		start,
 		stop,
 		onClick,
-		addEventListeners(link: HTMLAnchorElement) {
-			link.addEventListener("pointerenter", start as any);
-			link.addEventListener("focus", start as any);
-			link.addEventListener("pointerleave", stop);
-			link.addEventListener("blur", stop);
-			link.addEventListener("click", onClick as any);
-		},
-		removeEventListeners(link: HTMLAnchorElement) {
-			link.removeEventListener("pointerenter", start as any);
-			link.removeEventListener("focus", start as any);
-			link.removeEventListener("pointerleave", stop);
-			link.removeEventListener("blur", stop);
-			link.removeEventListener("click", onClick as any);
-		},
 	};
 }
 
@@ -1095,9 +1081,6 @@ export async function initClient(renderFn: () => void) {
 	// RUN THE RENDER FUNCTION
 	renderFn();
 
-	// INSTANTIATE GLOBAL EVENT LISTENERS
-	__addAnchorClickListener(); // boost
-
 	window.addEventListener(
 		"touchstart",
 		() => {
@@ -1180,22 +1163,20 @@ function makeListenerAdder<T>(key: string) {
 }
 
 /////////////////////////////////////////////////////////////////////
-// DATA BOOST LISTENERS
+// LINK ONCLICK HANDLERS
 /////////////////////////////////////////////////////////////////////
 
-type LinkClickListenerCallback<E extends Event> = (event: E) => void | Promise<void>;
+type LinkOnClickCallback<E extends Event> = (event: E) => void | Promise<void>;
 
-type LinkClickListenerCallbacksBase<E extends Event> = {
-	beforeBegin?: LinkClickListenerCallback<E>;
-	beforeRender?: LinkClickListenerCallback<E>;
-	afterRender?: LinkClickListenerCallback<E>;
+type LinkOnClickCallbacksBase<E extends Event> = {
+	beforeBegin?: LinkOnClickCallback<E>;
+	beforeRender?: LinkOnClickCallback<E>;
+	afterRender?: LinkOnClickCallback<E>;
 };
 
-type LinkClickListenerCallbacks<E extends Event> = LinkClickListenerCallbacksBase<E> & {
-	requireDataBoostAttribute: boolean;
-};
+type LinkOnClickCallbacks<E extends Event> = LinkOnClickCallbacksBase<E>;
 
-export function makeLinkClickListenerFn<E extends Event>(callbacks: LinkClickListenerCallbacks<E>) {
+export function makeLinkOnClickFn<E extends Event>(callbacks: LinkOnClickCallbacks<E>) {
 	return async (event: E) => {
 		if (event.defaultPrevented) {
 			return;
@@ -1208,7 +1189,7 @@ export function makeLinkClickListenerFn<E extends Event>(callbacks: LinkClickLis
 
 		const { anchor, isEligibleForDefaultPrevention, isInternal } = anchorDetails;
 
-		if (!anchor || (callbacks.requireDataBoostAttribute && !anchor.dataset.boost)) {
+		if (!anchor) {
 			return;
 		}
 
@@ -1237,10 +1218,4 @@ export function makeLinkClickListenerFn<E extends Event>(callbacks: LinkClickLis
 			await callbacks.afterRender?.(event);
 		}
 	};
-}
-
-const baseDataBoostListenerFn = makeLinkClickListenerFn({ requireDataBoostAttribute: true });
-
-function __addAnchorClickListener() {
-	document.body.addEventListener("click", baseDataBoostListenerFn);
 }

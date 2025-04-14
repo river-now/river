@@ -2,7 +2,7 @@
 /////// ROUTE COMPONENTS
 /////////////////////////////////////////////////////////////////////
 
-import { getPrefetchHandlers, makeLinkClickListenerFn } from "./client.ts";
+import { getPrefetchHandlers, makeLinkOnClickFn } from "./client.ts";
 import { internal_RiverClientGlobal } from "./river_ctx.ts";
 
 export type RiverUntypedLoader = { _type: string; pattern: string; phantomOutputType: any };
@@ -32,16 +32,18 @@ export type RiverRootOutletPropsGeneric<JSXElement> = {
 /////// LINK COMPONENTS
 /////////////////////////////////////////////////////////////////////
 
-export type RiverLinkPropsBase<LinkClickCallback> = {
+export type RiverLinkPropsBase<LinkOnClickCallback> = {
 	href?: string;
 	prefetch?: "intent";
 	prefetchTimeout?: number;
-	beforeBegin?: LinkClickCallback;
-	beforeRender?: LinkClickCallback;
-	afterRender?: LinkClickCallback;
+	beforeBegin?: LinkOnClickCallback;
+	beforeRender?: LinkOnClickCallback;
+	afterRender?: LinkOnClickCallback;
 } & Record<string, any>;
 
-function linkPropsToPrefetchObj<LinkClickCallback>(props: RiverLinkPropsBase<LinkClickCallback>) {
+function linkPropsToPrefetchObj<LinkOnClickCallback>(
+	props: RiverLinkPropsBase<LinkOnClickCallback>,
+) {
 	if (!props.href || props.prefetch !== "intent") {
 		return undefined;
 	}
@@ -55,14 +57,11 @@ function linkPropsToPrefetchObj<LinkClickCallback>(props: RiverLinkPropsBase<Lin
 	});
 }
 
-function linkPropsToClickListenerFn<LinkClickCallback>(
-	props: RiverLinkPropsBase<LinkClickCallback>,
-) {
-	return makeLinkClickListenerFn({
+function linkPropsToOnClickFn<LinkOnClickCallback>(props: RiverLinkPropsBase<LinkOnClickCallback>) {
+	return makeLinkOnClickFn({
 		beforeBegin: props.beforeBegin as any,
 		beforeRender: props.beforeRender as any,
 		afterRender: props.afterRender as any,
-		requireDataBoostAttribute: false,
 	});
 }
 
@@ -84,8 +83,8 @@ const standardCamelHandlerKeys = {
 	onClick: "onClick",
 } satisfies handlerKeys;
 
-export function makeFinalLinkProps<LinkClickCallback>(
-	props: RiverLinkPropsBase<LinkClickCallback>,
+export function makeFinalLinkProps<LinkOnClickCallback>(
+	props: RiverLinkPropsBase<LinkOnClickCallback>,
 	keys: {
 		onPointerEnter: string;
 		onFocus: string;
@@ -126,7 +125,7 @@ export function makeFinalLinkProps<LinkClickCallback>(
 			if (prefetchObj) {
 				await prefetchObj.onClick(e);
 			} else {
-				await linkPropsToClickListenerFn(props)(e);
+				await linkPropsToOnClickFn(props)(e);
 			}
 		},
 	};
