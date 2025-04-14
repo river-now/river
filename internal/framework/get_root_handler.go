@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 
 	"github.com/river-now/river/kit/headblocks"
 	"github.com/river-now/river/kit/mux"
@@ -24,6 +25,22 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		res := response.New(w)
 		res.SetHeader(buildIDHeader, h._buildID)
+
+		isJSON := IsJSONRequest(r)
+		if isJSON && !h.IsCurrentBuildJSONRequest(r) {
+			newURL, err := url.Parse(r.URL.Path)
+			if err != nil {
+				Log.Error(fmt.Sprintf("Error parsing URL: %v\n", err))
+				res.InternalServerError()
+				return
+			}
+			q := newURL.Query()
+			q.Del("river_json")
+			newURL.RawQuery = q.Encode()
+			res.SetHeader("X-River-Reload", newURL.String())
+			res.OK()
+			return
+		}
 
 		uiRouteData, err := h.getUIRouteData(w, r, nestedRouter)
 
@@ -45,7 +62,6 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 
 		routeData := uiRouteData.uiRouteOutput
 
-		isJSON := IsJSONRequest(r)
 		currentCacheControlHeader := w.Header().Get("Cache-Control")
 
 		if currentCacheControlHeader == "" {

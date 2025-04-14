@@ -15,6 +15,15 @@ export function parseFetchResponseForRedirectData(
 	reqInit: RequestInit,
 	res: Response,
 ): RedirectData | null {
+	const riverReloadTarget = res.headers.get("X-River-Reload");
+	if (riverReloadTarget) {
+		return {
+			status: "should",
+			href: riverReloadTarget,
+			shouldRedirectStrategy: "hard",
+		};
+	}
+
 	if (res.redirected) {
 		const newURL = new URL(res.url, window.location.href);
 		const hrefDetails = getHrefDetails(newURL.href);

@@ -553,24 +553,22 @@ export async function submit<T = any>(
 	requestInit?: RequestInit,
 ): Promise<{ success: true; data: T } | { success: false; error: string }> {
 	const submitRes = await submitInner(url, requestInit);
+	const isGET = getIsGETRequest(requestInit);
 
 	if (!submitRes.success) {
 		LogError(submitRes.error);
+		if (!submitRes.alreadyRevalidated && !isGET) {
+			await revalidate();
+		}
 		return { success: false, error: submitRes.error };
 	}
 
 	try {
-		const isGET = getIsGETRequest(requestInit);
 		const json = await submitRes.response.json();
-
 		if (!submitRes.alreadyRevalidated && !isGET) {
 			await revalidate();
 		}
-
-		return {
-			success: true,
-			data: json as T,
-		};
+		return { success: true, data: json as T };
 	} catch (e) {
 		return {
 			success: false,
