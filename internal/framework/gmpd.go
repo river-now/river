@@ -3,13 +3,14 @@ package framework
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/river-now/river/kit/htmlutil"
-	"github.com/river-now/river/kit/lru"
 	"github.com/river-now/river/kit/matcher"
 	"github.com/river-now/river/kit/mux"
 	"github.com/river-now/river/kit/response"
 	"github.com/river-now/river/kit/tasks"
+	"github.com/river-now/river/kit/typed"
 )
 
 type SplatValues []string
@@ -28,18 +29,13 @@ type ActivePathData struct {
 	HasRootData         bool
 }
 
-type gmpdItem struct {
-	found          bool
-	_match_results *matcher.FindNestedMatchesResults
-	Params         mux.Params
-	SplatValues    SplatValues
-	ImportURLs     []string
-	ExportKeys     []string
-	Deps           []string
-	routeType      RouteType
+type cachedItemSubset struct {
+	ImportURLs []string
+	ExportKeys []string
+	Deps       []string
 }
 
-var gmpdCache = lru.NewCache[string, *gmpdItem](500_000)
+var gmpdCache = typed.SyncMap[string, *cachedItemSubset]{}
 
 type uiRoutesData struct {
 	activePathData *ActivePathData
@@ -52,32 +48,34 @@ type uiRoutesData struct {
 func (h *River) getUIRoutesData(
 	w http.ResponseWriter, r *http.Request, nestedRouter *mux.NestedRouter, tasksCtx *tasks.TasksCtx,
 ) *uiRoutesData {
-
 	realPath := matcher.StripTrailingSlash(r.URL.Path)
 	if realPath == "" {
 		realPath = "/"
 	}
 
-	var itemIsCached bool
-	var item *gmpdItem
+	_match_results, found := mux.FindNestedMatches(nestedRouter, r)
+	if !found {
+		return &uiRoutesData{}
+	}
 
-	if item, itemIsCached = gmpdCache.Get(realPath); !itemIsCached {
-		item = new(gmpdItem)
-		_match_results, found := mux.FindNestedMatches(nestedRouter, r)
-		if !found {
-			item.found = false
-			gmpdCache.Set(realPath, item, true)
-			return &uiRoutesData{}
-		}
-		item.found = true
-		item._match_results = _match_results
-		_matches := _match_results.Matches
-		_matches_len := len(_matches)
-		item.SplatValues = _match_results.SplatValues
-		item.Params = _match_results.Params
-		item.routeType = RouteTypes.Loader
-		item.ImportURLs = make([]string, 0, _matches_len)
-		item.ExportKeys = make([]string, 0, _matches_len)
+	_matches := _match_results.Matches
+
+	var sb strings.Builder
+	var growSize int
+	for _, match := range _matches {
+		growSize += len(match.NormalizedPattern())
+	}
+	sb.Grow(growSize)
+	for _, match := range _matches {
+		sb.WriteString(match.NormalizedPattern())
+	}
+	cacheKey := sb.String()
+
+	var _cachedItemSubset *cachedItemSubset
+	var isCached bool
+
+	if _cachedItemSubset, isCached = gmpdCache.Load(cacheKey); !isCached {
+		_cachedItemSubset = &cachedItemSubset{}
 		for _, path := range _matches {
 			foundPath := h._paths[path.OriginalPattern()]
 			if foundPath == nil {
@@ -87,22 +85,18 @@ func (h *River) getUIRoutesData(
 			if h._isDev {
 				pathToUse = foundPath.SrcPath
 			}
-			item.ImportURLs = append(item.ImportURLs, "/"+pathToUse)
-			item.ExportKeys = append(item.ExportKeys, foundPath.ExportKey)
+			_cachedItemSubset.ImportURLs = append(_cachedItemSubset.ImportURLs, "/"+pathToUse)
+			_cachedItemSubset.ExportKeys = append(_cachedItemSubset.ExportKeys, foundPath.ExportKey)
 		}
-		item.Deps = h.getDeps(_matches)
-		gmpdCache.Set(realPath, item, false)
+		_cachedItemSubset.Deps = h.getDeps(_matches)
+		_cachedItemSubset, _ = gmpdCache.LoadOrStore(cacheKey, _cachedItemSubset)
 	}
 
-	if !item.found {
-		return &uiRoutesData{}
-	}
-
-	_tasks_results := mux.RunNestedTasks(nestedRouter, tasksCtx, r, item._match_results)
+	_tasks_results := mux.RunNestedTasks(nestedRouter, tasksCtx, r, _match_results)
 
 	var hasRootData bool
-	if len(item._match_results.Matches) > 0 &&
-		item._match_results.Matches[0].NormalizedPattern() == "" &&
+	if len(_match_results.Matches) > 0 &&
+		_match_results.Matches[0].NormalizedPattern() == "" &&
 		_tasks_results.GetHasTaskHandler(0) {
 		hasRootData = true
 	}
@@ -121,8 +115,8 @@ func (h *River) getUIRoutesData(
 	}
 
 	var numberOfLoaders int
-	if item._match_results != nil {
-		numberOfLoaders = len(item._match_results.Matches)
+	if _match_results != nil {
+		numberOfLoaders = len(_match_results.Matches)
 	}
 
 	loadersData := make([]any, numberOfLoaders)
@@ -156,7 +150,7 @@ func (h *River) getUIRoutesData(
 		}
 	}
 
-	if thereAreErrors && item.routeType == RouteTypes.Loader {
+	if thereAreErrors {
 		headBlocksDoubleSlice := loadersHeadBlocks[:outermostErrorIndex]
 		headblocks := make([]*htmlutil.Element, 0, len(headBlocksDoubleSlice))
 		for _, slice := range headBlocksDoubleSlice {
@@ -164,16 +158,17 @@ func (h *River) getUIRoutesData(
 		}
 
 		apd := &ActivePathData{
-			LoadersData:         loadersData[:outermostErrorIndex],
-			ImportURLs:          item.ImportURLs[:outermostErrorIndex+1],
-			ExportKeys:          item.ExportKeys[:outermostErrorIndex+1],
-			OutermostErrorIndex: outermostErrorIndex,
-			SplatValues:         item.SplatValues,
-			Params:              item.Params,
+			LoadersData: loadersData[:outermostErrorIndex],
 			// LoadersErrMsgs:      loadersErrs[:outermostErrorIndex+1],
-			LoadersErrs: loadersErrs[:outermostErrorIndex+1],
-			HeadBlocks:  headblocks,
-			HasRootData: hasRootData,
+			ImportURLs:          _cachedItemSubset.ImportURLs[:outermostErrorIndex+1],
+			ExportKeys:          _cachedItemSubset.ExportKeys[:outermostErrorIndex+1],
+			OutermostErrorIndex: outermostErrorIndex,
+			SplatValues:         _match_results.SplatValues,
+			Params:              _match_results.Params,
+			Deps:                _cachedItemSubset.Deps,
+			LoadersErrs:         loadersErrs[:outermostErrorIndex+1],
+			HeadBlocks:          headblocks,
+			HasRootData:         hasRootData,
 		}
 
 		return &uiRoutesData{activePathData: apd, found: true}
@@ -185,17 +180,17 @@ func (h *River) getUIRoutesData(
 	}
 
 	apd := &ActivePathData{
-		LoadersData:         loadersData,
-		ImportURLs:          item.ImportURLs,
-		ExportKeys:          item.ExportKeys,
-		OutermostErrorIndex: outermostErrorIndex,
-		SplatValues:         item.SplatValues,
-		Params:              item.Params,
-		Deps:                item.Deps,
+		LoadersData: loadersData,
 		// LoadersErrMsgs:      loadersErrMsgs,
-		LoadersErrs: loadersErrs,
-		HeadBlocks:  headblocks,
-		HasRootData: hasRootData,
+		ImportURLs:          _cachedItemSubset.ImportURLs,
+		ExportKeys:          _cachedItemSubset.ExportKeys,
+		OutermostErrorIndex: outermostErrorIndex,
+		SplatValues:         _match_results.SplatValues,
+		Params:              _match_results.Params,
+		Deps:                _cachedItemSubset.Deps,
+		LoadersErrs:         loadersErrs,
+		HeadBlocks:          headblocks,
+		HasRootData:         hasRootData,
 	}
 
 	return &uiRoutesData{activePathData: apd, found: true}

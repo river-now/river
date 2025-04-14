@@ -28,7 +28,6 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 		uiRouteData, err := h.getUIRouteData(w, r, nestedRouter)
 
 		if err != nil && isErrNotFound(err) {
-			// __TODO -- optionally client redirect to a specific 404 page
 			Log.Error("Not found", "path", r.URL.Path)
 			res.NotFound()
 			return

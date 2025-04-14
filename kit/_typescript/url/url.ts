@@ -39,6 +39,7 @@ export function getAnchorDetailsFromEvent(event: MouseEvent) {
 
 export type HrefDetails =
 	| {
+			url: URL;
 			isHTTP: true;
 			absoluteURL: string;
 			relativeURL: string;
@@ -73,6 +74,7 @@ export function getHrefDetails(href: string): HrefDetails {
 
 	if (isExternal) {
 		return {
+			url,
 			isHTTP: true,
 			absoluteURL: url.href,
 			relativeURL: "",
@@ -82,6 +84,7 @@ export function getHrefDetails(href: string): HrefDetails {
 	}
 
 	return {
+		url,
 		isHTTP: true,
 		absoluteURL: url.href,
 		relativeURL: url.href.replace(url.origin, ""),

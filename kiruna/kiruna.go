@@ -190,5 +190,3 @@ func (k Kiruna) GetConfigFile() string {
 func (k Kiruna) FaviconRedirect() middleware.Middleware {
 	return k.c.FaviconRedirect()
 }
-
-// __TODO the func re-definitions in this file are becoming unwieldy. Refactor.

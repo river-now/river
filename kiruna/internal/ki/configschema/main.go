@@ -47,9 +47,6 @@ var Root_Schema = jsonschema.Entry{
 /////// CORE SETTINGS
 /////////////////////////////////////////////////////////////////////
 
-// __TODO should the dev and prod build cmds be optional?
-// how about the public path prefix?
-
 var Core_Schema = jsonschema.RequiredObject(jsonschema.Def{
 	Description:      `All paths should be set relative to the directory from which you run commands.`,
 	RequiredChildren: []string{"DevBuildHook", "ProdBuildHook", "MainAppEntry", "DistDir"},

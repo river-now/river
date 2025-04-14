@@ -18,7 +18,6 @@ func main() {
 
 	// Ask for new version
 	t.Blue("what is the new version? ")
-	t.Plain("v")
 	version, err := t.NewReader().ReadString('\n')
 	if err != nil {
 		t.Exit("failed to read version", err)
@@ -29,13 +28,11 @@ func main() {
 		t.Exit("version is empty", nil)
 	}
 
-	bumpedVersion := "v" + trimmedVersion
-
 	// Show new tag
 	t.Plain("Result: ")
 	t.Red(currentVersion)
 	t.Plain("  -->  ")
-	t.Green(bumpedVersion)
+	t.Green(trimmedVersion)
 	t.NewLine()
 
 	// Ask for confirmation
@@ -46,7 +43,7 @@ func main() {
 
 	// Ask for write confirmation
 	t.Blue("write new version ")
-	t.Green(bumpedVersion)
+	t.Green(trimmedVersion)
 	t.Blue(" to package.json? ")
 	t.RequireYes("aborted")
 
@@ -82,7 +79,7 @@ func main() {
 	} else {
 		t.Red("FINAL release ")
 	}
-	t.Green(bumpedVersion)
+	t.Green(trimmedVersion)
 	t.Blue(" npm? ")
 	t.RequireYes("aborted")
 

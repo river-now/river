@@ -32,9 +32,6 @@ export type RiverRootOutletPropsGeneric<JSXElement> = {
 /////// LINK COMPONENTS
 /////////////////////////////////////////////////////////////////////
 
-// __TODO add prefetch = "render" and prefetch = "viewport" options, a la Remix
-// __TODO don't link prefetch where you already are -- eg make an exception for window.location.pathname
-
 export type RiverLinkPropsBase<LinkClickCallback> = {
 	href?: string;
 	prefetch?: "intent";

@@ -199,6 +199,7 @@ describe("getHrefDetails", () => {
 			relativeURL: "/not-a-valid-url",
 			isExternal: false,
 			isInternal: true,
+			url: new URL("https://example.com/not-a-valid-url"),
 		});
 	});
 
@@ -210,6 +211,7 @@ describe("getHrefDetails", () => {
 			relativeURL: "/page",
 			isExternal: false,
 			isInternal: true,
+			url: new URL("https://example.com/page"),
 		});
 	});
 
@@ -221,6 +223,7 @@ describe("getHrefDetails", () => {
 			relativeURL: "",
 			isExternal: true,
 			isInternal: false,
+			url: new URL("https://external.com/"),
 		});
 	});
 
@@ -237,6 +240,7 @@ describe("getHrefDetails", () => {
 			relativeURL: "/relative-path",
 			isExternal: false,
 			isInternal: true,
+			url: new URL("https://example.com/relative-path"),
 		});
 	});
 
@@ -248,6 +252,7 @@ describe("getHrefDetails", () => {
 			relativeURL: "/#section",
 			isExternal: false,
 			isInternal: true,
+			url: new URL("https://example.com/#section"),
 		});
 	});
 

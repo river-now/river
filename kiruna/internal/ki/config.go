@@ -188,7 +188,6 @@ type UserConfigVite struct {
 	ViteConfigFile          string
 }
 
-// __TODO
 type UserConfigRiver struct {
 	IncludeDefaults      *bool
 	UIVariant            string

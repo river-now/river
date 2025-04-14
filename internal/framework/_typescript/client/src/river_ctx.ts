@@ -1,5 +1,3 @@
-// __TODO set up go/ts type sharing script
-
 export type HeadBlock = {
 	tag?: string;
 	safeAttributes?: Record<string, string>;

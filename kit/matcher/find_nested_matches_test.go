@@ -45,6 +45,12 @@ var NestedPatterns = []string{
 	"/tiger/:tiger_id",
 	"/tiger/:tiger_id/:tiger_cub_id",
 	"/tiger/:tiger_id/*",
+
+	// for when you don't care about dynamic params but still want to match exactly one segment
+	"/a/b/:",
+	"/c/d/e/:_",
+	"/f/g/h/i/:/:",
+	"/j/k/l/m/n/:_/:_",
 }
 
 type TestNestedScenario struct {
@@ -289,6 +295,45 @@ var NestedScenarios = []TestNestedScenario{
 			// no underscore prefix, so not really an index!
 			"/dynamic-index/index",
 		},
+	},
+
+	/*
+		"/a/b/:",
+		"/c/d/e/:_",
+		"/f/g/h/i/:/:",
+		"/j/k/l/m/n/:_/:_",
+	*/
+	{
+		Path: "/a/b/hi",
+		ExpectedMatches: []string{
+			"",
+			"/a/b/:",
+		},
+		Params: Params{"": "hi"},
+	},
+	{
+		Path: "/c/d/e/hi",
+		ExpectedMatches: []string{
+			"",
+			"/c/d/e/:_",
+		},
+		Params: Params{"_": "hi"},
+	},
+	{
+		Path: "/f/g/h/i/hi/hi2",
+		ExpectedMatches: []string{
+			"",
+			"/f/g/h/i/:/:",
+		},
+		Params: Params{"": "hi2"},
+	},
+	{
+		Path: "/j/k/l/m/n/hi/hi2",
+		ExpectedMatches: []string{
+			"",
+			"/j/k/l/m/n/:_/:_",
+		},
+		Params: Params{"_": "hi2"},
 	},
 }
 

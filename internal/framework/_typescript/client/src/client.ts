@@ -332,6 +332,13 @@ export function getPrefetchHandlers<E extends Event>(input: GetPrefetchHandlersI
 			return;
 		}
 
+		// We don't really want to prefetch if the user is already on the page.
+		// In those cases, wait for an actual click.
+		const alreadyThere = hrefDetails.url.href === new URL(window.location.href).href;
+		if (alreadyThere) {
+			return;
+		}
+
 		await input.beforeBegin?.(e);
 
 		currentNav = beginNavigation({
@@ -806,14 +813,12 @@ async function __reRenderApp({
 	let scrollStateToDispatch: ScrollState | undefined;
 
 	if (runHistoryOptions) {
-		// __TODO
-		// - scroll to top on link clicks, but provide an opt-out
-		// - scroll to top on form responses, but provide an opt-out
-
 		const { href, scrollStateToRestore, replace } = runHistoryOptions;
 
 		if (navigationType === "userNavigation" || navigationType === "redirect") {
-			if (href !== location.href && !replace) {
+			const target = new URL(href, window.location.href).href;
+			const current = new URL(window.location.href).href;
+			if (target !== current && !replace) {
 				getHistoryInstance().push(href);
 			} else {
 				getHistoryInstance().replace(href);
