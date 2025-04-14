@@ -35,7 +35,7 @@ export type RiverRootOutletPropsGeneric<JSXElement> = {
 export type RiverLinkPropsBase<LinkOnClickCallback> = {
 	href?: string;
 	prefetch?: "intent";
-	prefetchTimeout?: number;
+	prefetchDelayMs?: number;
 	beforeBegin?: LinkOnClickCallback;
 	beforeRender?: LinkOnClickCallback;
 	afterRender?: LinkOnClickCallback;
@@ -50,7 +50,7 @@ function linkPropsToPrefetchObj<LinkOnClickCallback>(
 
 	return getPrefetchHandlers({
 		href: props.href,
-		timeout: props.prefetchTimeout,
+		delayMs: props.prefetchDelayMs,
 		beforeBegin: props.beforeBegin as any,
 		beforeRender: props.beforeRender as any,
 		afterRender: props.afterRender as any,

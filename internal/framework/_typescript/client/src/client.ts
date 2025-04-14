@@ -278,7 +278,7 @@ function handleNavError(error: unknown, props: NavigateProps) {
 
 type GetPrefetchHandlersInput<E extends Event> = LinkOnClickCallbacksBase<E> & {
 	href: string;
-	timeout?: number;
+	delayMs?: number;
 };
 
 export function getPrefetchHandlers<E extends Event>(input: GetPrefetchHandlersInput<E>) {
@@ -290,6 +290,9 @@ export function getPrefetchHandlers<E extends Event>(input: GetPrefetchHandlersI
 	let timer: number | undefined;
 	let currentNav: NavigationControl | null = null;
 	let prerenderResult: NavigationResult | null = null;
+
+	// by default, wait 100ms before prefetching
+	const delayMsToUse = input.delayMs ?? 100;
 
 	async function finalize(e: E) {
 		try {
@@ -361,7 +364,7 @@ export function getPrefetchHandlers<E extends Event>(input: GetPrefetchHandlersI
 		if (currentNav) {
 			return;
 		}
-		timer = window.setTimeout(() => prefetch(e), input.timeout);
+		timer = window.setTimeout(() => prefetch(e), delayMsToUse);
 	}
 
 	function stop() {
