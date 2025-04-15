@@ -26,7 +26,7 @@ var River = &river.River{
 			{Tag: "title", InnerHTML: SiteTitle},
 			{Tag: "meta", Attributes: map[string]string{"name": "description", "content": SiteDescription}},
 
-			{Tag: "meta", Attributes: map[string]string{"property": "og:url", "content": r.URL.Path}},
+			{Tag: "meta", Attributes: map[string]string{"property": "og:url", "content": Origin + r.URL.Path}},
 			{Tag: "meta", Attributes: map[string]string{"property": "og:type", "content": "website"}},
 			{Tag: "meta", Attributes: map[string]string{"property": "og:title", "content": SiteTitle}},
 			{Tag: "meta", Attributes: map[string]string{"property": "og:description", "content": SiteDescription}},
@@ -34,7 +34,7 @@ var River = &river.River{
 
 			{Tag: "meta", Attributes: map[string]string{"name": "twitter:card", "content": "summary_large_image"}},
 			{Tag: "meta", Attributes: map[string]string{"property": "twitter:domain", "content": Domain}},
-			{Tag: "meta", Attributes: map[string]string{"property": "twitter:url", "content": r.URL.Path}},
+			{Tag: "meta", Attributes: map[string]string{"property": "twitter:url", "content": Origin + r.URL.Path}},
 			{Tag: "meta", Attributes: map[string]string{"name": "twitter:title", "content": SiteTitle}},
 			{Tag: "meta", Attributes: map[string]string{"name": "twitter:description", "content": SiteDescription}},
 			{Tag: "meta", Attributes: map[string]string{"name": "twitter:image", "content": imgURL}},
