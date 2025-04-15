@@ -69,9 +69,11 @@ const rollupOptions = {
 
 export const staticPublicAssetMap = {
 	"desktop.svg": "desktop_eebc981612eb.svg",
+	"favicon.svg": "favicon_ed2aaf004a0d.svg",
 	"full-logo.svg": "full-logo_e0ea7a3d3cf2.svg",
 	"logo.svg": "logo_d9b0e1618362.svg",
 	"moon.svg": "moon_7e0c08985ebe.svg",
+	"river-banner.webp": "river-banner_6dfc0fa16366.webp",
 	"sun.svg": "sun_338b26f6045d.svg"
 } as const;
 

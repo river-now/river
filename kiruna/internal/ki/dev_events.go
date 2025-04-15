@@ -142,12 +142,12 @@ func (c *Config) process_batched_events(events []fsnotify.Event) {
 	}
 
 	if hasMultipleEvents {
-		c.Logger.Info("Hard reloading browser")
 		c.must_reload_broadcast(
 			refreshFilePayload{ChangeType: changeTypeOther},
 			must_reload_broadcast_opts{
 				wait_for_app:  true,
 				wait_for_vite: c.isUsingVite(),
+				message:       "Hard reloading browser",
 			},
 		)
 	}
@@ -248,24 +248,24 @@ func (c *Config) mustHandleFileChange(
 	}
 
 	if wfc.RunClientDefinedRevalidateFunc {
-		c.Logger.Info("Running client-defined revalidate function")
 		c.must_reload_broadcast(
 			refreshFilePayload{ChangeType: changeTypeRevalidate},
 			must_reload_broadcast_opts{
 				wait_for_app:  true,
 				wait_for_vite: c.isUsingVite(),
+				message:       "Running client-defined revalidate function",
 			},
 		)
 		return nil
 	}
 
 	if !evtDetails.isKirunaCSS || needsHardReloadEvenIfNonGo {
-		c.Logger.Info("Hard reloading browser")
 		c.must_reload_broadcast(
 			refreshFilePayload{ChangeType: changeTypeOther},
 			must_reload_broadcast_opts{
 				wait_for_app:  true,
 				wait_for_vite: c.isUsingVite(),
+				message:       "Hard reloading browser",
 			},
 		)
 		return nil
@@ -284,10 +284,10 @@ func (c *Config) mustHandleFileChange(
 		CriticalCSS:  base64.StdEncoding.EncodeToString([]byte(c.GetCriticalCSS())),
 		NormalCSSURL: c.GetStyleSheetURL(),
 	}
-	c.Logger.Info("Hot reloading browser (CSS)")
 	c.must_reload_broadcast(rfp, must_reload_broadcast_opts{
 		wait_for_app:  false,
 		wait_for_vite: false,
+		message:       "Hot reloading browser (CSS)",
 	})
 
 	return nil

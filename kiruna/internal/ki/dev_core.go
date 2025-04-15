@@ -66,12 +66,12 @@ func (c *Config) MustStartDev(_opts ...must_start_dev_opts) {
 	go c.setup_browser_refresh_mux()
 
 	if opts.is_rebuild {
-		c.Logger.Info("Hard reloading browser")
 		c.must_reload_broadcast(
 			refreshFilePayload{ChangeType: changeTypeOther},
 			must_reload_broadcast_opts{
 				wait_for_app:  true,
 				wait_for_vite: c.isUsingVite(),
+				message:       "Hard reloading browser",
 			},
 		)
 

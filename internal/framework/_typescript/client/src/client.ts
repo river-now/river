@@ -7,6 +7,7 @@ import {
 	getIsErrorRes,
 	getIsGETRequest,
 } from "river.now/kit/url";
+import { updateHeadBlocks } from "./head.ts";
 import { parseFetchResponseForRedirectData, type RedirectData } from "./redirects.ts";
 import {
 	type GetRouteDataOutput,
@@ -850,10 +851,8 @@ async function __reRenderApp({
 
 	window.dispatchEvent(new CustomEvent(RIVER_ROUTE_CHANGE_EVENT_KEY, { detail }));
 
-	head.removeAllBetween("meta");
-	head.addBlocks("meta", json.metaHeadBlocks ?? []);
-	head.removeAllBetween("rest");
-	head.addBlocks("rest", json.restHeadBlocks ?? []);
+	updateHeadBlocks("meta", json.metaHeadBlocks ?? []);
+	updateHeadBlocks("rest", json.restHeadBlocks ?? []);
 }
 
 const cssBundleDataAttr = "data-river-css-bundle";
@@ -876,91 +875,6 @@ export async function revalidate() {
 
 export async function devRevalidate() {
 	await __navigate({ href: window.location.href, navigationType: "dev-revalidation" });
-}
-
-/////////////////////////////////////////////////////////////////////
-// HEAD
-/////////////////////////////////////////////////////////////////////
-
-const head = {
-	addBlocks,
-	removeAllBetween,
-} as const;
-
-const markerCache: Record<string, { startComment: Comment | null; endComment: Comment | null }> =
-	{};
-
-function removeAllBetween(type: "meta" | "rest") {
-	const { startComment, endComment } = getStartAndEndComments(type);
-	if (!startComment || !endComment) {
-		return;
-	}
-
-	let currentNode = startComment.nextSibling as Node | null;
-
-	while (currentNode && currentNode !== endComment) {
-		const nextNode = currentNode.nextSibling;
-		currentNode.parentNode?.removeChild(currentNode);
-		currentNode = nextNode;
-	}
-}
-
-function addBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>) {
-	const { startComment, endComment } = getStartAndEndComments(type);
-	if (!startComment || !endComment) {
-		return;
-	}
-
-	const fragment = document.createDocumentFragment();
-
-	for (const block of blocks) {
-		if (!block.tag) {
-			continue;
-		}
-
-		const newEl = document.createElement(block.tag);
-
-		if (block.safeAttributes) {
-			for (const key of Object.keys(block.safeAttributes)) {
-				newEl.setAttribute(key, block.safeAttributes[key] ?? Panic());
-			}
-		}
-
-		if (block.booleanAttributes) {
-			for (const key of block.booleanAttributes) {
-				newEl.setAttribute(key, "");
-			}
-		}
-
-		if (block.innerHTML) {
-			newEl.innerHTML = block.innerHTML;
-		}
-
-		fragment.appendChild(newEl);
-	}
-
-	endComment.parentNode?.insertBefore(fragment, endComment);
-}
-
-function getStartAndEndComments(type: "meta" | "rest") {
-	if (!markerCache[type]) {
-		markerCache[type] = {
-			startComment: findComment(`data-river="${type}-start"`),
-			endComment: findComment(`data-river="${type}-end"`),
-		};
-	}
-	return markerCache[type];
-}
-
-function findComment(matchingText: string) {
-	const iterator = document.createNodeIterator(document.head, NodeFilter.SHOW_COMMENT, {
-		acceptNode(node: Comment) {
-			return node.nodeValue?.trim() === matchingText
-				? NodeFilter.FILTER_ACCEPT
-				: NodeFilter.FILTER_REJECT;
-		},
-	});
-	return iterator.nextNode() as Comment | null;
 }
 
 /////////////////////////////////////////////////////////////////////

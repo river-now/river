@@ -198,6 +198,7 @@ func (c *Config) send_rebuilding_signal() {
 type must_reload_broadcast_opts struct {
 	wait_for_app  bool
 	wait_for_vite bool
+	message       string
 }
 
 func (c *Config) must_reload_broadcast(rfp refreshFilePayload, opts must_reload_broadcast_opts) {
@@ -214,6 +215,7 @@ func (c *Config) must_reload_broadcast(rfp refreshFilePayload, opts must_reload_
 			c.panic("vite never became ready", nil)
 		}
 	}
+	c.Logger.Info(opts.message)
 	c.browserTabManager.broadcast <- rfp
 }
 

@@ -1,4 +1,4 @@
-# 🧰 River
+# 🌊 River
 
 <img src="/site/static/public/river-banner.webp" alt="River logo banner">
 
