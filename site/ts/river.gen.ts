@@ -20,6 +20,11 @@ const routes = [
 	},
 	{
 		_type: "loader",
+		pattern: "/__/:dyn",
+		phantomOutputType: undefined,
+	},
+	{
+		_type: "loader",
 		pattern: "/start",
 		phantomOutputType: undefined,
 	},
@@ -55,6 +60,7 @@ import type { Plugin } from "vite";
 const rollupOptions = {
 	input: [
 		"./ts/entry.tsx",
+		"ts/dyn.tsx",
 		"ts/home.tsx",
 		"ts/root.tsx",
 		"ts/start.tsx",
