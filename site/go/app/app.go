@@ -3,11 +3,13 @@ package app
 import (
 	"embed"
 	"net/http"
+	"path"
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kiruna"
 	"github.com/river-now/river/kit/colorlog"
 	"github.com/river-now/river/kit/theme"
+	"github.com/river-now/river/kit/xyz"
 )
 
 const (
@@ -20,24 +22,22 @@ const (
 var River = &river.River{
 	Kiruna: Kiruna,
 	GetDefaultHeadBlocks: func(r *http.Request) ([]*river.HeadBlock, error) {
-		imgURL := Kiruna.GetPublicURL("river-banner.webp")
+		root := xyz.GetRootURL(r)
+		imgURL := path.Join(root, Kiruna.GetPublicURL("river-banner.webp"))
+		currentURL := path.Join(root, r.URL.Path)
 
 		return []*river.HeadBlock{
 			{Tag: "title", InnerHTML: SiteTitle},
 			{Tag: "meta", Attributes: map[string]string{"name": "description", "content": SiteDescription}},
 
-			{Tag: "meta", Attributes: map[string]string{"property": "og:url", "content": Origin + r.URL.Path}},
-			{Tag: "meta", Attributes: map[string]string{"property": "og:type", "content": "website"}},
 			{Tag: "meta", Attributes: map[string]string{"property": "og:title", "content": SiteTitle}},
 			{Tag: "meta", Attributes: map[string]string{"property": "og:description", "content": SiteDescription}},
+			{Tag: "meta", Attributes: map[string]string{"property": "og:type", "content": "website"}},
 			{Tag: "meta", Attributes: map[string]string{"property": "og:image", "content": imgURL}},
+			{Tag: "meta", Attributes: map[string]string{"property": "og:url", "content": currentURL}},
 
 			{Tag: "meta", Attributes: map[string]string{"name": "twitter:card", "content": "summary_large_image"}},
-			{Tag: "meta", Attributes: map[string]string{"property": "twitter:domain", "content": Domain}},
-			{Tag: "meta", Attributes: map[string]string{"property": "twitter:url", "content": Origin + r.URL.Path}},
-			{Tag: "meta", Attributes: map[string]string{"name": "twitter:title", "content": SiteTitle}},
-			{Tag: "meta", Attributes: map[string]string{"name": "twitter:description", "content": SiteDescription}},
-			{Tag: "meta", Attributes: map[string]string{"name": "twitter:image", "content": imgURL}},
+			{Tag: "meta", Attributes: map[string]string{"name": "twitter:site", "content": "@riverframework"}},
 
 			{Tag: "link", TrustedAttributes: map[string]string{"rel": "icon", "href": Kiruna.GetPublicURL("favicon.svg")}},
 		}, nil

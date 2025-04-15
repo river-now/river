@@ -1,7 +1,11 @@
 // Experimental or miscellaneous things. Buyer beware.
-package xp
+package xyz
 
-import "strings"
+import (
+	"fmt"
+	"net/http"
+	"strings"
+)
 
 func MakeEmojiDataURL(emojiStr string) string {
 	sb := strings.Builder{}
@@ -12,4 +16,12 @@ func MakeEmojiDataURL(emojiStr string) string {
 	sb.WriteString("</text>")
 	sb.WriteString("</svg>")
 	return sb.String()
+}
+
+func GetRootURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s", scheme, r.Host)
 }
