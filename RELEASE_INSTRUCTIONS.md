@@ -7,7 +7,8 @@ make npmbump
 2. push to github
 
 ```sh
-git commit -am 'v0.0.0-pre.0'
+git add .
+git commit -m 'v0.0.0-pre.0'
 git push
 ```
 
