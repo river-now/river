@@ -35,7 +35,7 @@ export function Root(props: RouteProps<"">) {
 						<Link href="/" class="inline-flex items-center gap-3">
 							<img class="w-10 sm:w-14" src={hashedURL("logo.svg")} alt="River logo" />
 							<div class="flex gap-2 items-baseline">
-								<div class="sm:text-xl">{useCurrentAppData().rootData?.SiteTitle}</div>
+								<div class="sm:text-xl">River</div>
 								<div class="text-xs opacity-70 hidden sm:block">
 									({useCurrentAppData().rootData?.LatestVersion})
 								</div>

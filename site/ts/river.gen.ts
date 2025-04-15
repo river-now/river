@@ -35,7 +35,6 @@ const routes = [
 /*********************************************************************/
 
 export type RootData = {
-	SiteTitle: string;
 	LatestVersion: string;
 };
 

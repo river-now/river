@@ -16,7 +16,6 @@ func newLoader[O any](pattern string, f mux.TaskHandlerFunc[mux.None, O]) *mux.T
 }
 
 type RootData struct {
-	SiteTitle     string
 	LatestVersion string
 }
 
@@ -36,7 +35,6 @@ var _ = newLoader("", func(c *mux.NestedReqData) (*RootData, error) {
 	}
 
 	return &RootData{
-		SiteTitle:     app.SiteTitle,
 		LatestVersion: currentNPMVersion,
 	}, nil
 })

@@ -19,9 +19,5 @@ func MakeEmojiDataURL(emojiStr string) string {
 }
 
 func GetRootURL(r *http.Request) string {
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
-	}
-	return fmt.Sprintf("%s://%s", scheme, r.Host)
+	return fmt.Sprintf("https://%s", r.Host)
 }

@@ -3,7 +3,6 @@ package app
 import (
 	"embed"
 	"net/http"
-	"path"
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kiruna"
@@ -15,7 +14,7 @@ import (
 const (
 	Domain          = "river.now"
 	Origin          = "https://" + Domain
-	SiteTitle       = "River"
+	SiteTitle       = "river.now"
 	SiteDescription = "River is a framework for writing modern, type-safe web applications with Go and TypeScript."
 )
 
@@ -23,8 +22,8 @@ var River = &river.River{
 	Kiruna: Kiruna,
 	GetDefaultHeadBlocks: func(r *http.Request) ([]*river.HeadBlock, error) {
 		root := xyz.GetRootURL(r)
-		imgURL := path.Join(root, Kiruna.GetPublicURL("river-banner.webp"))
-		currentURL := path.Join(root, r.URL.Path)
+		imgURL := root + Kiruna.GetPublicURL("river-banner.webp")
+		currentURL := root + r.URL.Path
 
 		return []*river.HeadBlock{
 			{Tag: "title", InnerHTML: SiteTitle},
