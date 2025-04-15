@@ -112,8 +112,8 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 		},
 	}
 
-	includeDefaults := true
-	if c._uc.River.IncludeDefaults != nil && !*c._uc.River.IncludeDefaults {
+	includeDefaults := c._uc.River != nil
+	if c._uc.River != nil && c._uc.River.IncludeDefaults != nil && !*c._uc.River.IncludeDefaults {
 		includeDefaults = false
 	}
 

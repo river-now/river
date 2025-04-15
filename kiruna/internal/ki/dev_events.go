@@ -23,7 +23,7 @@ func (c *Config) process_batched_events(events []fsnotify.Event) {
 	isGoOrNeedsHardReloadEvenIfNonGo := false
 
 	for _, evt := range fileChanges {
-		isConfig := filepath.Join(c.cleanWatchRoot, evt.Name) == c.GetConfigFile()
+		isConfig := filepath.Clean(filepath.Join(c.cleanWatchRoot, evt.Name)) == filepath.Clean(c.GetConfigFile())
 		isWriteOrCreate := evt.Has(fsnotify.Write) || evt.Has(fsnotify.Create)
 		if isConfig && isWriteOrCreate {
 			c.Logger.Info("[watcher]", "op", evt.Op.String(), "filename", evt.Name)

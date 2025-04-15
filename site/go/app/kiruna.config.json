@@ -1,5 +1,5 @@
 {
-	"$schema": "../../go/app/kiruna_dist/static/internal/schema.json",
+	"$schema": "./kiruna_dist/static/internal/schema.json",
 	"Core": {
 		"ConfigLocation": "./go/app/kiruna.config.json",
 		"DevBuildHook": "go run ./go/cmd/build --dev --hook",

@@ -745,15 +745,15 @@ export const addRouteChangeListener = makeListenerAdder<RouteChangeEventDetail>(
 // RE-RENDER APP
 /////////////////////////////////////////////////////////////////////
 
-function resolvePublicHref(href: string): string {
+function resolvePublicHref(relativeHref: string): string {
 	let baseURL = internal_RiverClientGlobal.get("viteDevURL");
 	if (!baseURL) {
-		baseURL = window.location.origin + internal_RiverClientGlobal.get("publicPathPrefix");
+		baseURL = internal_RiverClientGlobal.get("publicPathPrefix");
 	}
 	if (baseURL.endsWith("/")) {
 		baseURL = baseURL.slice(0, -1);
 	}
-	let final = href.startsWith("/") ? baseURL + href : baseURL + "/" + href;
+	let final = relativeHref.startsWith("/") ? baseURL + relativeHref : baseURL + "/" + relativeHref;
 	if (import.meta.env.DEV) {
 		final += "?__river_dev=1";
 	}
