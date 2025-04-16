@@ -31,7 +31,7 @@ func (c *Config) loadMapFromGob(gobFileName string, isBuildTime bool) (FileMap, 
 	distKirunaInternal := c._dist.S().Static.S().Internal
 
 	// __LOCATION_ASSUMPTION: Inside "dist/static"
-	file, err := appropriateFS.Open(filepath.Join(distKirunaInternal.LastSegment(), gobFileName))
+	file, err := appropriateFS.Open(path.Join(distKirunaInternal.LastSegment(), gobFileName))
 	if err != nil {
 		return nil, fmt.Errorf("error opening file %s: %v", gobFileName, err)
 	}
@@ -150,7 +150,7 @@ func (c *Config) getInitialPublicFileMapURL() (string, error) {
 
 	// __LOCATION_ASSUMPTION: Inside "dist/static"
 	content, err := fs.ReadFile(baseFS,
-		filepath.Join(
+		path.Join(
 			distKirunaInternal.LastSegment(),
 			distKirunaInternal.S().PublicFileMapFileRefDotTXT.LastSegment(),
 		))

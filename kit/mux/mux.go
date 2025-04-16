@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"path/filepath"
+	"path"
 
 	"github.com/river-now/river/kit/contextutil"
 	"github.com/river-now/river/kit/genericsutil"
@@ -76,7 +76,7 @@ func (rt *Router) MountRoot(optionalPatternToAppend ...string) string {
 	if len(optionalPatternToAppend) == 0 {
 		return rt._mount_root
 	}
-	return filepath.Join(rt._mount_root, optionalPatternToAppend[0])
+	return path.Join(rt._mount_root, optionalPatternToAppend[0])
 }
 
 type _Method_Matcher struct {

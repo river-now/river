@@ -6,11 +6,19 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
 	"github.com/river-now/river/kit/colorlog"
 )
+
+func defaultSignals() []os.Signal {
+	if runtime.GOOS == "windows" {
+		return []os.Signal{os.Interrupt}
+	}
+	return []os.Signal{syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT}
+}
 
 type OrchestrateOptions struct {
 	ShutdownTimeout  time.Duration // Default: 30 seconds
@@ -30,7 +38,7 @@ func Orchestrate(options OrchestrateOptions) {
 		options.ShutdownTimeout = 30 * time.Second
 	}
 	if len(options.Signals) == 0 {
-		options.Signals = []os.Signal{syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT}
+		options.Signals = defaultSignals()
 	}
 
 	// Context for orchestrating shutdown
@@ -89,8 +97,16 @@ func TerminateProcess(process *os.Process, timeToWait time.Duration, logger *slo
 	if logger == nil {
 		logger = newDefaultLogger()
 	}
-	if err := process.Signal(syscall.SIGTERM); err != nil {
-		return fmt.Errorf("failed to send SIGTERM: %w", err)
+
+	var err error
+	if runtime.GOOS == "windows" {
+		err = process.Kill()
+	} else {
+		err = process.Signal(syscall.SIGTERM)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to send termination signal: %w", err)
 	}
 
 	done := make(chan error)
