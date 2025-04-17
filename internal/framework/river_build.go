@@ -140,7 +140,7 @@ export function riverVitePlugin(): Plugin {
 			if (!needsReplacement) return null;
 			const replacedCode = code.replace(
 				assetRegex,
-				(original, _, assetPath) => {
+				(_, __, assetPath) => {
 					const hashed = (staticPublicAssetMap as Record<string, string>)[assetPath];
 					if (!hashed) return '\"' + assetPath + '\"';
 					return {{.Tick}}"/{{.PublicDir}}/${hashed}"{{.Tick}};
