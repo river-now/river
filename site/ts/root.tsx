@@ -86,7 +86,7 @@ export function Root(props: RouteProps<"">) {
 						target="_blank"
 						rel="noreferrer"
 					>
-						⭐ GitHub
+						GitHub
 					</a>
 				</div>
 			</nav>
