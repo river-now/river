@@ -60,9 +60,9 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 		if h.GetDefaultHeadBlocks != nil {
 			defaultHeadBlocks, err = h.GetDefaultHeadBlocks(r)
 			if err != nil {
-				errMsg := fmt.Sprintf("could not get default head blocks: %v", err)
-				Log.Error(errMsg)
-				return errors.New(errMsg)
+				wrapped := fmt.Errorf("could not get default head blocks: %w", err)
+				Log.Error(wrapped.Error())
+				return wrapped
 			}
 		} else {
 			defaultHeadBlocks = []*htmlutil.Element{}

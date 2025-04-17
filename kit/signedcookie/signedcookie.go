@@ -36,7 +36,7 @@ func NewManager(secrets Secrets) (*Manager, error) {
 	for i, secret := range secrets {
 		bytes, err := bytesutil.FromBase64(secret)
 		if err != nil {
-			return nil, fmt.Errorf("error decoding base64: %v", err)
+			return nil, fmt.Errorf("error decoding base64: %w", err)
 		}
 		if len(bytes) != SecretSize {
 			return nil, fmt.Errorf("secret %d is not %d bytes", i, SecretSize)
@@ -112,7 +112,7 @@ func (m Manager) signValue(unsignedValue string, encrypt bool) (string, error) {
 func (m Manager) verifyAndReadValue(signedValue string) (string, error) {
 	bytes, err := bytesutil.FromBase64(signedValue)
 	if err != nil {
-		return "", fmt.Errorf("error decoding base64: %v", err)
+		return "", fmt.Errorf("error decoding base64: %w", err)
 	}
 
 	if len(bytes) < 1 {

@@ -59,7 +59,7 @@ func (inst *Instance) Render(input *HeadBlocks) (template.HTML, error) {
 	// Add title
 	err := htmlutil.RenderElementToBuilder(&htmlutil.Element{Tag: "title", InnerHTML: template.HTML(input.Title)}, &b)
 	if err != nil {
-		return "", fmt.Errorf("error rendering title: %v", err)
+		return "", fmt.Errorf("error rendering title: %w", err)
 	}
 
 	// Add meta head els
@@ -67,7 +67,7 @@ func (inst *Instance) Render(input *HeadBlocks) (template.HTML, error) {
 	b.WriteString("\n")
 	for _, el := range input.Meta {
 		if err := htmlutil.RenderElementToBuilder(el, &b); err != nil {
-			return "", fmt.Errorf("error rendering meta head el: %v", err)
+			return "", fmt.Errorf("error rendering meta head el: %w", err)
 		}
 	}
 	b.WriteString(inst.metaEnd)
@@ -78,7 +78,7 @@ func (inst *Instance) Render(input *HeadBlocks) (template.HTML, error) {
 	b.WriteString("\n")
 	for _, el := range input.Rest {
 		if err := htmlutil.RenderElementToBuilder(el, &b); err != nil {
-			return "", fmt.Errorf("error rendering rest head el: %v", err)
+			return "", fmt.Errorf("error rendering rest head el: %w", err)
 		}
 	}
 	b.WriteString(inst.restEnd)

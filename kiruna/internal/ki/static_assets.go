@@ -1,7 +1,6 @@
 package ki
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -18,9 +17,9 @@ type FileMap map[string]fileVal
 func (c *Config) GetServeStaticHandler(addImmutableCacheHeaders bool) (http.Handler, error) {
 	publicFS, err := c.GetPublicFS()
 	if err != nil {
-		errMsg := fmt.Sprintf("error getting public FS: %v", err)
-		c.Logger.Error(errMsg)
-		return nil, errors.New(errMsg)
+		wrapped := fmt.Errorf("error getting public FS: %w", err)
+		c.Logger.Error(wrapped.Error())
+		return nil, wrapped
 	}
 	if addImmutableCacheHeaders {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

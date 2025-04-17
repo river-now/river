@@ -1,7 +1,6 @@
 package ki
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -28,15 +27,15 @@ func (c *Config) __getSubFS(subDir string) (fs.FS, error) {
 
 	baseFS, err := c.GetBaseFS()
 	if err != nil {
-		errMsg := fmt.Sprintf("error getting %s FS: %v", subDir, err)
-		c.Logger.Error(errMsg)
-		return nil, errors.New(errMsg)
+		wrapped := fmt.Errorf("error getting %s FS: %w", subDir, err)
+		c.Logger.Error(wrapped.Error())
+		return nil, wrapped
 	}
 	subFS, err := fs.Sub(baseFS, _path)
 	if err != nil {
-		errMsg := fmt.Sprintf("error getting %s FS: %v", subDir, err)
-		c.Logger.Error(errMsg)
-		return nil, errors.New(errMsg)
+		wrapped := fmt.Errorf("error getting %s FS: %w", subDir, err)
+		c.Logger.Error(wrapped.Error())
+		return nil, wrapped
 	}
 	return subFS, nil
 }

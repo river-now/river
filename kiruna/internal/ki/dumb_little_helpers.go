@@ -89,7 +89,7 @@ func (c *Config) kill_browser_refresh_mux() {
 func (c *Config) add_directory_to_watcher(path string) error {
 	return filepath.Walk(path, func(walkedPath string, info os.FileInfo, err error) error {
 		if err != nil {
-			return fmt.Errorf("error walking path: %v", err)
+			return fmt.Errorf("error walking path: %w", err)
 		}
 		if info.IsDir() {
 			if c.get_is_ignored(walkedPath, c.ignoredDirPatterns) {
@@ -97,7 +97,7 @@ func (c *Config) add_directory_to_watcher(path string) error {
 			}
 			err := c.watcher.Add(walkedPath)
 			if err != nil {
-				return fmt.Errorf("error adding directory to watcher: %v", err)
+				return fmt.Errorf("error adding directory to watcher: %w", err)
 			}
 		}
 		return nil
@@ -240,7 +240,7 @@ func (c *Config) compile_go_binary() error {
 	buildCmd.Stderr = os.Stderr
 	err := buildCmd.Run()
 	if err != nil {
-		return fmt.Errorf("error compiling binary: %v", err)
+		return fmt.Errorf("error compiling binary: %w", err)
 	}
 	c.Logger.Info("DONE compiling Go binary", "duration", time.Since(a))
 	return nil
