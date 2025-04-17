@@ -21,8 +21,21 @@ func (c *AnyChecker) If(condition bool, f func(*AnyChecker) *AnyChecker) *AnyChe
 	return c
 }
 
-func (c *AnyChecker) In(permittedValues ...any) *AnyChecker {
+func (c *AnyChecker) In(permittedValuesSlice any) *AnyChecker {
 	if c.done {
+		return c
+	}
+	base := safeDereference(reflect.ValueOf(permittedValuesSlice))
+	if base.Kind() != reflect.Slice && base.Kind() != reflect.Array {
+		c.failF("%s is not a slice or array", c.label)
+		return c
+	}
+	permittedValues := make([]any, 0, base.Len())
+	for i := range base.Len() {
+		permittedValues = append(permittedValues, base.Index(i).Interface())
+	}
+	if len(permittedValues) == 0 {
+		c.failF("%s is empty", c.label)
 		return c
 	}
 	for _, validValue := range permittedValues {
@@ -34,8 +47,21 @@ func (c *AnyChecker) In(permittedValues ...any) *AnyChecker {
 	return c
 }
 
-func (c *AnyChecker) NotIn(prohibitedValues ...any) *AnyChecker {
+func (c *AnyChecker) NotIn(prohibitedValuesSlice any) *AnyChecker {
 	if c.done {
+		return c
+	}
+	base := safeDereference(reflect.ValueOf(prohibitedValuesSlice))
+	if base.Kind() != reflect.Slice && base.Kind() != reflect.Array {
+		c.failF("%s is not a slice or array", c.label)
+		return c
+	}
+	prohibitedValues := make([]any, 0, base.Len())
+	for i := range base.Len() {
+		prohibitedValues = append(prohibitedValues, base.Index(i).Interface())
+	}
+	if len(prohibitedValues) == 0 {
+		c.failF("%s is empty", c.label)
 		return c
 	}
 	for _, invalidValue := range prohibitedValues {

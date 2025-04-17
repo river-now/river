@@ -68,7 +68,7 @@ func (c *AnyChecker) init(required bool) *AnyChecker {
 	}
 	if c.trueValue == nil || isEffectivelyZero(c.reflectValue) {
 		if required {
-			c.errors = append(c.errors, fmt.Errorf("%s is required", c.label))
+			c.fail(fmt.Sprintf("%s is required", c.label))
 		} else {
 			c.ok()
 		}
