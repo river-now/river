@@ -65,7 +65,7 @@ func InitBase(options InitOptions) (Base, error) {
 
 	err := godotenv.Load()
 	if err != nil {
-		err = fmt.Errorf("envutil: failed to load .env file: %v", err)
+		err = fmt.Errorf("envutil: failed to load .env file: %w", err)
 	}
 
 	if options.GetIsDevFunc == nil {

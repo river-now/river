@@ -53,3 +53,14 @@ func serialize(v any) string {
 
 	return code
 }
+
+func StringUnion(strs []string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	quoted := make([]string, len(strs))
+	for i, s := range strs {
+		quoted[i] = fmt.Sprintf("'%s'", s)
+	}
+	return strings.Join(quoted, " | ")
+}

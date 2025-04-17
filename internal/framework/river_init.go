@@ -2,7 +2,6 @@ package framework
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -13,11 +12,11 @@ import (
 
 func (h *River) Init(isDev bool) {
 	if err := h.initInner(isDev); err != nil {
-		errMsg := fmt.Sprintf("Error initializing River: %v", err)
+		wrapped := fmt.Errorf("error initializing River: %w", err)
 		if isDev {
-			Log.Error(errMsg)
+			Log.Error(wrapped.Error())
 		} else {
-			panic(errMsg)
+			panic(wrapped)
 		}
 	} else {
 		Log.Info("River initialized", "build id", h._buildID)
@@ -64,16 +63,16 @@ func (h *River) initInner(isDev bool) error {
 	h._isDev = isDev
 	privateFS, err := h.Kiruna.GetPrivateFS()
 	if err != nil {
-		errMsg := fmt.Sprintf("could not get private fs: %v", err)
-		Log.Error(errMsg)
-		return errors.New(errMsg)
+		wrapped := fmt.Errorf("could not get private fs: %w", err)
+		Log.Error(wrapped.Error())
+		return wrapped
 	}
 	h._privateFS = privateFS
 	pathsFile, err := h.getBasePaths_StageOneOrTwo(isDev)
 	if err != nil {
-		errMsg := fmt.Sprintf("could not get base paths: %v", err)
-		Log.Error(errMsg)
-		return errors.New(errMsg)
+		wrapped := fmt.Errorf("could not get base paths: %w", err)
+		Log.Error(wrapped.Error())
+		return wrapped
 	}
 	h._buildID = pathsFile.BuildID
 	if h._paths == nil {
@@ -91,7 +90,7 @@ func (h *River) initInner(isDev bool) error {
 	}
 	tmpl, err := template.ParseFS(h._privateFS, h.Kiruna.GetRiverHTMLTemplateLocation())
 	if err != nil {
-		return fmt.Errorf("error parsing root template: %v", err)
+		return fmt.Errorf("error parsing root template: %w", err)
 	}
 	h._rootTemplate = tmpl
 	return nil
@@ -105,17 +104,17 @@ func (h *River) getBasePaths_StageOneOrTwo(isDev bool) (*PathsFile, error) {
 	pathsFile := PathsFile{}
 	file, err := h._privateFS.Open(path.Join("river_out", fileToUse))
 	if err != nil {
-		errMsg := fmt.Sprintf("could not open %s: %v", fileToUse, err)
-		Log.Error(errMsg)
-		return nil, errors.New(errMsg)
+		wrapped := fmt.Errorf("could not open %s: %v", fileToUse, err)
+		Log.Error(wrapped.Error())
+		return nil, wrapped
 	}
 	defer file.Close()
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&pathsFile)
 	if err != nil {
-		errMsg := fmt.Sprintf("could not decode %s: %v", fileToUse, err)
-		Log.Error(errMsg)
-		return nil, errors.New(errMsg)
+		wrapped := fmt.Errorf("could not decode %s: %v", fileToUse, err)
+		Log.Error(wrapped.Error())
+		return nil, wrapped
 	}
 	return &pathsFile, nil
 }

@@ -112,7 +112,7 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 				Rest:  routeData.Rest,
 			})
 			if err != nil {
-				return fmt.Errorf("error getting head elements: %v", err)
+				return fmt.Errorf("error getting head elements: %w", err)
 			}
 			headElements = he
 			headElements += "\n" + h.Kiruna.GetCriticalCSSStyleElement()
@@ -124,7 +124,7 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 		eg.Go(func() error {
 			sih, err := h.GetSSRInnerHTML(routeData)
 			if err != nil {
-				return fmt.Errorf("error getting SSR inner HTML: %v", err)
+				return fmt.Errorf("error getting SSR inner HTML: %w", err)
 			}
 			ssrScript = sih.Script
 			ssrScriptSha256Hash = sih.Sha256Hash

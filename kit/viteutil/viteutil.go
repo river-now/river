@@ -125,7 +125,7 @@ func ToDevScripts(options ToDevScriptsOptions) (template.HTML, error) {
 			InnerHTML:         template.HTML(b.String()),
 		}, &htmlBuilder)
 		if err != nil {
-			return "", fmt.Errorf("could not render vite script: %v", err)
+			return "", fmt.Errorf("could not render vite script: %w", err)
 		}
 	}
 
@@ -133,7 +133,7 @@ func ToDevScripts(options ToDevScriptsOptions) (template.HTML, error) {
 		fmt.Sprintf("http://localhost:%s/@vite/client", port), &htmlBuilder,
 	)
 	if err != nil {
-		return "", fmt.Errorf("could not render vite script: %v", err)
+		return "", fmt.Errorf("could not render vite script: %w", err)
 	}
 
 	err = htmlutil.RenderModuleScriptToBuilder(
@@ -145,7 +145,7 @@ func ToDevScripts(options ToDevScriptsOptions) (template.HTML, error) {
 		&htmlBuilder,
 	)
 	if err != nil {
-		return "", fmt.Errorf("could not render vite script: %v", err)
+		return "", fmt.Errorf("could not render vite script: %w", err)
 	}
 
 	return template.HTML(htmlBuilder.String()), nil

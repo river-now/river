@@ -69,7 +69,7 @@ func AddNonce(el *Element, len uint8) (string, error) {
 	}
 	nonce, err := id.New(len)
 	if err != nil {
-		return "", fmt.Errorf("could not generate nonce: %v", err)
+		return "", fmt.Errorf("could not generate nonce: %w", err)
 	}
 	el.TrustedAttributes["nonce"] = nonce
 	return nonce, nil
@@ -80,7 +80,7 @@ func RenderElement(el *Element) (template.HTML, error) {
 
 	err := RenderElementToBuilder(el, &htmlBuilder)
 	if err != nil {
-		return "", fmt.Errorf("could not render element: %v", err)
+		return "", fmt.Errorf("could not render element: %w", err)
 	}
 
 	return template.HTML(htmlBuilder.String()), nil

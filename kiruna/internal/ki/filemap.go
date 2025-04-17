@@ -3,6 +3,7 @@ package ki
 import (
 	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -25,7 +26,7 @@ const (
 func (c *Config) loadMapFromGob(gobFileName string, isBuildTime bool) (FileMap, error) {
 	appropriateFS, err := c.getAppropriateFSMaybeBuildTime(isBuildTime)
 	if err != nil {
-		return nil, fmt.Errorf("error getting FS: %v", err)
+		return nil, fmt.Errorf("error getting FS: %w", err)
 	}
 
 	distKirunaInternal := c._dist.S().Static.S().Internal
@@ -33,7 +34,7 @@ func (c *Config) loadMapFromGob(gobFileName string, isBuildTime bool) (FileMap, 
 	// __LOCATION_ASSUMPTION: Inside "dist/static"
 	file, err := appropriateFS.Open(path.Join(distKirunaInternal.LastSegment(), gobFileName))
 	if err != nil {
-		return nil, fmt.Errorf("error opening file %s: %v", gobFileName, err)
+		return nil, fmt.Errorf("error opening file %s: %w", gobFileName, err)
 	}
 
 	defer file.Close()
@@ -41,7 +42,7 @@ func (c *Config) loadMapFromGob(gobFileName string, isBuildTime bool) (FileMap, 
 	var mapFromGob FileMap
 	err = fsutil.FromGobInto(file, &mapFromGob)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding gob: %v", err)
+		return nil, fmt.Errorf("error decoding gob: %w", err)
 	}
 	return mapFromGob, nil
 }
@@ -56,7 +57,7 @@ func (c *Config) getAppropriateFSMaybeBuildTime(isBuildTime bool) (fs.FS, error)
 func (c *Config) saveMapToGob(mapToSave FileMap, dest string) error {
 	file, err := os.Create(filepath.Join(c._dist.S().Static.S().Internal.FullPath(), dest))
 	if err != nil {
-		return fmt.Errorf("error creating file: %v", err)
+		return fmt.Errorf("error creating file: %w", err)
 	}
 	defer file.Close()
 	encoder := gob.NewEncoder(file)
@@ -71,7 +72,7 @@ func (c *Config) savePublicFileMapJSToInternalPublicDir(mapToSave FileMap) error
 
 	mapAsJSON, err := json.Marshal(simpleStrMap)
 	if err != nil {
-		return fmt.Errorf("error marshalling map to JSON: %v", err)
+		return fmt.Errorf("error marshalling map to JSON: %w", err)
 	}
 
 	bytes := []byte(fmt.Sprintf("export const kirunaPublicFileMap = %s;", string(mapAsJSON)))
@@ -80,7 +81,7 @@ func (c *Config) savePublicFileMapJSToInternalPublicDir(mapToSave FileMap) error
 
 	hashedFileRefPath := c._dist.S().Static.S().Internal.S().PublicFileMapFileRefDotTXT.FullPath()
 	if err := os.WriteFile(hashedFileRefPath, []byte(hashedFilename), 0644); err != nil {
-		return fmt.Errorf("error writing to file: %v", err)
+		return fmt.Errorf("error writing to file: %w", err)
 	}
 
 	return os.WriteFile(filepath.Join(
@@ -119,18 +120,18 @@ func (c *Config) getInitialPublicFileMapDetails() (*publicFileMapDetails, error)
 
 	sha256Hash, err := htmlutil.AddSha256HashInline(&scriptEl, true)
 	if err != nil {
-		return nil, fmt.Errorf("error handling CSP: %v", err)
+		return nil, fmt.Errorf("error handling CSP: %w", err)
 	}
 
 	var htmlBuilder strings.Builder
 
 	err = htmlutil.RenderElementToBuilder(&linkEl, &htmlBuilder)
 	if err != nil {
-		return nil, fmt.Errorf("error rendering element to builder: %v", err)
+		return nil, fmt.Errorf("error rendering element to builder: %w", err)
 	}
 	err = htmlutil.RenderElementToBuilder(&scriptEl, &htmlBuilder)
 	if err != nil {
-		return nil, fmt.Errorf("error rendering element to builder: %v", err)
+		return nil, fmt.Errorf("error rendering element to builder: %w", err)
 	}
 
 	return &publicFileMapDetails{
@@ -199,14 +200,28 @@ func (c *Config) GetPublicFileMapKeysBuildtime() ([]string, error) {
 
 func (c *Config) GetSimplePublicFileMapBuildtime() (map[string]string, error) {
 	filemap, err := c.getInitialPublicFileMapFromGobBuildtime()
+
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		if err := c.do_build_time_file_processing(false); err != nil {
+			return nil, fmt.Errorf("error processing build time files: %w", err)
+		}
+
+		filemap, err = c.getInitialPublicFileMapFromGobBuildtime()
+		if err != nil {
+			return nil, fmt.Errorf("error getting initial public file map: %w", err)
+		}
+	}
+
 	if err != nil {
 		return nil, err
 	}
+
 	simpleStrMap := make(map[string]string, len(filemap))
 	for k, v := range filemap {
 		if !v.IsPrehashed {
 			simpleStrMap[k] = v.Val
 		}
 	}
+
 	return simpleStrMap, nil
 }

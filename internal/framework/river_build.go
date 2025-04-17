@@ -3,7 +3,6 @@ package framework
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -141,7 +140,7 @@ export function riverVitePlugin(): Plugin {
 			if (!needsReplacement) return null;
 			const replacedCode = code.replace(
 				assetRegex,
-				(original, _, assetPath) => {
+				(_, __, assetPath) => {
 					const hashed = (staticPublicAssetMap as Record<string, string>)[assetPath];
 					if (!hashed) return '\"' + assetPath + '\"';
 					return {{.Tick}}"/{{.PublicDir}}/${hashed}"{{.Tick}};
@@ -188,7 +187,7 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	sb.Write("export const staticPublicAssetMap = ")
 	mapAsJSON, err := json.MarshalIndent(fileMap, "", "\t")
 	if err != nil {
-		return "", fmt.Errorf("error marshalling map to JSON: %v", err)
+		return "", fmt.Errorf("error marshalling map to JSON: %w", err)
 	}
 	sb.Line(string(mapAsJSON) + " as const;")
 	sb.Return()
@@ -229,12 +228,12 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	ignoreTabs := strings.Repeat("\t", 7)
 	stringifiedIgnoreBytes, err := json.MarshalIndent(ignoredList, "", ignoreTabs+"\t")
 	if err != nil {
-		return "", fmt.Errorf("error marshalling ignored list to JSON: %v", err)
+		return "", fmt.Errorf("error marshalling ignored list to JSON: %w", err)
 	}
 
 	stringifiedDedupeBytes, err := json.Marshal(dedupeList)
 	if err != nil {
-		return "", fmt.Errorf("error marshalling dedupe list to JSON: %v", err)
+		return "", fmt.Errorf("error marshalling dedupe list to JSON: %w", err)
 	}
 
 	stringifiedIgnore := string(stringifiedIgnoreBytes)
@@ -250,7 +249,7 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 		"DedupeList":       template.HTML(stringifiedDedupeBytes),
 	})
 	if err != nil {
-		return "", fmt.Errorf("error executing template: %v", err)
+		return "", fmt.Errorf("error executing template: %w", err)
 	}
 
 	sb.Write(buf.String())
@@ -498,17 +497,17 @@ func cleanStaticPublicOutDir(staticPublicOutDir string) error {
 	}
 
 	if !fileInfo.IsDir() {
-		errMsg := fmt.Sprintf("%s is not a directory", staticPublicOutDir)
-		Log.Error(errMsg)
-		return errors.New(errMsg)
+		wrapped := fmt.Errorf("%s is not a directory", staticPublicOutDir)
+		Log.Error(wrapped.Error())
+		return wrapped
 	}
 
 	// delete the ".vite" directory
 	err = os.RemoveAll(filepath.Join(staticPublicOutDir, ".vite"))
 	if err != nil {
-		errMsg := fmt.Sprintf("error removing .vite directory: %s", err)
-		Log.Error(errMsg)
-		return errors.New(errMsg)
+		wrapped := fmt.Errorf("error removing .vite directory: %s", err)
+		Log.Error(wrapped.Error())
+		return wrapped
 	}
 
 	// delete all files starting with riverPrehashedFilePrefix

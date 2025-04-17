@@ -33,10 +33,22 @@ type BuildOptions struct {
 }
 
 func (c *Config) do_build_time_file_processing(shouldBeGranular bool) error {
+	if !shouldBeGranular {
+		// nuke the dist/static directory
+		if err := os.RemoveAll(c._dist.S().Static.FullPath()); err != nil {
+			return fmt.Errorf("error removing dist/static directory: %w", err)
+		}
+
+		// re-make required directories
+		if err := c.SetupDistDir(); err != nil {
+			return fmt.Errorf("error making requisite directories: %w", err)
+		}
+	}
+
 	if c.is_using_browser() {
 		// Must be complete before BuildCSS in case the CSS references any public files
 		if err := c.handlePublicFiles(shouldBeGranular); err != nil {
-			return fmt.Errorf("error handling public files: %v", err)
+			return fmt.Errorf("error handling public files: %w", err)
 		}
 
 		var eg errgroup.Group
@@ -63,19 +75,10 @@ func (c *Config) Build(opts BuildOptions) error {
 		)
 	}
 
-	if !opts.is_dev_rebuild {
-		// nuke the dist/static directory
-		if err := os.RemoveAll(c._dist.S().Static.FullPath()); err != nil {
-			return fmt.Errorf("error removing dist/static directory: %v", err)
-		}
-
-		// re-make required directories
-		if err := c.SetupDistDir(); err != nil {
-			return fmt.Errorf("error making requisite directories: %v", err)
-		}
+	err := c.do_build_time_file_processing(opts.is_dev_rebuild) // once before build hook
+	if err != nil {
+		return fmt.Errorf("error processing build time files: %w", err)
 	}
-
-	c.do_build_time_file_processing(opts.is_dev_rebuild) // once before build hook
 
 	if opts.CSSHotReload {
 		return nil
@@ -86,31 +89,37 @@ func (c *Config) Build(opts BuildOptions) error {
 	with_dev_hook := opts.IsDev && c._uc.Core.DevBuildHook != ""
 	if with_dev_hook {
 		if err := executil.RunCmd(strings.Fields(c._uc.Core.DevBuildHook)...); err != nil {
-			return fmt.Errorf("error running dev build command: %v", err)
+			return fmt.Errorf("error running dev build command: %w", err)
 		}
 	}
 
 	with_prod_hook := !opts.IsDev && c._uc.Core.ProdBuildHook != ""
 	if with_prod_hook {
 		if err := executil.RunCmd(strings.Fields(c._uc.Core.ProdBuildHook)...); err != nil {
-			return fmt.Errorf("error running prod build command: %v", err)
+			return fmt.Errorf("error running prod build command: %w", err)
 		}
 	}
 
 	hook_duration := time.Since(hook_start)
 
-	err := configschema.Write(filepath.Join(c._dist.S().Static.S().Internal.FullPath(), "schema.json"))
+	err = configschema.Write(filepath.Join(
+		c._dist.S().Static.S().Internal.FullPath(),
+		"schema.json",
+	))
 	if err != nil {
-		return fmt.Errorf("error writing config schema: %v", err)
+		return fmt.Errorf("error writing config schema: %w", err)
 	}
 
-	c.do_build_time_file_processing(true) // and once again after
+	err = c.do_build_time_file_processing(true) // and once again after
+	if err != nil {
+		return fmt.Errorf("error processing build time files: %w", err)
+	}
 
 	go_compile_start := time.Now()
 
 	if opts.RecompileGoBinary {
 		if err := c.compile_go_binary(); err != nil {
-			return fmt.Errorf("error compiling binary: %v", err)
+			return fmt.Errorf("error compiling binary: %w", err)
 		}
 	}
 
@@ -131,12 +140,12 @@ func (c *Config) Build(opts BuildOptions) error {
 func (c *Config) buildCSS() error {
 	err := c.processCSSCritical()
 	if err != nil {
-		return fmt.Errorf("error processing critical CSS: %v", err)
+		return fmt.Errorf("error processing critical CSS: %w", err)
 	}
 
 	err = c.processCSSNormal()
 	if err != nil {
-		return fmt.Errorf("error processing normal CSS: %v", err)
+		return fmt.Errorf("error processing normal CSS: %w", err)
 	}
 
 	return nil
@@ -214,12 +223,12 @@ func (c *Config) __processCSS(nature string) error {
 
 	result := ctx.Rebuild()
 	if err := esbuildutil.CollectErrors(result); err != nil {
-		return fmt.Errorf("error building CSS: %v", err)
+		return fmt.Errorf("error building CSS: %w", err)
 	}
 
 	var metafile esbuildutil.ESBuildMetafileSubset
 	if err := json.Unmarshal([]byte(result.Metafile), &metafile); err != nil {
-		return fmt.Errorf("error unmarshalling esbuild metafile: %v", err)
+		return fmt.Errorf("error unmarshalling esbuild metafile: %w", err)
 	}
 
 	srcURL := c.cleanSources.NonCriticalCSSEntry
@@ -268,11 +277,11 @@ func (c *Config) __processCSS(nature string) error {
 		oldNormalPath := filepath.Join(outputPath, "normal_*.css")
 		oldNormalFiles, err := filepath.Glob(oldNormalPath)
 		if err != nil {
-			return fmt.Errorf("error finding old normal CSS files: %v", err)
+			return fmt.Errorf("error finding old normal CSS files: %w", err)
 		}
 		for _, oldNormalFile := range oldNormalFiles {
 			if err := os.Remove(oldNormalFile); err != nil {
-				return fmt.Errorf("error removing old normal CSS file: %v", err)
+				return fmt.Errorf("error removing old normal CSS file: %w", err)
 			}
 		}
 
@@ -282,7 +291,7 @@ func (c *Config) __processCSS(nature string) error {
 
 	// Ensure output directory exists
 	if err := os.MkdirAll(outputPath, 0755); err != nil {
-		return fmt.Errorf("error creating output directory: %v", err)
+		return fmt.Errorf("error creating output directory: %w", err)
 	}
 
 	// Write css to file
@@ -292,7 +301,7 @@ func (c *Config) __processCSS(nature string) error {
 	if nature == "normal" {
 		hashFile := c._dist.S().Static.S().Internal.S().NormalCSSFileRefDotTXT.FullPath()
 		if err := os.WriteFile(hashFile, []byte(outputFileName), 0644); err != nil {
-			return fmt.Errorf("error writing to file: %v", err)
+			return fmt.Errorf("error writing to file: %w", err)
 		}
 	}
 
@@ -367,7 +376,7 @@ func (c *Config) processStaticFiles(opts *staticFileProcessorOpts) error {
 		var err error
 		oldMap, err := c.loadMapFromGob(opts.mapName, true)
 		if err != nil {
-			return fmt.Errorf("error reading old file map: %v", err)
+			return fmt.Errorf("error reading old file map: %w", err)
 		}
 		for k, v := range oldMap {
 			oldFileMap.Store(k, v)
@@ -455,13 +464,13 @@ func (c *Config) processStaticFiles(opts *staticFileProcessorOpts) error {
 	// Save the updated file map
 	err := c.saveMapToGob(to_std_map(&newFileMap), opts.mapName)
 	if err != nil {
-		return fmt.Errorf("error saving file map: %v", err)
+		return fmt.Errorf("error saving file map: %w", err)
 	}
 
 	if opts.basename == PUBLIC {
 		err = c.savePublicFileMapJSToInternalPublicDir(to_std_map(&newFileMap))
 		if err != nil {
-			return fmt.Errorf("error saving public file map JSON: %v", err)
+			return fmt.Errorf("error saving public file map JSON: %w", err)
 		}
 	}
 
@@ -476,7 +485,7 @@ func (c *Config) processFile(
 	distDir string,
 ) error {
 	if err := c.fileSemaphore.Acquire(context.Background(), 1); err != nil {
-		return fmt.Errorf("error acquiring semaphore: %v", err)
+		return fmt.Errorf("error acquiring semaphore: %w", err)
 	}
 	defer c.fileSemaphore.Release(1)
 
@@ -490,7 +499,7 @@ func (c *Config) processFile(
 		var err error
 		name, err := getHashedFilenameFromPath(fi.path, relativePathUnderscores)
 		if err != nil {
-			return fmt.Errorf("error getting hashed filename: %v", err)
+			return fmt.Errorf("error getting hashed filename: %w", err)
 		}
 		fileIdentifier.Val = name
 	}
@@ -513,12 +522,12 @@ func (c *Config) processFile(
 
 	err := os.MkdirAll(filepath.Dir(distPath), 0755)
 	if err != nil {
-		return fmt.Errorf("error creating directory: %v", err)
+		return fmt.Errorf("error creating directory: %w", err)
 	}
 
 	err = fsutil.CopyFile(fi.path, distPath)
 	if err != nil {
-		return fmt.Errorf("error copying file: %v", err)
+		return fmt.Errorf("error copying file: %w", err)
 	}
 
 	return nil

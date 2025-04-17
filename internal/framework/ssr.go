@@ -1,7 +1,6 @@
 package framework
 
 import (
-	"errors"
 	"fmt"
 	"html/template"
 	"strings"
@@ -90,9 +89,9 @@ func (h *River) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOutpu
 		PublicPathPrefix:    h.Kiruna.GetPublicPathPrefix(),
 	}
 	if err := ssrInnerTmpl.Execute(&htmlBuilder, dto); err != nil {
-		errMsg := fmt.Sprintf("could not execute SSR inner HTML template: %v", err)
-		Log.Error(errMsg)
-		return nil, errors.New(errMsg)
+		wrapped := fmt.Errorf("could not execute SSR inner HTML template: %w", err)
+		Log.Error(wrapped.Error())
+		return nil, wrapped
 	}
 
 	innerHTML := htmlBuilder.String()
@@ -106,16 +105,16 @@ func (h *River) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOutpu
 
 	sha256Hash, err := htmlutil.AddSha256HashInline(&el, true)
 	if err != nil {
-		errMsg := fmt.Sprintf("could not handle CSP for SSR inner HTML: %v", err)
-		Log.Error(errMsg)
-		return nil, errors.New(errMsg)
+		wrapped := fmt.Errorf("could not handle CSP for SSR inner HTML: %w", err)
+		Log.Error(wrapped.Error())
+		return nil, wrapped
 	}
 
 	renderedEl, err := htmlutil.RenderElement(&el)
 	if err != nil {
-		errMsg := fmt.Sprintf("could not render SSR inner HTML: %v", err)
-		Log.Error(errMsg)
-		return nil, errors.New(errMsg)
+		wrapped := fmt.Errorf("could not render SSR inner HTML: %w", err)
+		Log.Error(wrapped.Error())
+		return nil, wrapped
 	}
 
 	return &GetSSRInnerHTMLOutput{Script: &renderedEl, Sha256Hash: sha256Hash}, nil
