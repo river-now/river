@@ -36,7 +36,7 @@ type dev struct {
 /////// RUNTIME CACHE
 /////////////////////////////////////////////////////////////////////
 
-type runtime struct {
+type _runtime struct {
 	runtime_cache runtimeCache
 }
 
@@ -99,7 +99,7 @@ type Config struct {
 	FilesToVendor          [][2]string // __TODO move to json config
 
 	dev
-	runtime
+	_runtime
 	cleanSources   CleanSources
 	cleanWatchRoot string
 	_dist          *dirs.Dir[Dist]

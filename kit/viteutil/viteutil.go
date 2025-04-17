@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"os"
-	"path/filepath"
+	"path"
 	"slices"
 	"strings"
 
@@ -66,13 +66,13 @@ func FindAllDependencies(manifest Manifest, importPath string) []string {
 	cleanResults := make([]string, 0, len(result)+1)
 	for _, res := range result {
 		if chunk, exists := manifest[res]; exists {
-			cleanResults = append(cleanResults, filepath.Base(chunk.File))
+			cleanResults = append(cleanResults, path.Base(chunk.File))
 		}
 	}
 
 	if chunk, exists := manifest[importPath]; exists {
-		if !slices.Contains(cleanResults, filepath.Base(chunk.File)) {
-			cleanResults = append(cleanResults, filepath.Base(chunk.File))
+		if !slices.Contains(cleanResults, path.Base(chunk.File)) {
+			cleanResults = append(cleanResults, path.Base(chunk.File))
 		}
 	}
 
@@ -82,7 +82,7 @@ func FindAllDependencies(manifest Manifest, importPath string) []string {
 // FindRelativeEntrypointPath finds the manifest key for a given entry point file
 func FindRelativeEntrypointPath(manifest Manifest, entrypointToFind string) (string, error) {
 	for key, chunk := range manifest {
-		if chunk.IsEntry && filepath.Base(chunk.File) == filepath.Base(entrypointToFind) {
+		if chunk.IsEntry && path.Base(chunk.File) == path.Base(entrypointToFind) {
 			return key, nil
 		}
 	}

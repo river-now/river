@@ -124,7 +124,7 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 		}
 
 		c.defaultWatchedFiles = append(c.defaultWatchedFiles, WatchedFile{
-			Pattern:       relClientRouteDefsFile,
+			Pattern:       filepath.ToSlash(relClientRouteDefsFile),
 			OnChangeHooks: []OnChangeHook{{Cmd: __internal_full_dev_reset_less_go_mrkr}},
 		})
 
@@ -140,7 +140,7 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 		}
 
 		c.defaultWatchedFiles = append(c.defaultWatchedFiles, WatchedFile{
-			Pattern:    relHTMLTemplateLocation,
+			Pattern:    filepath.ToSlash(relHTMLTemplateLocation),
 			RestartApp: true,
 		})
 
@@ -151,7 +151,10 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 			c.panic("failed to get relative path for TSGenOutPath", err)
 		}
 
-		c.ignoredFilePatterns = append(c.ignoredFilePatterns, relTSGenOutPath)
+		c.ignoredFilePatterns = append(
+			c.ignoredFilePatterns,
+			filepath.ToSlash(relTSGenOutPath),
+		)
 	}
 
 	// Loop through all WatchedFiles...

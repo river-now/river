@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"io/fs"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/river-now/river/kit/htmlutil"
@@ -53,7 +52,7 @@ func (c *Config) getInitialStyleSheetURL() (string, error) {
 	dist_kiruna_internal := c._dist.S().Static.S().Internal
 
 	// __LOCATION_ASSUMPTION: Inside "dist/static"
-	content, err := fs.ReadFile(base_fs, filepath.Join(
+	content, err := fs.ReadFile(base_fs, path.Join(
 		dist_kiruna_internal.LastSegment(),
 		dist_kiruna_internal.S().NormalCSSFileRefDotTXT.LastSegment(),
 	))
@@ -102,7 +101,7 @@ func (c *Config) getInitialCriticalCSSStatus() (*criticalCSSStatus, error) {
 
 	// Read critical CSS
 	// __LOCATION_ASSUMPTION: Inside "dist/static"
-	content, err := fs.ReadFile(base_fs, filepath.Join(
+	content, err := fs.ReadFile(base_fs, path.Join(
 		dist_kiruna_internal.LastSegment(),
 		dist_kiruna_internal.S().CriticalDotCSS.LastSegment(),
 	))

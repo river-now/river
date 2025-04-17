@@ -1,6 +1,8 @@
 package ki
 
 import (
+	"runtime"
+
 	"github.com/river-now/river/kit/dirs"
 )
 
@@ -36,8 +38,12 @@ type DistKirunaInternal struct {
 }
 
 func toDistLayout(cleanDistDir string) *dirs.Dir[Dist] {
+	mainOut := "main"
+	if runtime.GOOS == "windows" {
+		mainOut += ".exe"
+	}
 	x := dirs.Build(cleanDistDir, dirs.ToRoot(Dist{
-		Binary: dirs.ToFile("main"),
+		Binary: dirs.ToFile(mainOut),
 		Static: dirs.ToDir("static", DistStatic{
 			Assets: dirs.ToDir("assets", DistStaticAssets{
 				Public: dirs.ToDir(PUBLIC, DistStaticAssetsPublic{

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"path"
-	"path/filepath"
 	"strings"
 )
 
@@ -98,5 +97,5 @@ func (c *Config) GetPublicURL(originalPublicURL string) string {
 }
 
 func cleanURL(url string) string {
-	return strings.TrimPrefix(filepath.Clean(url), "/")
+	return strings.TrimPrefix(path.Clean(url), "/")
 }

@@ -1,7 +1,7 @@
 # Kiruna
 **/kiruna_dist/static/*
 !**/kiruna_dist/static/.keep
-**/kiruna_dist/main
+**/kiruna_dist/main*
 
 # River
 **/river_out*

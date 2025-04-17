@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -200,7 +201,7 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 		h.Kiruna.GetRiverPublicURLFuncName(),
 	))
 
-	publicPrefixToUse := filepath.Clean(h.Kiruna.GetPublicPathPrefix())
+	publicPrefixToUse := path.Clean(h.Kiruna.GetPublicPathPrefix())
 	publicPrefixToUse = matcher.StripLeadingSlash(publicPrefixToUse)
 	publicPrefixToUse = matcher.StripTrailingSlash(publicPrefixToUse)
 	tick := "`"
@@ -219,10 +220,10 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 
 	ignoredList := []string{
 		"**/*.go",
-		filepath.Join("**", h.Kiruna.GetPrivateStaticDir()),
-		filepath.Join("**", h.Kiruna.GetConfigFile()),
-		filepath.Join("**", h.Kiruna.GetRiverTSGenOutPath()),
-		filepath.Join("**", h.Kiruna.GetRiverClientRouteDefsFile()),
+		path.Join("**", h.Kiruna.GetPrivateStaticDir()),
+		path.Join("**", h.Kiruna.GetConfigFile()),
+		path.Join("**", h.Kiruna.GetRiverTSGenOutPath()),
+		path.Join("**", h.Kiruna.GetRiverClientRouteDefsFile()),
 	}
 
 	ignoreTabs := strings.Repeat("\t", 7)
@@ -292,9 +293,12 @@ func (h *River) handleViteConfigHelper(extraTS string) error {
 
 var nodeScript = `
 const path = await import("node:path");
+const { pathToFileURL } = await import("node:url");
 const importPath = path.resolve(".", process.argv.slice(1)[0]);
-const routesFile = await import(importPath);
-console.log(JSON.stringify(routesFile.default.__all_routes()));
+const importPathClean = pathToFileURL(importPath);
+const routesFile = await import(importPathClean);
+const final = routesFile.default.__all_routes();
+console.log(JSON.stringify(final));
 `
 
 type NodeScriptResultItem struct {
@@ -374,14 +378,14 @@ func (h *River) Build(opts *BuildOptions) error {
 const routes = RoutesBuilder();
 ` + code
 
-	routesSrcFile := filepath.Join(".", h.Kiruna.GetRiverClientRouteDefsFile())
-	routesDir := filepath.Dir(routesSrcFile)
+	routesSrcFile := path.Join(".", h.Kiruna.GetRiverClientRouteDefsFile())
+	routesDir := path.Dir(routesSrcFile)
 
 	for _, imp := range imports {
 		doubleQuotes := fmt.Sprintf(`import("%s")`, imp)
 		singleQuotes := fmt.Sprintf("import('%s')", imp)
 		backticks := fmt.Sprintf("import(`%s`)", imp)
-		replacement := fmt.Sprintf(`"%s"`, filepath.Join(routesDir, imp))
+		replacement := fmt.Sprintf(`"%s"`, path.Join(routesDir, imp))
 		code = strings.ReplaceAll(code, doubleQuotes, replacement)
 		code = strings.ReplaceAll(code, singleQuotes, replacement)
 		code = strings.ReplaceAll(code, backticks, replacement)
@@ -400,7 +404,7 @@ const routes = RoutesBuilder();
 	}
 
 	cmd := exec.Command("node", "--input-type=module", "-e", nodeScript)
-	cmd.Args = append(cmd.Args, location)
+	cmd.Args = append(cmd.Args, filepath.ToSlash(location))
 
 	output, err := cmd.Output()
 	if err != nil {

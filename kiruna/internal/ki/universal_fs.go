@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
+	"path"
 
 	"github.com/river-now/river/kit/executil"
 )
@@ -24,7 +24,7 @@ func (c *Config) getSubFSPublic() (fs.FS, error)  { return c.__getSubFS(PUBLIC) 
 // subDir = "public" or "private"
 func (c *Config) __getSubFS(subDir string) (fs.FS, error) {
 	// __LOCATION_ASSUMPTION: Inside "dist/static"
-	path := filepath.Join(c._dist.S().Static.S().Assets.LastSegment(), subDir)
+	_path := path.Join(c._dist.S().Static.S().Assets.LastSegment(), subDir)
 
 	baseFS, err := c.GetBaseFS()
 	if err != nil {
@@ -32,7 +32,7 @@ func (c *Config) __getSubFS(subDir string) (fs.FS, error) {
 		c.Logger.Error(errMsg)
 		return nil, errors.New(errMsg)
 	}
-	subFS, err := fs.Sub(baseFS, path)
+	subFS, err := fs.Sub(baseFS, _path)
 	if err != nil {
 		errMsg := fmt.Sprintf("error getting %s FS: %v", subDir, err)
 		c.Logger.Error(errMsg)
@@ -96,5 +96,5 @@ func (c *Config) get_initial_base_fs() (fs.FS, error) {
 		return nil, err
 	}
 
-	return os.DirFS(filepath.Join(execDir, c._dist.S().Static.LastSegment())), nil
+	return os.DirFS(path.Join(execDir, c._dist.S().Static.LastSegment())), nil
 }
