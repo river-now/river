@@ -1,10 +1,7 @@
-# Kiruna
-**/kiruna_dist/static/*
-!**/kiruna_dist/static/.keep
-**/kiruna_dist/main*
-
-# River
-**/river_out*
+# Wave
+__dist/static/*
+!__dist/static/.keep
+__dist/main*
 
 # Tailwind
-/css/tailwind-output.css
+/frontend/css/tailwind-output.css

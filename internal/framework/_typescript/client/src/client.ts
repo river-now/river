@@ -11,14 +11,13 @@ import { updateHeadBlocks } from "./head.ts";
 import { parseFetchResponseForRedirectData, type RedirectData } from "./redirects.ts";
 import {
 	type GetRouteDataOutput,
-	type HeadBlock,
 	internal_RiverClientGlobal,
 	type RiverClientGlobal,
 } from "./river_ctx.ts";
 import { isAbortError, LogError, LogInfo, Panic } from "./utils.ts";
 
 if (import.meta.env.MODE === "development") {
-	(window as any).__kirunaRevalidate = devRevalidate;
+	(window as any).__waveRevalidate = devRevalidate;
 }
 
 /////////////////////////////////////////////////////////////////////

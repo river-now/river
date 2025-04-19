@@ -140,7 +140,7 @@ func (c *BuildCtx) ProdBuild() error {
 	c.cmd.Args = append(c.cmd.Args, "vite", "build",
 		"--outDir", filepath.Join(".", c.opts.OutDir),
 		"--assetsDir", filepath.Join("."),
-		"--manifest", "kiruna_vite_manifest.json",
+		"--manifest", "__temp_viteutil_manifest__.json",
 	)
 
 	if c.opts.ViteConfigFile != "" {
@@ -156,8 +156,8 @@ func (c *BuildCtx) ProdBuild() error {
 		return err
 	}
 
-	// Move kiruna_vite_manifest.json to the specified location
-	manifestPath := filepath.Join(".", c.opts.OutDir, "kiruna_vite_manifest.json")
+	// Move __temp_viteutil_manifest__.json to the specified location
+	manifestPath := filepath.Join(".", c.opts.OutDir, "__temp_viteutil_manifest__.json")
 	if err := os.Rename(manifestPath, c.opts.ManifestOut); err != nil {
 		Log.Error(fmt.Sprintf("Error moving vite manifest: %s", err))
 		return err

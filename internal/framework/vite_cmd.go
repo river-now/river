@@ -22,7 +22,11 @@ func (h *River) PostViteProdBuild() error {
 		return err
 	}
 
-	pathsJSONOut_StageTwo := filepath.Join(h.Kiruna.GetPrivateStaticDir(), "river_out", RiverPathsStageTwoJSONFileName)
+	pathsJSONOut_StageTwo := filepath.Join(
+		h.Wave.GetStaticPrivateOutDir(),
+		"river_out",
+		RiverPathsStageTwoJSONFileName,
+	)
 	err = os.WriteFile(pathsJSONOut_StageTwo, pathsAsJSON, os.ModePerm)
 	if err != nil {
 		Log.Error(fmt.Sprintf("error writing paths to disk: %s", err))

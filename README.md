@@ -1,6 +1,6 @@
 # 🌊 River
 
-<img src="/site/static/public/river-banner.webp" alt="River logo banner">
+<img src="/site/frontend/static/river-banner.webp" alt="River logo banner">
 
 ## Introduction
 
@@ -21,7 +21,7 @@ Optional Extras:
 - Global critical CSS inlining
 - Link pre-fetching on hover
 - Ability to deeply integrate the build and dev refresh cycle with any upstream
-  dependencies in any language, via our Kiruna build helper
+  dependencies in any language, via our Wave build tool
 - Much, much more
 
 While River currently supports React, Preact, and Solid, 95% of River's client

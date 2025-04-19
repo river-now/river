@@ -80,7 +80,7 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 				return
 			}
 
-			if h.Kiruna.GetRiverAutoETags() {
+			if h.Wave.GetRiverAutoETags() {
 				hashInput := []byte(r.Header.Get("Cookie"))
 				if len(hashInput) > 4096 {
 					Log.Error("Cookie too large")
@@ -115,8 +115,8 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 				return fmt.Errorf("error getting head elements: %w", err)
 			}
 			headElements = he
-			headElements += "\n" + h.Kiruna.GetCriticalCSSStyleElement()
-			headElements += "\n" + h.Kiruna.GetStyleSheetLinkElement()
+			headElements += "\n" + h.Wave.GetCriticalCSSStyleElement()
+			headElements += "\n" + h.Wave.GetStyleSheetLinkElement()
 
 			return nil
 		})
@@ -156,11 +156,14 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 
 		if !h._isDev {
 			rootTemplateData["RiverBodyScripts"] = template.HTML(
-				fmt.Sprintf(`<script type="module" src="%s%s"></script>`, h.Kiruna.GetPublicPathPrefix(), h._clientEntryOut),
+				fmt.Sprintf(
+					`<script type="module" src="%s%s"></script>`,
+					h.Wave.GetPublicPathPrefix(), h._clientEntryOut,
+				),
 			)
 		} else {
 			opts := viteutil.ToDevScriptsOptions{ClientEntry: h._clientEntrySrc}
-			if UIVariant(h.Kiruna.GetRiverUIVariant()) == UIVariants.React {
+			if UIVariant(h.Wave.GetRiverUIVariant()) == UIVariants.React {
 				opts.Variant = viteutil.Variants.React
 			} else {
 				opts.Variant = viteutil.Variants.Other
@@ -173,7 +176,7 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 				return
 			}
 
-			rootTemplateData["RiverBodyScripts"] = devScripts + "\n" + h.Kiruna.GetRefreshScript()
+			rootTemplateData["RiverBodyScripts"] = devScripts + "\n" + h.Wave.GetRefreshScript()
 		}
 
 		var buf bytes.Buffer

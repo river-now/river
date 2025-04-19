@@ -15,7 +15,6 @@ import (
 	"time"
 
 	esbuild "github.com/evanw/esbuild/pkg/api"
-	"github.com/river-now/river/kiruna"
 	"github.com/river-now/river/kit/esbuildutil"
 	"github.com/river-now/river/kit/id"
 	"github.com/river-now/river/kit/matcher"
@@ -45,7 +44,11 @@ type PathsFile struct {
 }
 
 func (h *River) writePathsToDisk_StageOne() error {
-	pathsJSONOut_StageOne := filepath.Join(h.Kiruna.GetPrivateStaticDir(), "river_out", RiverPathsStageOneJSONFileName)
+	pathsJSONOut_StageOne := filepath.Join(
+		h.Wave.GetStaticPrivateOutDir(),
+		"river_out",
+		RiverPathsStageOneJSONFileName,
+	)
 	err := os.MkdirAll(filepath.Dir(pathsJSONOut_StageOne), os.ModePerm)
 	if err != nil {
 		return err
@@ -54,7 +57,7 @@ func (h *River) writePathsToDisk_StageOne() error {
 	pathsAsJSON, err := json.MarshalIndent(PathsFile{
 		Stage:          "one",
 		Paths:          h._paths,
-		ClientEntrySrc: h.Kiruna.GetRiverClientEntry(),
+		ClientEntrySrc: h.Wave.GetRiverClientEntry(),
 		BuildID:        h._buildID,
 	}, "", "\t")
 	if err != nil {
@@ -94,6 +97,7 @@ export function riverVitePlugin(): Plugin {
 				build: {
 					target: "es2022",
 					...c.build,
+					emptyOutDir: false,
 					modulePreload: { 
 						polyfill: false,
 						...(typeof mp === "object" ? mp : {}),
@@ -197,10 +201,10 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 
 	sb.Line(fmt.Sprintf(
 		"declare global {\n\tfunction %s(staticPublicAsset: StaticPublicAsset): string;\n}",
-		h.Kiruna.GetRiverPublicURLFuncName(),
+		h.Wave.GetRiverPublicURLFuncName(),
 	))
 
-	publicPrefixToUse := path.Clean(h.Kiruna.GetPublicPathPrefix())
+	publicPrefixToUse := path.Clean(h.Wave.GetPublicPathPrefix())
 	publicPrefixToUse = matcher.StripLeadingSlash(publicPrefixToUse)
 	publicPrefixToUse = matcher.StripTrailingSlash(publicPrefixToUse)
 	tick := "`"
@@ -208,7 +212,7 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	var buf bytes.Buffer
 
 	var dedupeList []string
-	switch UIVariant(h.Kiruna.GetRiverUIVariant()) {
+	switch UIVariant(h.Wave.GetRiverUIVariant()) {
 	case UIVariants.React:
 		dedupeList = reactDedupeList
 	case UIVariants.Preact:
@@ -219,10 +223,10 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 
 	ignoredList := []string{
 		"**/*.go",
-		path.Join("**", h.Kiruna.GetPrivateStaticDir()),
-		path.Join("**", h.Kiruna.GetConfigFile()),
-		path.Join("**", h.Kiruna.GetRiverTSGenOutPath()),
-		path.Join("**", h.Kiruna.GetRiverClientRouteDefsFile()),
+		path.Join("**", h.Wave.GetPrivateStaticDir()),
+		path.Join("**", h.Wave.GetConfigFile()),
+		path.Join("**", h.Wave.GetRiverTSGenOutPath()),
+		path.Join("**", h.Wave.GetRiverClientRouteDefsFile()),
 	}
 
 	ignoreTabs := strings.Repeat("\t", 7)
@@ -241,9 +245,9 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	stringifiedIgnore += ignoreTabs + "]"
 
 	err = vitePluginTemplate.Execute(&buf, map[string]any{
-		"FuncName":         h.Kiruna.GetRiverPublicURLFuncName(),
+		"FuncName":         h.Wave.GetRiverPublicURLFuncName(),
 		"PublicDir":        publicPrefixToUse,
-		"PublicPathPrefix": h.Kiruna.GetPublicPathPrefix(),
+		"PublicPathPrefix": h.Wave.GetPublicPathPrefix(),
 		"Tick":             tick,
 		"IgnoredList":      template.HTML(stringifiedIgnore),
 		"DedupeList":       template.HTML(stringifiedDedupeBytes),
@@ -260,7 +264,7 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 func (h *River) handleViteConfigHelper(extraTS string) error {
 	entrypoints := h.getEntrypoints()
 
-	publicFileMap, err := h.Kiruna.GetSimplePublicFileMapBuildtime()
+	publicFileMap, err := h.Wave.GetSimplePublicFileMapBuildtime()
 	if err != nil {
 		Log.Error(fmt.Sprintf("HandleEntrypoints: error getting public file map: %s", err))
 		return err
@@ -274,7 +278,7 @@ func (h *River) handleViteConfigHelper(extraTS string) error {
 
 	rollupOptions = extraTS + rollupOptions
 
-	target := filepath.Join(".", h.Kiruna.GetRiverTSGenOutPath())
+	target := filepath.Join(".", h.Wave.GetRiverTSGenOutPath())
 
 	err = os.MkdirAll(filepath.Dir(target), os.ModePerm)
 	if err != nil {
@@ -326,7 +330,7 @@ func (h *River) Build(opts *BuildOptions) error {
 	Log.Info("START building River", "buildID", h._buildID)
 
 	esbuildResult := esbuild.Build(esbuild.BuildOptions{
-		EntryPoints: []string{h.Kiruna.GetRiverClientRouteDefsFile()},
+		EntryPoints: []string{h.Wave.GetRiverClientRouteDefsFile()},
 		Bundle:      false,
 		Write:       false,
 		Format:      esbuild.FormatESModule,
@@ -377,7 +381,7 @@ func (h *River) Build(opts *BuildOptions) error {
 const routes = RoutesBuilder();
 ` + code
 
-	routesSrcFile := path.Join(".", h.Kiruna.GetRiverClientRouteDefsFile())
+	routesSrcFile := path.Join(".", h.Wave.GetRiverClientRouteDefsFile())
 	routesDir := path.Dir(routesSrcFile)
 
 	for _, imp := range imports {
@@ -428,7 +432,7 @@ const routes = RoutesBuilder();
 	}
 
 	// Remove all files in StaticPublicOutDir starting with riverChunkPrefix or riverEntryPrefix.
-	err = cleanStaticPublicOutDir(h.toStaticPublicOutDir())
+	err = cleanStaticPublicOutDir(h.Wave.GetStaticPublicOutDir())
 	if err != nil {
 		Log.Error(fmt.Sprintf("error cleaning static public out dir: %s", err))
 		return err
@@ -451,7 +455,7 @@ const routes = RoutesBuilder();
 	}
 
 	if !h._isDev {
-		if err := h.Kiruna.ViteProdBuild(); err != nil {
+		if err := h.Wave.ViteProdBuild(); err != nil {
 			Log.Error(fmt.Sprintf("error running vite prod build: %s", err))
 			return err
 		}
@@ -469,10 +473,6 @@ const routes = RoutesBuilder();
 	)
 
 	return nil
-}
-
-func (h *River) toStaticPublicOutDir() string {
-	return filepath.Join(h.Kiruna.GetPublicStaticDir(), kiruna.PrehashedDirname)
 }
 
 func (h *River) getViteDevURL() string {
@@ -536,7 +536,7 @@ func cleanStaticPublicOutDir(staticPublicOutDir string) error {
 
 func (h *River) getEntrypoints() []string {
 	entryPoints := make(map[string]struct{}, len(h._paths)+1)
-	entryPoints[h.Kiruna.GetRiverClientEntry()] = struct{}{}
+	entryPoints[h.Wave.GetRiverClientEntry()] = struct{}{}
 	for _, path := range h._paths {
 		if path.SrcPath != "" {
 			entryPoints[path.SrcPath] = struct{}{}
@@ -559,13 +559,13 @@ func (h *River) toPathsFile_StageTwo() (*PathsFile, error) {
 	riverClientEntryDeps := []string{}
 	depToCSSBundleMap := make(map[string]string)
 
-	viteManifest, err := viteutil.ReadManifest(h.Kiruna.GetViteManifestLocation())
+	viteManifest, err := viteutil.ReadManifest(h.Wave.GetViteManifestLocation())
 	if err != nil {
 		Log.Error(fmt.Sprintf("error reading vite manifest: %s", err))
 		return nil, err
 	}
 
-	cleanClientEntry := filepath.Clean(h.Kiruna.GetRiverClientEntry())
+	cleanClientEntry := filepath.Clean(h.Wave.GetRiverClientEntry())
 
 	// Assuming manifestJSON is your Vite manifest
 	for key, chunk := range viteManifest {
@@ -608,7 +608,7 @@ func (h *River) toPathsFile_StageTwo() (*PathsFile, error) {
 		Stage:             "two",
 		DepToCSSBundleMap: depToCSSBundleMap,
 		Paths:             h._paths,
-		ClientEntrySrc:    h.Kiruna.GetRiverClientEntry(),
+		ClientEntrySrc:    h.Wave.GetRiverClientEntry(),
 		ClientEntryOut:    riverClientEntryOut,
 		ClientEntryDeps:   riverClientEntryDeps,
 		BuildID:           h._buildID,

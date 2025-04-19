@@ -11,11 +11,10 @@
 			"**",
 			"!**/node_modules",
 			"!npm_dist",
-			"!kiruna/configschema/*schema.json",
-			"!site/**/kiruna_dist",
-			"!site/**/river_out*",
-			"!site/**/river.gen.ts",
-			"!site/css/tailwind-output.css"
+			"!wave/configschema/*schema.json",
+			"!**/__dist",
+			"!**/frontend/river.gen.ts",
+			"!**/frontend/css/tailwind-output.css"
 		]
 	},
 	"formatter": {

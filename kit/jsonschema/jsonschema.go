@@ -1,7 +1,7 @@
 /*
 NOTE:
 
-This package primarily exists for Kiruna's JSON schema generation.
+This package primarily exists for Wave's JSON schema generation.
 It does not -- and probably won't ever -- cover the entire JSON
 schema spec (or anywhere near it).
 
