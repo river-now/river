@@ -235,7 +235,8 @@ func (c *Config) compile_go_binary() error {
 	a := time.Now()
 	c.Logger.Info("Compiling Go binary...")
 	buildDest := c.get_binary_output_path()
-	buildCmd := exec.Command("go", "build", "-o", buildDest, c._uc.Core.MainAppEntry)
+	in := fmt.Sprintf(".%c%s", filepath.Separator, filepath.Clean(c._uc.Core.MainAppEntry))
+	buildCmd := exec.Command("go", "build", "-o", buildDest, in)
 	buildCmd.Stdout = os.Stdout
 	buildCmd.Stderr = os.Stderr
 	err := buildCmd.Run()
