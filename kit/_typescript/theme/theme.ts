@@ -95,7 +95,9 @@ type CleanupFunction = () => void;
 
 export function safeInitThemeCookies() {
 	const hasMainCookie = __isTheme(__getMaybeCookie(THEME_COOKIE_NAME));
-	const hasResolvedCookie = __isResolvedTheme(__getMaybeCookie(RESOLVED_THEME_COOKIE_NAME));
+	const hasResolvedCookie = __isResolvedTheme(
+		__getMaybeCookie(RESOLVED_THEME_COOKIE_NAME),
+	);
 	if (!hasMainCookie || !hasResolvedCookie) {
 		setTheme(THEMES.System);
 	}
@@ -125,7 +127,9 @@ function __setClientCookie(name: string, value: string) {
 function __setClassesAndDispatchEvent(detail: ThemeChangeEventDetail) {
 	CLASSLIST.remove(...THEME_VALUES);
 	CLASSLIST.add(detail.theme);
-	if (detail.theme === THEMES.System) CLASSLIST.add(detail.resolvedTheme);
+	if (detail.theme === THEMES.System) {
+		CLASSLIST.add(detail.resolvedTheme);
+	}
 	window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT_KEY, { detail }));
 }
 

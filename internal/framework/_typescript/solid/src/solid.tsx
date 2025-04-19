@@ -6,7 +6,14 @@ import {
 	type RiverRootOutletPropsGeneric,
 	type RouteChangeEvent,
 } from "river.now/client";
-import { createEffect, createMemo, createSignal, ErrorBoundary, type JSX, Show } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	ErrorBoundary,
+	type JSX,
+	Show,
+} from "solid-js";
 
 let shouldScroll = false;
 
@@ -25,25 +32,39 @@ addRouteChangeListener((e) => {
 });
 
 addBuildIDListener((e) => {
-	if (!e.detail.fromGETAction) return;
+	if (!e.detail.fromGETAction) {
+		return;
+	}
 	setCurrentRiverData(getCurrentRiverData());
 });
 
-export function RiverRootOutlet(props: RiverRootOutletPropsGeneric<JSX.Element>): JSX.Element {
+export function RiverRootOutlet(
+	props: RiverRootOutletPropsGeneric<JSX.Element>,
+): JSX.Element {
 	const idx = props.idx ?? 0;
-	const [currentImportURL, setCurrentImportURL] = createSignal(ctx.get("importURLs")?.[idx]);
-	const [currentExportKey, setCurrentExportKey] = createSignal(ctx.get("exportKeys")?.[idx]);
+	const [currentImportURL, setCurrentImportURL] = createSignal(
+		ctx.get("importURLs")?.[idx],
+	);
+	const [currentExportKey, setCurrentExportKey] = createSignal(
+		ctx.get("exportKeys")?.[idx],
+	);
 
 	if (currentImportURL) {
 		createEffect(() => {
 			const e = latestEvent();
-			if (!e) return;
+			if (!e) {
+				return;
+			}
 
 			const newCurrentImportURL = ctx.get("importURLs")?.[idx];
 			const newCurrentExportKey = ctx.get("exportKeys")?.[idx];
 
-			if (currentImportURL() !== newCurrentImportURL) setCurrentImportURL(newCurrentImportURL);
-			if (currentExportKey() !== newCurrentExportKey) setCurrentExportKey(newCurrentExportKey);
+			if (currentImportURL() !== newCurrentImportURL) {
+				setCurrentImportURL(newCurrentImportURL);
+			}
+			if (currentExportKey() !== newCurrentExportKey) {
+				setCurrentExportKey(newCurrentExportKey);
+			}
 
 			if (idx === 0 && e.detail.scrollState) {
 				shouldScroll = true;

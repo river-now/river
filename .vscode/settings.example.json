@@ -5,7 +5,8 @@
 	},
 
 	"search.exclude": {
-		"**/node_modules": true
+		"**/node_modules": true,
+		"**/river.gen.ts": true
 	},
 
 	"javascript.preferences.importModuleSpecifierEnding": "js",

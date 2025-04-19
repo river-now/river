@@ -5,7 +5,11 @@ export type HeadBlock = {
 	innerHTML?: string;
 };
 
-type Meta = { title: string; metaHeadBlocks: Array<HeadBlock>; restHeadBlocks: Array<HeadBlock> };
+type Meta = {
+	title: string;
+	metaHeadBlocks: Array<HeadBlock>;
+	restHeadBlocks: Array<HeadBlock>;
+};
 
 type shared = {
 	loadersData: Array<any>;

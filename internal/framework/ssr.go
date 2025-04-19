@@ -86,7 +86,7 @@ func (h *River) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOutpu
 		HasRootData:         routeData.HasRootData,
 		Deps:                routeData.Deps,
 		CSSBundles:          routeData.CSSBundles,
-		PublicPathPrefix:    h.Kiruna.GetPublicPathPrefix(),
+		PublicPathPrefix:    h.Wave.GetPublicPathPrefix(),
 	}
 	if err := ssrInnerTmpl.Execute(&htmlBuilder, dto); err != nil {
 		wrapped := fmt.Errorf("could not execute SSR inner HTML template: %w", err)

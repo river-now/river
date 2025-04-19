@@ -24,8 +24,8 @@ describe("Encoding Conversion Functions", () => {
 			name: "with Unicode characters",
 			utf8: "こんにちは世界",
 			bytes: new Uint8Array([
-				227, 129, 147, 227, 130, 147, 227, 129, 171, 227, 129, 161, 227, 129, 175, 228, 184, 150,
-				231, 149, 140,
+				227, 129, 147, 227, 130, 147, 227, 129, 171, 227, 129, 161, 227, 129, 175, 228,
+				184, 150, 231, 149, 140,
 			]),
 			hex: "e38193e38293e381abe381a1e381afe4b896e7958c",
 			base64: "44GT44KT44Gr44Gh44Gv5LiW55WM",
@@ -59,9 +59,13 @@ describe("Encoding Conversion Functions", () => {
 
 	// Helper function to compare Uint8Arrays
 	const compareBytes = (a: Uint8Array, b: Uint8Array): boolean => {
-		if (a.length !== b.length) return false;
+		if (a.length !== b.length) {
+			return false;
+		}
 		for (let i = 0; i < a.length; i++) {
-			if (a[i] !== b[i]) return false;
+			if (a[i] !== b[i]) {
+				return false;
+			}
 		}
 		return true;
 	};
@@ -131,7 +135,10 @@ describe("Encoding Conversion Functions", () => {
 
 			// Test 0x prefix handling
 			expect(
-				compareBytes(converters.hexToBytes("0x48656c6c6f"), converters.hexToBytes("48656c6c6f")),
+				compareBytes(
+					converters.hexToBytes("0x48656c6c6f"),
+					converters.hexToBytes("48656c6c6f"),
+				),
 			).toBe(true);
 		});
 
@@ -181,7 +188,9 @@ describe("Encoding Conversion Functions", () => {
 			}
 
 			// Test whitespace and padding handling
-			expect(converters.base64ToBase64URL("SGVs bG8g\nV29y\tbGQ=")).toBe("SGVsbG8gV29ybGQ");
+			expect(converters.base64ToBase64URL("SGVs bG8g\nV29y\tbGQ=")).toBe(
+				"SGVsbG8gV29ybGQ",
+			);
 		});
 	});
 
@@ -242,7 +251,9 @@ describe("Encoding Conversion Functions", () => {
 			for (let i = 0; i < testPadding.length; i++) {
 				const test = testPadding[i];
 				expect(test).toBeDefined();
-				if (!test) throw new Error("Test case not defined");
+				if (!test) {
+					throw new Error("Test case not defined");
+				}
 				expect(converters.base64ToBase64URL(test.base64)).toBe(test.base64URL);
 				expect(converters.base64URLToBase64(test.base64URL)).toBe(test.base64);
 			}
@@ -260,10 +271,14 @@ describe("Encoding Conversion Functions", () => {
 				expect(converters.hexToUTF8(converters.utf8ToHex(test.utf8))).toBe(test.utf8);
 
 				// UTF8 -> Base64 -> UTF8
-				expect(converters.base64ToUTF8(converters.utf8ToBase64(test.utf8))).toBe(test.utf8);
+				expect(converters.base64ToUTF8(converters.utf8ToBase64(test.utf8))).toBe(
+					test.utf8,
+				);
 
 				// UTF8 -> Base64URL -> UTF8
-				expect(converters.base64URLToUTF8(converters.utf8ToBase64URL(test.utf8))).toBe(test.utf8);
+				expect(converters.base64URLToUTF8(converters.utf8ToBase64URL(test.utf8))).toBe(
+					test.utf8,
+				);
 
 				// Hex -> Bytes -> Hex
 				expect(converters.bytesToHex(converters.hexToBytes(test.hex))).toBe(test.hex);

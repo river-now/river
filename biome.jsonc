@@ -11,17 +11,16 @@
 			"**",
 			"!**/node_modules",
 			"!npm_dist",
-			"!kiruna/configschema/*schema.json",
-			"!site/**/kiruna_dist",
-			"!site/**/river_out*",
-			"!site/**/river.gen.ts",
-			"!site/css/tailwind-output.css"
+			"!wave/configschema/*schema.json",
+			"!**/__dist",
+			"!**/frontend/river.gen.ts",
+			"!**/frontend/css/tailwind-output.css"
 		]
 	},
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab",
-		"lineWidth": 100,
+		"lineWidth": 90,
 		"includes": ["**"]
 	},
 	"assist": {
@@ -60,7 +59,14 @@
 				"useImportType": "error",
 				"useExportType": "error",
 				"noUselessElse": "error",
-				"useShorthandFunctionType": "error"
+				"useShorthandFunctionType": "error",
+				"useConsistentArrayType": {
+					"level": "error",
+					"options": {
+						"syntax": "generic"
+					}
+				},
+				"useBlockStatements": "error"
 			},
 			"correctness": {
 				"useImportExtensions": "error" // require ".ts", etc. in import statements

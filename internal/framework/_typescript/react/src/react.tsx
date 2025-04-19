@@ -19,7 +19,9 @@ const splatValuesAtom = atom(ctx.get("splatValues") ?? []);
 export const loadersDataAtom = atom(ctx.get("loadersData"));
 export const currentRiverDataAtom = atom(getCurrentRiverData());
 
-export function RiverRootOutlet(props: RiverRootOutletPropsGeneric<JSX.Element>): JSX.Element {
+export function RiverRootOutlet(
+	props: RiverRootOutletPropsGeneric<JSX.Element>,
+): JSX.Element {
 	const idx = props.idx ?? 0;
 	const [currentImportURL, setCurrentImportURL] = useState(ctx.get("importURLs")?.[idx]);
 	const [currentExportKey, setCurrentExportKey] = useState(ctx.get("exportKeys")?.[idx]);
@@ -35,10 +37,18 @@ export function RiverRootOutlet(props: RiverRootOutletPropsGeneric<JSX.Element>)
 			const newNextExportKey = ctx.get("exportKeys")?.[idx + 1];
 
 			flushSync(() => {
-				if (currentImportURL !== newCurrentImportURL) setCurrentImportURL(newCurrentImportURL);
-				if (currentExportKey !== newCurrentExportKey) setCurrentExportKey(newCurrentExportKey);
-				if (nextImportURL !== newNextImportURL) setNextImportURL(newNextImportURL);
-				if (nextExportKey !== newNextExportKey) setNextExportKey(newNextExportKey);
+				if (currentImportURL !== newCurrentImportURL) {
+					setCurrentImportURL(newCurrentImportURL);
+				}
+				if (currentExportKey !== newCurrentExportKey) {
+					setCurrentExportKey(newCurrentExportKey);
+				}
+				if (nextImportURL !== newNextImportURL) {
+					setNextImportURL(newNextImportURL);
+				}
+				if (nextExportKey !== newNextExportKey) {
+					setNextExportKey(newNextExportKey);
+				}
 			});
 		});
 	}, [currentImportURL, currentExportKey]);
@@ -55,20 +65,33 @@ export function RiverRootOutlet(props: RiverRootOutletPropsGeneric<JSX.Element>)
 		if (idx === 0) {
 			return addRouteChangeListener((e) => {
 				const newImportURLs = ctx.get("importURLs");
-				const newRootData = ctx.get(ctx.get("hasRootData") ? ctx.get("loadersData")[0] : null);
+				const newRootData = ctx.get(
+					ctx.get("hasRootData") ? ctx.get("loadersData")[0] : null,
+				);
 				const newParams = ctx.get("params") ?? {};
 				const newSplatValues = ctx.get("splatValues") ?? [];
 				const newLoadersData = ctx.get("loadersData");
 				const newCurrentRiverData = getCurrentRiverData();
 
 				flushSync(() => {
-					if (!jsonDeepEquals(importURLs, newImportURLs)) setImportURLs(newImportURLs);
-					if (!jsonDeepEquals(rootData, newRootData)) setRootData(newRootData);
-					if (!jsonDeepEquals(params, newParams)) setParams(newParams);
-					if (!jsonDeepEquals(splatValues, newSplatValues)) setSplatValues(newSplatValues);
-					if (!jsonDeepEquals(loadersData, newLoadersData)) setLoadersData(newLoadersData);
-					if (!jsonDeepEquals(currentRiverData, newCurrentRiverData))
+					if (!jsonDeepEquals(importURLs, newImportURLs)) {
+						setImportURLs(newImportURLs);
+					}
+					if (!jsonDeepEquals(rootData, newRootData)) {
+						setRootData(newRootData);
+					}
+					if (!jsonDeepEquals(params, newParams)) {
+						setParams(newParams);
+					}
+					if (!jsonDeepEquals(splatValues, newSplatValues)) {
+						setSplatValues(newSplatValues);
+					}
+					if (!jsonDeepEquals(loadersData, newLoadersData)) {
+						setLoadersData(newLoadersData);
+					}
+					if (!jsonDeepEquals(currentRiverData, newCurrentRiverData)) {
 						setCurrentRiverData(newCurrentRiverData);
+					}
 				});
 
 				if (e.detail.scrollState) {
@@ -88,7 +111,9 @@ export function RiverRootOutlet(props: RiverRootOutletPropsGeneric<JSX.Element>)
 	useEffect(() => {
 		if (idx === 0) {
 			return addBuildIDListener((e) => {
-				if (!e.detail.fromGETAction) return;
+				if (!e.detail.fromGETAction) {
+					return;
+				}
 				flushSync(() => {
 					setCurrentRiverData(getCurrentRiverData());
 				});
@@ -110,7 +135,9 @@ export function RiverRootOutlet(props: RiverRootOutletPropsGeneric<JSX.Element>)
 		[nextImportURL, nextExportKey],
 	);
 
-	if (!CurrentComp) return <></>;
+	if (!CurrentComp) {
+		return <></>;
+	}
 
 	return <CurrentComp idx={idx} Outlet={Outlet} />;
 }

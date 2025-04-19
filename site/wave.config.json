@@ -1,0 +1,34 @@
+{
+	"$schema": "__dist/static/internal/schema.json",
+	"Core": {
+		"ConfigLocation": "wave.config.json",
+		"DevBuildHook": "go run ./backend/cmd/build --dev --hook",
+		"ProdBuildHook": "go run ./backend/cmd/build --hook",
+		"MainAppEntry": "backend/cmd/app",
+		"DistDir": "__dist",
+		"StaticAssetDirs": {
+			"Private": "backend/static",
+			"Public": "frontend/static"
+		},
+		"CSSEntryFiles": {
+			"Critical": "frontend/css/main.critical.css",
+			"NonCritical": "frontend/css/main.css"
+		},
+		"PublicPathPrefix": "/public/"
+	},
+	"River": {
+		"UIVariant": "solid",
+		"HTMLTemplateLocation": "entry.go.html",
+		"ClientEntry": "frontend/entry.tsx",
+		"ClientRouteDefsFile": "frontend/routes.ts",
+		"TSGenOutPath": "frontend/river.gen.ts",
+		"PublicURLFuncName": "hashedURL",
+		"AutoETags": true
+	},
+	"Vite": {
+		"JSPackageManagerBaseCmd": "pnpm"
+	},
+	"Watch": {
+		"HealthcheckEndpoint": "/healthz"
+	}
+}

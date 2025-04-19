@@ -14,5 +14,5 @@
 		"jsx": "preserve",
 		"jsxImportSource": "solid-js"
 	},
-	"exclude": ["node_modules", "go/app/kiruna_dist"]
+	"exclude": ["node_modules"]
 }

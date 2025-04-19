@@ -61,7 +61,7 @@ func (h *River) initInner(isDev bool) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h._isDev = isDev
-	privateFS, err := h.Kiruna.GetPrivateFS()
+	privateFS, err := h.Wave.GetPrivateFS()
 	if err != nil {
 		wrapped := fmt.Errorf("could not get private fs: %w", err)
 		Log.Error(wrapped.Error())
@@ -88,7 +88,7 @@ func (h *River) initInner(isDev bool) error {
 	if h._depToCSSBundleMap == nil {
 		h._depToCSSBundleMap = make(map[string]string)
 	}
-	tmpl, err := template.ParseFS(h._privateFS, h.Kiruna.GetRiverHTMLTemplateLocation())
+	tmpl, err := template.ParseFS(h._privateFS, h.Wave.GetRiverHTMLTemplateLocation())
 	if err != nil {
 		return fmt.Errorf("error parsing root template: %w", err)
 	}

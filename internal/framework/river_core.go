@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/river-now/river/kiruna"
 	"github.com/river-now/river/kit/colorlog"
 	"github.com/river-now/river/kit/htmlutil"
 	"github.com/river-now/river/kit/mux"
+	"github.com/river-now/river/wave"
 )
 
 const (
@@ -58,7 +58,7 @@ var UIVariants = struct {
 }
 
 type River struct {
-	Kiruna               *kiruna.Kiruna
+	Wave                 *wave.Wave
 	GetDefaultHeadBlocks func(r *http.Request) ([]*htmlutil.Element, error)
 	GetRootTemplateData  func(r *http.Request) (map[string]any, error)
 

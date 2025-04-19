@@ -11,14 +11,13 @@ import { updateHeadBlocks } from "./head.ts";
 import { parseFetchResponseForRedirectData, type RedirectData } from "./redirects.ts";
 import {
 	type GetRouteDataOutput,
-	type HeadBlock,
 	internal_RiverClientGlobal,
 	type RiverClientGlobal,
 } from "./river_ctx.ts";
 import { isAbortError, LogError, LogInfo, Panic } from "./utils.ts";
 
 if (import.meta.env.MODE === "development") {
-	(window as any).__kirunaRevalidate = devRevalidate;
+	(window as any).__waveRevalidate = devRevalidate;
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -142,7 +141,9 @@ export function beginNavigation(props: NavigateProps): NavigationControl {
 }
 
 async function __completeNavigation(x: NavigationResult) {
-	if (!x) return;
+	if (!x) {
+		return;
+	}
 	if ("redirectData" in x) {
 		await effectuateRedirectDataResult(x.redirectData);
 		return;
@@ -168,7 +169,9 @@ async function __completeNavigation(x: NavigationResult) {
 function getMaybeNewPreloadLink(x: string) {
 	const href = resolvePublicHref(x);
 	const existing = document.querySelector(`link[href="${CSS.escape(href)}"]`);
-	if (existing) return;
+	if (existing) {
+		return;
+	}
 	const newLink = document.createElement("link");
 	newLink.href = href;
 	return newLink;
@@ -200,7 +203,9 @@ async function __fetchRouteData(
 		}
 
 		const json = (await response.json()) as GetRouteDataOutput | undefined;
-		if (!json) throw new Error("No JSON response");
+		if (!json) {
+			throw new Error("No JSON response");
+		}
 
 		// deps are only present in prod because they stem from the rollup metafile
 		// (same for CSS bundles -- vite handles them in dev)
@@ -211,7 +216,9 @@ async function __fetchRouteData(
 		// Add missing deps modulepreload links
 		for (const x of depsToPreload ?? []) {
 			const newLink = getMaybeNewPreloadLink(x);
-			if (!newLink) continue;
+			if (!newLink) {
+				continue;
+			}
 			newLink.rel = "modulepreload";
 			document.head.appendChild(newLink);
 		}
@@ -222,7 +229,9 @@ async function __fetchRouteData(
 		// Add missing css bundle preload links
 		for (const x of json.cssBundles ?? []) {
 			const newLink = getMaybeNewPreloadLink(x);
-			if (!newLink) continue;
+			if (!newLink) {
+				continue;
+			}
 			newLink.rel = "preload";
 			newLink.as = "style";
 			document.head.appendChild(newLink);
@@ -472,7 +481,10 @@ export async function handleRedirects(props: {
 	const isGET = getIsGETRequest(props.requestInit);
 
 	if (props.requestInit && (props.requestInit.body !== undefined || !isGET)) {
-		if (props.requestInit.body instanceof FormData || typeof props.requestInit.body === "string") {
+		if (
+			props.requestInit.body instanceof FormData ||
+			typeof props.requestInit.body === "string"
+		) {
 			bodyParentObj.body = props.requestInit.body;
 		} else {
 			bodyParentObj.body = JSON.stringify(props.requestInit.body);
@@ -753,7 +765,9 @@ function resolvePublicHref(relativeHref: string): string {
 	if (baseURL.endsWith("/")) {
 		baseURL = baseURL.slice(0, -1);
 	}
-	let final = relativeHref.startsWith("/") ? baseURL + relativeHref : baseURL + "/" + relativeHref;
+	let final = relativeHref.startsWith("/")
+		? baseURL + relativeHref
+		: baseURL + "/" + relativeHref;
 	if (import.meta.env.DEV) {
 		final += "?__river_dev=1";
 	}
@@ -779,7 +793,9 @@ async function __reRenderApp({
 	// The temp textarea trick is to decode any HTML entities in the title
 	const tempTxt = document.createElement("textarea");
 	tempTxt.innerHTML = json.title ?? "";
-	if (document.title !== tempTxt.value) document.title = tempTxt.value;
+	if (document.title !== tempTxt.value) {
+		document.title = tempTxt.value;
+	}
 
 	// NOW ACTUALLY SET EVERYTHING
 	const identicalKeysToSet = [
@@ -896,7 +912,10 @@ function getScrollStateMapFromLocalStorage() {
 }
 
 function setScrollStateMapToLocalStorage(newScrollStateMap: ScrollStateMap) {
-	localStorage.setItem(scrollStateMapKey, JSON.stringify(Array.from(newScrollStateMap.entries())));
+	localStorage.setItem(
+		scrollStateMapKey,
+		JSON.stringify(Array.from(newScrollStateMap.entries())),
+	);
 }
 
 function setScrollStateMapSubKey(key: string, value: ScrollState) {
@@ -930,7 +949,9 @@ let __customHistory: ReturnType<typeof createBrowserHistory>;
 let lastKnownCustomLocation: (typeof __customHistory)["location"];
 
 export function getHistoryInstance() {
-	if (!__customHistory) __customHistory = createBrowserHistory();
+	if (!__customHistory) {
+		__customHistory = createBrowserHistory();
+	}
 	return __customHistory;
 }
 
@@ -1017,12 +1038,16 @@ async function handleComponents() {
 			return import(/* @vite-ignore */ resolvePublicHref(x));
 		}),
 	);
-	const modulesMap = new Map(dedupedImportURLs.map((url, index) => [url, dedupedModules[index]]));
+	const modulesMap = new Map(
+		dedupedImportURLs.map((url, index) => [url, dedupedModules[index]]),
+	);
 
 	const exportKeys = internal_RiverClientGlobal.get("exportKeys") ?? [];
 	internal_RiverClientGlobal.set(
 		"activeComponents",
-		originalImportURLs.map((x, i) => modulesMap.get(x)?.[exportKeys[i] ?? "default"] ?? null),
+		originalImportURLs.map(
+			(x, i) => modulesMap.get(x)?.[exportKeys[i] ?? "default"] ?? null,
+		),
 	);
 	internal_RiverClientGlobal.set(
 		"activeErrorBoundaries",
@@ -1071,7 +1096,9 @@ export function getBuildID() {
 type CleanupFunction = () => void;
 
 function makeListenerAdder<T>(key: string) {
-	return function addListener(listener: (event: CustomEvent<T>) => void): CleanupFunction {
+	return function addListener(
+		listener: (event: CustomEvent<T>) => void,
+	): CleanupFunction {
 		window.addEventListener(key, listener as any);
 		return () => {
 			window.removeEventListener(key, listener as any);

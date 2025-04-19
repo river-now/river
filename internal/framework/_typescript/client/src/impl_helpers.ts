@@ -5,7 +5,11 @@
 import { getPrefetchHandlers, makeLinkOnClickFn } from "./client.ts";
 import { internal_RiverClientGlobal } from "./river_ctx.ts";
 
-export type RiverUntypedLoader = { _type: string; pattern: string; phantomOutputType: any };
+export type RiverUntypedLoader = {
+	_type: string;
+	pattern: string;
+	phantomOutputType: any;
+};
 
 export type RiverRoutePropsGeneric<
 	JSXElement,
@@ -57,7 +61,9 @@ function linkPropsToPrefetchObj<LinkOnClickCallback>(
 	});
 }
 
-function linkPropsToOnClickFn<LinkOnClickCallback>(props: RiverLinkPropsBase<LinkOnClickCallback>) {
+function linkPropsToOnClickFn<LinkOnClickCallback>(
+	props: RiverLinkPropsBase<LinkOnClickCallback>,
+) {
 	return makeLinkOnClickFn({
 		beforeBegin: props.beforeBegin as any,
 		beforeRender: props.beforeRender as any,
@@ -100,28 +106,42 @@ export function makeFinalLinkProps<LinkOnClickCallback>(
 		dataExternal: prefetchObj?.isExternal || undefined,
 		onPointerEnter: (e: any) => {
 			prefetchObj?.start(e);
-			if (isFn(props[keys.onPointerEnter])) props[keys.onPointerEnter](e);
+			if (isFn(props[keys.onPointerEnter])) {
+				props[keys.onPointerEnter](e);
+			}
 		},
 		onFocus: (e: any) => {
 			prefetchObj?.start(e);
-			if (isFn(props[keys.onFocus])) props[keys.onFocus](e);
+			if (isFn(props[keys.onFocus])) {
+				props[keys.onFocus](e);
+			}
 		},
 		onPointerLeave: (e: any) => {
 			// we don't want to stop on a touch device, because this triggers
 			// even when the user "clicks" on the link for some reason
-			if (!internal_RiverClientGlobal.get("isTouchDevice")) prefetchObj?.stop();
-			if (isFn(props[keys.onPointerLeave])) props[keys.onPointerLeave](e);
+			if (!internal_RiverClientGlobal.get("isTouchDevice")) {
+				prefetchObj?.stop();
+			}
+			if (isFn(props[keys.onPointerLeave])) {
+				props[keys.onPointerLeave](e);
+			}
 		},
 		onBlur: (e: any) => {
 			prefetchObj?.stop();
-			if (isFn(props[keys.onBlur])) props[keys.onBlur](e);
+			if (isFn(props[keys.onBlur])) {
+				props[keys.onBlur](e);
+			}
 		},
 		onTouchCancel: (e: any) => {
 			prefetchObj?.stop();
-			if (isFn(props[keys.onTouchCancel])) props[keys.onTouchCancel](e);
+			if (isFn(props[keys.onTouchCancel])) {
+				props[keys.onTouchCancel](e);
+			}
 		},
 		onClick: async (e: any) => {
-			if (isFn(props[keys.onClick])) props[keys.onClick](e);
+			if (isFn(props[keys.onClick])) {
+				props[keys.onClick](e);
+			}
 			if (prefetchObj) {
 				await prefetchObj.onClick(e);
 			} else {
@@ -131,6 +151,6 @@ export function makeFinalLinkProps<LinkOnClickCallback>(
 	};
 }
 
-function isFn(fn: any): fn is (...args: any[]) => any {
+function isFn(fn: any): fn is (...args: Array<any>) => any {
 	return typeof fn === "function";
 }

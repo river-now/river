@@ -24,10 +24,12 @@ export function getStartAndEndComments(type: "meta" | "rest"): {
 }
 
 function createElementFingerprint(element: Element): string {
-	const attributes: string[] = [];
+	const attributes: Array<string> = [];
 	for (let i = 0; i < element.attributes.length; i++) {
 		const attr = element.attributes[i];
-		if (!attr) continue;
+		if (!attr) {
+			continue;
+		}
 		const value = element.hasAttribute(attr.name) && attr.value === "" ? "" : attr.value;
 		attributes.push(`${attr.name}="${value}"`);
 	}
@@ -43,7 +45,7 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 	const parent = endComment.parentNode;
 
 	// Collect all current nodes between start and end comments
-	const currentNodes: Node[] = [];
+	const currentNodes: Array<Node> = [];
 	let nodePtr = startComment.nextSibling;
 	while (nodePtr != null && nodePtr !== endComment) {
 		currentNodes.push(nodePtr);
@@ -54,16 +56,20 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 	);
 
 	// Create new elements from blocks
-	const newElements: Element[] = [];
+	const newElements: Array<Element> = [];
 	const newElementFingerprints = new Map<string, Element>();
 	for (const block of blocks) {
-		if (!block.tag) continue;
+		if (!block.tag) {
+			continue;
+		}
 		const newEl = document.createElement(block.tag);
 		if (block.safeAttributes) {
 			for (const key of Object.keys(block.safeAttributes)) {
 				const value = block.safeAttributes[key];
 				if (value === null || value === undefined) {
-					Panic(`Attribute value for '${key}' in tag '${block.tag}' cannot be null or undefined.`);
+					Panic(
+						`Attribute value for '${key}' in tag '${block.tag}' cannot be null or undefined.`,
+					);
 				}
 				newEl.setAttribute(key, value);
 			}
@@ -92,7 +98,7 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 	}
 
 	// Build a map of current elements by fingerprint
-	const currentElementsMap = new Map<string, Element[]>();
+	const currentElementsMap = new Map<string, Array<Element>>();
 	for (const el of currentElements) {
 		const fingerprint = createElementFingerprint(el);
 		if (!currentElementsMap.has(fingerprint)) {
@@ -102,7 +108,7 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 	}
 
 	// Match new elements with existing ones when possible
-	const finalElements: Element[] = [];
+	const finalElements: Array<Element> = [];
 	const usedCurrentElements = new Set<Element>();
 
 	for (const newEl of newElements) {
@@ -110,7 +116,9 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 		const matchingCurrentElementsList = currentElementsMap.get(fingerprint) || [];
 
 		// Find the first matching element that hasn't been used yet
-		const matchingElement = matchingCurrentElementsList.find((el) => !usedCurrentElements.has(el));
+		const matchingElement = matchingCurrentElementsList.find(
+			(el) => !usedCurrentElements.has(el),
+		);
 
 		if (matchingElement) {
 			usedCurrentElements.add(matchingElement);
@@ -143,7 +151,9 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 
 	for (let i = 0; i < finalElements.length; i++) {
 		const element = finalElements[i];
-		if (!element) continue;
+		if (!element) {
+			continue;
+		}
 		const isExistingElement = usedCurrentElements.has(element);
 
 		if (isExistingElement) {
