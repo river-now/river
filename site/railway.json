@@ -3,7 +3,7 @@
 	"build": {
 		"builder": "DOCKERFILE",
 		"dockerfilePath": "/Dockerfile.site",
-		"watchPatterns": ["/site/**", "/package.json"]
+		"watchPatterns": ["/site/**", "/package.json", "/Dockerfile.site"]
 	},
 	"deploy": {
 		"multiRegionConfig": {
