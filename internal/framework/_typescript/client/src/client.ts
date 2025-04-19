@@ -471,7 +471,10 @@ export async function handleRedirects(props: {
 	const isGET = getIsGETRequest(props.requestInit);
 
 	if (props.requestInit && (props.requestInit.body !== undefined || !isGET)) {
-		if (props.requestInit.body instanceof FormData || typeof props.requestInit.body === "string") {
+		if (
+			props.requestInit.body instanceof FormData ||
+			typeof props.requestInit.body === "string"
+		) {
 			bodyParentObj.body = props.requestInit.body;
 		} else {
 			bodyParentObj.body = JSON.stringify(props.requestInit.body);
@@ -752,7 +755,9 @@ function resolvePublicHref(relativeHref: string): string {
 	if (baseURL.endsWith("/")) {
 		baseURL = baseURL.slice(0, -1);
 	}
-	let final = relativeHref.startsWith("/") ? baseURL + relativeHref : baseURL + "/" + relativeHref;
+	let final = relativeHref.startsWith("/")
+		? baseURL + relativeHref
+		: baseURL + "/" + relativeHref;
 	if (import.meta.env.DEV) {
 		final += "?__river_dev=1";
 	}
@@ -895,7 +900,10 @@ function getScrollStateMapFromLocalStorage() {
 }
 
 function setScrollStateMapToLocalStorage(newScrollStateMap: ScrollStateMap) {
-	localStorage.setItem(scrollStateMapKey, JSON.stringify(Array.from(newScrollStateMap.entries())));
+	localStorage.setItem(
+		scrollStateMapKey,
+		JSON.stringify(Array.from(newScrollStateMap.entries())),
+	);
 }
 
 function setScrollStateMapSubKey(key: string, value: ScrollState) {
@@ -1016,12 +1024,16 @@ async function handleComponents() {
 			return import(/* @vite-ignore */ resolvePublicHref(x));
 		}),
 	);
-	const modulesMap = new Map(dedupedImportURLs.map((url, index) => [url, dedupedModules[index]]));
+	const modulesMap = new Map(
+		dedupedImportURLs.map((url, index) => [url, dedupedModules[index]]),
+	);
 
 	const exportKeys = internal_RiverClientGlobal.get("exportKeys") ?? [];
 	internal_RiverClientGlobal.set(
 		"activeComponents",
-		originalImportURLs.map((x, i) => modulesMap.get(x)?.[exportKeys[i] ?? "default"] ?? null),
+		originalImportURLs.map(
+			(x, i) => modulesMap.get(x)?.[exportKeys[i] ?? "default"] ?? null,
+		),
 	);
 	internal_RiverClientGlobal.set(
 		"activeErrorBoundaries",
@@ -1070,7 +1082,9 @@ export function getBuildID() {
 type CleanupFunction = () => void;
 
 function makeListenerAdder<T>(key: string) {
-	return function addListener(listener: (event: CustomEvent<T>) => void): CleanupFunction {
+	return function addListener(
+		listener: (event: CustomEvent<T>) => void,
+	): CleanupFunction {
 		window.addEventListener(key, listener as any);
 		return () => {
 			window.removeEventListener(key, listener as any);

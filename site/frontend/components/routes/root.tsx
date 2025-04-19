@@ -62,11 +62,18 @@ export function Root(props: RouteProps<"">) {
 							}
 						}}
 					>
-						<img src={theme_to_label_map[theme()]} alt="Theme icon" class="w-5 h-5 dark:invert" />
+						<img
+							src={theme_to_label_map[theme()]}
+							alt="Theme icon"
+							class="w-5 h-5 dark:invert"
+						/>
 					</button>
 				</div>
 				<div class="flex items-center max-w-full mx-auto px-4 py-1 border-b border-[#7777] gap-4">
-					<Link href="/start" class="text-sm opacity-70 hover:opacity-[unset] hover:underline">
+					<Link
+						href="/start"
+						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
+					>
 						Get Started
 					</Link>
 

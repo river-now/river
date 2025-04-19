@@ -536,7 +536,7 @@ func cleanStaticPublicOutDir(staticPublicOutDir string) error {
 
 func (h *River) getEntrypoints() []string {
 	entryPoints := make(map[string]struct{}, len(h._paths)+1)
-	entryPoints[h.Wave.GetRiverClientEntry()] = struct{}{}
+	entryPoints[path.Clean(h.Wave.GetRiverClientEntry())] = struct{}{}
 	for _, path := range h._paths {
 		if path.SrcPath != "" {
 			entryPoints[path.SrcPath] = struct{}{}

@@ -20,7 +20,7 @@
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab",
-		"lineWidth": 100,
+		"lineWidth": 90,
 		"includes": ["**"]
 	},
 	"assist": {

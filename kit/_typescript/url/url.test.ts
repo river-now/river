@@ -311,7 +311,9 @@ describe("getPrefetchHandlers", () => {
 
 		// Fast-forward the timer to trigger the timeout
 		vi.runAllTimers();
-		expect(dom.window.document.querySelector(`link[href="/relative-path"]`)).not.toBeNull();
+		expect(
+			dom.window.document.querySelector(`link[href="/relative-path"]`),
+		).not.toBeNull();
 
 		handlers.stop(); // Stop the prefetch
 		expect(dom.window.document.querySelector(`link[href="/relative-path"]`)).toBeNull();

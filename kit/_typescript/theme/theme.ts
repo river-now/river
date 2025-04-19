@@ -95,7 +95,9 @@ type CleanupFunction = () => void;
 
 export function safeInitThemeCookies() {
 	const hasMainCookie = __isTheme(__getMaybeCookie(THEME_COOKIE_NAME));
-	const hasResolvedCookie = __isResolvedTheme(__getMaybeCookie(RESOLVED_THEME_COOKIE_NAME));
+	const hasResolvedCookie = __isResolvedTheme(
+		__getMaybeCookie(RESOLVED_THEME_COOKIE_NAME),
+	);
 	if (!hasMainCookie || !hasResolvedCookie) {
 		setTheme(THEMES.System);
 	}

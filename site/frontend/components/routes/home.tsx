@@ -12,8 +12,8 @@ export function Home(props: RouteProps<"/">) {
 		<div class="flex h-full justify-center flex-col items-center mb-16 gap-6">
 			<h2 class="text-center text-3xl sm:text-5xl w-3xl max-w-full leading-normal my-6">
 				River is a framework for writing <FancySpan>modern</FancySpan>,{" "}
-				<FancySpan>type-safe</FancySpan> web applications with <FancySpan>Go</FancySpan> and{" "}
-				<FancySpan>TypeScript</FancySpan>.
+				<FancySpan>type-safe</FancySpan> web applications with <FancySpan>Go</FancySpan>{" "}
+				and <FancySpan>TypeScript</FancySpan>.
 			</h2>
 
 			<Link
@@ -28,5 +28,9 @@ export function Home(props: RouteProps<"/">) {
 }
 
 function FancySpan(props: { children: string }) {
-	return <span class="font-bold italic text-[#064929] dark:text-[#4BBA5B]">{props.children}</span>;
+	return (
+		<span class="font-bold italic text-[#064929] dark:text-[#4BBA5B]">
+			{props.children}
+		</span>
+	);
 }

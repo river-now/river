@@ -19,7 +19,8 @@ export type RiverRoute<
 > = RiverRouteGeneric<JSX.Element, T, Pattern>;
 
 export function makeTypedUseCurrentRiverData<RD>() {
-	return () => useAtomValue(currentRiverDataAtom) as ReturnType<typeof getCurrentRiverData<RD>>;
+	return () =>
+		useAtomValue(currentRiverDataAtom) as ReturnType<typeof getCurrentRiverData<RD>>;
 }
 
 export function makeTypedUseLoaderData<T extends RiverUntypedLoader>() {

@@ -1,5 +1,7 @@
 export function getIsErrorRes(response: Response) {
-	return String(response.status).startsWith("4") || String(response.status).startsWith("5");
+	return (
+		String(response.status).startsWith("4") || String(response.status).startsWith("5")
+	);
 }
 
 export function getIsGETRequest(requestInit?: RequestInit) {

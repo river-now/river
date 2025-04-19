@@ -80,7 +80,10 @@ describe("beginNavigation", () => {
 			abortController: undefined,
 			promise: Promise.resolve() as any,
 		};
-		navigationState.navigations.set("/test", { control: prefetchControl, type: "prefetch" });
+		navigationState.navigations.set("/test", {
+			control: prefetchControl,
+			type: "prefetch",
+		});
 
 		const props: NavigateProps = { href: "/test", navigationType: "userNavigation" };
 		const control = beginNavigation(props);
@@ -94,7 +97,10 @@ describe("beginNavigation", () => {
 			abortController: undefined,
 			promise: Promise.resolve() as any,
 		};
-		navigationState.navigations.set("/test", { control: existingControl, type: "prefetch" });
+		navigationState.navigations.set("/test", {
+			control: existingControl,
+			type: "prefetch",
+		});
 
 		const props: NavigateProps = { href: "/test", navigationType: "prefetch" };
 		const control = beginNavigation(props);

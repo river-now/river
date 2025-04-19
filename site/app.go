@@ -59,7 +59,7 @@ var staticFS embed.FS
 var Wave = wave.New(&wave.Config{
 	ConfigBytes:            configBytes,
 	StaticFS:               staticFS,
-	StaticFSEmbedDirective: "all:wave_dist/static",
+	StaticFSEmbedDirective: "all:__dist/static",
 })
 
 var Log = colorlog.New("app server")

@@ -63,7 +63,9 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 			for (const key of Object.keys(block.safeAttributes)) {
 				const value = block.safeAttributes[key];
 				if (value === null || value === undefined) {
-					Panic(`Attribute value for '${key}' in tag '${block.tag}' cannot be null or undefined.`);
+					Panic(
+						`Attribute value for '${key}' in tag '${block.tag}' cannot be null or undefined.`,
+					);
 				}
 				newEl.setAttribute(key, value);
 			}
@@ -110,7 +112,9 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 		const matchingCurrentElementsList = currentElementsMap.get(fingerprint) || [];
 
 		// Find the first matching element that hasn't been used yet
-		const matchingElement = matchingCurrentElementsList.find((el) => !usedCurrentElements.has(el));
+		const matchingElement = matchingCurrentElementsList.find(
+			(el) => !usedCurrentElements.has(el),
+		);
 
 		if (matchingElement) {
 			usedCurrentElements.add(matchingElement);

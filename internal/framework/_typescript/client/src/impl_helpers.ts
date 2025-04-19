@@ -5,7 +5,11 @@
 import { getPrefetchHandlers, makeLinkOnClickFn } from "./client.ts";
 import { internal_RiverClientGlobal } from "./river_ctx.ts";
 
-export type RiverUntypedLoader = { _type: string; pattern: string; phantomOutputType: any };
+export type RiverUntypedLoader = {
+	_type: string;
+	pattern: string;
+	phantomOutputType: any;
+};
 
 export type RiverRoutePropsGeneric<
 	JSXElement,
@@ -57,7 +61,9 @@ function linkPropsToPrefetchObj<LinkOnClickCallback>(
 	});
 }
 
-function linkPropsToOnClickFn<LinkOnClickCallback>(props: RiverLinkPropsBase<LinkOnClickCallback>) {
+function linkPropsToOnClickFn<LinkOnClickCallback>(
+	props: RiverLinkPropsBase<LinkOnClickCallback>,
+) {
 	return makeLinkOnClickFn({
 		beforeBegin: props.beforeBegin as any,
 		beforeRender: props.beforeRender as any,

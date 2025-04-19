@@ -58,11 +58,11 @@ import type { Plugin } from "vite";
 
 const rollupOptions = {
 	input: [
-		"./frontend/entry.tsx",
 		"frontend/components/routes/dyn.tsx",
 		"frontend/components/routes/home.tsx",
 		"frontend/components/routes/root.tsx",
 		"frontend/components/routes/start.tsx",
+		"frontend/entry.tsx",
 	] as string[],
 	preserveEntrySignatures: "exports-only",
 	output: {
@@ -134,7 +134,7 @@ export function riverVitePlugin(): Plugin {
 							...[
 								"**/*.go",
 								"**/backend/static",
-								"**/backend/app/wave.config.json",
+								"**/wave.config.json",
 								"**/frontend/river.gen.ts",
 								"**/frontend/routes.ts"
 							],

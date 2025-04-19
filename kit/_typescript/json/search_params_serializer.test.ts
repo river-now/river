@@ -12,7 +12,9 @@ describe("URLSearchParams Serializer", () => {
 
 	it("Slice of strings", () => {
 		const input = { tags: ["go", "programming", "test"] };
-		expect(serializeToSearchParams(input).toString()).toBe("tags=go&tags=programming&tags=test");
+		expect(serializeToSearchParams(input).toString()).toBe(
+			"tags=go&tags=programming&tags=test",
+		);
 	});
 
 	it("Mixed types", () => {
@@ -37,7 +39,9 @@ describe("URLSearchParams Serializer", () => {
 
 	it("Slice of pointers", () => {
 		const input = { scores: [90, 85, 95] };
-		expect(serializeToSearchParams(input).toString()).toBe("scores=90&scores=85&scores=95");
+		expect(serializeToSearchParams(input).toString()).toBe(
+			"scores=90&scores=85&scores=95",
+		);
 	});
 
 	it("Empty values -- pointers", () => {
@@ -105,7 +109,9 @@ describe("URLSearchParams Serializer", () => {
 	// Maps
 	it("Basic map", () => {
 		const input = { data: { key1: "value1", key2: "value2" } };
-		expect(serializeToSearchParams(input).toString()).toBe("data.key1=value1&data.key2=value2");
+		expect(serializeToSearchParams(input).toString()).toBe(
+			"data.key1=value1&data.key2=value2",
+		);
 	});
 
 	it("Map with slice values", () => {
@@ -153,12 +159,16 @@ describe("URLSearchParams Serializer", () => {
 	// Pointers to Complex Types
 	it("Basic map pointer", () => {
 		const input = { data: { key1: "value1", key2: "value2" } };
-		expect(serializeToSearchParams(input).toString()).toBe("data.key1=value1&data.key2=value2");
+		expect(serializeToSearchParams(input).toString()).toBe(
+			"data.key1=value1&data.key2=value2",
+		);
 	});
 
 	it("Basic struct pointer", () => {
 		const input = { data: { key1: "value1", key2: "value2" } };
-		expect(serializeToSearchParams(input).toString()).toBe("data.key1=value1&data.key2=value2");
+		expect(serializeToSearchParams(input).toString()).toBe(
+			"data.key1=value1&data.key2=value2",
+		);
 	});
 
 	it("Basic slice pointer", () => {
@@ -169,7 +179,9 @@ describe("URLSearchParams Serializer", () => {
 	// Misc
 	it("Triple nested structs", () => {
 		const input = { level1: { level2: { level3: { field: "value" } } } };
-		expect(serializeToSearchParams(input).toString()).toBe("level1.level2.level3.field=value");
+		expect(serializeToSearchParams(input).toString()).toBe(
+			"level1.level2.level3.field=value",
+		);
 	});
 
 	it("Empty query parameters", () => {
