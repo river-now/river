@@ -2,9 +2,9 @@
 	"$schema": "__dist/static/internal/schema.json",
 	"Core": {
 		"ConfigLocation": "wave.config.json",
-		"DevBuildHook": "go run ./backend/cmd/build --dev --hook",
-		"ProdBuildHook": "go run ./backend/cmd/build --hook",
-		"MainAppEntry": "backend/cmd/app",
+		"DevBuildHook": "go run ./__cmd/build --dev --hook",
+		"ProdBuildHook": "go run ./__cmd/build --hook",
+		"MainAppEntry": "__cmd/app",
 		"DistDir": "__dist",
 		"StaticAssetDirs": {
 			"Private": "backend/static",

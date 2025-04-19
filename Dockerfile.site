@@ -38,10 +38,10 @@ RUN go mod download
 RUN npx @tailwindcss/cli \
 	-i ./frontend/css/tailwind-input.css \
 	-o ./frontend/css/tailwind-output.css
-RUN go run ./backend/cmd/build --no-binary
+RUN go run ./__cmd/build --no-binary
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -v \
 	-o /monorepo/__main \
-	./backend/cmd/app
+	./__cmd/app
 
 ### server
 FROM alpine:latest as server
