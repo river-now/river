@@ -59,10 +59,12 @@ export function RiverRootOutlet(
 			const newCurrentImportURL = ctx.get("importURLs")?.[idx];
 			const newCurrentExportKey = ctx.get("exportKeys")?.[idx];
 
-			if (currentImportURL() !== newCurrentImportURL)
+			if (currentImportURL() !== newCurrentImportURL) {
 				setCurrentImportURL(newCurrentImportURL);
-			if (currentExportKey() !== newCurrentExportKey)
+			}
+			if (currentExportKey() !== newCurrentExportKey) {
 				setCurrentExportKey(newCurrentExportKey);
+			}
 
 			if (idx === 0 && e.detail.scrollState) {
 				shouldScroll = true;

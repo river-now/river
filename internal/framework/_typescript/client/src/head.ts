@@ -27,7 +27,9 @@ function createElementFingerprint(element: Element): string {
 	const attributes: Array<string> = [];
 	for (let i = 0; i < element.attributes.length; i++) {
 		const attr = element.attributes[i];
-		if (!attr) continue;
+		if (!attr) {
+			continue;
+		}
 		const value = element.hasAttribute(attr.name) && attr.value === "" ? "" : attr.value;
 		attributes.push(`${attr.name}="${value}"`);
 	}
@@ -57,7 +59,9 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 	const newElements: Array<Element> = [];
 	const newElementFingerprints = new Map<string, Element>();
 	for (const block of blocks) {
-		if (!block.tag) continue;
+		if (!block.tag) {
+			continue;
+		}
 		const newEl = document.createElement(block.tag);
 		if (block.safeAttributes) {
 			for (const key of Object.keys(block.safeAttributes)) {
@@ -147,7 +151,9 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 
 	for (let i = 0; i < finalElements.length; i++) {
 		const element = finalElements[i];
-		if (!element) continue;
+		if (!element) {
+			continue;
+		}
 		const isExistingElement = usedCurrentElements.has(element);
 
 		if (isExistingElement) {

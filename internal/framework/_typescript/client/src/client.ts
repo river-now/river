@@ -203,7 +203,9 @@ async function __fetchRouteData(
 		}
 
 		const json = (await response.json()) as GetRouteDataOutput | undefined;
-		if (!json) throw new Error("No JSON response");
+		if (!json) {
+			throw new Error("No JSON response");
+		}
 
 		// deps are only present in prod because they stem from the rollup metafile
 		// (same for CSS bundles -- vite handles them in dev)
@@ -214,7 +216,9 @@ async function __fetchRouteData(
 		// Add missing deps modulepreload links
 		for (const x of depsToPreload ?? []) {
 			const newLink = getMaybeNewPreloadLink(x);
-			if (!newLink) continue;
+			if (!newLink) {
+				continue;
+			}
 			newLink.rel = "modulepreload";
 			document.head.appendChild(newLink);
 		}
@@ -225,7 +229,9 @@ async function __fetchRouteData(
 		// Add missing css bundle preload links
 		for (const x of json.cssBundles ?? []) {
 			const newLink = getMaybeNewPreloadLink(x);
-			if (!newLink) continue;
+			if (!newLink) {
+				continue;
+			}
 			newLink.rel = "preload";
 			newLink.as = "style";
 			document.head.appendChild(newLink);
@@ -787,7 +793,9 @@ async function __reRenderApp({
 	// The temp textarea trick is to decode any HTML entities in the title
 	const tempTxt = document.createElement("textarea");
 	tempTxt.innerHTML = json.title ?? "";
-	if (document.title !== tempTxt.value) document.title = tempTxt.value;
+	if (document.title !== tempTxt.value) {
+		document.title = tempTxt.value;
+	}
 
 	// NOW ACTUALLY SET EVERYTHING
 	const identicalKeysToSet = [
@@ -941,7 +949,9 @@ let __customHistory: ReturnType<typeof createBrowserHistory>;
 let lastKnownCustomLocation: (typeof __customHistory)["location"];
 
 export function getHistoryInstance() {
-	if (!__customHistory) __customHistory = createBrowserHistory();
+	if (!__customHistory) {
+		__customHistory = createBrowserHistory();
+	}
 	return __customHistory;
 }
 

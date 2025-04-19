@@ -65,7 +65,8 @@
 					"options": {
 						"syntax": "generic"
 					}
-				}
+				},
+				"useBlockStatements": "error"
 			},
 			"correctness": {
 				"useImportExtensions": "error" // require ".ts", etc. in import statements

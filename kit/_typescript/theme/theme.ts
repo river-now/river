@@ -127,7 +127,9 @@ function __setClientCookie(name: string, value: string) {
 function __setClassesAndDispatchEvent(detail: ThemeChangeEventDetail) {
 	CLASSLIST.remove(...THEME_VALUES);
 	CLASSLIST.add(detail.theme);
-	if (detail.theme === THEMES.System) CLASSLIST.add(detail.resolvedTheme);
+	if (detail.theme === THEMES.System) {
+		CLASSLIST.add(detail.resolvedTheme);
+	}
 	window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT_KEY, { detail }));
 }
 

@@ -251,7 +251,9 @@ describe("Encoding Conversion Functions", () => {
 			for (let i = 0; i < testPadding.length; i++) {
 				const test = testPadding[i];
 				expect(test).toBeDefined();
-				if (!test) throw new Error("Test case not defined");
+				if (!test) {
+					throw new Error("Test case not defined");
+				}
 				expect(converters.base64ToBase64URL(test.base64)).toBe(test.base64URL);
 				expect(converters.base64URLToBase64(test.base64URL)).toBe(test.base64);
 			}

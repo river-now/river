@@ -6,7 +6,9 @@ let debounceEndTimer: number | null = null;
 
 addStatusListener((e) => {
 	if (e.detail.isNavigating || e.detail.isRevalidating || e.detail.isSubmitting) {
-		if (debounceStartTimer) clearTimeout(debounceStartTimer);
+		if (debounceStartTimer) {
+			clearTimeout(debounceStartTimer);
+		}
 		debounceStartTimer = window.setTimeout(startNProgress, 30);
 		return;
 	}

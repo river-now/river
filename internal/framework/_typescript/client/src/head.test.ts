@@ -80,12 +80,16 @@ describe("updateHeadBlocks", () => {
 		expect(linkElements.length).toBe(1);
 
 		const metaEl = metaElements[0];
-		if (!metaEl) throw new Error("Meta element not found");
+		if (!metaEl) {
+			throw new Error("Meta element not found");
+		}
 		expect(metaEl.getAttribute("name")).toBe("description");
 		expect(metaEl.getAttribute("content")).toBe("Test Description");
 
 		const linkEl = linkElements[0];
-		if (!linkEl) throw new Error("Link element not found");
+		if (!linkEl) {
+			throw new Error("Link element not found");
+		}
 		expect(linkEl.getAttribute("rel")).toBe("stylesheet");
 		expect(linkEl.getAttribute("href")).toBe("/styles.css");
 
@@ -128,7 +132,9 @@ describe("updateHeadBlocks", () => {
 		expect(metaElements.length).toBe(1);
 
 		const metaEl = metaElements[0];
-		if (!metaEl) throw new Error("Meta element not found");
+		if (!metaEl) {
+			throw new Error("Meta element not found");
+		}
 		expect(metaEl.getAttribute("name")).toBe("description");
 		expect(metaEl.getAttribute("content")).toBe("New Description");
 	});
@@ -247,7 +253,9 @@ describe("updateHeadBlocks", () => {
 
 		const scriptEl = document.head.querySelector("script");
 		expect(scriptEl).not.toBeNull();
-		if (!scriptEl) throw new Error("Script element not found");
+		if (!scriptEl) {
+			throw new Error("Script element not found");
+		}
 		expect(scriptEl.getAttribute("src")).toBe("/script.js");
 		expect(scriptEl.hasAttribute("async")).toBe(true);
 		expect(scriptEl.hasAttribute("defer")).toBe(true);
@@ -267,7 +275,9 @@ describe("updateHeadBlocks", () => {
 
 		const scriptEl = document.head.querySelector("script");
 		expect(scriptEl).not.toBeNull();
-		if (!scriptEl) throw new Error("Script element not found");
+		if (!scriptEl) {
+			throw new Error("Script element not found");
+		}
 		expect(scriptEl.innerHTML).toBe('console.log("test");');
 	});
 
@@ -320,7 +330,9 @@ describe("updateHeadBlocks", () => {
 
 		const scriptEl = document.head.querySelector("script");
 		expect(scriptEl).not.toBeNull();
-		if (!scriptEl) throw new Error("Script element not found");
+		if (!scriptEl) {
+			throw new Error("Script element not found");
+		}
 		expect(scriptEl.getAttribute("src")).toBe("/script.js");
 
 		// Verify script is between rest comments
@@ -376,7 +388,9 @@ describe("updateHeadBlocks", () => {
 
 		const metaEl = document.head.querySelector("meta");
 		expect(metaEl).not.toBeNull();
-		if (!metaEl) throw new Error("Meta element not found");
+		if (!metaEl) {
+			throw new Error("Meta element not found");
+		}
 		expect(metaEl.getAttribute("name")).toBe("description");
 
 		// Verify text nodes are removed
