@@ -18,8 +18,8 @@ func (c *Config) AddPublicAssetKeys(statements *tsgen.Statements) *tsgen.Stateme
 		panic(err)
 	}
 
-	a.Serialize("const wave_PUBLIC_ASSETS", keys)
-	a.Raw("export type WavePublicAsset", "`${\"/\" | \"\"}${(typeof wave_PUBLIC_ASSETS)[number]}`")
+	a.Serialize("const WAVE_PUBLIC_ASSETS", keys)
+	a.Raw("export type WavePublicAsset", "`${\"/\" | \"\"}${(typeof WAVE_PUBLIC_ASSETS)[number]}`")
 
 	return a
 }

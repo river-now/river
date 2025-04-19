@@ -141,7 +141,9 @@ export function beginNavigation(props: NavigateProps): NavigationControl {
 }
 
 async function __completeNavigation(x: NavigationResult) {
-	if (!x) return;
+	if (!x) {
+		return;
+	}
 	if ("redirectData" in x) {
 		await effectuateRedirectDataResult(x.redirectData);
 		return;
@@ -167,7 +169,9 @@ async function __completeNavigation(x: NavigationResult) {
 function getMaybeNewPreloadLink(x: string) {
 	const href = resolvePublicHref(x);
 	const existing = document.querySelector(`link[href="${CSS.escape(href)}"]`);
-	if (existing) return;
+	if (existing) {
+		return;
+	}
 	const newLink = document.createElement("link");
 	newLink.href = href;
 	return newLink;

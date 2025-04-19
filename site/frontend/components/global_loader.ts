@@ -8,20 +8,30 @@ addStatusListener((e) => {
 	if (e.detail.isNavigating || e.detail.isRevalidating || e.detail.isSubmitting) {
 		if (debounceStartTimer) clearTimeout(debounceStartTimer);
 		debounceStartTimer = window.setTimeout(startNProgress, 30);
-	} else {
-		if (debounceEndTimer) clearTimeout(debounceEndTimer);
-		debounceEndTimer = window.setTimeout(stopNProgress, 3);
+		return;
 	}
+	if (debounceEndTimer) {
+		clearTimeout(debounceEndTimer);
+	}
+	debounceEndTimer = window.setTimeout(stopNProgress, 3);
 });
 
 function startNProgress() {
-	if (!getIsWorking()) return;
-	if (!NProgress.isStarted()) NProgress.start();
+	if (!getIsWorking()) {
+		return;
+	}
+	if (!NProgress.isStarted()) {
+		NProgress.start();
+	}
 }
 
 function stopNProgress() {
-	if (getIsWorking()) return;
-	if (NProgress.isStarted()) NProgress.done();
+	if (getIsWorking()) {
+		return;
+	}
+	if (NProgress.isStarted()) {
+		NProgress.done();
+	}
 }
 
 function getIsWorking(statusEvent?: StatusEvent) {

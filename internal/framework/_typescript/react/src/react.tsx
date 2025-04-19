@@ -37,12 +37,18 @@ export function RiverRootOutlet(
 			const newNextExportKey = ctx.get("exportKeys")?.[idx + 1];
 
 			flushSync(() => {
-				if (currentImportURL !== newCurrentImportURL)
+				if (currentImportURL !== newCurrentImportURL) {
 					setCurrentImportURL(newCurrentImportURL);
-				if (currentExportKey !== newCurrentExportKey)
+				}
+				if (currentExportKey !== newCurrentExportKey) {
 					setCurrentExportKey(newCurrentExportKey);
-				if (nextImportURL !== newNextImportURL) setNextImportURL(newNextImportURL);
-				if (nextExportKey !== newNextExportKey) setNextExportKey(newNextExportKey);
+				}
+				if (nextImportURL !== newNextImportURL) {
+					setNextImportURL(newNextImportURL);
+				}
+				if (nextExportKey !== newNextExportKey) {
+					setNextExportKey(newNextExportKey);
+				}
 			});
 		});
 	}, [currentImportURL, currentExportKey]);
@@ -68,15 +74,24 @@ export function RiverRootOutlet(
 				const newCurrentRiverData = getCurrentRiverData();
 
 				flushSync(() => {
-					if (!jsonDeepEquals(importURLs, newImportURLs)) setImportURLs(newImportURLs);
-					if (!jsonDeepEquals(rootData, newRootData)) setRootData(newRootData);
-					if (!jsonDeepEquals(params, newParams)) setParams(newParams);
-					if (!jsonDeepEquals(splatValues, newSplatValues))
+					if (!jsonDeepEquals(importURLs, newImportURLs)) {
+						setImportURLs(newImportURLs);
+					}
+					if (!jsonDeepEquals(rootData, newRootData)) {
+						setRootData(newRootData);
+					}
+					if (!jsonDeepEquals(params, newParams)) {
+						setParams(newParams);
+					}
+					if (!jsonDeepEquals(splatValues, newSplatValues)) {
 						setSplatValues(newSplatValues);
-					if (!jsonDeepEquals(loadersData, newLoadersData))
+					}
+					if (!jsonDeepEquals(loadersData, newLoadersData)) {
 						setLoadersData(newLoadersData);
-					if (!jsonDeepEquals(currentRiverData, newCurrentRiverData))
+					}
+					if (!jsonDeepEquals(currentRiverData, newCurrentRiverData)) {
 						setCurrentRiverData(newCurrentRiverData);
+					}
 				});
 
 				if (e.detail.scrollState) {
@@ -96,7 +111,9 @@ export function RiverRootOutlet(
 	useEffect(() => {
 		if (idx === 0) {
 			return addBuildIDListener((e) => {
-				if (!e.detail.fromGETAction) return;
+				if (!e.detail.fromGETAction) {
+					return;
+				}
 				flushSync(() => {
 					setCurrentRiverData(getCurrentRiverData());
 				});
@@ -118,7 +135,9 @@ export function RiverRootOutlet(
 		[nextImportURL, nextExportKey],
 	);
 
-	if (!CurrentComp) return <></>;
+	if (!CurrentComp) {
+		return <></>;
+	}
 
 	return <CurrentComp idx={idx} Outlet={Outlet} />;
 }

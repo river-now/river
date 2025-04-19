@@ -32,7 +32,9 @@ addRouteChangeListener((e) => {
 });
 
 addBuildIDListener((e) => {
-	if (!e.detail.fromGETAction) return;
+	if (!e.detail.fromGETAction) {
+		return;
+	}
 	setCurrentRiverData(getCurrentRiverData());
 });
 
@@ -50,7 +52,9 @@ export function RiverRootOutlet(
 	if (currentImportURL) {
 		createEffect(() => {
 			const e = latestEvent();
-			if (!e) return;
+			if (!e) {
+				return;
+			}
 
 			const newCurrentImportURL = ctx.get("importURLs")?.[idx];
 			const newCurrentExportKey = ctx.get("exportKeys")?.[idx];

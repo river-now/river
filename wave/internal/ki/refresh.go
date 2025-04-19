@@ -143,6 +143,7 @@ const refreshScriptFmt = `
 				el.style.textAlign = "center";
 				el.style.padding = "10px";
 				el.style.zIndex = "1000";
+				el.style.fontFamily = "monospace";
 				el.style.fontSize = "7vw";
 				el.style.fontWeight = "bold";
 				el.style.textShadow = "2px 2px 2px #000";

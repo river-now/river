@@ -24,7 +24,7 @@ export function getStartAndEndComments(type: "meta" | "rest"): {
 }
 
 function createElementFingerprint(element: Element): string {
-	const attributes: string[] = [];
+	const attributes: Array<string> = [];
 	for (let i = 0; i < element.attributes.length; i++) {
 		const attr = element.attributes[i];
 		if (!attr) continue;
@@ -43,7 +43,7 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 	const parent = endComment.parentNode;
 
 	// Collect all current nodes between start and end comments
-	const currentNodes: Node[] = [];
+	const currentNodes: Array<Node> = [];
 	let nodePtr = startComment.nextSibling;
 	while (nodePtr != null && nodePtr !== endComment) {
 		currentNodes.push(nodePtr);
@@ -54,7 +54,7 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 	);
 
 	// Create new elements from blocks
-	const newElements: Element[] = [];
+	const newElements: Array<Element> = [];
 	const newElementFingerprints = new Map<string, Element>();
 	for (const block of blocks) {
 		if (!block.tag) continue;
@@ -94,7 +94,7 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 	}
 
 	// Build a map of current elements by fingerprint
-	const currentElementsMap = new Map<string, Element[]>();
+	const currentElementsMap = new Map<string, Array<Element>>();
 	for (const el of currentElements) {
 		const fingerprint = createElementFingerprint(el);
 		if (!currentElementsMap.has(fingerprint)) {
@@ -104,7 +104,7 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 	}
 
 	// Match new elements with existing ones when possible
-	const finalElements: Element[] = [];
+	const finalElements: Array<Element> = [];
 	const usedCurrentElements = new Set<Element>();
 
 	for (const newEl of newElements) {

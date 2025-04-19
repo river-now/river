@@ -6,11 +6,11 @@ export function isAbortError(error: unknown) {
 	return error instanceof Error && error.name === "AbortError";
 }
 
-export function LogInfo(message?: any, ...optionalParams: any[]) {
+export function LogInfo(message?: any, ...optionalParams: Array<any>) {
 	console.log("River:", message, ...optionalParams);
 }
 
-export function LogError(message?: any, ...optionalParams: any[]) {
+export function LogError(message?: any, ...optionalParams: Array<any>) {
 	console.error("River:", message, ...optionalParams);
 }
 

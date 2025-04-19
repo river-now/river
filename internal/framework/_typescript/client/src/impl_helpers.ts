@@ -137,6 +137,6 @@ export function makeFinalLinkProps<LinkOnClickCallback>(
 	};
 }
 
-function isFn(fn: any): fn is (...args: any[]) => any {
+function isFn(fn: any): fn is (...args: Array<any>) => any {
 	return typeof fn === "function";
 }
