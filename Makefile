@@ -65,4 +65,4 @@ docker-site:
 	@docker build -t river-site -f Dockerfile.site .
 
 docker-run-site:
-	docker run -d -p $(port):$(port) -e PORT=$(port) river-site
+	docker run -d -p $(PORT):$(PORT) -e PORT=$(PORT) river-site
