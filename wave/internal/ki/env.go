@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	modeKey              = "wave_MODE"
+	modeKey              = "WAVE_MODE"
 	devModeVal           = "development"
 	portKey              = "PORT"
-	portHasBeenSetKey    = "wave_PORT_HAS_BEEN_SET"
-	refreshServerPortKey = "wave_REFRESH_SERVER_PORT"
+	portHasBeenSetKey    = "WAVE_PORT_HAS_BEEN_SET"
+	refreshServerPortKey = "WAVE_REFRESH_SERVER_PORT"
 	trueStr              = "true"
 )
 

@@ -117,7 +117,7 @@ const refreshScriptFmt = `
 	if (scrollY) {
 		setTimeout(() => {
 			localStorage.removeItem(scrollYKey);
-			console.info("wave DEV: Restoring previous scroll position");
+			console.info("WAVE DEV: Restoring previous scroll position");
 			window.scrollTo({ top: scrollY, behavior: "smooth" })
 		}, 150);
 	}
@@ -128,7 +128,7 @@ const refreshScriptFmt = `
 		const { changeType, criticalCSS, normalCSSURL } = JSON.parse(e.data);
 
 		if (changeType == "rebuilding") {
-			console.log("wave DEV: Rebuilding server...");
+			console.log("WAVE DEV: Rebuilding server...");
 			const currentEl = getCurrentEl();
 			if (!currentEl) {
 				const el = document.createElement("div");
@@ -185,11 +185,11 @@ const refreshScriptFmt = `
 		}
 			
 		if (changeType == "revalidate") {
-			console.log("wave DEV: Revalidating...");
+			console.log("WAVE DEV: Revalidating...");
 			const el = getCurrentEl();
 			if ("__waveRevalidate" in window) {
 				__waveRevalidate().then(() => {
-					console.log("wave DEV: Revalidated");
+					console.log("WAVE DEV: Revalidated");
 					el?.remove();
 				});
 			} else {
@@ -200,12 +200,12 @@ const refreshScriptFmt = `
 	};
 
 	ws.onclose = () => {
-		console.log("wave DEV: WebSocket closed");
+		console.log("WAVE DEV: WebSocket closed");
 		window.location.reload();
 	};
 
 	ws.onerror = (e) => {
-		console.log("wave DEV: WebSocket error", e);
+		console.log("WAVE DEV: WebSocket error", e);
 		ws.close();
 		window.location.reload();
 	};
