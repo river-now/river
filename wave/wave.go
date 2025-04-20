@@ -173,8 +173,8 @@ func (k Wave) GetRiverClientRouteDefsFile() string {
 func (k Wave) GetRiverTSGenOutPath() string {
 	return k.c.GetRiverTSGenOutPath()
 }
-func (k Wave) GetRiverPublicURLFuncName() string {
-	return k.c.GetRiverPublicURLFuncName()
+func (k Wave) GetRiverBuildtimePublicURLFuncName() string {
+	return k.c.GetRiverBuildtimePublicURLFuncName()
 }
 func (k Wave) GetRiverAutoETags() bool {
 	return k.c.GetRiverAutoETags()

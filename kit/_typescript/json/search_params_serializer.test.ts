@@ -93,7 +93,9 @@ describe("URLSearchParams Serializer", () => {
 	// Embedded Structs
 	it("Embedded structs", () => {
 		const input = { embeddedField: "embeddedValue" };
-		expect(serializeToSearchParams(input).toString()).toBe("embeddedField=embeddedValue");
+		expect(serializeToSearchParams(input).toString()).toBe(
+			"embeddedField=embeddedValue",
+		);
 	});
 
 	it("Double embedded structs", () => {

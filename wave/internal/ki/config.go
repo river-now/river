@@ -189,13 +189,13 @@ type UserConfigVite struct {
 }
 
 type UserConfigRiver struct {
-	IncludeDefaults      *bool
-	UIVariant            string
-	HTMLTemplateLocation string // Relative to your static private dir
-	ClientEntry          string
-	ClientRouteDefsFile  string
-	TSGenOutPath         string // e.g., "./frontend/river.gen.ts"
-	PublicURLFuncName    string // e.g., "publicURL", "withHash", etc.
+	IncludeDefaults            *bool
+	UIVariant                  string
+	HTMLTemplateLocation       string // Relative to your static private dir
+	ClientEntry                string
+	ClientRouteDefsFile        string
+	TSGenOutPath               string // e.g., "./frontend/river.gen.ts"
+	BuildtimePublicURLFuncName string // e.g., "waveURL", "withHash", etc.
 
 	// If set to true, UI route responses will automatically include a strong ETag
 	// (SHA-256 hash) derived from the applicable nested route data, and will
@@ -221,8 +221,8 @@ func (c *Config) GetRiverClientRouteDefsFile() string {
 func (c *Config) GetRiverTSGenOutPath() string {
 	return c._uc.River.TSGenOutPath
 }
-func (c *Config) GetRiverPublicURLFuncName() string {
-	return c._uc.River.PublicURLFuncName
+func (c *Config) GetRiverBuildtimePublicURLFuncName() string {
+	return c._uc.River.BuildtimePublicURLFuncName
 }
 func (c *Config) GetRiverAutoETags() bool {
 	return c._uc.River.AutoETags
@@ -245,12 +245,13 @@ type OnChangeHook struct {
 }
 
 type WatchedFile struct {
-	Pattern                        string
-	OnChangeHooks                  []OnChangeHook
-	RecompileGoBinary              bool
-	RestartApp                     bool
-	RunClientDefinedRevalidateFunc bool
-	RunOnChangeOnly                bool
-	SkipRebuildingNotification     bool
-	TreatAsNonGo                   bool
+	Pattern                            string
+	OnChangeHooks                      []OnChangeHook
+	RecompileGoBinary                  bool
+	RestartApp                         bool
+	RunClientDefinedRevalidateFunc     bool
+	OnlyRunClientDefinedRevalidateFunc bool
+	RunOnChangeOnly                    bool
+	SkipRebuildingNotification         bool
+	TreatAsNonGo                       bool
 }

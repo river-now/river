@@ -7,7 +7,7 @@ import {
 	getIsErrorRes,
 	getIsGETRequest,
 } from "river.now/kit/url";
-import { updateHeadBlocks } from "./head.ts";
+import { updateHeadEls } from "./head.ts";
 import { parseFetchResponseForRedirectData, type RedirectData } from "./redirects.ts";
 import {
 	type GetRouteDataOutput,
@@ -183,7 +183,10 @@ async function __fetchRouteData(
 ): Promise<NavigationResult | undefined> {
 	try {
 		const url = new URL(props.href, window.location.href);
-		url.searchParams.set("river_json", internal_RiverClientGlobal.get("buildID") || "1");
+		url.searchParams.set(
+			"river_json",
+			internal_RiverClientGlobal.get("buildID") || "1",
+		);
 
 		const { redirectData, response } = await handleRedirects({
 			abortController: controller,
@@ -211,7 +214,9 @@ async function __fetchRouteData(
 		// (same for CSS bundles -- vite handles them in dev)
 		// so in dev, to get similar behavior, we use the importURLs
 		// (which is a subset of what the deps would be in prod)
-		const depsToPreload = import.meta.env.DEV ? [...new Set(json.importURLs)] : json.deps;
+		const depsToPreload = import.meta.env.DEV
+			? [...new Set(json.importURLs)]
+			: json.deps;
 
 		// Add missing deps modulepreload links
 		for (const x of depsToPreload ?? []) {
@@ -291,7 +296,9 @@ type GetPrefetchHandlersInput<E extends Event> = LinkOnClickCallbacksBase<E> & {
 	delayMs?: number;
 };
 
-export function getPrefetchHandlers<E extends Event>(input: GetPrefetchHandlersInput<E>) {
+export function getPrefetchHandlers<E extends Event>(
+	input: GetPrefetchHandlersInput<E>,
+) {
 	const hrefDetails = getHrefDetails(input.href);
 	if (!hrefDetails.isHTTP || !hrefDetails.relativeURL || hrefDetails.isExternal) {
 		return;
@@ -520,7 +527,10 @@ export async function handleRedirects(props: {
 			// if a GET and not a prefetch, try just hard reloading
 			if (isGET && !props.isPrefetch) {
 				window.location.href = props.url.href;
-				return { redirectData: { status: "did", href: props.url.href }, response: res };
+				return {
+					redirectData: { status: "did", href: props.url.href },
+					response: res,
+				};
 			}
 			LogError(error);
 		}
@@ -743,7 +753,8 @@ export function getStatus(): StatusEventDetail {
 	};
 }
 
-export const addStatusListener = makeListenerAdder<StatusEventDetail>(STATUS_EVENT_KEY);
+export const addStatusListener =
+	makeListenerAdder<StatusEventDetail>(STATUS_EVENT_KEY);
 
 /////////////////////////////////////////////////////////////////////
 // ROUTE CHANGE LISTENER
@@ -838,7 +849,9 @@ async function __reRenderApp({
 	}
 
 	// dispatch event
-	const detail: RouteChangeEventDetail = { scrollState: scrollStateToDispatch } as const;
+	const detail: RouteChangeEventDetail = {
+		scrollState: scrollStateToDispatch,
+	} as const;
 
 	// Wait for all CSS bundle preloads to complete
 	if (cssBundlePromises.length > 0) {
@@ -867,8 +880,8 @@ async function __reRenderApp({
 
 	window.dispatchEvent(new CustomEvent(RIVER_ROUTE_CHANGE_EVENT_KEY, { detail }));
 
-	updateHeadBlocks("meta", json.metaHeadBlocks ?? []);
-	updateHeadBlocks("rest", json.restHeadBlocks ?? []);
+	updateHeadEls("meta", json.metaHeadEls ?? []);
+	updateHeadEls("rest", json.restHeadEls ?? []);
 }
 
 const cssBundleDataAttr = "data-river-css-bundle";
@@ -886,11 +899,17 @@ export async function navigate(href: string, options?: { replace?: boolean }) {
 }
 
 export async function revalidate() {
-	await __navigate({ href: window.location.href, navigationType: "revalidation" });
+	await __navigate({
+		href: window.location.href,
+		navigationType: "revalidation",
+	});
 }
 
 export async function devRevalidate() {
-	await __navigate({ href: window.location.href, navigationType: "dev-revalidation" });
+	await __navigate({
+		href: window.location.href,
+		navigationType: "dev-revalidation",
+	});
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -1120,7 +1139,9 @@ type LinkOnClickCallbacksBase<E extends Event> = {
 
 type LinkOnClickCallbacks<E extends Event> = LinkOnClickCallbacksBase<E>;
 
-export function makeLinkOnClickFn<E extends Event>(callbacks: LinkOnClickCallbacks<E>) {
+export function makeLinkOnClickFn<E extends Event>(
+	callbacks: LinkOnClickCallbacks<E>,
+) {
 	return async (event: E) => {
 		if (event.defaultPrevented) {
 			return;

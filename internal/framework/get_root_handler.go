@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/river-now/river/kit/headblocks"
+	"github.com/river-now/river/kit/headels"
 	"github.com/river-now/river/kit/mux"
 	"github.com/river-now/river/kit/response"
 	"github.com/river-now/river/kit/viteutil"
@@ -17,7 +17,7 @@ import (
 
 const buildIDHeader = "X-River-Build-Id"
 
-var headblocksInstance = headblocks.New("river")
+var headElsInstance = headels.NewInstance("river")
 
 func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 	h.validateAndDecorateNestedRouter(nestedRouter)
@@ -106,7 +106,7 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 		var headElements template.HTML
 
 		eg.Go(func() error {
-			he, err := headblocksInstance.Render(&headblocks.HeadBlocks{
+			he, err := headElsInstance.Render(&headels.SortedHeadEls{
 				Title: routeData.Title,
 				Meta:  routeData.Meta,
 				Rest:  routeData.Rest,
@@ -149,7 +149,7 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 			return
 		}
 
-		rootTemplateData["RiverHeadBlocks"] = headElements
+		rootTemplateData["RiverHeadEls"] = headElements
 		rootTemplateData["RiverSSRScript"] = ssrScript
 		rootTemplateData["RiverSSRScriptSha256Hash"] = ssrScriptSha256Hash
 		rootTemplateData["RiverRootID"] = "river-root"

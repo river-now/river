@@ -1,4 +1,4 @@
-package headblocks
+package headels
 
 import (
 	"fmt"
@@ -9,10 +9,10 @@ import (
 	"github.com/river-now/river/kit/htmlutil"
 )
 
-var testInstance = New("bob")
+var testInstance = NewInstance("bob")
 
 func TestGetHeadElements(t *testing.T) {
-	routeData := &HeadBlocks{
+	routeData := &SortedHeadEls{
 		Title: "Test Title",
 		Meta: []*htmlutil.Element{
 			{Tag: "meta", Attributes: map[string]string{"name": "description", "content": "Test Description"}},
@@ -44,8 +44,8 @@ const (
 	testDescription_2 = "This is a different test description."
 )
 
-// Test cases for dedupeHeadBlocks
-func TestDedupeHeadBlocks(t *testing.T) {
+// Test cases for dedupeHeadEls
+func TestDedupeHeadEls(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    []*htmlutil.Element
@@ -54,12 +54,12 @@ func TestDedupeHeadBlocks(t *testing.T) {
 		{
 			name: "No duplicates, with title and description",
 			input: []*htmlutil.Element{
-				{Tag: "title", InnerHTML: testTitle, Attributes: nil},
+				{Tag: "title", TextContent: testTitle, Attributes: nil},
 				{Tag: "meta", Attributes: map[string]string{"name": "description", "content": testDescription}},
 				{Tag: "meta", Attributes: map[string]string{"name": "og:image", "content": "image.webp"}},
 			},
 			expected: []*htmlutil.Element{
-				{Tag: "title", InnerHTML: testTitle, Attributes: nil},
+				{Tag: "title", TextContent: testTitle, Attributes: nil},
 				{Tag: "meta", Attributes: map[string]string{"name": "description", "content": testDescription}},
 				{Tag: "meta", Attributes: map[string]string{"name": "og:image", "content": "image.webp"}},
 			},
@@ -67,37 +67,37 @@ func TestDedupeHeadBlocks(t *testing.T) {
 		{
 			name: "With duplicates",
 			input: []*htmlutil.Element{
-				{Tag: "title", InnerHTML: testTitle, Attributes: nil},
+				{Tag: "title", TextContent: testTitle, Attributes: nil},
 				{Tag: "meta", Attributes: map[string]string{"name": "description", "content": testDescription}},
 				{Tag: "meta", Attributes: map[string]string{"name": "description", "content": testDescription_2}},
 			},
 			expected: []*htmlutil.Element{
-				{Tag: "title", InnerHTML: testTitle, Attributes: nil},
+				{Tag: "title", TextContent: testTitle, Attributes: nil},
 				{Tag: "meta", Attributes: map[string]string{"name": "description", "content": testDescription_2}},
 			},
 		},
 		{
 			name: "With duplicates TrustedAttributes",
 			input: []*htmlutil.Element{
-				{Tag: "title", InnerHTML: testTitle, Attributes: nil},
-				{Tag: "meta", TrustedAttributes: map[string]string{"name": "description", "content": testDescription}},
-				{Tag: "meta", TrustedAttributes: map[string]string{"name": "description", "content": testDescription_2}},
+				{Tag: "title", TextContent: testTitle, Attributes: nil},
+				{Tag: "meta", AttributesDangerousVals: map[string]string{"name": "description", "content": testDescription}},
+				{Tag: "meta", AttributesDangerousVals: map[string]string{"name": "description", "content": testDescription_2}},
 			},
 			expected: []*htmlutil.Element{
-				{Tag: "title", InnerHTML: testTitle, Attributes: nil},
-				{Tag: "meta", TrustedAttributes: map[string]string{"name": "description", "content": testDescription_2}},
+				{Tag: "title", TextContent: testTitle, Attributes: nil},
+				{Tag: "meta", AttributesDangerousVals: map[string]string{"name": "description", "content": testDescription_2}},
 			},
 		},
 		{
 			name: "With duplicates mixed",
 			input: []*htmlutil.Element{
-				{Tag: "title", InnerHTML: testTitle, Attributes: nil},
+				{Tag: "title", TextContent: testTitle, Attributes: nil},
 				{Tag: "meta", Attributes: map[string]string{"name": "description", "content": testDescription}},
-				{Tag: "meta", TrustedAttributes: map[string]string{"name": "description", "content": testDescription_2}},
+				{Tag: "meta", AttributesDangerousVals: map[string]string{"name": "description", "content": testDescription_2}},
 			},
 			expected: []*htmlutil.Element{
-				{Tag: "title", InnerHTML: testTitle, Attributes: nil},
-				{Tag: "meta", TrustedAttributes: map[string]string{"name": "description", "content": testDescription_2}},
+				{Tag: "title", TextContent: testTitle, Attributes: nil},
+				{Tag: "meta", AttributesDangerousVals: map[string]string{"name": "description", "content": testDescription_2}},
 			},
 		},
 		{
@@ -114,13 +114,13 @@ func TestDedupeHeadBlocks(t *testing.T) {
 		{
 			name: "Multiple titles and descriptions",
 			input: []*htmlutil.Element{
-				{Tag: "title", InnerHTML: testTitle, Attributes: nil},
-				{Tag: "title", InnerHTML: testTitle_2, Attributes: nil},
+				{Tag: "title", TextContent: testTitle, Attributes: nil},
+				{Tag: "title", TextContent: testTitle_2, Attributes: nil},
 				{Tag: "meta", Attributes: map[string]string{"name": "description", "content": "Description 1"}},
 				{Tag: "meta", Attributes: map[string]string{"name": "description", "content": "Description 2"}},
 			},
 			expected: []*htmlutil.Element{
-				{Tag: "title", InnerHTML: testTitle_2, Attributes: nil},
+				{Tag: "title", TextContent: testTitle_2, Attributes: nil},
 				{Tag: "meta", Attributes: map[string]string{"name": "description", "content": "Description 2"}},
 			},
 		},
@@ -140,7 +140,7 @@ func TestDedupeHeadBlocks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := dedupeHeadBlocks(tt.input)
+			result := dedupeHeadEls(tt.input, nil)
 			if !reflect.DeepEqual(result, tt.expected) {
 				fmt.Println("Result:")
 				for _, block := range result {
@@ -152,7 +152,7 @@ func TestDedupeHeadBlocks(t *testing.T) {
 					t.Logf("%+v", block)
 				}
 
-				t.Errorf("dedupeHeadBlocks() = %v, expected %v", result, tt.expected)
+				t.Errorf("dedupeHeadEls() = %v, expected %v", result, tt.expected)
 			}
 		})
 	}
@@ -176,8 +176,8 @@ func TestStableHash(t *testing.T) {
 		{
 			name: "Title tag with innerHTML",
 			input: &htmlutil.Element{
-				Tag:       "title",
-				InnerHTML: "Test Title",
+				Tag:         "title",
+				TextContent: "Test Title",
 			},
 			expected: "title||Test Title",
 		},
@@ -196,7 +196,7 @@ func TestStableHash(t *testing.T) {
 					"type": "text",
 					"name": "username",
 				},
-				TrustedAttributes: map[string]string{
+				AttributesDangerousVals: map[string]string{
 					"data-custom": "<safe-value>",
 				},
 				BooleanAttributes: []string{"required", "autofocus"},
@@ -218,12 +218,12 @@ func TestStableHash(t *testing.T) {
 		{
 			name: "Complex script tag",
 			input: &htmlutil.Element{
-				Tag:       "script",
-				InnerHTML: "console.log('test');",
+				Tag:         "script",
+				TextContent: "console.log('test');",
 				Attributes: map[string]string{
 					"type": "text/javascript",
 				},
-				TrustedAttributes: map[string]string{
+				AttributesDangerousVals: map[string]string{
 					"nonce": "abc123",
 				},
 			},
@@ -232,13 +232,13 @@ func TestStableHash(t *testing.T) {
 		{
 			name: "All fields populated",
 			input: &htmlutil.Element{
-				Tag:       "div",
-				InnerHTML: "content",
+				Tag:         "div",
+				TextContent: "content",
 				Attributes: map[string]string{
 					"class": "main",
 					"id":    "container",
 				},
-				TrustedAttributes: map[string]string{
+				AttributesDangerousVals: map[string]string{
 					"data-safe": "<html>",
 				},
 				BooleanAttributes: []string{"hidden", "draggable"},
@@ -268,7 +268,7 @@ func TestStableHash(t *testing.T) {
 			name: "Only trusted attributes",
 			input: &htmlutil.Element{
 				Tag: "div",
-				TrustedAttributes: map[string]string{
+				AttributesDangerousVals: map[string]string{
 					"data-html":  "<p>safe</p>",
 					"data-html2": "<div>also safe</div>",
 				},
@@ -278,19 +278,19 @@ func TestStableHash(t *testing.T) {
 		{
 			name: "Empty attributes but with innerHTML",
 			input: &htmlutil.Element{
-				Tag:               "span",
-				InnerHTML:         "Some content",
-				Attributes:        map[string]string{},
-				TrustedAttributes: map[string]string{},
-				BooleanAttributes: []string{},
+				Tag:                     "span",
+				TextContent:             "Some content",
+				Attributes:              map[string]string{},
+				AttributesDangerousVals: map[string]string{},
+				BooleanAttributes:       []string{},
 			},
 			expected: "span||Some content",
 		},
 		{
 			name: "Unicode content",
 			input: &htmlutil.Element{
-				Tag:       "p",
-				InnerHTML: "Hello, 世界",
+				Tag:         "p",
+				TextContent: "Hello, 世界",
 				Attributes: map[string]string{
 					"lang": "zh",
 				},
@@ -301,7 +301,7 @@ func TestStableHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := headBlockStableHash(tt.input)
+			result := headElStableHash(tt.input)
 			if result != tt.expected {
 				t.Errorf("stableHash() =\n%v\nexpected:\n%v", result, tt.expected)
 			}
@@ -309,7 +309,7 @@ func TestStableHash(t *testing.T) {
 	}
 }
 
-func TestDedupeHeadBlocksEdgeCases(t *testing.T) {
+func TestDedupeHeadElsEdgeCases(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    []*htmlutil.Element
@@ -341,7 +341,7 @@ func TestDedupeHeadBlocksEdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := dedupeHeadBlocks(tt.input)
+			result := dedupeHeadEls(tt.input, nil)
 			if !reflect.DeepEqual(result, tt.expected) {
 				fmt.Println("Result:")
 				for _, block := range result {
@@ -353,7 +353,7 @@ func TestDedupeHeadBlocksEdgeCases(t *testing.T) {
 					t.Logf("%+v", block)
 				}
 
-				t.Errorf("dedupeHeadBlocks() = %v, expected %v", result, tt.expected)
+				t.Errorf("dedupeHeadEls() = %v, expected %v", result, tt.expected)
 			}
 		})
 	}

@@ -16,7 +16,7 @@ import (
 type SplatValues []string
 
 type ActivePathData struct {
-	HeadBlocks  []*htmlutil.Element
+	HeadEls     []*htmlutil.Element
 	LoadersData []any
 	// LoadersErrMsgs      []string
 	LoadersErrs         []error
@@ -143,18 +143,18 @@ func (h *River) getUIRoutesData(
 		}
 	}
 
-	loadersHeadBlocks := make([][]*htmlutil.Element, numberOfLoaders)
+	loadersHeadEls := make([][]*htmlutil.Element, numberOfLoaders)
 	for _, _response_proxy := range _tasks_results.ResponseProxies {
 		if _response_proxy != nil {
-			loadersHeadBlocks = append(loadersHeadBlocks, _response_proxy.GetHeadElements())
+			loadersHeadEls = append(loadersHeadEls, _response_proxy.GetHeadElements())
 		}
 	}
 
 	if thereAreErrors {
-		headBlocksDoubleSlice := loadersHeadBlocks[:outermostErrorIndex]
-		headblocks := make([]*htmlutil.Element, 0, len(headBlocksDoubleSlice))
-		for _, slice := range headBlocksDoubleSlice {
-			headblocks = append(headblocks, slice...)
+		headElsDoubleSlice := loadersHeadEls[:outermostErrorIndex]
+		headEls := make([]*htmlutil.Element, 0, len(headElsDoubleSlice))
+		for _, slice := range headElsDoubleSlice {
+			headEls = append(headEls, slice...)
 		}
 
 		apd := &ActivePathData{
@@ -167,16 +167,16 @@ func (h *River) getUIRoutesData(
 			Params:              _match_results.Params,
 			Deps:                _cachedItemSubset.Deps,
 			LoadersErrs:         loadersErrs[:outermostErrorIndex+1],
-			HeadBlocks:          headblocks,
+			HeadEls:             headEls,
 			HasRootData:         hasRootData,
 		}
 
 		return &uiRoutesData{activePathData: apd, found: true}
 	}
 
-	headblocks := make([]*htmlutil.Element, 0, len(loadersHeadBlocks))
-	for _, slice := range loadersHeadBlocks {
-		headblocks = append(headblocks, slice...)
+	headEls := make([]*htmlutil.Element, 0, len(loadersHeadEls))
+	for _, slice := range loadersHeadEls {
+		headEls = append(headEls, slice...)
 	}
 
 	apd := &ActivePathData{
@@ -189,7 +189,7 @@ func (h *River) getUIRoutesData(
 		Params:              _match_results.Params,
 		Deps:                _cachedItemSubset.Deps,
 		LoadersErrs:         loadersErrs,
-		HeadBlocks:          headblocks,
+		HeadEls:             headEls,
 		HasRootData:         hasRootData,
 	}
 

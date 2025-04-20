@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getStartAndEndComments, updateHeadBlocks } from "./head.ts";
-import type { HeadBlock } from "./river_ctx.ts";
+import { getStartAndEndComments, updateHeadEls } from "./head.ts";
+import type { HeadEl } from "./river_ctx.ts";
 import { Panic } from "./utils.ts";
 
 vi.mock("./utils.ts", () => ({
@@ -12,7 +12,7 @@ vi.mock("./utils.ts", () => ({
 
 let dom: JSDOM;
 
-describe("updateHeadBlocks", () => {
+describe("updateHeadEls", () => {
 	beforeEach(() => {
 		dom = new JSDOM("<!DOCTYPE html><html><head></head><body></body></html>", {
 			url: "http://localhost/",
@@ -50,28 +50,28 @@ describe("updateHeadBlocks", () => {
 	});
 
 	it("should not add any elements when blocks array is empty", () => {
-		const blocks: Array<HeadBlock> = [];
+		const blocks: Array<HeadEl> = [];
 		const initialChildCount = document.head.childNodes.length;
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		expect(document.head.childNodes.length).toBe(initialChildCount);
 		expect(document.head.querySelector("meta")).toBeNull();
 	});
 
 	it("should add elements when none exist", () => {
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Test Description" },
+				attributesDangerousVals: { name: "description", content: "Test Description" },
 			},
 			{
 				tag: "link",
-				safeAttributes: { rel: "stylesheet", href: "/styles.css" },
+				attributesDangerousVals: { rel: "stylesheet", href: "/styles.css" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		const metaElements = document.head.querySelectorAll("meta");
 		const linkElements = document.head.querySelectorAll("link");
@@ -96,13 +96,18 @@ describe("updateHeadBlocks", () => {
 		// Verify elements are between the correct comments
 		const headChildren = Array.from(document.head.childNodes);
 		const startMetaIndex = headChildren.findIndex((node) => {
-			return node.nodeType === 8 && (node as Comment).data === 'data-river="meta-start"';
+			return (
+				node.nodeType === 8 && (node as Comment).data === 'data-river="meta-start"'
+			);
 		});
 		const endMetaIndex = headChildren.findIndex((node) => {
 			return node.nodeType === 8 && (node as Comment).data === 'data-river="meta-end"';
 		});
 
-		const elementsBetweenComments = headChildren.slice(startMetaIndex + 1, endMetaIndex);
+		const elementsBetweenComments = headChildren.slice(
+			startMetaIndex + 1,
+			endMetaIndex,
+		);
 		expect(elementsBetweenComments.length).toBe(2);
 		expect(elementsBetweenComments[0]).toBe(metaEl);
 		expect(elementsBetweenComments[1]).toBe(linkEl);
@@ -119,14 +124,14 @@ describe("updateHeadBlocks", () => {
 		initialMeta.setAttribute("content", "Old Description");
 		document.head.insertBefore(initialMeta, comments.endComment);
 
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "New Description" },
+				attributesDangerousVals: { name: "description", content: "New Description" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		const metaElements = document.head.querySelectorAll("meta");
 		expect(metaElements.length).toBe(1);
@@ -156,15 +161,15 @@ describe("updateHeadBlocks", () => {
 		document.head.insertBefore(initialMeta, comments.endComment);
 		document.head.insertBefore(initialLink, comments.endComment);
 
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			// Only keep the meta, remove the link
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Old Description" },
+				attributesDangerousVals: { name: "description", content: "Old Description" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		expect(document.head.querySelectorAll("meta").length).toBe(1);
 		expect(document.head.querySelectorAll("link").length).toBe(0);
@@ -183,14 +188,14 @@ describe("updateHeadBlocks", () => {
 
 		const originalEl = initialMeta;
 
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Test Description" },
+				attributesDangerousVals: { name: "description", content: "Test Description" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		const metaElements = document.head.querySelectorAll("meta");
 		expect(metaElements.length).toBe(1);
@@ -215,18 +220,18 @@ describe("updateHeadBlocks", () => {
 		document.head.insertBefore(initialMeta2, comments.endComment);
 
 		// Request blocks in reverse order from current DOM order
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "viewport", content: "width=device-width" },
+				attributesDangerousVals: { name: "viewport", content: "width=device-width" },
 			},
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Description" },
+				attributesDangerousVals: { name: "description", content: "Description" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		const metaElements = Array.from(document.head.querySelectorAll("meta"));
 		expect(metaElements.length).toBe(2);
@@ -241,15 +246,15 @@ describe("updateHeadBlocks", () => {
 	});
 
 	it("should handle boolean attributes correctly", () => {
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "script",
-				safeAttributes: { src: "/script.js" },
+				attributesDangerousVals: { src: "/script.js" },
 				booleanAttributes: ["async", "defer"],
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		const scriptEl = document.head.querySelector("script");
 		expect(scriptEl).not.toBeNull();
@@ -264,14 +269,14 @@ describe("updateHeadBlocks", () => {
 	});
 
 	it("should handle innerHTML correctly", () => {
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "script",
-				innerHTML: 'console.log("test");',
+				dangerousInnerHTML: 'console.log("test");',
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		const scriptEl = document.head.querySelector("script");
 		expect(scriptEl).not.toBeNull();
@@ -288,45 +293,45 @@ describe("updateHeadBlocks", () => {
 		document.head.appendChild(startRestComment);
 		document.head.appendChild(endRestComment);
 
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Test Description" },
+				attributesDangerousVals: { name: "description", content: "Test Description" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		expect(document.head.querySelector("meta")).toBeNull();
 	});
 
 	it("should handle blocks with missing tag gracefully", () => {
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				// No tag property
-				safeAttributes: { name: "description", content: "Test Description" },
-			} as HeadBlock,
+				attributesDangerousVals: { name: "description", content: "Test Description" },
+			},
 			{
 				tag: "link",
-				safeAttributes: { rel: "stylesheet", href: "/styles.css" },
+				attributesDangerousVals: { rel: "stylesheet", href: "/styles.css" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		expect(document.head.querySelectorAll("meta").length).toBe(0);
 		expect(document.head.querySelectorAll("link").length).toBe(1);
 	});
 
 	it('should update the "rest" section correctly', () => {
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "script",
-				safeAttributes: { src: "/script.js" },
+				attributesDangerousVals: { src: "/script.js" },
 			},
 		];
 
-		updateHeadBlocks("rest", blocks);
+		updateHeadEls("rest", blocks);
 
 		const scriptEl = document.head.querySelector("script");
 		expect(scriptEl).not.toBeNull();
@@ -338,12 +343,14 @@ describe("updateHeadBlocks", () => {
 		// Verify script is between rest comments
 		const startComment = Array.from(document.head.childNodes).find((node) => {
 			return (
-				node.nodeType === 8 && (node as Comment).data.trim() === 'data-river="rest-start"'
+				node.nodeType === 8 &&
+				(node as Comment).data.trim() === 'data-river="rest-start"'
 			);
 		});
 		const endComment = Array.from(document.head.childNodes).find((node) => {
 			return (
-				node.nodeType === 8 && (node as Comment).data.trim() === 'data-river="rest-end"'
+				node.nodeType === 8 &&
+				(node as Comment).data.trim() === 'data-river="rest-end"'
 			);
 		});
 
@@ -377,14 +384,14 @@ describe("updateHeadBlocks", () => {
 		const textNode = document.createTextNode("\n  ");
 		document.head.insertBefore(textNode, comments.endComment);
 
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Test Description" },
+				attributesDangerousVals: { name: "description", content: "Test Description" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		const metaEl = document.head.querySelector("meta");
 		expect(metaEl).not.toBeNull();
@@ -396,7 +403,9 @@ describe("updateHeadBlocks", () => {
 		// Verify text nodes are removed
 		const headChildren = Array.from(document.head.childNodes);
 		const metaStartIndex = headChildren.findIndex((node) => {
-			return node.nodeType === 8 && (node as Comment).data === 'data-river="meta-start"';
+			return (
+				node.nodeType === 8 && (node as Comment).data === 'data-river="meta-start"'
+			);
 		});
 		const metaEndIndex = headChildren.findIndex((node) => {
 			return node.nodeType === 8 && (node as Comment).data === 'data-river="meta-end"';
@@ -410,40 +419,43 @@ describe("updateHeadBlocks", () => {
 	});
 
 	it("should not duplicate elements on multiple updates", () => {
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Test Description" },
+				attributesDangerousVals: { name: "description", content: "Test Description" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
-		updateHeadBlocks("meta", blocks); // Call twice
+		updateHeadEls("meta", blocks);
+		updateHeadEls("meta", blocks); // Call twice
 
 		expect(document.head.querySelectorAll("meta").length).toBe(1);
 	});
 
 	it("should call Panic when attribute value is null", () => {
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: null as unknown as string },
+				attributesDangerousVals: {
+					name: "description",
+					content: null as unknown as string,
+				},
 			},
 		];
 
-		expect(() => updateHeadBlocks("meta", blocks)).toThrow();
+		expect(() => updateHeadEls("meta", blocks)).toThrow();
 		expect(Panic).toHaveBeenCalled();
 	});
 
 	it("should not process undefined tags", () => {
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: undefined,
-				safeAttributes: { name: "description", content: "Test Description" },
-			} as unknown as HeadBlock,
+				attributesDangerousVals: { name: "description", content: "Test Description" },
+			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		expect(document.head.querySelectorAll("*").length).toBe(0);
 	});
@@ -459,17 +471,17 @@ describe("updateHeadBlocks", () => {
 		initialMeta.setAttribute("name", "description");
 		document.head.insertBefore(initialMeta, comments.endComment);
 
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: {
+				attributesDangerousVals: {
 					name: "description", // Different order from DOM element
 					content: "Test Description",
 				},
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		const metaElements = document.head.querySelectorAll("meta");
 		expect(metaElements.length).toBe(1);
@@ -501,16 +513,25 @@ describe("updateHeadBlocks", () => {
 		document.head.insertBefore(meta1, meta2);
 
 		// Define blocks for update
-		const blocks: Array<HeadBlock> = [
-			{ tag: "meta", safeAttributes: { name: "keywords", content: "test, vitest" } },
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Updated Description" },
+				attributesDangerousVals: { name: "keywords", content: "test, vitest" },
 			},
-			{ tag: "link", safeAttributes: { rel: "stylesheet", href: "/styles.css" } },
+			{
+				tag: "meta",
+				attributesDangerousVals: {
+					name: "description",
+					content: "Updated Description",
+				},
+			},
+			{
+				tag: "link",
+				attributesDangerousVals: { rel: "stylesheet", href: "/styles.css" },
+			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		// Get elements between comments after update
 		const elementsBetweenComments: Array<Element> = [];
@@ -547,47 +568,51 @@ describe("updateHeadBlocks", () => {
 	it("should handle complex innerHTML correctly (style tag)", () => {
 		const initialCSS = "body > .foo { color: red; }\n/* comment */";
 		const updatedCSS = ".bar { font-weight: bold; }";
-		const initialBlock: HeadBlock = { tag: "style", innerHTML: initialCSS };
-		const updatedBlock: HeadBlock = { tag: "style", innerHTML: updatedCSS };
+		const initialBlock: HeadEl = { tag: "style", dangerousInnerHTML: initialCSS };
+		const updatedBlock: HeadEl = { tag: "style", dangerousInnerHTML: updatedCSS };
 
-		updateHeadBlocks("rest", [initialBlock]);
+		updateHeadEls("rest", [initialBlock]);
 
 		let styleEl = document.head.querySelector("style");
 		expect(styleEl).not.toBeNull();
 		expect(styleEl?.innerHTML.trim()).toBe(initialCSS.trim());
 
-		updateHeadBlocks("rest", [updatedBlock]);
+		updateHeadEls("rest", [updatedBlock]);
 
 		styleEl = document.head.querySelector("style");
 		expect(styleEl).not.toBeNull();
 		expect(styleEl?.innerHTML.trim()).toBe(updatedCSS.trim());
 		expect(document.head.querySelectorAll("style").length).toBe(1);
 
-		updateHeadBlocks("rest", []);
+		updateHeadEls("rest", []);
 		expect(document.head.querySelector("style")).toBeNull();
 	});
 
 	it("should add and remove boolean attributes across updates", () => {
-		const scriptBlockBase: HeadBlock = { tag: "script", safeAttributes: { src: "a.js" } };
-		const scriptBlockWithAsync: HeadBlock = {
+		const scriptBlockBase: HeadEl = {
+			tag: "script",
+			attributesDangerousVals: { src: "a.js" },
+		};
+		const scriptBlockWithAsync: HeadEl = {
 			...scriptBlockBase,
 			booleanAttributes: ["async"],
 		};
 
-		updateHeadBlocks("rest", [scriptBlockBase]);
+		updateHeadEls("rest", [scriptBlockBase]);
 
-		let scriptEl = document.head.querySelector<HTMLScriptElement>("script[src='a.js']");
+		let scriptEl =
+			document.head.querySelector<HTMLScriptElement>("script[src='a.js']");
 		expect(scriptEl).not.toBeNull();
 		expect(scriptEl?.hasAttribute("async")).toBe(false);
 
-		updateHeadBlocks("rest", [scriptBlockWithAsync]);
+		updateHeadEls("rest", [scriptBlockWithAsync]);
 
 		scriptEl = document.head.querySelector<HTMLScriptElement>("script[src='a.js']");
 		expect(scriptEl).not.toBeNull();
 		expect(scriptEl?.hasAttribute("async")).toBe(true);
 		expect(scriptEl?.getAttribute("async")).toBe("");
 
-		updateHeadBlocks("rest", [scriptBlockBase]);
+		updateHeadEls("rest", [scriptBlockBase]);
 
 		scriptEl = document.head.querySelector<HTMLScriptElement>("script[src='a.js']");
 		expect(scriptEl).not.toBeNull();
@@ -613,10 +638,10 @@ describe("updateHeadBlocks", () => {
 
 		expect(document.head.querySelectorAll('meta[name="description"]').length).toBe(2);
 
-		const blocks: Array<HeadBlock> = [
-			{ tag: "meta", safeAttributes: { name: "description", content: "A" } },
+		const blocks: Array<HeadEl> = [
+			{ tag: "meta", attributesDangerousVals: { name: "description", content: "A" } },
 		];
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		const finalElements = document.head.querySelectorAll('meta[name="description"]');
 		expect(finalElements.length).toBe(1);
@@ -629,7 +654,9 @@ describe("updateHeadBlocks", () => {
 			nodesBetween.push(current);
 			current = current.nextSibling;
 		}
-		const elementsBetween = nodesBetween.filter((n) => n.nodeType === Node.ELEMENT_NODE);
+		const elementsBetween = nodesBetween.filter(
+			(n) => n.nodeType === Node.ELEMENT_NODE,
+		);
 		expect(elementsBetween.length).toBe(1);
 		expect(elementsBetween[0]).toBe(finalElements[0]);
 	});
@@ -647,14 +674,17 @@ describe("updateHeadBlocks", () => {
 		document.head.insertBefore(meta, comments.endComment);
 
 		// Update content attribute only
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Updated description" },
+				attributesDangerousVals: {
+					name: "description",
+					content: "Updated description",
+				},
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		// Get the element after update
 		const metaAfterUpdate = document.head.querySelector('meta[name="description"]');
@@ -691,16 +721,22 @@ describe("updateHeadBlocks", () => {
 		document.head.insertBefore(elementC, comments.endComment);
 
 		// Update to order C, A, B
-		const blocks: Array<HeadBlock> = [
-			{ tag: "meta", safeAttributes: { name: "robots", content: "index, follow" } },
-			{ tag: "meta", safeAttributes: { name: "description", content: "Description" } },
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "viewport", content: "width=device-width" },
+				attributesDangerousVals: { name: "robots", content: "index, follow" },
+			},
+			{
+				tag: "meta",
+				attributesDangerousVals: { name: "description", content: "Description" },
+			},
+			{
+				tag: "meta",
+				attributesDangerousVals: { name: "viewport", content: "width=device-width" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		// Get elements after update
 		const elements = document.head.querySelectorAll("meta");
@@ -741,12 +777,18 @@ describe("updateHeadBlocks", () => {
 		document.head.insertBefore(meta3, comments.endComment);
 
 		// Update to keep only description and robots meta tags
-		const blocks: Array<HeadBlock> = [
-			{ tag: "meta", safeAttributes: { name: "description", content: "Description" } },
-			{ tag: "meta", safeAttributes: { name: "robots", content: "index, follow" } },
+		const blocks: Array<HeadEl> = [
+			{
+				tag: "meta",
+				attributesDangerousVals: { name: "description", content: "Description" },
+			},
+			{
+				tag: "meta",
+				attributesDangerousVals: { name: "robots", content: "index, follow" },
+			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		// Get elements after update
 		const elements = document.head.querySelectorAll("meta");
@@ -794,22 +836,25 @@ describe("updateHeadBlocks", () => {
 		// 3. Remove linkCanonical
 		// 4. Add new metaViewport
 		// 5. Reorder (keywords first, then description, then viewport)
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "keywords", content: "original, keywords" },
+				attributesDangerousVals: { name: "keywords", content: "original, keywords" },
 			},
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Updated description" },
+				attributesDangerousVals: {
+					name: "description",
+					content: "Updated description",
+				},
 			},
 			{
 				tag: "meta",
-				safeAttributes: { name: "viewport", content: "width=device-width" },
+				attributesDangerousVals: { name: "viewport", content: "width=device-width" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		// Get elements after update
 		const metaElements = document.head.querySelectorAll("meta");
@@ -856,14 +901,14 @@ describe("updateHeadBlocks", () => {
 		document.head.insertBefore(textAfter, comments.endComment);
 
 		// Update with same block (no changes)
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Test Description" },
+				attributesDangerousVals: { name: "description", content: "Test Description" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		// Check that meta element still exists
 		const metaAfterUpdate = document.head.querySelector('meta[name="description"]');
@@ -904,14 +949,14 @@ describe("updateHeadBlocks", () => {
 		const originalElement = meta;
 
 		// Update with identical block (no changes)
-		const blocks: Array<HeadBlock> = [
+		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				safeAttributes: { name: "description", content: "Identical content" },
+				attributesDangerousVals: { name: "description", content: "Identical content" },
 			},
 		];
 
-		updateHeadBlocks("meta", blocks);
+		updateHeadEls("meta", blocks);
 
 		// Get the element after update
 		const metaAfterUpdate = document.head.querySelector('meta[name="description"]');

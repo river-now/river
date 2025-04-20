@@ -201,8 +201,22 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 
 	sb.Line(fmt.Sprintf(
 		"declare global {\n\tfunction %s(staticPublicAsset: StaticPublicAsset): string;\n}",
-		h.Wave.GetRiverPublicURLFuncName(),
+		h.Wave.GetRiverBuildtimePublicURLFuncName(),
 	))
+
+	sb.Return()
+
+	sb.Line(fmt.Sprintf(
+		"export const publicPathPrefix = \"%s\";",
+		h.Wave.GetPublicPathPrefix(),
+	))
+
+	sb.Return()
+
+	sb.Line(`export function waveRuntimeURL(originalPublicURL: keyof typeof staticPublicAssetMap) {
+	const url = staticPublicAssetMap[originalPublicURL] ?? originalPublicURL;
+	return publicPathPrefix + url;
+}`)
 
 	publicPrefixToUse := path.Clean(h.Wave.GetPublicPathPrefix())
 	publicPrefixToUse = matcher.StripLeadingSlash(publicPrefixToUse)
@@ -245,7 +259,7 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	stringifiedIgnore += ignoreTabs + "]"
 
 	err = vitePluginTemplate.Execute(&buf, map[string]any{
-		"FuncName":         h.Wave.GetRiverPublicURLFuncName(),
+		"FuncName":         h.Wave.GetRiverBuildtimePublicURLFuncName(),
 		"PublicDir":        publicPrefixToUse,
 		"PublicPathPrefix": h.Wave.GetPublicPathPrefix(),
 		"Tick":             tick,

@@ -4,6 +4,7 @@ import (
 	_ "embed"
 
 	"github.com/river-now/river/internal/framework"
+	"github.com/river-now/river/kit/headels"
 	"github.com/river-now/river/kit/htmlutil"
 	"github.com/river-now/river/kit/parseutil"
 )
@@ -14,13 +15,14 @@ import (
 
 type (
 	River        = framework.River
-	HeadBlock    = htmlutil.Element
+	HeadEl       = htmlutil.Element
 	AdHocType    = framework.AdHocType
 	BuildOptions = framework.BuildOptions
 )
 
 var (
 	IsJSONRequest = framework.IsJSONRequest
+	NewHeadEls    = headels.New
 )
 
 //go:embed package.json

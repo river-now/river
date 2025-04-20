@@ -99,8 +99,8 @@ func (h *River) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOutpu
 	innerHTML = strings.TrimSuffix(innerHTML, "</script>")
 
 	el := htmlutil.Element{
-		Tag:       "script",
-		InnerHTML: template.HTML(innerHTML),
+		Tag:                "script",
+		DangerousInnerHTML: innerHTML,
 	}
 
 	sha256Hash, err := htmlutil.AddSha256HashInline(&el, true)

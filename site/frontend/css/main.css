@@ -1,9 +1,5 @@
+@import url("./hljs.css");
 @import url("./nprogress.css");
-
-:root {
-	--code-bg: #304745;
-	--code-fg: white;
-}
 
 a,
 button,
@@ -12,8 +8,66 @@ input[type="submit"] {
 	touch-action: manipulation;
 }
 
-.code {
-	background: var(--code-bg);
-	color: var(--code-fg);
-	outline: 2px solid var(--code-bg);
+.content {
+	p {
+		margin-bottom: 1.5rem;
+	}
+	a {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		&:hover {
+			color: var(--resolved-green);
+		}
+	}
+	h2 {
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		font-weight: bold;
+	}
+	h1,
+	h2,
+	h3 {
+		margin-bottom: 1.5rem;
+		color: var(--resolved-green);
+	}
+	h1 {
+		font-size: 3rem;
+	}
+	h2 {
+		font-size: 2rem;
+	}
+	h3 {
+		font-size: 1.5rem;
+	}
+
+	pre {
+		overflow-x: auto;
+		background-color: light-dark(#fcf4e7, black);
+		padding: 0.75rem 1rem;
+		max-width: 100%;
+		overflow-x: auto;
+		border: 1px solid #7777;
+	}
+	code {
+		background-color: #7773;
+		padding: 0.15rem 0.25rem;
+		tab-size: 1.75rem;
+		line-height: 1.5;
+	}
+	pre code {
+		background-color: transparent !important;
+		padding: 0;
+	}
+	p code {
+		word-wrap: break-word;
+	}
+
+	ul {
+		margin-left: 1.5rem;
+		list-style: disc;
+	}
+	ol {
+		margin-left: 3rem;
+		list-style: decimal;
+	}
 }

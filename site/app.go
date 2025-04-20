@@ -6,6 +6,7 @@ import (
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/colorlog"
+	"github.com/river-now/river/kit/headels"
 	"github.com/river-now/river/kit/theme"
 	"github.com/river-now/river/kit/xyz"
 	"github.com/river-now/river/wave"
@@ -20,27 +21,46 @@ const (
 
 var River = &river.River{
 	Wave: Wave,
-	GetDefaultHeadBlocks: func(r *http.Request) ([]*river.HeadBlock, error) {
+
+	GetHeadElUniqueRules: func() *headels.HeadEls {
+		e := river.NewHeadEls(2)
+
+		e.Meta(e.Property("og:title"))
+		e.Meta(e.Property("og:description"))
+		e.Meta(e.Property("og:type"))
+		e.Meta(e.Property("og:image"))
+		e.Meta(e.Property("og:url"))
+
+		e.Meta(e.Name("twitter:card"))
+		e.Meta(e.Name("twitter:site"))
+
+		return &e
+	},
+
+	GetDefaultHeadEls: func(r *http.Request) ([]*river.HeadEl, error) {
 		root := xyz.GetRootURL(r)
 		imgURL := root + Wave.GetPublicURL("river-banner.webp")
 		currentURL := root + r.URL.Path
 
-		return []*river.HeadBlock{
-			{Tag: "title", InnerHTML: SiteTitle},
-			{Tag: "meta", Attributes: map[string]string{"name": "description", "content": SiteDescription}},
+		e := river.NewHeadEls()
 
-			{Tag: "meta", Attributes: map[string]string{"property": "og:title", "content": SiteTitle}},
-			{Tag: "meta", Attributes: map[string]string{"property": "og:description", "content": SiteDescription}},
-			{Tag: "meta", Attributes: map[string]string{"property": "og:type", "content": "website"}},
-			{Tag: "meta", Attributes: map[string]string{"property": "og:image", "content": imgURL}},
-			{Tag: "meta", Attributes: map[string]string{"property": "og:url", "content": currentURL}},
+		e.Title(SiteTitle)
+		e.Description(SiteDescription)
 
-			{Tag: "meta", Attributes: map[string]string{"name": "twitter:card", "content": "summary_large_image"}},
-			{Tag: "meta", Attributes: map[string]string{"name": "twitter:site", "content": "@riverframework"}},
+		e.Meta(e.Property("og:title"), e.Content(SiteTitle))
+		e.Meta(e.Property("og:description"), e.Content(SiteDescription))
+		e.Meta(e.Property("og:type"), e.Content("website"))
+		e.Meta(e.Property("og:image"), e.Content(imgURL))
+		e.Meta(e.Property("og:url"), e.Content(currentURL))
 
-			{Tag: "link", TrustedAttributes: map[string]string{"rel": "icon", "href": Wave.GetPublicURL("favicon.svg")}},
-		}, nil
+		e.Meta(e.Name("twitter:card"), e.Content("summary_large_image"))
+		e.Meta(e.Name("twitter:site"), e.Content("@riverframework"))
+
+		e.Link(e.Attr("rel", "icon"), e.Attr("href", Wave.GetPublicURL("favicon.svg")))
+
+		return e.Collect(), nil
 	},
+
 	GetRootTemplateData: func(r *http.Request) (map[string]any, error) {
 		return map[string]any{
 			"HTMLClass":                   theme.GetThemeData(r).HTMLClass,

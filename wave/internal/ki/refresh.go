@@ -90,8 +90,8 @@ func (c *Config) GetRefreshScript() template.HTML {
 		return ""
 	}
 	result, _ := htmlutil.RenderElement(&htmlutil.Element{
-		Tag:       "script",
-		InnerHTML: template.HTML(GetRefreshScriptInner(getRefreshServerPort())),
+		Tag:                "script",
+		DangerousInnerHTML: GetRefreshScriptInner(getRefreshServerPort()),
 	})
 	return result
 }

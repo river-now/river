@@ -1,14 +1,14 @@
-export type HeadBlock = {
+export type HeadEl = {
 	tag?: string;
-	safeAttributes?: Record<string, string>;
+	attributesDangerousVals?: Record<string, string>;
 	booleanAttributes?: Array<string>;
-	innerHTML?: string;
+	dangerousInnerHTML?: string;
 };
 
 type Meta = {
 	title: string;
-	metaHeadBlocks: Array<HeadBlock>;
-	restHeadBlocks: Array<HeadBlock>;
+	metaHeadEls: Array<HeadEl>;
+	restHeadEls: Array<HeadEl>;
 };
 
 type shared = {

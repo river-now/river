@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/river-now/river/kit/colorlog"
+	"github.com/river-now/river/kit/headels"
 	"github.com/river-now/river/kit/htmlutil"
 	"github.com/river-now/river/kit/mux"
 	"github.com/river-now/river/wave"
@@ -59,7 +60,8 @@ var UIVariants = struct {
 
 type River struct {
 	Wave                 *wave.Wave
-	GetDefaultHeadBlocks func(r *http.Request) ([]*htmlutil.Element, error)
+	GetDefaultHeadEls    func(r *http.Request) ([]*htmlutil.Element, error)
+	GetHeadElUniqueRules func() *headels.HeadEls
 	GetRootTemplateData  func(r *http.Request) (map[string]any, error)
 
 	mu                 sync.RWMutex

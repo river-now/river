@@ -72,7 +72,7 @@ func getResolvedOpposite(theme string) string {
 var SystemThemeScript, SystemThemeScriptSha256Hash = mustGetSystemThemeScript()
 
 func mustGetSystemThemeScript() (template.HTML, string) {
-	el := &htmlutil.Element{Tag: "script", InnerHTML: systemThemeScriptInnerHTML}
+	el := &htmlutil.Element{Tag: "script", DangerousInnerHTML: string(systemThemeScriptInnerHTML)}
 	sha256Hash, _ := htmlutil.AddSha256HashInline(el, false)
 	renderedEl, _ := htmlutil.RenderElement(el)
 	return renderedEl, sha256Hash

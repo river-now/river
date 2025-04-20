@@ -316,7 +316,9 @@ describe("getPrefetchHandlers", () => {
 		).not.toBeNull();
 
 		handlers.stop(); // Stop the prefetch
-		expect(dom.window.document.querySelector(`link[href="/relative-path"]`)).toBeNull();
+		expect(
+			dom.window.document.querySelector(`link[href="/relative-path"]`),
+		).toBeNull();
 	});
 });
 

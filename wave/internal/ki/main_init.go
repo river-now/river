@@ -103,7 +103,7 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 
 	c.defaultWatchedFiles = []WatchedFile{
 		{
-			Pattern:       filepath.Join(c.cleanSources.PrivateStatic, "**/*"),
+			Pattern:       filepath.Join(c.cleanSources.PrivateStatic, c._uc.River.HTMLTemplateLocation),
 			OnChangeHooks: []OnChangeHook{{Cmd: __internal_full_dev_reset_less_go_mrkr}},
 		},
 		{
