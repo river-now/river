@@ -321,17 +321,14 @@ console.log(JSON.stringify(final));
 const routesBuilderSnippet = `
 function __river_routes_builder() {
 	const routes = [];
-	function Route(ip, ck, ebk) {
-		return ebk ? [ip, ck, ebk] : [ip, ck];
-	}
-	function New(pattern, ip, ck, ebk) {
+	function Add(pattern, ip, ck, ebk) {
 		const routeObj = { p: pattern, m: ip, k: ck };
 		if (ebk) {
 			routeObj.ek = ebk;
 		}
 		routes.push(routeObj);
 	}
-	return { New, Route, __all_routes: () => routes };
+	return { Add, __all_routes: () => routes };
 }
 const routes = __river_routes_builder();
 `
