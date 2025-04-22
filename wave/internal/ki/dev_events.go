@@ -247,7 +247,7 @@ func (c *Config) mustHandleFileChange(
 		return nil
 	}
 
-	if wfc.RunClientDefinedRevalidateFunc {
+	if wfc.OnlyRunClientDefinedRevalidateFunc {
 		c.must_reload_broadcast(
 			refreshFilePayload{ChangeType: changeTypeRevalidate},
 			must_reload_broadcast_opts{
@@ -318,10 +318,10 @@ func (c *Config) callback(wfc *WatchedFile, evtDetails *EvtDetails) error {
 // the other build steps. We only recompile Go if wfc.RecompileGoBinary is true.
 func (c *Config) runOtherFileBuild(wfc *WatchedFile, evtDetails *EvtDetails) error {
 	err := c.Build(BuildOptions{
-		CSSHotReload:      evtDetails.isWaveCSS,
-		RecompileGoBinary: wfc.RecompileGoBinary,
-		IsDev:             true,
-		is_dev_rebuild:    true,
+		RecompileGoBinary:          wfc.RecompileGoBinary,
+		IsDev:                      true,
+		is_dev_rebuild:             true,
+		just_run_simple_file_build: evtDetails.isWaveCSS || wfc.OnlyRunClientDefinedRevalidateFunc,
 	})
 	if err != nil {
 		msg := fmt.Sprintf("error: failed to build app: %v", err)

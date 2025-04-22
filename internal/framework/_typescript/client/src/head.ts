@@ -1,4 +1,4 @@
-import type { HeadBlock } from "./river_ctx.ts";
+import type { HeadEl } from "./river_ctx.ts";
 import { Panic } from "./utils.ts";
 
 function findComment(matchingText: string): Comment | null {
@@ -30,14 +30,15 @@ function createElementFingerprint(element: Element): string {
 		if (!attr) {
 			continue;
 		}
-		const value = element.hasAttribute(attr.name) && attr.value === "" ? "" : attr.value;
+		const value =
+			element.hasAttribute(attr.name) && attr.value === "" ? "" : attr.value;
 		attributes.push(`${attr.name}="${value}"`);
 	}
 	attributes.sort();
 	return `${element.tagName.toUpperCase()}|${attributes.join(",")}|${(element.innerHTML || "").trim()}`;
 }
 
-export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>) {
+export function updateHeadEls(type: "meta" | "rest", blocks: Array<HeadEl>) {
 	const { startComment, endComment } = getStartAndEndComments(type);
 	if (!startComment || !endComment || !endComment.parentNode) {
 		return;
@@ -63,9 +64,9 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 			continue;
 		}
 		const newEl = document.createElement(block.tag);
-		if (block.safeAttributes) {
-			for (const key of Object.keys(block.safeAttributes)) {
-				const value = block.safeAttributes[key];
+		if (block.attributesKnownSafe) {
+			for (const key of Object.keys(block.attributesKnownSafe)) {
+				const value = block.attributesKnownSafe[key];
 				if (value === null || value === undefined) {
 					Panic(
 						`Attribute value for '${key}' in tag '${block.tag}' cannot be null or undefined.`,
@@ -79,8 +80,8 @@ export function updateHeadBlocks(type: "meta" | "rest", blocks: Array<HeadBlock>
 				newEl.setAttribute(key, "");
 			}
 		}
-		if (block.innerHTML) {
-			newEl.innerHTML = block.innerHTML;
+		if (block.dangerousInnerHTML) {
+			newEl.innerHTML = block.dangerousInnerHTML;
 		}
 
 		const fingerprint = createElementFingerprint(newEl);

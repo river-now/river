@@ -36,57 +36,62 @@ func TestTemplates(t *testing.T) {
 		},
 		{
 			name:     "Non-self-closing without attributes",
-			data:     Element{Tag: "div", InnerHTML: "Hello"},
+			data:     Element{Tag: "div", TextContent: "Hello"},
 			expected: `<div>Hello</div>`,
 		},
 		{
 			name:     "Non-self-closing with attributes",
-			data:     Element{Tag: "div", Attributes: map[string]string{"id": "main", "class": "container"}, InnerHTML: "Hello"},
+			data:     Element{Tag: "div", Attributes: map[string]string{"id": "main", "class": "container"}, TextContent: "Hello"},
 			expected: `<div id="main" class="container">Hello</div>`,
 		},
 		{
 			name:     "Non-self-closing with boolean attributes",
-			data:     Element{Tag: "div", BooleanAttributes: []string{"hidden"}, InnerHTML: "Hello"},
+			data:     Element{Tag: "div", BooleanAttributes: []string{"hidden"}, TextContent: "Hello"},
 			expected: `<div hidden>Hello</div>`,
 		},
 		{
 			name:     "Non-self-closing with both attributes",
-			data:     Element{Tag: "div", Attributes: map[string]string{"id": "main"}, BooleanAttributes: []string{"hidden"}, InnerHTML: "Hello"},
+			data:     Element{Tag: "div", Attributes: map[string]string{"id": "main"}, BooleanAttributes: []string{"hidden"}, TextContent: "Hello"},
 			expected: `<div id="main" hidden>Hello</div>`,
 		},
 		{
 			name:     "Custom element with hyphens",
-			data:     Element{Tag: "my-custom-element", InnerHTML: "Content"},
+			data:     Element{Tag: "my-custom-element", TextContent: "Content"},
 			expected: `<my-custom-element>Content</my-custom-element>`,
 		},
 		{
 			name:     "Data attribute with hyphens",
-			data:     Element{Tag: "div", Attributes: map[string]string{"data-info": "value"}, InnerHTML: "Content"},
+			data:     Element{Tag: "div", Attributes: map[string]string{"data-info": "value"}, TextContent: "Content"},
 			expected: `<div data-info="value">Content</div>`,
 		},
 		{
 			name:     "Attribute with colon",
-			data:     Element{Tag: "div", Attributes: map[string]string{"xlink:href": "url"}, InnerHTML: "Content"},
+			data:     Element{Tag: "div", Attributes: map[string]string{"xlink:href": "url"}, TextContent: "Content"},
 			expected: `<div xlink:href="url">Content</div>`,
 		},
 		{
 			name:     "Attribute with period",
-			data:     Element{Tag: "div", Attributes: map[string]string{"data.version": "1.0"}, InnerHTML: "Content"},
+			data:     Element{Tag: "div", Attributes: map[string]string{"data.version": "1.0"}, TextContent: "Content"},
 			expected: `<div data.version="1.0">Content</div>`,
 		},
 		{
 			name:     "Empty InnerHTML",
-			data:     Element{Tag: "div", InnerHTML: ""},
+			data:     Element{Tag: "div", TextContent: ""},
 			expected: `<div></div>`,
 		},
 		{
 			name:     "InnerHTML with special characters",
-			data:     Element{Tag: "div", InnerHTML: "Content with <b>bold</b>"},
+			data:     Element{Tag: "div", DangerousInnerHTML: "Content with <b>bold</b>"},
 			expected: `<div>Content with <b>bold</b></div>`,
 		},
 		{
+			name:     "TextContent with special characters",
+			data:     Element{Tag: "div", TextContent: "Content with <b>bold</b>"},
+			expected: `<div>Content with &lt;b&gt;bold&lt;/b&gt;</div>`,
+		},
+		{
 			name:     "Nil attributes and boolean attributes",
-			data:     Element{Tag: "div", Attributes: nil, BooleanAttributes: nil, InnerHTML: "Content"},
+			data:     Element{Tag: "div", Attributes: nil, BooleanAttributes: nil, TextContent: "Content"},
 			expected: `<div>Content</div>`,
 		},
 		{
@@ -96,12 +101,12 @@ func TestTemplates(t *testing.T) {
 		},
 		{
 			name:     "TrustedAttributes override Attributes",
-			data:     Element{Tag: "div", Attributes: map[string]string{"class": "unsafe"}, TrustedAttributes: map[string]string{"class": "safe"}, InnerHTML: "Content"},
+			data:     Element{Tag: "div", Attributes: map[string]string{"class": "unsafe"}, AttributesKnownSafe: map[string]string{"class": "safe"}, TextContent: "Content"},
 			expected: `<div class="safe">Content</div>`,
 		},
 		{
 			name:     "Attribute values with special characters",
-			data:     Element{Tag: "div", Attributes: map[string]string{"data-info": `This is a "quote" and a <tag>`}, InnerHTML: "Content"},
+			data:     Element{Tag: "div", Attributes: map[string]string{"data-info": `This is a "quote" and a <tag>`}, TextContent: "Content"},
 			expected: `<div data-info="This is a &quot;quote&quot; and a &lt;tag&gt;">Content</div>`,
 		},
 		{
@@ -165,12 +170,12 @@ func TestAddSha256HashInline(t *testing.T) {
 	}{
 		{
 			name:        "Valid InnerHTML",
-			element:     Element{InnerHTML: "Some content"},
+			element:     Element{TextContent: "Some content"},
 			expectError: false,
 		},
 		{
 			name:        "Empty InnerHTML",
-			element:     Element{InnerHTML: ""},
+			element:     Element{TextContent: ""},
 			expectError: false,
 		},
 	}
@@ -187,7 +192,7 @@ func TestAddSha256HashInline(t *testing.T) {
 					t.Errorf("unexpected error: %v", err)
 				}
 				// Check that the integrity attribute was added
-				if tt.element.TrustedAttributes["integrity"] == "" {
+				if tt.element.AttributesKnownSafe["integrity"] == "" {
 					t.Errorf("integrity attribute not added")
 				}
 			}
@@ -229,8 +234,8 @@ func TestAddSha256HashExternal(t *testing.T) {
 				}
 				// Check that the integrity attribute was added
 				expectedIntegrity := "sha256-" + tt.externalHash
-				if tt.element.TrustedAttributes["integrity"] != expectedIntegrity {
-					t.Errorf("integrity attribute not set correctly, expected %q, got %q", expectedIntegrity, tt.element.TrustedAttributes["integrity"])
+				if tt.element.AttributesKnownSafe["integrity"] != expectedIntegrity {
+					t.Errorf("integrity attribute not set correctly, expected %q, got %q", expectedIntegrity, tt.element.AttributesKnownSafe["integrity"])
 				}
 			}
 		})
@@ -275,7 +280,7 @@ func TestAddNonce(t *testing.T) {
 				if err != nil {
 					t.Errorf("unexpected error: %v", err)
 				}
-				if tt.element.TrustedAttributes["nonce"] != nonce {
+				if tt.element.AttributesKnownSafe["nonce"] != nonce {
 					t.Errorf("nonce attribute not set correctly")
 				}
 				expectedLen := int(tt.len)
@@ -292,10 +297,10 @@ func TestAddNonce(t *testing.T) {
 
 func TestEscapeAllIntoNewMap(t *testing.T) {
 	el := Element{
-		Attributes:        map[string]string{"class": "my & class", "onclick": "alert('XSS')"},
-		TrustedAttributes: map[string]string{"data-safe": "<safe>"},
+		Attributes:          map[string]string{"class": "my & class", "onclick": "alert('XSS')"},
+		AttributesKnownSafe: map[string]string{"data-safe": "<safe>"},
 	}
-	attributes := EscapeAllIntoNewMap(&el)
+	attributes := combineIntoDangerousAttributes(&el)
 	expected := map[string]string{
 		"class":     "my &amp; class",
 		"onclick":   "alert(&#39;XSS&#39;)",
@@ -320,7 +325,7 @@ func TestEscapeIntoTrusted(t *testing.T) {
 	if newEl.Attributes != nil {
 		t.Errorf("expected Attributes to be nil")
 	}
-	if newEl.TrustedAttributes["class"] != "my &amp; class" {
+	if newEl.AttributesKnownSafe["class"] != "my &amp; class" {
 		t.Errorf("TrustedAttributes not set correctly")
 	}
 	// Ensure other fields are copied correctly
@@ -330,7 +335,7 @@ func TestEscapeIntoTrusted(t *testing.T) {
 	if newEl.BooleanAttributes != nil {
 		t.Errorf("BooleanAttributes not copied correctly")
 	}
-	if newEl.InnerHTML != el.InnerHTML {
+	if newEl.TextContent != el.TextContent {
 		t.Errorf("InnerHTML not copied correctly")
 	}
 	if newEl.SelfClosing != el.SelfClosing {

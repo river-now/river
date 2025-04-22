@@ -90,8 +90,8 @@ func (c *Config) GetRefreshScript() template.HTML {
 		return ""
 	}
 	result, _ := htmlutil.RenderElement(&htmlutil.Element{
-		Tag:       "script",
-		InnerHTML: template.HTML(GetRefreshScriptInner(getRefreshServerPort())),
+		Tag:                "script",
+		DangerousInnerHTML: GetRefreshScriptInner(getRefreshServerPort()),
 	})
 	return result
 }
@@ -117,7 +117,7 @@ const refreshScriptFmt = `
 	if (scrollY) {
 		setTimeout(() => {
 			localStorage.removeItem(scrollYKey);
-			console.info("WAVE DEV: Restoring previous scroll position");
+			console.info("Wave: Restoring previous scroll position");
 			window.scrollTo({ top: scrollY, behavior: "smooth" })
 		}, 150);
 	}
@@ -128,7 +128,7 @@ const refreshScriptFmt = `
 		const { changeType, criticalCSS, normalCSSURL } = JSON.parse(e.data);
 
 		if (changeType == "rebuilding") {
-			console.log("WAVE DEV: Rebuilding server...");
+			console.log("Wave: Rebuilding server...");
 			const currentEl = getCurrentEl();
 			if (!currentEl) {
 				const el = document.createElement("div");
@@ -185,11 +185,11 @@ const refreshScriptFmt = `
 		}
 			
 		if (changeType == "revalidate") {
-			console.log("WAVE DEV: Revalidating...");
+			console.log("Wave: Revalidating...");
 			const el = getCurrentEl();
 			if ("__waveRevalidate" in window) {
 				__waveRevalidate().then(() => {
-					console.log("WAVE DEV: Revalidated");
+					console.log("Wave: Revalidated");
 					el?.remove();
 				});
 			} else {
@@ -200,12 +200,12 @@ const refreshScriptFmt = `
 	};
 
 	ws.onclose = () => {
-		console.log("WAVE DEV: WebSocket closed");
+		console.log("Wave: WebSocket closed");
 		window.location.reload();
 	};
 
 	ws.onerror = (e) => {
-		console.log("WAVE DEV: WebSocket error", e);
+		console.log("Wave: WebSocket error", e);
 		ws.close();
 		window.location.reload();
 	};

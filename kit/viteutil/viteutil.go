@@ -120,9 +120,9 @@ func ToDevScripts(options ToDevScriptsOptions) (template.HTML, error) {
 		b.Line("window.__vite_plugin_react_preamble_installed__ = true;")
 
 		err = htmlutil.RenderElementToBuilder(&htmlutil.Element{
-			Tag:               "script",
-			TrustedAttributes: map[string]string{"type": "module"},
-			InnerHTML:         template.HTML(b.String()),
+			Tag:                 "script",
+			AttributesKnownSafe: map[string]string{"type": "module"},
+			DangerousInnerHTML:  b.String(),
 		}, &htmlBuilder)
 		if err != nil {
 			return "", fmt.Errorf("could not render vite script: %w", err)

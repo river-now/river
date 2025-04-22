@@ -7,8 +7,8 @@
 		"MainAppEntry": "__cmd/app",
 		"DistDir": "__dist",
 		"StaticAssetDirs": {
-			"Private": "backend/static",
-			"Public": "frontend/static"
+			"Private": "backend/__static",
+			"Public": "frontend/__static"
 		},
 		"CSSEntryFiles": {
 			"Critical": "frontend/css/main.critical.css",
@@ -22,13 +22,18 @@
 		"ClientEntry": "frontend/entry.tsx",
 		"ClientRouteDefsFile": "frontend/routes.ts",
 		"TSGenOutPath": "frontend/river.gen.ts",
-		"PublicURLFuncName": "hashedURL",
-		"AutoETags": true
+		"BuildtimePublicURLFuncName": "hashedURL"
 	},
 	"Vite": {
 		"JSPackageManagerBaseCmd": "pnpm"
 	},
 	"Watch": {
-		"HealthcheckEndpoint": "/healthz"
+		"HealthcheckEndpoint": "/healthz",
+		"Include": [
+			{
+				"Pattern": "backend/__static/markdown/**/*.md",
+				"OnlyRunClientDefinedRevalidateFunc": true
+			}
+		]
 	}
 }

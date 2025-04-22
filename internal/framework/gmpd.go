@@ -16,13 +16,14 @@ import (
 type SplatValues []string
 
 type ActivePathData struct {
-	HeadBlocks  []*htmlutil.Element
+	HeadEls     []*htmlutil.Element
 	LoadersData []any
 	// LoadersErrMsgs      []string
 	LoadersErrs         []error
 	ImportURLs          []string
 	ExportKeys          []string
 	OutermostErrorIndex int
+	MatchedPatterns     []string
 	SplatValues         SplatValues
 	Params              mux.Params
 	Deps                []string
@@ -59,6 +60,11 @@ func (h *River) getUIRoutesData(
 	}
 
 	_matches := _match_results.Matches
+
+	matchedPatterns := make([]string, len(_matches))
+	for i, match := range _matches {
+		matchedPatterns[i] = match.OriginalPattern()
+	}
 
 	var sb strings.Builder
 	var growSize int
@@ -143,18 +149,18 @@ func (h *River) getUIRoutesData(
 		}
 	}
 
-	loadersHeadBlocks := make([][]*htmlutil.Element, numberOfLoaders)
+	loadersHeadEls := make([][]*htmlutil.Element, numberOfLoaders)
 	for _, _response_proxy := range _tasks_results.ResponseProxies {
 		if _response_proxy != nil {
-			loadersHeadBlocks = append(loadersHeadBlocks, _response_proxy.GetHeadElements())
+			loadersHeadEls = append(loadersHeadEls, _response_proxy.GetHeadElements())
 		}
 	}
 
 	if thereAreErrors {
-		headBlocksDoubleSlice := loadersHeadBlocks[:outermostErrorIndex]
-		headblocks := make([]*htmlutil.Element, 0, len(headBlocksDoubleSlice))
-		for _, slice := range headBlocksDoubleSlice {
-			headblocks = append(headblocks, slice...)
+		headElsDoubleSlice := loadersHeadEls[:outermostErrorIndex]
+		headEls := make([]*htmlutil.Element, 0, len(headElsDoubleSlice))
+		for _, slice := range headElsDoubleSlice {
+			headEls = append(headEls, slice...)
 		}
 
 		apd := &ActivePathData{
@@ -163,20 +169,21 @@ func (h *River) getUIRoutesData(
 			ImportURLs:          _cachedItemSubset.ImportURLs[:outermostErrorIndex+1],
 			ExportKeys:          _cachedItemSubset.ExportKeys[:outermostErrorIndex+1],
 			OutermostErrorIndex: outermostErrorIndex,
+			MatchedPatterns:     matchedPatterns[:outermostErrorIndex+1],
 			SplatValues:         _match_results.SplatValues,
 			Params:              _match_results.Params,
 			Deps:                _cachedItemSubset.Deps,
 			LoadersErrs:         loadersErrs[:outermostErrorIndex+1],
-			HeadBlocks:          headblocks,
+			HeadEls:             headEls,
 			HasRootData:         hasRootData,
 		}
 
 		return &uiRoutesData{activePathData: apd, found: true}
 	}
 
-	headblocks := make([]*htmlutil.Element, 0, len(loadersHeadBlocks))
-	for _, slice := range loadersHeadBlocks {
-		headblocks = append(headblocks, slice...)
+	headEls := make([]*htmlutil.Element, 0, len(loadersHeadEls))
+	for _, slice := range loadersHeadEls {
+		headEls = append(headEls, slice...)
 	}
 
 	apd := &ActivePathData{
@@ -185,11 +192,12 @@ func (h *River) getUIRoutesData(
 		ImportURLs:          _cachedItemSubset.ImportURLs,
 		ExportKeys:          _cachedItemSubset.ExportKeys,
 		OutermostErrorIndex: outermostErrorIndex,
+		MatchedPatterns:     matchedPatterns,
 		SplatValues:         _match_results.SplatValues,
 		Params:              _match_results.Params,
 		Deps:                _cachedItemSubset.Deps,
 		LoadersErrs:         loadersErrs,
-		HeadBlocks:          headblocks,
+		HeadEls:             headEls,
 		HasRootData:         hasRootData,
 	}
 

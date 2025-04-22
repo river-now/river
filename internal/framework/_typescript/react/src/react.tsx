@@ -23,8 +23,12 @@ export function RiverRootOutlet(
 	props: RiverRootOutletPropsGeneric<JSX.Element>,
 ): JSX.Element {
 	const idx = props.idx ?? 0;
-	const [currentImportURL, setCurrentImportURL] = useState(ctx.get("importURLs")?.[idx]);
-	const [currentExportKey, setCurrentExportKey] = useState(ctx.get("exportKeys")?.[idx]);
+	const [currentImportURL, setCurrentImportURL] = useState(
+		ctx.get("importURLs")?.[idx],
+	);
+	const [currentExportKey, setCurrentExportKey] = useState(
+		ctx.get("exportKeys")?.[idx],
+	);
 	const [nextImportURL, setNextImportURL] = useState(ctx.get("importURLs")?.[idx + 1]);
 	const [nextExportKey, setNextExportKey] = useState(ctx.get("exportKeys")?.[idx + 1]);
 

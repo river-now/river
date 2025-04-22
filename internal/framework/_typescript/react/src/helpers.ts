@@ -9,24 +9,29 @@ import type {
 import { currentRiverDataAtom, loadersDataAtom } from "./react.tsx";
 
 export type RiverRouteProps<
-	T extends RiverUntypedLoader = RiverUntypedLoader,
-	Pattern extends T["pattern"] = string,
-> = RiverRoutePropsGeneric<JSX.Element, T, Pattern>;
+	Loader extends RiverUntypedLoader = RiverUntypedLoader,
+	Pattern extends Loader["pattern"] = string,
+> = RiverRoutePropsGeneric<JSX.Element, Loader, Pattern>;
 
 export type RiverRoute<
-	T extends RiverUntypedLoader = RiverUntypedLoader,
-	Pattern extends T["pattern"] = string,
-> = RiverRouteGeneric<JSX.Element, T, Pattern>;
+	Loader extends RiverUntypedLoader = RiverUntypedLoader,
+	Pattern extends Loader["pattern"] = string,
+> = RiverRouteGeneric<JSX.Element, Loader, Pattern>;
 
-export function makeTypedUseCurrentRiverData<RD>() {
+export function makeTypedUseCurrentRiverData<RootData>() {
 	return () =>
-		useAtomValue(currentRiverDataAtom) as ReturnType<typeof getCurrentRiverData<RD>>;
+		useAtomValue(currentRiverDataAtom) as ReturnType<
+			typeof getCurrentRiverData<RootData>
+		>;
 }
 
-export function makeTypedUseLoaderData<T extends RiverUntypedLoader>() {
-	return function useLoaderData<P extends RiverRouteProps<T>>(
-		props: P,
-	): Extract<T, { pattern: P["__phantom_pattern"] }>["phantomOutputType"] | undefined {
+export function makeTypedUseLoaderData<Loader extends RiverUntypedLoader>() {
+	return function useLoaderData<
+		Props extends RiverRouteProps<Loader>,
+		LoaderData =
+			| Extract<Loader, { pattern: Props["__phantom_pattern"] }>["phantomOutputType"]
+			| undefined,
+	>(props: Props): LoaderData {
 		const loadersData = useAtomValue(loadersDataAtom);
 		return loadersData?.[props.idx];
 	};

@@ -5,3 +5,5 @@ import { App } from "./components/routes/home.tsx";
 await initClient(() => {
 	render(() => <App />, getRootEl());
 });
+
+import("./components/highlight.ts"); // warm up highlighter

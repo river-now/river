@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/river-now/river/kit/errutil"
-	"github.com/river-now/river/kit/headblocks"
 	"github.com/river-now/river/kit/htmlutil"
 	"github.com/river-now/river/kit/mux"
 	"golang.org/x/sync/errgroup"
@@ -22,12 +21,13 @@ type UIRouteOutput struct {
 	LoadersData []any   `json:"loadersData,omitempty"`
 	LoadersErrs []error `json:"loadersErrs,omitempty"`
 
-	Params      mux.Params  `json:"params,omitempty"`
-	SplatValues SplatValues `json:"splatValues,omitempty"`
+	MatchedPatterns []string    `json:"matchedPatterns,omitempty"`
+	Params          mux.Params  `json:"params,omitempty"`
+	SplatValues     SplatValues `json:"splatValues,omitempty"`
 
 	Title string              `json:"title,omitempty"`
-	Meta  []*htmlutil.Element `json:"metaHeadBlocks,omitempty"`
-	Rest  []*htmlutil.Element `json:"restHeadBlocks,omitempty"`
+	Meta  []*htmlutil.Element `json:"metaHeadEls,omitempty"`
+	Rest  []*htmlutil.Element `json:"restHeadEls,omitempty"`
 
 	// LoadersErrorMessages []string            `json:"loadersErrorMessages,omitempty"`
 	OutermostErrorIndex int `json:"outermostErrorIndex,omitempty"`
@@ -53,19 +53,19 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 
 	eg := errgroup.Group{}
 
-	var defaultHeadBlocks []*htmlutil.Element
+	var defaultHeadEls []*htmlutil.Element
 	var err error
 
 	eg.Go(func() error {
-		if h.GetDefaultHeadBlocks != nil {
-			defaultHeadBlocks, err = h.GetDefaultHeadBlocks(r)
+		if h.GetDefaultHeadEls != nil {
+			defaultHeadEls, err = h.GetDefaultHeadEls(r)
 			if err != nil {
 				wrapped := fmt.Errorf("could not get default head blocks: %w", err)
 				Log.Error(wrapped.Error())
 				return wrapped
 			}
 		} else {
-			defaultHeadBlocks = []*htmlutil.Element{}
+			defaultHeadEls = []*htmlutil.Element{}
 		}
 		return nil
 	})
@@ -88,24 +88,24 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 	}
 
 	var hb []*htmlutil.Element
-	hb = make([]*htmlutil.Element, 0, len(activePathData.HeadBlocks)+len(defaultHeadBlocks))
-	hb = append(hb, defaultHeadBlocks...)
-	hb = append(hb, activePathData.HeadBlocks...)
+	hb = make([]*htmlutil.Element, 0, len(activePathData.HeadEls)+len(defaultHeadEls))
+	hb = append(hb, defaultHeadEls...)
+	hb = append(hb, activePathData.HeadEls...)
 
-	// dedupe and organize into HeadBlocks struct
-	headBlocks := headblocks.ToHeadBlocks(hb)
+	headEls := headElsInstance.ToSortedHeadEls(hb)
 
 	uiRouteOutput := &UIRouteOutput{
 		HasRootData: activePathData.HasRootData,
 		LoadersData: activePathData.LoadersData,
 		LoadersErrs: activePathData.LoadersErrs,
 
-		Params:      activePathData.Params,
-		SplatValues: activePathData.SplatValues,
+		MatchedPatterns: activePathData.MatchedPatterns,
+		Params:          activePathData.Params,
+		SplatValues:     activePathData.SplatValues,
 
-		Title: headBlocks.Title,
-		Meta:  headBlocks.Meta,
-		Rest:  headBlocks.Rest,
+		Title: headEls.Title,
+		Meta:  headEls.Meta,
+		Rest:  headEls.Rest,
 
 		// LoadersErrorMessages: activePathData.LoadersErrMsgs,
 		OutermostErrorIndex: activePathData.OutermostErrorIndex,

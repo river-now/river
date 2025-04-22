@@ -1,7 +1,7 @@
-import { getHrefDetails, getIsGETRequest } from "river.now/kit/url";
+import { getHrefDetails, getIsGETRequest, type HrefDetails } from "river.now/kit/url";
 import { LogInfo } from "./utils.ts";
 
-export type RedirectData = { href: string } & (
+export type RedirectData = { href: string; hrefDetails: HrefDetails } & (
 	| {
 			status: "did";
 	  }
@@ -17,7 +17,14 @@ export function parseFetchResponseForRedirectData(
 ): RedirectData | null {
 	const riverReloadTarget = res.headers.get("X-River-Reload");
 	if (riverReloadTarget) {
+		const newURL = new URL(riverReloadTarget, window.location.href);
+		const hrefDetails = getHrefDetails(newURL.href);
+		if (!hrefDetails.isHTTP) {
+			return null;
+		}
+
 		return {
+			hrefDetails,
 			status: "should",
 			href: riverReloadTarget,
 			shouldRedirectStrategy: "hard",
@@ -33,7 +40,7 @@ export function parseFetchResponseForRedirectData(
 
 		const isCurrent = newURL.href === window.location.href;
 		if (isCurrent) {
-			return { status: "did", href: newURL.href };
+			return { hrefDetails, status: "did", href: newURL.href };
 		}
 
 		const wasGETRequest = getIsGETRequest(reqInit);
@@ -43,6 +50,7 @@ export function parseFetchResponseForRedirectData(
 		}
 
 		return {
+			hrefDetails,
 			status: "should",
 			href: newURL.href,
 			shouldRedirectStrategy: hrefDetails.isInternal ? "soft" : "hard",
@@ -62,6 +70,7 @@ export function parseFetchResponseForRedirectData(
 	}
 
 	return {
+		hrefDetails,
 		status: "should",
 		href: hrefDetails.absoluteURL,
 		shouldRedirectStrategy: hrefDetails.isInternal ? "soft" : "hard",

@@ -265,7 +265,9 @@ describe("Encoding Conversion Functions", () => {
 		it("should correctly perform round-trip conversions", () => {
 			for (const test of testCases) {
 				// UTF8 -> Bytes -> UTF8
-				expect(converters.bytesToUTF8(converters.utf8ToBytes(test.utf8))).toBe(test.utf8);
+				expect(converters.bytesToUTF8(converters.utf8ToBytes(test.utf8))).toBe(
+					test.utf8,
+				);
 
 				// UTF8 -> Hex -> UTF8
 				expect(converters.hexToUTF8(converters.utf8ToHex(test.utf8))).toBe(test.utf8);
@@ -284,7 +286,9 @@ describe("Encoding Conversion Functions", () => {
 				expect(converters.bytesToHex(converters.hexToBytes(test.hex))).toBe(test.hex);
 
 				// Hex -> Base64 -> Hex
-				expect(converters.base64ToHex(converters.hexToBase64(test.hex))).toBe(test.hex);
+				expect(converters.base64ToHex(converters.hexToBase64(test.hex))).toBe(
+					test.hex,
+				);
 
 				// Base64URL -> Base64 -> Base64URL
 				const roundTripBase64URL = converters.base64ToBase64URL(

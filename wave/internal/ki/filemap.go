@@ -98,12 +98,12 @@ type publicFileMapDetails struct {
 func (c *Config) getInitialPublicFileMapDetails() (*publicFileMapDetails, error) {
 	innerHTMLFormatStr := `
 		import { wavePublicFileMap } from "%s";
-		if (!window.wave) window.wave = {};
+		if (!window.__wave) window.__wave = {};
 		function getPublicURL(originalPublicURL) { 
 			if (originalPublicURL.startsWith("/")) originalPublicURL = originalPublicURL.slice(1);
 			return "%s" + (wavePublicFileMap[originalPublicURL] || originalPublicURL);
 		}
-		window.wave.getPublicURL = getPublicURL;` + "\n"
+		window.__wave.getPublicURL = getPublicURL;` + "\n"
 
 	publicFileMapURL := c.GetPublicFileMapURL()
 
@@ -113,9 +113,9 @@ func (c *Config) getInitialPublicFileMapDetails() (*publicFileMapDetails, error)
 	}
 
 	scriptEl := htmlutil.Element{
-		Tag:        "script",
-		Attributes: map[string]string{"type": "module"},
-		InnerHTML:  template.HTML(fmt.Sprintf(innerHTMLFormatStr, publicFileMapURL, c._uc.Core.PublicPathPrefix)),
+		Tag:                "script",
+		Attributes:         map[string]string{"type": "module"},
+		DangerousInnerHTML: fmt.Sprintf(innerHTMLFormatStr, publicFileMapURL, c._uc.Core.PublicPathPrefix),
 	}
 
 	sha256Hash, err := htmlutil.AddSha256HashInline(&scriptEl, true)

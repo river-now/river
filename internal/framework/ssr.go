@@ -18,6 +18,7 @@ type SSRInnerHTMLInput struct {
 	ImportURLs          []string
 	ExportKeys          []string
 	OutermostErrorIndex int
+	MatchedPatterns     []string
 	SplatValues         SplatValues
 	Params              mux.Params
 	HasRootData         bool
@@ -35,11 +36,13 @@ const ssrInnerHTMLTmplStr = `<script>
 	x.isDev = {{.IsDev}};
 	x.viteDevURL = {{.ViteDevURL}};
 	x.publicPathPrefix = "{{.PublicPathPrefix}}";
+	x.patternToWaitFnMap = {};
 	x.buildID = {{.BuildID}};
 	x.loadersData = {{.LoadersData}};
 	x.importURLs = {{.ImportURLs}};
 	x.exportKeys = {{.ExportKeys}};
 	x.outermostErrorIndex = {{.OutermostErrorIndex}};
+	x.matchedPatterns = {{.MatchedPatterns}};
 	x.splatValues = {{.SplatValues}};
 	x.params = {{.Params}};
 	x.hasRootData = {{.HasRootData}};
@@ -81,6 +84,7 @@ func (h *River) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOutpu
 		ImportURLs:          routeData.ImportURLs,
 		ExportKeys:          routeData.ExportKeys,
 		OutermostErrorIndex: routeData.OutermostErrorIndex,
+		MatchedPatterns:     routeData.MatchedPatterns,
 		SplatValues:         routeData.SplatValues,
 		Params:              routeData.Params,
 		HasRootData:         routeData.HasRootData,
@@ -99,8 +103,9 @@ func (h *River) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOutpu
 	innerHTML = strings.TrimSuffix(innerHTML, "</script>")
 
 	el := htmlutil.Element{
-		Tag:       "script",
-		InnerHTML: template.HTML(innerHTML),
+		Tag:                 "script",
+		AttributesKnownSafe: map[string]string{"type": "module"},
+		DangerousInnerHTML:  innerHTML,
 	}
 
 	sha256Hash, err := htmlutil.AddSha256HashInline(&el, true)

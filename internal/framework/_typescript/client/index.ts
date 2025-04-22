@@ -4,7 +4,6 @@ export {
 	addStatusListener,
 	devRevalidate,
 	getBuildID,
-	getCurrentRiverData,
 	getHistoryInstance,
 	getPrefetchHandlers,
 	getRootEl,
@@ -19,11 +18,12 @@ export {
 } from "./src/client.ts";
 export {
 	makeFinalLinkProps,
+	makeTypedPreload,
 	type RiverLinkPropsBase,
 	type RiverRootOutletPropsGeneric,
 	type RiverRouteGeneric,
 	type RiverRoutePropsGeneric,
 	type RiverUntypedLoader,
 } from "./src/impl_helpers.ts";
-export { internal_RiverClientGlobal } from "./src/river_ctx.ts";
+export { getCurrentRiverData, internal_RiverClientGlobal } from "./src/river_ctx.ts";
 export type { RiverRoutes } from "./src/route_def_helpers.ts";

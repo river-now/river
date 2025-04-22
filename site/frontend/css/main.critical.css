@@ -2,6 +2,7 @@
 	color-scheme: light dark;
 	--dark-green: #064929;
 	--light-green: #4bba5b;
+	--resolved-green: light-dark(var(--dark-green), var(--light-green));
 }
 html.light {
 	color-scheme: light;
@@ -31,14 +32,25 @@ main {
 main {
 	margin: 1rem;
 }
-p {
-	font-size: 17px;
-	line-height: 1.8;
-	margin-bottom: 1rem;
-}
 .content {
-	max-width: 640px;
+	width: 720px;
+	max-width: 100%;
 	margin: 2rem auto;
+	p,
+	ul,
+	ol,
+	pre {
+		font-size: 17px;
+		line-height: 1.8;
+		margin-bottom: 1.5rem;
+	}
+	pre {
+		font-size: 15.5px;
+		line-height: 1.7;
+	}
+	li {
+		margin-bottom: 0.5rem;
+	}
 }
 @media screen and (max-width: 640px) {
 	.content {

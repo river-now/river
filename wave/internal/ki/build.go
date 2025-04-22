@@ -34,10 +34,10 @@ const PrehashedDirname = "prehashed"
 var noHashPublicDirsByVersion = map[uint8]string{0: "__nohash", 1: PrehashedDirname}
 
 type BuildOptions struct {
-	IsDev             bool
-	RecompileGoBinary bool
-	CSSHotReload      bool
-	is_dev_rebuild    bool
+	IsDev                      bool
+	RecompileGoBinary          bool
+	just_run_simple_file_build bool
+	is_dev_rebuild             bool
 }
 
 func (c *Config) do_build_time_file_processing(shouldBeGranular bool) error {
@@ -76,7 +76,7 @@ func (c *Config) do_build_time_file_processing(shouldBeGranular bool) error {
 func (c *Config) Build(opts BuildOptions) error {
 	a := time.Now()
 
-	if !opts.CSSHotReload {
+	if !opts.just_run_simple_file_build {
 		c.Logger.Info("START building Wave",
 			"recompile_go_binary", opts.RecompileGoBinary,
 			"is_dev_rebuild", opts.is_dev_rebuild,
@@ -88,7 +88,7 @@ func (c *Config) Build(opts BuildOptions) error {
 		return fmt.Errorf("error processing build time files: %w", err)
 	}
 
-	if opts.CSSHotReload {
+	if opts.just_run_simple_file_build {
 		return nil
 	}
 

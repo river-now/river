@@ -20,12 +20,12 @@ const routes = [
 	},
 	{
 		_type: "loader",
-		pattern: "/__/:dyn",
-		phantomOutputType: undefined,
+		pattern: "/*",
+		phantomOutputType: null as unknown as DetailedPage,
 	},
 	{
 		_type: "loader",
-		pattern: "/start",
+		pattern: "/__/:dyn",
 		phantomOutputType: undefined,
 	},
 ] as const;
@@ -34,8 +34,28 @@ const routes = [
 / Ad Hoc Types:
 /*********************************************************************/
 
+export type DetailedPage = {
+	Title?: string;
+	Description?: string;
+	Date?: string;
+	Content?: string;
+	URL?: string;
+	IsFolder?: boolean;
+	Sitemap: Array<SitemapItem>;
+	IndexSitemap: Array<SitemapItem>;
+	BackItem: string;
+};
+
 export type RootData = {
 	LatestVersion: string;
+};
+
+export type Sitemap = Array<SitemapItem>;
+
+export type SitemapItem = {
+	title: string;
+	url: string;
+	isActive?: boolean;
 };
 
 /**********************************************************************
@@ -60,8 +80,8 @@ const rollupOptions = {
 	input: [
 		"frontend/components/routes/dyn.tsx",
 		"frontend/components/routes/home.tsx",
+		"frontend/components/routes/md.tsx",
 		"frontend/components/routes/root.tsx",
-		"frontend/components/routes/start.tsx",
 		"frontend/entry.tsx",
 	] as string[],
 	preserveEntrySignatures: "exports-only",
@@ -86,6 +106,13 @@ export type StaticPublicAsset = keyof typeof staticPublicAssetMap;
 
 declare global {
 	function hashedURL(staticPublicAsset: StaticPublicAsset): string;
+}
+
+export const publicPathPrefix = "/public/";
+
+export function waveRuntimeURL(originalPublicURL: keyof typeof staticPublicAssetMap) {
+	const url = staticPublicAssetMap[originalPublicURL] ?? originalPublicURL;
+	return publicPathPrefix + url;
 }
 
 export function riverVitePlugin(): Plugin {
@@ -133,7 +160,7 @@ export function riverVitePlugin(): Plugin {
 							...(Array.isArray(ign) ? ign : []),
 							...[
 								"**/*.go",
-								"**/backend/static",
+								"**/backend/__static",
 								"**/wave.config.json",
 								"**/frontend/river.gen.ts",
 								"**/frontend/routes.ts"

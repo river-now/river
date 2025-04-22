@@ -67,7 +67,9 @@ describe("jsonDeepEquals", () => {
 		it("should handle nested objects", () => {
 			expect(jsonDeepEquals({ a: { b: 1 } }, { a: { b: 1 } })).toBe(true);
 			expect(jsonDeepEquals({ a: { b: 1 } }, { a: { b: 2 } })).toBe(false);
-			expect(jsonDeepEquals({ a: { b: { c: 3 } } }, { a: { b: { c: 3 } } })).toBe(true);
+			expect(jsonDeepEquals({ a: { b: { c: 3 } } }, { a: { b: { c: 3 } } })).toBe(
+				true,
+			);
 		});
 
 		it("should handle objects with arrays", () => {
