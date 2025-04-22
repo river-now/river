@@ -237,6 +237,7 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 
 	ignoredList := []string{
 		"**/*.go",
+		path.Join("**", h.Wave.GetDistDir()+"/**/*"),
 		path.Join("**", h.Wave.GetPrivateStaticDir()),
 		path.Join("**", h.Wave.GetConfigFile()),
 		path.Join("**", h.Wave.GetRiverTSGenOutPath()),
