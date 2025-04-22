@@ -5,12 +5,6 @@ import { waveRuntimeURL } from "../river.gen.ts";
 import { Link } from "./app_link.tsx";
 import { highlight } from "./highlight.ts";
 
-/**
- * Renders markdown with syntax highlighting and prefetching for internal links.
- * External links are opened in a new tab.
- * Uses a global map to keep track of prefetch handlers for cleanup, which means
- * that this component should only be used once per page.
- */
 export function RenderedMarkdown(props: { markdown: string }) {
 	let containerRef: HTMLDivElement | null = null;
 	const disposers: Array<() => void> = [];
