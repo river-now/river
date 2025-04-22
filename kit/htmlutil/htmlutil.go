@@ -14,13 +14,13 @@ import (
 )
 
 type Element struct {
-	Tag                     string            `json:"tag,omitempty"`
-	Attributes              map[string]string `json:"attributes,omitempty"`
-	AttributesDangerousVals map[string]string `json:"attributesDangerousVals,omitempty"`
-	BooleanAttributes       []string          `json:"booleanAttributes,omitempty"`
-	TextContent             string            `json:"textContent,omitempty"`
-	DangerousInnerHTML      string            `json:"dangerousInnerHTML,omitempty"`
-	SelfClosing             bool              `json:"-"`
+	Tag                 string            `json:"tag,omitempty"`
+	Attributes          map[string]string `json:"attributes,omitempty"`
+	AttributesKnownSafe map[string]string `json:"attributesDangerousVals,omitempty"`
+	BooleanAttributes   []string          `json:"booleanAttributes,omitempty"`
+	TextContent         string            `json:"textContent,omitempty"`
+	DangerousInnerHTML  string            `json:"dangerousInnerHTML,omitempty"`
+	SelfClosing         bool              `json:"-"`
 }
 
 var (
@@ -33,32 +33,32 @@ var (
 )
 
 func AddSha256HashInline(el *Element, includeConvenienceIntegrityAttribute bool) (string, error) {
-	if el.AttributesDangerousVals == nil {
-		el.AttributesDangerousVals = make(map[string]string)
+	if el.AttributesKnownSafe == nil {
+		el.AttributesKnownSafe = make(map[string]string)
 	}
 	// __TODO this should be resolved right?
 	sha256Hash := cryptoutil.Sha256Hash([]byte(el.DangerousInnerHTML))
 	sha256HashBase64 := bytesutil.ToBase64(sha256Hash[:])
 	if includeConvenienceIntegrityAttribute {
-		el.AttributesDangerousVals["integrity"] = "sha256-" + sha256HashBase64
+		el.AttributesKnownSafe["integrity"] = "sha256-" + sha256HashBase64
 	}
 	return sha256HashBase64, nil
 }
 
 func AddSha256HashExternal(el *Element, externalSha256Hash string) (string, error) {
-	if el.AttributesDangerousVals == nil {
-		el.AttributesDangerousVals = make(map[string]string)
+	if el.AttributesKnownSafe == nil {
+		el.AttributesKnownSafe = make(map[string]string)
 	}
 	if externalSha256Hash == "" {
 		return "", fmt.Errorf("no sha256 hash provided for external resource")
 	}
-	el.AttributesDangerousVals["integrity"] = "sha256-" + externalSha256Hash
+	el.AttributesKnownSafe["integrity"] = "sha256-" + externalSha256Hash
 	return externalSha256Hash, nil
 }
 
 func AddNonce(el *Element, len uint8) (string, error) {
-	if el.AttributesDangerousVals == nil {
-		el.AttributesDangerousVals = make(map[string]string)
+	if el.AttributesKnownSafe == nil {
+		el.AttributesKnownSafe = make(map[string]string)
 	}
 	if len == 0 {
 		len = 16
@@ -67,7 +67,7 @@ func AddNonce(el *Element, len uint8) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not generate nonce: %w", err)
 	}
-	el.AttributesDangerousVals["nonce"] = nonce
+	el.AttributesKnownSafe["nonce"] = nonce
 	return nonce, nil
 }
 
@@ -133,12 +133,12 @@ func writeAttribute(htmlBuilder *strings.Builder, key, value string) {
 }
 
 func combineIntoDangerousAttributes(el *Element) map[string]string {
-	attributes := make(map[string]string, len(el.Attributes)+len(el.AttributesDangerousVals))
+	attributes := make(map[string]string, len(el.Attributes)+len(el.AttributesKnownSafe))
 	for k, v := range el.Attributes {
 		escapedKey := template.HTMLEscapeString(k)
 		attributes[escapedKey] = template.HTMLEscapeString(v)
 	}
-	for k, v := range el.AttributesDangerousVals {
+	for k, v := range el.AttributesKnownSafe {
 		escapedKey := template.HTMLEscapeString(k)
 		attributes[escapedKey] = v
 	}
@@ -157,19 +157,19 @@ func combineIntoDangerousInnerHTML(el *Element) string {
 
 func EscapeIntoTrusted(el *Element) Element {
 	return Element{
-		Tag:                     el.Tag,
-		Attributes:              nil,
-		AttributesDangerousVals: combineIntoDangerousAttributes(el),
-		BooleanAttributes:       el.BooleanAttributes,
-		TextContent:             "",
-		DangerousInnerHTML:      combineIntoDangerousInnerHTML(el),
-		SelfClosing:             el.SelfClosing,
+		Tag:                 el.Tag,
+		Attributes:          nil,
+		AttributesKnownSafe: combineIntoDangerousAttributes(el),
+		BooleanAttributes:   el.BooleanAttributes,
+		TextContent:         "",
+		DangerousInnerHTML:  combineIntoDangerousInnerHTML(el),
+		SelfClosing:         el.SelfClosing,
 	}
 }
 
 func RenderModuleScriptToBuilder(src string, htmlBuilder *strings.Builder) error {
 	return RenderElementToBuilder(&Element{
-		Tag:                     "script",
-		AttributesDangerousVals: map[string]string{"type": "module", "src": src},
+		Tag:                 "script",
+		AttributesKnownSafe: map[string]string{"type": "module", "src": src},
 	}, htmlBuilder)
 }

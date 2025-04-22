@@ -41,15 +41,14 @@ type (
 /////////////////////////////////////////////////////////////////////
 
 type Router struct {
-	_marshal_input           func(r *http.Request, iPtr any) error
-	_tasks_registry          *tasks.Registry
-	_http_mws                []HTTPMiddleware
-	_task_mws                []tasks.AnyRegisteredTask
-	_method_to_matcher_map   map[string]*_Method_Matcher
-	_matcher_opts            *matcher.Options
-	_not_found_handler       http.Handler
-	_mount_root              string
-	_auto_task_handler_etags bool
+	_marshal_input         func(r *http.Request, iPtr any) error
+	_tasks_registry        *tasks.Registry
+	_http_mws              []HTTPMiddleware
+	_task_mws              []tasks.AnyRegisteredTask
+	_method_to_matcher_map map[string]*_Method_Matcher
+	_matcher_opts          *matcher.Options
+	_not_found_handler     http.Handler
+	_mount_root            string
 }
 
 func (rt *Router) AllRoutes() []AnyRoute {
@@ -106,16 +105,6 @@ type Options struct {
 	// input ptr to the desired value (this is what will ultimately be
 	// returned by c.Input()).
 	MarshalInput func(r *http.Request, inputPtr any) error
-
-	// If set to true, task handlers will automatically add a strong ETag
-	// (SHA-256 hash) to successful GET/HEAD JSON responses.
-	//
-	// The request cookie will be taken into account in the hash. If any
-	// cookie changes, the ETag will change. Usually this is what you want.
-	//
-	// Has no effect on HTTP handlers.
-	// Defaults to false.
-	AutoTaskHandlerETags bool
 }
 
 func NewRouter(opts *Options) *Router {
@@ -146,12 +135,11 @@ func NewRouter(opts *Options) *Router {
 	}
 
 	return &Router{
-		_marshal_input:           opts.MarshalInput,
-		_tasks_registry:          opts.TasksRegistry,
-		_method_to_matcher_map:   make(map[string]*_Method_Matcher),
-		_matcher_opts:            _matcher_opts,
-		_mount_root:              mountRootToUse,
-		_auto_task_handler_etags: opts.AutoTaskHandlerETags,
+		_marshal_input:         opts.MarshalInput,
+		_tasks_registry:        opts.TasksRegistry,
+		_method_to_matcher_map: make(map[string]*_Method_Matcher),
+		_matcher_opts:          _matcher_opts,
+		_mount_root:            mountRootToUse,
 	}
 }
 
@@ -545,23 +533,6 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error marshalling JSON:", err)
 			res.InternalServerError()
 			return
-		}
-
-		_is_getish := r.Method == http.MethodGet || r.Method == http.MethodHead
-		if _is_getish && rt._auto_task_handler_etags {
-			_hash_input := []byte(r.Header.Get("Cookie"))
-			if len(_hash_input) > 4096 {
-				log.Println("Cookie too large")
-				res.InternalServerError()
-				return
-			}
-			_hash_input = append(_hash_input, _json_bytes...)
-			etag := response.ToQuotedSha256Etag(_hash_input)
-			res.SetETag(etag)
-			if response.ShouldReturn304Conservative(r, etag) {
-				res.NotModified()
-				return
-			}
 		}
 
 		res.JSONBytes(_json_bytes)

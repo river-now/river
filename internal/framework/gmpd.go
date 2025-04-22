@@ -23,6 +23,7 @@ type ActivePathData struct {
 	ImportURLs          []string
 	ExportKeys          []string
 	OutermostErrorIndex int
+	MatchedPatterns     []string
 	SplatValues         SplatValues
 	Params              mux.Params
 	Deps                []string
@@ -59,6 +60,11 @@ func (h *River) getUIRoutesData(
 	}
 
 	_matches := _match_results.Matches
+
+	matchedPatterns := make([]string, len(_matches))
+	for i, match := range _matches {
+		matchedPatterns[i] = match.OriginalPattern()
+	}
 
 	var sb strings.Builder
 	var growSize int
@@ -163,6 +169,7 @@ func (h *River) getUIRoutesData(
 			ImportURLs:          _cachedItemSubset.ImportURLs[:outermostErrorIndex+1],
 			ExportKeys:          _cachedItemSubset.ExportKeys[:outermostErrorIndex+1],
 			OutermostErrorIndex: outermostErrorIndex,
+			MatchedPatterns:     matchedPatterns[:outermostErrorIndex+1],
 			SplatValues:         _match_results.SplatValues,
 			Params:              _match_results.Params,
 			Deps:                _cachedItemSubset.Deps,
@@ -185,6 +192,7 @@ func (h *River) getUIRoutesData(
 		ImportURLs:          _cachedItemSubset.ImportURLs,
 		ExportKeys:          _cachedItemSubset.ExportKeys,
 		OutermostErrorIndex: outermostErrorIndex,
+		MatchedPatterns:     matchedPatterns,
 		SplatValues:         _match_results.SplatValues,
 		Params:              _match_results.Params,
 		Deps:                _cachedItemSubset.Deps,

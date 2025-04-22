@@ -308,7 +308,7 @@ func (h *River) handleViteConfigHelper(extraTS string) error {
 	return nil
 }
 
-var nodeScript = `
+const nodeScript = `
 const path = await import("node:path");
 const { pathToFileURL } = await import("node:url");
 const importPath = path.resolve(".", process.argv.slice(1)[0]);
@@ -318,10 +318,29 @@ const final = routesFile.default.__all_routes();
 console.log(JSON.stringify(final));
 `
 
+const routesBuilderSnippet = `
+function __river_routes_builder() {
+	const routes = [];
+	function Route(ip, ck, ebk) {
+		return ebk ? [ip, ck, ebk] : [ip, ck];
+	}
+	function New(pattern, ip, ck, ebk) {
+		const routeObj = { p: pattern, m: ip, k: ck };
+		if (ebk) {
+			routeObj.ek = ebk;
+		}
+		routes.push(routeObj);
+	}
+	return { New, Route, __all_routes: () => routes };
+}
+const routes = __river_routes_builder();
+`
+
 type NodeScriptResultItem struct {
-	Pattern string `json:"p"`
-	Module  string `json:"m"`
-	Key     string `json:"k"`
+	Pattern  string `json:"p"`
+	Module   string `json:"m"`
+	Key      string `json:"k"`
+	ErrorKey string `json:"ek,omitempty"`
 }
 
 type NodeScriptResult []NodeScriptResultItem
@@ -380,20 +399,7 @@ func (h *River) Build(opts *BuildOptions) error {
 
 	code := string(esbuildResult.OutputFiles[0].Contents)
 
-	code = `function RoutesBuilder() {
-	const routes = [];
-	const Component = (x) => x;
-	function Register(pattern, component) {
-		routes.push({
-			p: pattern,
-			m: component.module,
-			k: component.export ?? "default",
-		});
-	}
-	return { Register, Component, __all_routes: () => routes };
-}
-const routes = RoutesBuilder();
-` + code
+	code = routesBuilderSnippet + code
 
 	routesSrcFile := path.Join(".", h.Wave.GetRiverClientRouteDefsFile())
 	routesDir := path.Dir(routesSrcFile)
@@ -437,7 +443,12 @@ const routes = RoutesBuilder();
 	h._paths = make(map[string]*Path)
 
 	for _, item := range nodeScriptResult {
-		h._paths[item.Pattern] = &Path{Pattern: item.Pattern, SrcPath: item.Module, ExportKey: item.Key}
+		h._paths[item.Pattern] = &Path{
+			Pattern:        item.Pattern,
+			SrcPath:        item.Module,
+			ExportKey:      item.Key,
+			ErrorExportKey: item.ErrorKey,
+		}
 	}
 
 	if err = h.writePathsToDisk_StageOne(); err != nil {

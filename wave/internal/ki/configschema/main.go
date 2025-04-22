@@ -292,23 +292,23 @@ var Include_Schema = jsonschema.OptionalArray(jsonschema.Def{
 var IncludeItems_Schema = jsonschema.OptionalObject(jsonschema.Def{
 	RequiredChildren: []string{"Pattern"},
 	Properties: struct {
-		Pattern                        jsonschema.Entry
-		OnChangeHooks                  jsonschema.Entry
-		RecompileGoBinary              jsonschema.Entry
-		RestartApp                     jsonschema.Entry
-		RunClientDefinedRevalidateFunc jsonschema.Entry
-		RunOnChangeOnly                jsonschema.Entry
-		SkipRebuildingNotification     jsonschema.Entry
-		TreatAsNonGo                   jsonschema.Entry
+		Pattern                            jsonschema.Entry
+		OnChangeHooks                      jsonschema.Entry
+		RecompileGoBinary                  jsonschema.Entry
+		RestartApp                         jsonschema.Entry
+		OnlyRunClientDefinedRevalidateFunc jsonschema.Entry
+		RunOnChangeOnly                    jsonschema.Entry
+		SkipRebuildingNotification         jsonschema.Entry
+		TreatAsNonGo                       jsonschema.Entry
 	}{
-		Pattern:                        Pattern_Schema,
-		OnChangeHooks:                  OnChangeHooks_Schema,
-		RecompileGoBinary:              RecompileGoBinary_Schema,
-		RestartApp:                     RestartApp_Schema,
-		RunClientDefinedRevalidateFunc: RunClientDefinedRevalidateFunc_Schema,
-		RunOnChangeOnly:                RunOnChangeOnly_Schema,
-		SkipRebuildingNotification:     SkipRebuildingNotification_Schema,
-		TreatAsNonGo:                   TreatAsNonGo_Schema,
+		Pattern:                            Pattern_Schema,
+		OnChangeHooks:                      OnChangeHooks_Schema,
+		RecompileGoBinary:                  RecompileGoBinary_Schema,
+		RestartApp:                         RestartApp_Schema,
+		OnlyRunClientDefinedRevalidateFunc: OnlyRunClientDefinedRevalidateFunc_Schema,
+		RunOnChangeOnly:                    RunOnChangeOnly_Schema,
+		SkipRebuildingNotification:         SkipRebuildingNotification_Schema,
+		TreatAsNonGo:                       TreatAsNonGo_Schema,
 	},
 })
 
@@ -380,8 +380,8 @@ var RestartApp_Schema = jsonschema.OptionalBoolean(jsonschema.Def{
 /////// WATCH SETTINGS -- INCLUDE -- RUN CLIENT DEFINED REVALIDATE FUNC
 /////////////////////////////////////////////////////////////////////
 
-var RunClientDefinedRevalidateFunc_Schema = jsonschema.OptionalBoolean(jsonschema.Def{
-	Description: `If set to true, everything will behave the same, except that instead of doing a hard reload of the browser window via "window.location.reload()", Wave will instead run a method called "__waveRevalidate" (if it exists on the window object). For example, your framework might provide you with a client-side revalidate function in order to maintain client state, in which case you'd set "window.__waveRevalidate" to that function, and set this field to true.`,
+var OnlyRunClientDefinedRevalidateFunc_Schema = jsonschema.OptionalBoolean(jsonschema.Def{
+	Description: `If set to true, Wave will send a message to the browser to run a method called "__waveRevalidate" (if it exists on the window object). For example, your framework might provide you with a client-side revalidate function in order to maintain client state, in which case you'd set "window.__waveRevalidate" to that function, and set this field to true.`,
 	Default:     false,
 })
 

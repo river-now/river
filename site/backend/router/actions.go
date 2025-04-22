@@ -20,7 +20,6 @@ var ActionsRouter = mux.NewRouter(&mux.Options{
 		}
 		return errors.New("unsupported method")
 	},
-	AutoTaskHandlerETags: true,
 })
 
 func newAction[I any, O any](method, pattern string, f mux.TaskHandlerFunc[I, O]) *mux.TaskHandler[I, O] {

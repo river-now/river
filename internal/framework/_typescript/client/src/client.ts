@@ -42,7 +42,8 @@ type NavigationResult =
 			response: Response;
 			json: GetRouteDataOutput;
 			props: NavigateProps;
-			cssBundlePromises: Array<any>;
+			cssBundlePromises: Array<Promise<any>>;
+			waitFnPromise: Promise<any> | undefined;
 	  }
 	| { response: Response; redirectData: RedirectData }
 	| undefined;
@@ -140,6 +141,21 @@ export function beginNavigation(props: NavigateProps): NavigationControl {
 	return control;
 }
 
+function resolveWaitFnPropsFromJSON(
+	json: GetRouteDataOutput,
+	buildID: string,
+	idx: number,
+) {
+	return {
+		buildID: buildID,
+		matchedPatterns: json.matchedPatterns || [],
+		splatValues: json.splatValues || [],
+		params: json.params || {},
+		rootData: json.hasRootData ? json.loadersData[0] : null,
+		loaderData: json.loadersData[idx],
+	};
+}
+
 async function __completeNavigation(x: NavigationResult) {
 	if (!x) {
 		return;
@@ -149,10 +165,11 @@ async function __completeNavigation(x: NavigationResult) {
 		return;
 	}
 	const oldID = internal_RiverClientGlobal.get("buildID");
-	const newID = x.response.headers.get(buildIDHeader) || "";
+	const newID = getBuildIDFromResponse(x.response);
 	if (newID && newID !== oldID) {
 		dispatchBuildIDEvent({ newID, oldID, fromGETAction: false });
 	}
+	await x.waitFnPromise;
 	try {
 		await __reRenderApp({
 			json: x.json,
@@ -228,6 +245,10 @@ async function __fetchRouteData(
 			document.head.appendChild(newLink);
 		}
 
+		const buildID = getBuildIDFromResponse(response);
+
+		const waitFnPromise = runWaitFns(json, buildID);
+
 		// Create an array to store promises for CSS bundle preloads
 		const cssBundlePromises = [];
 
@@ -249,7 +270,7 @@ async function __fetchRouteData(
 			cssBundlePromises.push(preloadPromise);
 		}
 
-		return { response, json, props, cssBundlePromises };
+		return { response, json, props, cssBundlePromises, waitFnPromise };
 	} catch (error) {
 		if (!isAbortError(error)) {
 			LogError("Navigation failed", error);
@@ -333,6 +354,7 @@ export function getPrefetchHandlers<E extends Event>(
 					json: prerenderResult.json,
 					props: { ...prerenderResult.props, navigationType: "userNavigation" },
 					cssBundlePromises: prerenderResult.cssBundlePromises,
+					waitFnPromise: prerenderResult.waitFnPromise,
 				});
 
 				await input.afterRender?.(e);
@@ -457,17 +479,37 @@ export function getPrefetchHandlers<E extends Event>(
 // REDIRECTS
 /////////////////////////////////////////////////////////////////////
 
+const RIVER_HARD_RELOAD_QUERY_PARAM = "__river_hard_reload";
+
 async function effectuateRedirectDataResult(
 	redirectData: RedirectData,
 ): Promise<RedirectData | null> {
 	if (redirectData.status === "should") {
 		if (redirectData.shouldRedirectStrategy === "hard") {
-			window.location.href = redirectData.href;
-			return { status: "did", href: redirectData.href };
+			if (!redirectData.hrefDetails.isHTTP) {
+				return null;
+			}
+			if (redirectData.hrefDetails.isExternal) {
+				window.location.href = redirectData.href;
+			}
+			if (redirectData.hrefDetails.isInternal) {
+				const url = new URL(redirectData.href, window.location.href);
+				url.searchParams.set(RIVER_HARD_RELOAD_QUERY_PARAM, Date.now().toString());
+				window.location.href = url.href;
+			}
+			return {
+				hrefDetails: redirectData.hrefDetails,
+				status: "did",
+				href: redirectData.href,
+			};
 		}
 		if (redirectData.shouldRedirectStrategy === "soft") {
 			await __navigate({ href: redirectData.href, navigationType: "redirect" });
-			return { status: "did", href: redirectData.href };
+			return {
+				hrefDetails: redirectData.hrefDetails,
+				status: "did",
+				href: redirectData.href,
+			};
 		}
 	}
 	return null;
@@ -528,7 +570,12 @@ export async function handleRedirects(props: {
 			if (isGET && !props.isPrefetch) {
 				window.location.href = props.url.href;
 				return {
-					redirectData: { status: "did", href: props.url.href },
+					redirectData: {
+						// satisfy TypeScript (does not matter, we are hard reloading)
+						hrefDetails: null as any,
+						status: "did",
+						href: props.url.href,
+					},
 					response: res,
 				};
 			}
@@ -620,7 +667,7 @@ async function submitInner(
 		});
 
 		const oldID = internal_RiverClientGlobal.get("buildID");
-		const newID = response?.headers.get(buildIDHeader) || "";
+		const newID = getBuildIDFromResponse(response);
 		if (newID && newID !== oldID) {
 			dispatchBuildIDEvent({ newID, oldID, fromGETAction: isGET });
 		}
@@ -800,20 +847,13 @@ async function __reRenderApp({
 	};
 	cssBundlePromises: Array<any>;
 }) {
-	// Changing the title instantly makes it feel faster
-	// The temp textarea trick is to decode any HTML entities in the title
-	const tempTxt = document.createElement("textarea");
-	tempTxt.innerHTML = json.title ?? "";
-	if (document.title !== tempTxt.value) {
-		document.title = tempTxt.value;
-	}
-
 	// NOW ACTUALLY SET EVERYTHING
 	const identicalKeysToSet = [
 		"loadersData",
 		"importURLs",
 		"exportKeys",
 		"outermostErrorIndex",
+		"matchedPatterns",
 		"splatValues",
 		"params",
 		"hasRootData",
@@ -823,7 +863,15 @@ async function __reRenderApp({
 		internal_RiverClientGlobal.set(key, json[key]);
 	}
 
-	await handleComponents();
+	await handleComponents(json.importURLs);
+
+	// Changing the title instantly makes it feel faster
+	// The temp textarea trick is to decode any HTML entities in the title
+	const tempTxt = document.createElement("textarea");
+	tempTxt.innerHTML = json.title ?? "";
+	if (document.title !== tempTxt.value) {
+		document.title = tempTxt.value;
+	}
 
 	let scrollStateToDispatch: ScrollState | undefined;
 
@@ -1032,8 +1080,14 @@ export async function initClient(renderFn: () => void) {
 	// HANDLE HISTORY STUFF
 	initCustomHistory();
 
+	const url = new URL(window.location.href);
+	if (url.searchParams.has(RIVER_HARD_RELOAD_QUERY_PARAM)) {
+		url.searchParams.delete(RIVER_HARD_RELOAD_QUERY_PARAM);
+		__customHistory.replace(url.href);
+	}
+
 	// HANDLE COMPONENTS
-	await handleComponents();
+	await handleComponents(internal_RiverClientGlobal.get("importURLs"));
 
 	// RUN THE RENDER FUNCTION
 	renderFn();
@@ -1048,19 +1102,21 @@ export async function initClient(renderFn: () => void) {
 	);
 }
 
-async function handleComponents() {
-	const originalImportURLs = internal_RiverClientGlobal.get("importURLs");
-	const dedupedImportURLs = [...new Set(originalImportURLs)];
-
+async function importNewComponentsAndGetModulesMap(
+	importURLs: Array<string>,
+): Promise<Map<string, any>> {
+	const dedupedImportURLs = [...new Set(importURLs ?? [])];
 	const dedupedModules = await Promise.all(
-		dedupedImportURLs.map((x) => {
-			return import(/* @vite-ignore */ resolvePublicHref(x));
+		dedupedImportURLs.map(async (x) => {
+			return await import(/* @vite-ignore */ resolvePublicHref(x));
 		}),
 	);
-	const modulesMap = new Map(
-		dedupedImportURLs.map((url, index) => [url, dedupedModules[index]]),
-	);
+	return new Map(dedupedImportURLs.map((url, index) => [url, dedupedModules[index]]));
+}
 
+async function handleComponents(importURLs: Array<string>) {
+	const modulesMap = await importNewComponentsAndGetModulesMap(importURLs);
+	const originalImportURLs = internal_RiverClientGlobal.get("importURLs");
 	const exportKeys = internal_RiverClientGlobal.get("exportKeys") ?? [];
 	internal_RiverClientGlobal.set(
 		"activeComponents",
@@ -1074,17 +1130,27 @@ async function handleComponents() {
 	);
 }
 
-export function getCurrentRiverData<T = any>() {
-	let rootData: T | null = null;
-	if (internal_RiverClientGlobal.get("hasRootData")) {
-		rootData = internal_RiverClientGlobal.get("loadersData")[0];
+async function runWaitFns(
+	json: GetRouteDataOutput,
+	buildID: string,
+): Promise<Array<any>> {
+	await importNewComponentsAndGetModulesMap(json.importURLs);
+
+	const matchedPatterns = json.matchedPatterns ?? [];
+	const patternToWaitFnMap = internal_RiverClientGlobal.get("patternToWaitFnMap");
+	const waitFnPromises: Array<Promise<any>> = [];
+
+	let i = 0;
+	for (const pattern of matchedPatterns) {
+		if (patternToWaitFnMap[pattern]) {
+			waitFnPromises.push(
+				patternToWaitFnMap[pattern](resolveWaitFnPropsFromJSON(json, buildID, i)),
+			);
+		}
+		i++;
 	}
-	return {
-		buildID: internal_RiverClientGlobal.get("buildID") || "",
-		splatValues: internal_RiverClientGlobal.get("splatValues") || [],
-		params: internal_RiverClientGlobal.get("params") || {},
-		rootData,
-	};
+
+	return Promise.all(waitFnPromises);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -1092,6 +1158,10 @@ export function getCurrentRiverData<T = any>() {
 /////////////////////////////////////////////////////////////////////
 
 const buildIDHeader = "X-River-Build-Id";
+
+function getBuildIDFromResponse(response: Response | undefined) {
+	return response?.headers.get(buildIDHeader) || "";
+}
 
 const BUILD_ID_EVENT_KEY = "river:build-id";
 

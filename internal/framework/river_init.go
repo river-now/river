@@ -93,6 +93,7 @@ func (h *River) initInner(isDev bool) error {
 		return fmt.Errorf("error parsing root template: %w", err)
 	}
 	h._rootTemplate = tmpl
+	headElsInstance.InitUniqueRules(h.GetHeadElUniqueRules())
 	return nil
 }
 

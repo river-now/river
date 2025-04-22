@@ -3,7 +3,7 @@
 /////////////////////////////////////////////////////////////////////
 
 import { getPrefetchHandlers, makeLinkOnClickFn } from "./client.ts";
-import { internal_RiverClientGlobal } from "./river_ctx.ts";
+import { type getCurrentRiverData, internal_RiverClientGlobal } from "./river_ctx.ts";
 
 export type RiverUntypedLoader = {
 	_type: string;
@@ -31,6 +31,21 @@ export type RiverRootOutletPropsGeneric<JSXElement> = {
 	idx?: number;
 	defaultServerErrorComponent?: () => JSXElement;
 };
+
+export function makeTypedPreload<OuterLoader extends RiverUntypedLoader, RootData>() {
+	const m = internal_RiverClientGlobal.get("patternToWaitFnMap");
+	return function wait<
+		Pattern extends OuterLoader["pattern"],
+		Loader extends Extract<OuterLoader, { pattern: Pattern }>,
+		CurrentRiverData = ReturnType<typeof getCurrentRiverData<RootData>>,
+		LoaderData = Loader["phantomOutputType"] | undefined,
+	>(
+		p: Pattern,
+		fn: (props: CurrentRiverData & { loaderData: LoaderData }) => Promise<void>,
+	) {
+		(m as any)[p] = fn;
+	};
+}
 
 /////////////////////////////////////////////////////////////////////
 /////// LINK COMPONENTS

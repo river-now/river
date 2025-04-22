@@ -22,8 +22,7 @@
 		"ClientEntry": "frontend/entry.tsx",
 		"ClientRouteDefsFile": "frontend/routes.ts",
 		"TSGenOutPath": "frontend/river.gen.ts",
-		"BuildtimePublicURLFuncName": "hashedURL",
-		"AutoETags": true
+		"BuildtimePublicURLFuncName": "hashedURL"
 	},
 	"Vite": {
 		"JSPackageManagerBaseCmd": "pnpm"

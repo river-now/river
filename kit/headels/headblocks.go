@@ -1,37 +1,25 @@
-// Package headels manages HTML head elements with automatic deduplication.
-//
-// Deduplication Behavior:
-//
-// Title tags: Only the last title tag is kept. Earlier ones are discarded.
-//
-// Meta description: Only the last description meta tag is kept. Earlier ones
-// are discarded.
-//
-// All other head elements: Exact duplicates are automatically removed, keeping
-// only one instance.
-//
-// For example, if your page tries to insert multiple identical stylesheet links
-// or meta tags, only one will appear in the final HTML. This makes the package
-// ideal for component-based systems where multiple components might independently
-// request the same resources or set the same metadata.
 package headels
 
 import (
 	"fmt"
+	"hash/fnv"
 	"html/template"
 	"maps"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/river-now/river/kit/htmlutil"
 )
 
 type Instance struct {
-	metaStart string
-	metaEnd   string
-	restStart string
-	restEnd   string
+	metaStart        string
+	metaEnd          string
+	restStart        string
+	restEnd          string
+	once             sync.Once
+	uniqueRulesByTag map[string][]*ruleAttrs
 }
 
 const prefix = `<!-- data-`
@@ -49,6 +37,29 @@ func suffix(val string) string {
 	return fmt.Sprintf(`="%s" -->`, val)
 }
 
+func (inst *Instance) InitUniqueRules(e *HeadEls) {
+	inst.once.Do(func() {
+		inst.uniqueRulesByTag = make(map[string][]*ruleAttrs)
+		if e == nil {
+			e = New(2)
+		}
+		e.Add(Tag("title"))
+		e.Meta(e.Name("description"))
+		seenHashes := make(map[string]map[uint64]bool)
+		for _, rule := range e.Collect() {
+			hash := hashElement(rule)
+			if _, exists := seenHashes[rule.Tag]; !exists {
+				seenHashes[rule.Tag] = make(map[uint64]bool)
+			}
+			if !seenHashes[rule.Tag][hash] {
+				seenHashes[rule.Tag][hash] = true
+				attrs := extractRuleAttrs(rule)
+				inst.uniqueRulesByTag[rule.Tag] = append(inst.uniqueRulesByTag[rule.Tag], attrs)
+			}
+		}
+	})
+}
+
 type SortedHeadEls struct {
 	Title string
 	Meta  []*htmlutil.Element
@@ -56,32 +67,46 @@ type SortedHeadEls struct {
 }
 
 func (inst *Instance) Render(input *SortedHeadEls) (template.HTML, error) {
-	var b strings.Builder
+	inst.InitUniqueRules(nil)
 
-	// Add title
-	err := htmlutil.RenderElementToBuilder(&htmlutil.Element{Tag: "title", TextContent: input.Title}, &b)
-	if err != nil {
-		return "", fmt.Errorf("error rendering title: %w", err)
+	metaSize := len(inst.metaStart) + len(inst.metaEnd)
+	restSize := len(inst.restStart) + len(inst.restEnd)
+	estimatedSize := metaSize + restSize + 4 // Newlines
+	if input.Title != "" {
+		estimatedSize += len(input.Title) + len("<title></title>")
+	}
+	estimatedSize += len(input.Meta) * 50 // Rough estimate per meta tag
+	estimatedSize += len(input.Rest) * 50 // Rough estimate per other tag
+
+	var b strings.Builder
+	b.Grow(estimatedSize)
+
+	if input.Title != "" {
+		titleEl := &htmlutil.Element{Tag: "title", TextContent: input.Title}
+		if err := htmlutil.RenderElementToBuilder(titleEl, &b); err != nil {
+			return "", fmt.Errorf("error rendering title: %w", err)
+		}
+		b.WriteString("\n")
 	}
 
-	// Add meta head els
 	b.WriteString(inst.metaStart)
 	b.WriteString("\n")
 	for _, el := range input.Meta {
 		if err := htmlutil.RenderElementToBuilder(el, &b); err != nil {
 			return "", fmt.Errorf("error rendering meta head el: %w", err)
 		}
+		b.WriteString("\n")
 	}
 	b.WriteString(inst.metaEnd)
 	b.WriteString("\n")
 
-	// Add rest head els
 	b.WriteString(inst.restStart)
 	b.WriteString("\n")
 	for _, el := range input.Rest {
 		if err := htmlutil.RenderElementToBuilder(el, &b); err != nil {
 			return "", fmt.Errorf("error rendering rest head el: %w", err)
 		}
+		b.WriteString("\n")
 	}
 	b.WriteString(inst.restEnd)
 	b.WriteString("\n")
@@ -89,22 +114,26 @@ func (inst *Instance) Render(input *SortedHeadEls) (template.HTML, error) {
 	return template.HTML(b.String()), nil
 }
 
-// ToSortedHeadEls deduplicates and organizes a slice of *htmlutil.Elements
-// into a *SortedHeadEls struct.
-func ToSortedHeadEls(els []*htmlutil.Element, uniqueRules *HeadEls) *SortedHeadEls {
-	deduped := dedupeHeadEls(els, uniqueRules)
+func (inst *Instance) ToSortedHeadEls(els []*htmlutil.Element) *SortedHeadEls {
+	inst.InitUniqueRules(nil)
+
+	deduped := inst.dedupeHeadEls(els)
 
 	headEls := &SortedHeadEls{
-		Meta: make([]*htmlutil.Element, 0, len(els)),
-		Rest: make([]*htmlutil.Element, 0, len(els)),
+		Meta: make([]*htmlutil.Element, 0, len(deduped)),
+		Rest: make([]*htmlutil.Element, 0, len(deduped)),
 	}
 
 	for _, el := range deduped {
 		safeEl := htmlutil.EscapeIntoTrusted(el)
 		switch {
 		case isTitle(&safeEl):
-			headEls.Title = safeEl.DangerousInnerHTML
-		case isMeta(el):
+			if safeEl.TextContent != "" {
+				headEls.Title = safeEl.TextContent
+			} else {
+				headEls.Title = safeEl.DangerousInnerHTML
+			}
+		case isMeta(&safeEl):
 			headEls.Meta = append(headEls.Meta, &safeEl)
 		default:
 			headEls.Rest = append(headEls.Rest, &safeEl)
@@ -114,81 +143,110 @@ func ToSortedHeadEls(els []*htmlutil.Element, uniqueRules *HeadEls) *SortedHeadE
 	return headEls
 }
 
-func dedupeHeadEls(els []*htmlutil.Element, uniqueRules *HeadEls) []*htmlutil.Element {
-	// Pre-process unique rules into an efficient lookup structure
-	// Map of tag -> slice of rules for that tag
-	rulesByTag := make(map[string][]*ruleAttrs)
-	if uniqueRules != nil {
-		for _, rule := range uniqueRules.Collect() {
-			attrs := extractRuleAttrs(rule)
-			rulesByTag[rule.Tag] = append(rulesByTag[rule.Tag], attrs)
+var hashSeparator = []byte{0}
+
+func hashElement(el *htmlutil.Element) uint64 {
+	h := fnv.New64a()
+
+	h.Write([]byte(el.Tag))
+	h.Write(hashSeparator)
+
+	attrKeys := make([]string, 0, len(el.Attributes)+len(el.AttributesKnownSafe))
+	for k := range el.Attributes {
+		attrKeys = append(attrKeys, k)
+	}
+	for k := range el.AttributesKnownSafe {
+		if _, exists := el.Attributes[k]; !exists {
+			attrKeys = append(attrKeys, k)
+		}
+	}
+	sort.Strings(attrKeys)
+
+	for _, k := range attrKeys {
+		if v, ok := el.Attributes[k]; ok {
+			h.Write([]byte("a:"))
+			h.Write([]byte(k))
+			h.Write([]byte("="))
+			h.Write([]byte(v))
+			h.Write(hashSeparator)
+		}
+		if v, ok := el.AttributesKnownSafe[k]; ok {
+			h.Write([]byte("t:"))
+			h.Write([]byte(k))
+			h.Write([]byte("="))
+			h.Write([]byte(v))
+			h.Write(hashSeparator)
 		}
 	}
 
-	// Track unique elements and their positions
-	type elementKey struct {
-		ruleIndex int    // which rule matched (-1 for no rule)
-		hash      string // for elements not matching rules
+	boolAttrs := slices.Clone(el.BooleanAttributes)
+	sort.Strings(boolAttrs)
+	for _, attr := range boolAttrs {
+		h.Write([]byte("b:"))
+		h.Write([]byte(attr))
+		h.Write(hashSeparator)
 	}
-	seen := make(map[elementKey]int) // maps to position in dedupedEls
-	dedupedEls := make([]*htmlutil.Element, 0, len(els))
 
-	// Special handling for title/description to preserve existing behavior
-	titleIdx := -1
-	descriptionIdx := -1
+	if len(el.DangerousInnerHTML) > 0 {
+		h.Write([]byte("i:"))
+		h.Write([]byte(el.DangerousInnerHTML))
+		h.Write(hashSeparator)
+	}
+	if len(el.TextContent) > 0 {
+		h.Write([]byte("c:"))
+		h.Write([]byte(el.TextContent))
+		h.Write(hashSeparator)
+	}
+
+	h.Write([]byte("s:"))
+	if el.SelfClosing {
+		h.Write([]byte("1"))
+	} else {
+		h.Write([]byte("0"))
+	}
+
+	return h.Sum64()
+}
+
+func (inst *Instance) dedupeHeadEls(els []*htmlutil.Element) []*htmlutil.Element {
+	result := make([]*htmlutil.Element, 0, len(els))
+
+	seenRule := make(map[string]int)
+	seenHash := make(map[uint64]int)
 
 	for _, el := range els {
-		switch {
-		case isTitle(el):
-			if titleIdx == -1 {
-				titleIdx = len(dedupedEls)
-				dedupedEls = append(dedupedEls, el)
-			} else {
-				dedupedEls[titleIdx] = el
-			}
-			continue
-
-		case isDescription(el):
-			if descriptionIdx == -1 {
-				descriptionIdx = len(dedupedEls)
-				dedupedEls = append(dedupedEls, el)
-			} else {
-				dedupedEls[descriptionIdx] = el
-			}
-			continue
-		}
-
-		// Check if element matches any rules for its tag
-		if rules, hasRules := rulesByTag[el.Tag]; hasRules {
-			matched := false
+		if rules, hasRules := inst.uniqueRulesByTag[el.Tag]; hasRules {
+			matchedRule := false
 			for ruleIdx, rule := range rules {
 				if matchesRule(el, rule) {
-					key := elementKey{ruleIndex: ruleIdx}
-					if pos, exists := seen[key]; exists {
-						// Replace existing element at position
-						dedupedEls[pos] = el
+					ruleKey := fmt.Sprintf("rule:%s:%d", el.Tag, ruleIdx)
+
+					if pos, exists := seenRule[ruleKey]; exists {
+						result[pos] = el
 					} else {
-						seen[key] = len(dedupedEls)
-						dedupedEls = append(dedupedEls, el)
+						seenRule[ruleKey] = len(result)
+						result = append(result, el)
 					}
-					matched = true
+					matchedRule = true
 					break
 				}
 			}
-			if matched {
+			if matchedRule {
 				continue
 			}
 		}
 
-		// Fall back to existing hash-based deduplication
-		key := elementKey{ruleIndex: -1, hash: headElStableHash(el)}
-		if _, exists := seen[key]; !exists {
-			seen[key] = len(dedupedEls)
-			dedupedEls = append(dedupedEls, el)
+		contentHash := hashElement(el)
+
+		if pos, exists := seenHash[contentHash]; exists {
+			result[pos] = el
+		} else {
+			seenHash[contentHash] = len(result)
+			result = append(result, el)
 		}
 	}
 
-	return dedupedEls
+	return result
 }
 
 type ruleAttrs struct {
@@ -200,31 +258,36 @@ type ruleAttrs struct {
 func extractRuleAttrs(rule *htmlutil.Element) *ruleAttrs {
 	return &ruleAttrs{
 		attrs:   maps.Clone(rule.Attributes),
-		trusted: maps.Clone(rule.AttributesDangerousVals),
+		trusted: maps.Clone(rule.AttributesKnownSafe),
 		boolean: slices.Clone(rule.BooleanAttributes),
 	}
 }
 
 func matchesRule(el *htmlutil.Element, rule *ruleAttrs) bool {
-	// Check regular attributes
+	checkKeyValue := func(key, expectedValue string) bool {
+		if actualValue, ok := el.Attributes[key]; ok && actualValue == expectedValue {
+			return true
+		}
+		if actualValue, ok := el.AttributesKnownSafe[key]; ok && actualValue == expectedValue {
+			return true
+		}
+		return false
+	}
+
 	for k, v := range rule.attrs {
-		if el.Attributes[k] != v {
+		if !checkKeyValue(k, v) {
 			return false
 		}
 	}
 
-	// Check trusted attributes
 	for k, v := range rule.trusted {
-		if el.AttributesDangerousVals[k] != v {
+		if !checkKeyValue(k, v) {
 			return false
 		}
 	}
 
-	// Check boolean attributes
-	for _, attr := range rule.boolean {
-		if !slices.Contains(el.BooleanAttributes, attr) {
-			return false
-		}
+	for _, ruleAttr := range rule.boolean {
+		return slices.Contains(el.BooleanAttributes, ruleAttr)
 	}
 
 	return true
@@ -236,58 +299,6 @@ func isTitle(el *htmlutil.Element) bool {
 
 func isMeta(el *htmlutil.Element) bool {
 	return el.Tag == "meta"
-}
-
-func isDescription(el *htmlutil.Element) bool {
-	return el.Tag == "meta" && (el.Attributes["name"] == "description" || el.AttributesDangerousVals["name"] == "description")
-}
-
-func headElStableHash(el *htmlutil.Element) string {
-	parts := make([]string, 0, len(el.Attributes)+len(el.AttributesDangerousVals)+len(el.BooleanAttributes))
-
-	for key, value := range el.Attributes {
-		parts = append(parts, fmt.Sprintf("attr:%s=%s", key, value))
-	}
-	for key, value := range el.AttributesDangerousVals {
-		parts = append(parts, fmt.Sprintf("trusted:%s=%s", key, value))
-	}
-	for _, attr := range el.BooleanAttributes {
-		parts = append(parts, fmt.Sprintf("bool:%s", attr))
-	}
-
-	sort.Strings(parts)
-
-	// Calculate initial capacity for string builder
-	// Initial size: tag + separator + innerHTML + separators between attributes
-	initialSize := len(el.Tag) + 1 + len(el.TextContent) + (len(parts) * 16)
-
-	var sb strings.Builder
-	sb.Grow(initialSize)
-
-	// Add tag
-	sb.WriteString(el.Tag)
-	sb.WriteString("|")
-
-	// Add all attributes
-	for i, part := range parts {
-		if i > 0 {
-			sb.WriteString("&")
-		}
-		sb.WriteString(part)
-	}
-
-	// Add innerHTML if present
-	if len(el.TextContent) > 0 {
-		sb.WriteString("|")
-		sb.WriteString(string(el.TextContent))
-	}
-
-	// Add self-closing flag if true
-	if el.SelfClosing {
-		sb.WriteString("|self-closing")
-	}
-
-	return sb.String()
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -309,9 +320,8 @@ const (
 
 type Tag string
 type Attr struct {
-	attr    [2]string
-	trusted bool
-	unique  bool
+	attr      [2]string
+	knownSafe bool
 }
 type BooleanAttribute string
 type InnerHTML string
@@ -329,21 +339,21 @@ type HeadEls struct {
 	els []*htmlutil.Element
 }
 
-func New(size ...int) HeadEls {
+func New(size ...int) *HeadEls {
 	var els []*htmlutil.Element
 	if len(size) > 0 {
 		els = make([]*htmlutil.Element, 0, size[0])
 	} else {
 		els = make([]*htmlutil.Element, 0)
 	}
-	return HeadEls{els: els}
+	return &HeadEls{els: els}
 }
 
 func (h *HeadEls) Add(defs ...typeInterface) {
 	el := new(htmlutil.Element)
 
 	el.Attributes = make(map[string]string)
-	el.AttributesDangerousVals = make(map[string]string)
+	el.AttributesKnownSafe = make(map[string]string)
 	el.BooleanAttributes = make([]string, 0)
 
 	for _, def := range defs {
@@ -352,8 +362,8 @@ func (h *HeadEls) Add(defs ...typeInterface) {
 			el.Tag = string(def.(Tag))
 		case typeAttribute:
 			attr := def.(*Attr)
-			if attr.trusted {
-				el.AttributesDangerousVals[attr.attr[0]] = attr.attr[1]
+			if attr.knownSafe {
+				el.AttributesKnownSafe[attr.attr[0]] = attr.attr[1]
 			} else {
 				el.Attributes[attr.attr[0]] = attr.attr[1]
 			}
@@ -371,6 +381,10 @@ func (h *HeadEls) Add(defs ...typeInterface) {
 		}
 	}
 
+	if el.Tag == "" {
+		panic("head element added without a Tag")
+	}
+
 	h.els = append(h.els, el)
 }
 
@@ -378,20 +392,16 @@ func (h *HeadEls) Collect() []*htmlutil.Element {
 	return h.els
 }
 
-func (a *Attr) DangerousVal() *Attr {
-	a.trusted = true
-	return a
-}
-func (a *Attr) Unique() *Attr {
-	a.unique = true
+func (a *Attr) KnownSafe() *Attr {
+	a.knownSafe = true
 	return a
 }
 
 func (h *HeadEls) Title(title string) {
-	h.Add(Tag("title"), InnerHTML(title))
+	h.Add(Tag("title"), TextContent(title))
 }
 func (h *HeadEls) Description(description string) {
-	h.Meta(h.Attr("name", "description"), h.Attr("content", description))
+	h.Meta(h.Name("description"), h.Content(description))
 }
 func (h *HeadEls) Meta(defs ...typeInterface) {
 	h.Add(append(defs, Tag("meta"))...)

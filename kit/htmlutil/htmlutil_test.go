@@ -101,7 +101,7 @@ func TestTemplates(t *testing.T) {
 		},
 		{
 			name:     "TrustedAttributes override Attributes",
-			data:     Element{Tag: "div", Attributes: map[string]string{"class": "unsafe"}, AttributesDangerousVals: map[string]string{"class": "safe"}, TextContent: "Content"},
+			data:     Element{Tag: "div", Attributes: map[string]string{"class": "unsafe"}, AttributesKnownSafe: map[string]string{"class": "safe"}, TextContent: "Content"},
 			expected: `<div class="safe">Content</div>`,
 		},
 		{
@@ -192,7 +192,7 @@ func TestAddSha256HashInline(t *testing.T) {
 					t.Errorf("unexpected error: %v", err)
 				}
 				// Check that the integrity attribute was added
-				if tt.element.AttributesDangerousVals["integrity"] == "" {
+				if tt.element.AttributesKnownSafe["integrity"] == "" {
 					t.Errorf("integrity attribute not added")
 				}
 			}
@@ -234,8 +234,8 @@ func TestAddSha256HashExternal(t *testing.T) {
 				}
 				// Check that the integrity attribute was added
 				expectedIntegrity := "sha256-" + tt.externalHash
-				if tt.element.AttributesDangerousVals["integrity"] != expectedIntegrity {
-					t.Errorf("integrity attribute not set correctly, expected %q, got %q", expectedIntegrity, tt.element.AttributesDangerousVals["integrity"])
+				if tt.element.AttributesKnownSafe["integrity"] != expectedIntegrity {
+					t.Errorf("integrity attribute not set correctly, expected %q, got %q", expectedIntegrity, tt.element.AttributesKnownSafe["integrity"])
 				}
 			}
 		})
@@ -280,7 +280,7 @@ func TestAddNonce(t *testing.T) {
 				if err != nil {
 					t.Errorf("unexpected error: %v", err)
 				}
-				if tt.element.AttributesDangerousVals["nonce"] != nonce {
+				if tt.element.AttributesKnownSafe["nonce"] != nonce {
 					t.Errorf("nonce attribute not set correctly")
 				}
 				expectedLen := int(tt.len)
@@ -297,8 +297,8 @@ func TestAddNonce(t *testing.T) {
 
 func TestEscapeAllIntoNewMap(t *testing.T) {
 	el := Element{
-		Attributes:              map[string]string{"class": "my & class", "onclick": "alert('XSS')"},
-		AttributesDangerousVals: map[string]string{"data-safe": "<safe>"},
+		Attributes:          map[string]string{"class": "my & class", "onclick": "alert('XSS')"},
+		AttributesKnownSafe: map[string]string{"data-safe": "<safe>"},
 	}
 	attributes := combineIntoDangerousAttributes(&el)
 	expected := map[string]string{
@@ -325,7 +325,7 @@ func TestEscapeIntoTrusted(t *testing.T) {
 	if newEl.Attributes != nil {
 		t.Errorf("expected Attributes to be nil")
 	}
-	if newEl.AttributesDangerousVals["class"] != "my &amp; class" {
+	if newEl.AttributesKnownSafe["class"] != "my &amp; class" {
 		t.Errorf("TrustedAttributes not set correctly")
 	}
 	// Ensure other fields are copied correctly

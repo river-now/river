@@ -17,6 +17,7 @@ type shared = {
 	exportKeys: Array<string>;
 	outermostErrorIndex: number;
 	params: Record<string, string>;
+	matchedPatterns: Array<string>;
 	splatValues: Array<string>;
 	hasRootData: boolean;
 	buildID: string;
@@ -24,7 +25,7 @@ type shared = {
 	activeComponents: Array<any> | null;
 };
 
-export type GetRouteDataOutput = shared &
+export type GetRouteDataOutput = Omit<shared, "buildID"> &
 	Meta & {
 		deps: Array<string>;
 		cssBundles: Array<string>;
@@ -37,6 +38,12 @@ export type RiverClientGlobal = shared & {
 	viteDevURL: string;
 	publicPathPrefix: string;
 	isTouchDevice: boolean;
+	patternToWaitFnMap: Record<
+		string,
+		(
+			props: ReturnType<typeof getCurrentRiverData> & { loaderData: any },
+		) => Promise<void>
+	>;
 };
 
 export function __getRiverClientGlobal() {
@@ -57,3 +64,17 @@ export const internal_RiverClientGlobal = __getRiverClientGlobal();
 
 // to debug ctx in browser, paste this:
 // const river_ctx = window[Symbol.for("__river_internal__")];
+
+export function getCurrentRiverData<T = any>() {
+	let rootData: T | null = null;
+	if (internal_RiverClientGlobal.get("hasRootData")) {
+		rootData = internal_RiverClientGlobal.get("loadersData")[0];
+	}
+	return {
+		buildID: internal_RiverClientGlobal.get("buildID") || "",
+		matchedPatterns: internal_RiverClientGlobal.get("matchedPatterns") || [],
+		splatValues: internal_RiverClientGlobal.get("splatValues") || [],
+		params: internal_RiverClientGlobal.get("params") || {},
+		rootData,
+	};
+}

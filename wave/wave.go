@@ -176,9 +176,6 @@ func (k Wave) GetRiverTSGenOutPath() string {
 func (k Wave) GetRiverBuildtimePublicURLFuncName() string {
 	return k.c.GetRiverBuildtimePublicURLFuncName()
 }
-func (k Wave) GetRiverAutoETags() bool {
-	return k.c.GetRiverAutoETags()
-}
 func (k Wave) GetConfigFile() string {
 	return k.c.GetConfigFile()
 }

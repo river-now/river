@@ -196,14 +196,6 @@ type UserConfigRiver struct {
 	ClientRouteDefsFile        string
 	TSGenOutPath               string // e.g., "./frontend/river.gen.ts"
 	BuildtimePublicURLFuncName string // e.g., "waveURL", "withHash", etc.
-
-	// If set to true, UI route responses will automatically include a strong ETag
-	// (SHA-256 hash) derived from the applicable nested route data, and will
-	// respond with a 304 header for any subsequent exact matches to an If-None-Match
-	// header value. JSON and HTML responses use the same underlying SHA-256 hash of
-	// nested route data, but each has a unique prefix to differentiate between them.
-	// Defaults to false.
-	AutoETags bool
 }
 
 func (c *Config) GetRiverUIVariant() string {
@@ -223,9 +215,6 @@ func (c *Config) GetRiverTSGenOutPath() string {
 }
 func (c *Config) GetRiverBuildtimePublicURLFuncName() string {
 	return c._uc.River.BuildtimePublicURLFuncName
-}
-func (c *Config) GetRiverAutoETags() bool {
-	return c._uc.River.AutoETags
 }
 
 type UserConfigWatch struct {
@@ -249,7 +238,6 @@ type WatchedFile struct {
 	OnChangeHooks                      []OnChangeHook
 	RecompileGoBinary                  bool
 	RestartApp                         bool
-	RunClientDefinedRevalidateFunc     bool
 	OnlyRunClientDefinedRevalidateFunc bool
 	RunOnChangeOnly                    bool
 	SkipRebuildingNotification         bool

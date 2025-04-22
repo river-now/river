@@ -65,11 +65,8 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 		currentCacheControlHeader := w.Header().Get("Cache-Control")
 
 		if currentCacheControlHeader == "" {
-			if isJSON {
-				res.SetHeader("Cache-Control", "private, max-age=0, must-revalidate, no-cache")
-			} else {
-				res.SetHeader("Cache-Control", "private, max-age=0, must-revalidate, no-cache, no-store")
-			}
+			// Set a conservative default cache control header
+			res.SetHeader("Cache-Control", "private, max-age=0, must-revalidate, no-cache")
 		}
 
 		if isJSON {
@@ -78,22 +75,6 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 				Log.Error(fmt.Sprintf("Error marshalling JSON: %v\n", err))
 				res.InternalServerError()
 				return
-			}
-
-			if h.Wave.GetRiverAutoETags() {
-				hashInput := []byte(r.Header.Get("Cookie"))
-				if len(hashInput) > 4096 {
-					Log.Error("Cookie too large")
-					res.InternalServerError()
-					return
-				}
-				hashInput = append(hashInput, jsonBytes...)
-				etag := response.ToQuotedSha256Etag(hashInput)
-				res.SetETag(etag)
-				if response.ShouldReturn304Conservative(r, etag) {
-					res.NotModified()
-					return
-				}
 			}
 
 			res.JSONBytes(jsonBytes)
@@ -191,12 +172,13 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 	})
 }
 
-// If true, may or may not be from an up-to-date client.
+// If true, is JSON, but may or may not be from an up-to-date client.
 func IsJSONRequest(r *http.Request) bool {
 	return r.URL.Query().Get("river_json") != ""
 }
 
-// If true, guaranteed to be from a client with knowledge of the latest build ID.
+// If true, is both (1) JSON and (2) guaranteed to be from a client
+// that has knowledge of the latest build ID.
 func (h *River) IsCurrentBuildJSONRequest(r *http.Request) bool {
 	return r.URL.Query().Get("river_json") == h._buildID
 }

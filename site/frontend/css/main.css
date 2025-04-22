@@ -19,10 +19,10 @@ input[type="submit"] {
 			color: var(--resolved-green);
 		}
 	}
+	h1,
 	h2 {
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		font-weight: bold;
 	}
 	h1,
 	h2,
@@ -32,8 +32,10 @@ input[type="submit"] {
 	}
 	h1 {
 		font-size: 3rem;
+		text-align: center;
 	}
 	h2 {
+		font-weight: bold;
 		font-size: 2rem;
 	}
 	h3 {

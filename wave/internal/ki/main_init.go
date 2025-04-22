@@ -129,9 +129,8 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 		})
 
 		c.defaultWatchedFiles = append(c.defaultWatchedFiles, WatchedFile{
-			Pattern:                        "**/*.go",
-			RunClientDefinedRevalidateFunc: true,
-			OnChangeHooks:                  []OnChangeHook{{Cmd: "DevBuildHook", Timing: "concurrent"}},
+			Pattern:       "**/*.go",
+			OnChangeHooks: []OnChangeHook{{Cmd: "DevBuildHook", Timing: "concurrent"}},
 		})
 
 		relHTMLTemplateLocation, err := filepath.Rel(c.cleanWatchRoot, c._uc.River.HTMLTemplateLocation)

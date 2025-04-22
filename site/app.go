@@ -34,7 +34,7 @@ var River = &river.River{
 		e.Meta(e.Name("twitter:card"))
 		e.Meta(e.Name("twitter:site"))
 
-		return &e
+		return e
 	},
 
 	GetDefaultHeadEls: func(r *http.Request) ([]*river.HeadEl, error) {

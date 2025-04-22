@@ -37,9 +37,10 @@ type Path struct {
 	NestedRoute mux.AnyNestedRoute `json:"-"`
 
 	// both stages one and two
-	Pattern   string `json:"pattern"`
-	SrcPath   string `json:"srcPath"`
-	ExportKey string `json:"exportKey"`
+	Pattern        string `json:"pattern"`
+	SrcPath        string `json:"srcPath"`
+	ExportKey      string `json:"exportKey"`
+	ErrorExportKey string `json:"errorExportKey,omitempty"`
 
 	// stage two only
 	OutPath string   `json:"outPath,omitempty"`

@@ -119,9 +119,9 @@ func (c *Config) getInitialCriticalCSSStatus() (*criticalCSSStatus, error) {
 	result.code_str = string(content)
 
 	el := htmlutil.Element{
-		Tag:                     "style",
-		AttributesDangerousVals: map[string]string{"id": CriticalCSSElementID},
-		DangerousInnerHTML:      result.code_str,
+		Tag:                 "style",
+		AttributesKnownSafe: map[string]string{"id": CriticalCSSElementID},
+		DangerousInnerHTML:  result.code_str,
 	}
 
 	sha256Hash, err := htmlutil.AddSha256HashInline(&el, true)

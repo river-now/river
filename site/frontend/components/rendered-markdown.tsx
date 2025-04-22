@@ -3,9 +3,7 @@ import { createEffect, onCleanup } from "solid-js";
 import { render } from "solid-js/web";
 import { waveRuntimeURL } from "../river.gen.ts";
 import { Link } from "./app_link.tsx";
-import { initHighlight } from "./highlight.ts";
-
-const highlight = await initHighlight();
+import { highlight } from "./highlight.ts";
 
 /**
  * Renders markdown with syntax highlighting and prefetching for internal links.

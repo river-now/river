@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/river-now/river/kit/errutil"
-	"github.com/river-now/river/kit/headels"
 	"github.com/river-now/river/kit/htmlutil"
 	"github.com/river-now/river/kit/mux"
 	"golang.org/x/sync/errgroup"
@@ -22,8 +21,9 @@ type UIRouteOutput struct {
 	LoadersData []any   `json:"loadersData,omitempty"`
 	LoadersErrs []error `json:"loadersErrs,omitempty"`
 
-	Params      mux.Params  `json:"params,omitempty"`
-	SplatValues SplatValues `json:"splatValues,omitempty"`
+	MatchedPatterns []string    `json:"matchedPatterns,omitempty"`
+	Params          mux.Params  `json:"params,omitempty"`
+	SplatValues     SplatValues `json:"splatValues,omitempty"`
 
 	Title string              `json:"title,omitempty"`
 	Meta  []*htmlutil.Element `json:"metaHeadEls,omitempty"`
@@ -92,20 +92,16 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 	hb = append(hb, defaultHeadEls...)
 	hb = append(hb, activePathData.HeadEls...)
 
-	// dedupe and organize into HeadEls struct
-	var uniqueRules *headels.HeadEls
-	if h.GetHeadElUniqueRules != nil {
-		uniqueRules = h.GetHeadElUniqueRules()
-	}
-	headEls := headels.ToSortedHeadEls(hb, uniqueRules)
+	headEls := headElsInstance.ToSortedHeadEls(hb)
 
 	uiRouteOutput := &UIRouteOutput{
 		HasRootData: activePathData.HasRootData,
 		LoadersData: activePathData.LoadersData,
 		LoadersErrs: activePathData.LoadersErrs,
 
-		Params:      activePathData.Params,
-		SplatValues: activePathData.SplatValues,
+		MatchedPatterns: activePathData.MatchedPatterns,
+		Params:          activePathData.Params,
+		SplatValues:     activePathData.SplatValues,
 
 		Title: headEls.Title,
 		Meta:  headEls.Meta,

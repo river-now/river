@@ -1,24 +1,11 @@
 import type { RiverRoutes } from "river.now/client";
 
 declare const routes: RiverRoutes;
-
-const rootComp = routes.Component({
-	module: import("./components/routes/root.tsx"),
-	export: "Root",
-});
-
-routes.Register("", rootComp);
-routes.Register("/", {
-	module: import("./components/routes/home.tsx"),
-	export: "Home",
-});
-routes.Register("/*", {
-	module: import("./components/routes/md.tsx"),
-	export: "MD",
-});
-routes.Register("/__/:dyn", {
-	module: import("./components/routes/dyn.tsx"),
-	export: "Dyn",
-});
-
 export default routes;
+
+const r = routes.New;
+
+r("", import("./components/routes/root.tsx"), "Root");
+r("/", import("./components/routes/home.tsx"), "Home");
+r("/*", import("./components/routes/md.tsx"), "MD", "ErrorBoundary");
+r("/__/:dyn", import("./components/routes/dyn.tsx"), "Dyn");

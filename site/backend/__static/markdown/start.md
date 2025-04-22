@@ -1,12 +1,12 @@
 ---
-title: Get Started
-description: Get started with the river.now framework
+title: Start
+description: Start with the river.now framework
 ---
 
 ## Caveats
 
-Before we get started, please understand that River is in an alpha state. You
-should use it in production **_if and only if_**:
+Before we start, please understand that River is in an alpha state. You should
+use it in production **_if and only if_**:
 
 1. You know what you're doing;
 2. You pin your versions; and
@@ -75,8 +75,7 @@ Then add this to it:
     "ClientEntry": "frontend/entry.tsx",
     "ClientRouteDefsFile": "frontend/routes.ts",
     "TSGenOutPath": "frontend/river.gen.ts",
-    "BuildtimePublicURLFuncName": "waveURL",
-    "AutoETags": true
+    "BuildtimePublicURLFuncName": "waveURL"
   },
   "Vite": {
     "JSPackageManagerBaseCmd": "npx"

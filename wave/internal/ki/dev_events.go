@@ -247,7 +247,7 @@ func (c *Config) mustHandleFileChange(
 		return nil
 	}
 
-	if wfc.RunClientDefinedRevalidateFunc || wfc.OnlyRunClientDefinedRevalidateFunc {
+	if wfc.OnlyRunClientDefinedRevalidateFunc {
 		c.must_reload_broadcast(
 			refreshFilePayload{ChangeType: changeTypeRevalidate},
 			must_reload_broadcast_opts{
