@@ -117,6 +117,189 @@ func TestNotInValidation(t *testing.T) {
 	})
 }
 
+func TestInValidationWithPointers(t *testing.T) {
+	t.Run("Valid pointer value in slice of values", func(t *testing.T) {
+		allowed := []string{"apple", "banana", "cherry"}
+		value := "banana"
+		err := Any("fruit", &value).In(allowed).Error()
+
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("Valid value in slice of pointers", func(t *testing.T) {
+		apple, banana, cherry := "apple", "banana", "cherry"
+		allowed := []*string{&apple, &banana, &cherry}
+		err := Any("fruit", "banana").In(allowed).Error()
+
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("Valid pointer value in slice of pointers", func(t *testing.T) {
+		apple, banana, cherry := "apple", "banana", "cherry"
+		allowed := []*string{&apple, &banana, &cherry}
+		value := "banana"
+		err := Any("fruit", &value).In(allowed).Error()
+
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+}
+
+func TestNotInValidationWithPointers(t *testing.T) {
+	t.Run("Valid pointer value not in prohibited slice", func(t *testing.T) {
+		prohibited := []string{"apple", "banana", "cherry"}
+		value := "orange"
+		err := Any("fruit", &value).NotIn(prohibited).Error()
+
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("Valid value not in prohibited slice of pointers", func(t *testing.T) {
+		apple, banana, cherry := "apple", "banana", "cherry"
+		prohibited := []*string{&apple, &banana, &cherry}
+		err := Any("fruit", "orange").NotIn(prohibited).Error()
+
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("Valid pointer value not in prohibited slice of pointers", func(t *testing.T) {
+		apple, banana, cherry := "apple", "banana", "cherry"
+		prohibited := []*string{&apple, &banana, &cherry}
+		value := "orange"
+		err := Any("fruit", &value).NotIn(prohibited).Error()
+
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+}
+
+func TestSimpleCustomTypeValidation(t *testing.T) {
+	type CustomType string
+
+	a := CustomType("a")
+	b := CustomType("b")
+
+	var customType *CustomType = &a
+
+	allowed := []string{"a", "b", "c"}
+
+	err := Any("CustomType", customType).In(allowed).Error()
+
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	allowedTypes := []CustomType{a, b}
+	err = Any("CustomType", customType).In(allowedTypes).Error()
+
+	if err != nil {
+		t.Errorf("unexpected error with typed slice: %v", err)
+	}
+}
+
+func TestCustomTypeValidation(t *testing.T) {
+	// String-based custom types
+	type CustomString string
+	type AnotherCustomString string
+
+	// Int-based custom types
+	type CustomInt int
+	type AnotherCustomInt int
+
+	// Float-based custom types
+	type CustomFloat float64
+
+	t.Run("Custom string type against string slice", func(t *testing.T) {
+		cs := CustomString("test")
+		allowed := []string{"foo", "test", "bar"}
+		err := Any("value", cs).In(allowed).Error()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("String against custom string type slice", func(t *testing.T) {
+		allowed := []CustomString{"foo", "test", "bar"}
+		err := Any("value", "test").In(allowed).Error()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("Different custom string types", func(t *testing.T) {
+		cs := CustomString("test")
+		allowed := []AnotherCustomString{"foo", "test", "bar"}
+		err := Any("value", cs).In(allowed).Error()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("Custom int type against int slice", func(t *testing.T) {
+		ci := CustomInt(42)
+		allowed := []int{10, 42, 100}
+		err := Any("value", ci).In(allowed).Error()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("Int against custom int type slice", func(t *testing.T) {
+		allowed := []CustomInt{10, 42, 100}
+		err := Any("value", 42).In(allowed).Error()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("Different custom int types", func(t *testing.T) {
+		ci := CustomInt(42)
+		allowed := []AnotherCustomInt{10, 42, 100}
+		err := Any("value", ci).In(allowed).Error()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("Custom float type against float slice", func(t *testing.T) {
+		cf := CustomFloat(3.14)
+		allowed := []float64{1.23, 3.14, 5.67}
+		err := Any("value", cf).In(allowed).Error()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	// NotIn tests
+	t.Run("NotIn with custom types", func(t *testing.T) {
+		cs := CustomString("test")
+		prohibited := []string{"foo", "bar", "baz"}
+		err := Any("value", cs).NotIn(prohibited).Error()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("NotIn with custom types - should fail", func(t *testing.T) {
+		cs := CustomString("foo")
+		prohibited := []string{"foo", "bar", "baz"}
+		err := Any("value", cs).NotIn(prohibited).Error()
+		if err == nil {
+			t.Errorf("expected error but got none")
+		}
+	})
+}
+
 func TestMutuallyExclusiveFields(t *testing.T) {
 	type TestStruct struct {
 		Field1 string

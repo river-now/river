@@ -21,54 +21,80 @@ func (c *AnyChecker) If(condition bool, f func(*AnyChecker) *AnyChecker) *AnyChe
 	return c
 }
 
+// Helper function to compare values across types
+func compareValues(a, b reflect.Value) bool {
+	if reflect.DeepEqual(a.Interface(), b.Interface()) {
+		return true
+	}
+
+	aKind := a.Kind()
+	bKind := b.Kind()
+
+	if aKind == bKind {
+		switch aKind {
+		case reflect.String:
+			return a.String() == b.String()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			return a.Int() == b.Int()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			return a.Uint() == b.Uint()
+		case reflect.Float32, reflect.Float64:
+			return a.Float() == b.Float()
+		case reflect.Bool:
+			return a.Bool() == b.Bool()
+		}
+	}
+
+	return false
+}
+
+// validateAgainstSlice checks if the value matches any element in the slice
+// Returns true if a match is found, false otherwise
+func (c *AnyChecker) validateAgainstSlice(valuesSlice any) bool {
+	if c.done {
+		return false
+	}
+	base := safeDereference(reflect.ValueOf(valuesSlice))
+	if base.Kind() != reflect.Slice && base.Kind() != reflect.Array {
+		c.failF("%s is not a slice or array", c.label)
+		c.done = true
+		return false
+	}
+	if base.Len() == 0 {
+		c.failF("%s is empty", c.label)
+		c.done = true
+		return false
+	}
+	trueBaseReflect := safeDereference(reflect.ValueOf(c.trueValue))
+	for i := range base.Len() {
+		itemBase := safeDereference(base.Index(i))
+		if compareValues(trueBaseReflect, itemBase) {
+			return true
+		}
+	}
+	return false
+}
+
+// In validates that the value is in the permitted values slice
 func (c *AnyChecker) In(permittedValuesSlice any) *AnyChecker {
 	if c.done {
 		return c
 	}
-	base := safeDereference(reflect.ValueOf(permittedValuesSlice))
-	if base.Kind() != reflect.Slice && base.Kind() != reflect.Array {
-		c.failF("%s is not a slice or array", c.label)
+	if c.validateAgainstSlice(permittedValuesSlice) {
 		return c
 	}
-	permittedValues := make([]any, 0, base.Len())
-	for i := range base.Len() {
-		permittedValues = append(permittedValues, base.Index(i).Interface())
-	}
-	if len(permittedValues) == 0 {
-		c.failF("%s is empty", c.label)
-		return c
-	}
-	for _, validValue := range permittedValues {
-		if reflect.DeepEqual(c.trueValue, validValue) {
-			return c
-		}
-	}
-	c.failF("%s has an invalid value", c.label)
+	c.failF("%s has an invalid value (%v)", c.label, c.trueValue)
 	return c
 }
 
+// NotIn validates that the value is not in the prohibited values slice
 func (c *AnyChecker) NotIn(prohibitedValuesSlice any) *AnyChecker {
 	if c.done {
 		return c
 	}
-	base := safeDereference(reflect.ValueOf(prohibitedValuesSlice))
-	if base.Kind() != reflect.Slice && base.Kind() != reflect.Array {
-		c.failF("%s is not a slice or array", c.label)
+	if c.validateAgainstSlice(prohibitedValuesSlice) {
+		c.failF("%s has a prohibited value (%v)", c.label, c.trueValue)
 		return c
-	}
-	prohibitedValues := make([]any, 0, base.Len())
-	for i := range base.Len() {
-		prohibitedValues = append(prohibitedValues, base.Index(i).Interface())
-	}
-	if len(prohibitedValues) == 0 {
-		c.failF("%s is empty", c.label)
-		return c
-	}
-	for _, invalidValue := range prohibitedValues {
-		if reflect.DeepEqual(c.trueValue, invalidValue) {
-			c.failF("%s has a reserved or invalid value", c.label)
-			return c
-		}
 	}
 	return c
 }

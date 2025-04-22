@@ -103,10 +103,6 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 
 	c.defaultWatchedFiles = []WatchedFile{
 		{
-			Pattern:       filepath.Join(c.cleanSources.PrivateStatic, c._uc.River.HTMLTemplateLocation),
-			OnChangeHooks: []OnChangeHook{{Cmd: __internal_full_dev_reset_less_go_mrkr}},
-		},
-		{
 			Pattern:       filepath.Join(c.cleanSources.PublicStatic, "**/*"),
 			OnChangeHooks: []OnChangeHook{{Cmd: __internal_full_dev_reset_less_go_mrkr}},
 		},
@@ -122,6 +118,11 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 		if err != nil {
 			c.panic("failed to get relative path for ClientRouteDefsFile", err)
 		}
+
+		c.defaultWatchedFiles = append(c.defaultWatchedFiles, WatchedFile{
+			Pattern:       filepath.Join(c.cleanSources.PrivateStatic, c._uc.River.HTMLTemplateLocation),
+			OnChangeHooks: []OnChangeHook{{Cmd: __internal_full_dev_reset_less_go_mrkr}},
+		})
 
 		c.defaultWatchedFiles = append(c.defaultWatchedFiles, WatchedFile{
 			Pattern:       filepath.ToSlash(relClientRouteDefsFile),
