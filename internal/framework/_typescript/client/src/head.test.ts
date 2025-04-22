@@ -63,11 +63,11 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "Test Description" },
+				attributesKnownSafe: { name: "description", content: "Test Description" },
 			},
 			{
 				tag: "link",
-				attributesDangerousVals: { rel: "stylesheet", href: "/styles.css" },
+				attributesKnownSafe: { rel: "stylesheet", href: "/styles.css" },
 			},
 		];
 
@@ -127,7 +127,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "New Description" },
+				attributesKnownSafe: { name: "description", content: "New Description" },
 			},
 		];
 
@@ -165,7 +165,7 @@ describe("updateHeadEls", () => {
 			// Only keep the meta, remove the link
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "Old Description" },
+				attributesKnownSafe: { name: "description", content: "Old Description" },
 			},
 		];
 
@@ -191,7 +191,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "Test Description" },
+				attributesKnownSafe: { name: "description", content: "Test Description" },
 			},
 		];
 
@@ -223,11 +223,11 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "viewport", content: "width=device-width" },
+				attributesKnownSafe: { name: "viewport", content: "width=device-width" },
 			},
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "Description" },
+				attributesKnownSafe: { name: "description", content: "Description" },
 			},
 		];
 
@@ -249,7 +249,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "script",
-				attributesDangerousVals: { src: "/script.js" },
+				attributesKnownSafe: { src: "/script.js" },
 				booleanAttributes: ["async", "defer"],
 			},
 		];
@@ -296,7 +296,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "Test Description" },
+				attributesKnownSafe: { name: "description", content: "Test Description" },
 			},
 		];
 
@@ -309,11 +309,11 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				// No tag property
-				attributesDangerousVals: { name: "description", content: "Test Description" },
+				attributesKnownSafe: { name: "description", content: "Test Description" },
 			},
 			{
 				tag: "link",
-				attributesDangerousVals: { rel: "stylesheet", href: "/styles.css" },
+				attributesKnownSafe: { rel: "stylesheet", href: "/styles.css" },
 			},
 		];
 
@@ -327,7 +327,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "script",
-				attributesDangerousVals: { src: "/script.js" },
+				attributesKnownSafe: { src: "/script.js" },
 			},
 		];
 
@@ -387,7 +387,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "Test Description" },
+				attributesKnownSafe: { name: "description", content: "Test Description" },
 			},
 		];
 
@@ -422,7 +422,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "Test Description" },
+				attributesKnownSafe: { name: "description", content: "Test Description" },
 			},
 		];
 
@@ -436,7 +436,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: {
+				attributesKnownSafe: {
 					name: "description",
 					content: null as unknown as string,
 				},
@@ -451,7 +451,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: undefined,
-				attributesDangerousVals: { name: "description", content: "Test Description" },
+				attributesKnownSafe: { name: "description", content: "Test Description" },
 			},
 		];
 
@@ -474,7 +474,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: {
+				attributesKnownSafe: {
 					name: "description", // Different order from DOM element
 					content: "Test Description",
 				},
@@ -516,18 +516,18 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "keywords", content: "test, vitest" },
+				attributesKnownSafe: { name: "keywords", content: "test, vitest" },
 			},
 			{
 				tag: "meta",
-				attributesDangerousVals: {
+				attributesKnownSafe: {
 					name: "description",
 					content: "Updated Description",
 				},
 			},
 			{
 				tag: "link",
-				attributesDangerousVals: { rel: "stylesheet", href: "/styles.css" },
+				attributesKnownSafe: { rel: "stylesheet", href: "/styles.css" },
 			},
 		];
 
@@ -591,7 +591,7 @@ describe("updateHeadEls", () => {
 	it("should add and remove boolean attributes across updates", () => {
 		const scriptBlockBase: HeadEl = {
 			tag: "script",
-			attributesDangerousVals: { src: "a.js" },
+			attributesKnownSafe: { src: "a.js" },
 		};
 		const scriptBlockWithAsync: HeadEl = {
 			...scriptBlockBase,
@@ -639,7 +639,7 @@ describe("updateHeadEls", () => {
 		expect(document.head.querySelectorAll('meta[name="description"]').length).toBe(2);
 
 		const blocks: Array<HeadEl> = [
-			{ tag: "meta", attributesDangerousVals: { name: "description", content: "A" } },
+			{ tag: "meta", attributesKnownSafe: { name: "description", content: "A" } },
 		];
 		updateHeadEls("meta", blocks);
 
@@ -677,7 +677,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: {
+				attributesKnownSafe: {
 					name: "description",
 					content: "Updated description",
 				},
@@ -724,15 +724,15 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "robots", content: "index, follow" },
+				attributesKnownSafe: { name: "robots", content: "index, follow" },
 			},
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "Description" },
+				attributesKnownSafe: { name: "description", content: "Description" },
 			},
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "viewport", content: "width=device-width" },
+				attributesKnownSafe: { name: "viewport", content: "width=device-width" },
 			},
 		];
 
@@ -780,11 +780,11 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "Description" },
+				attributesKnownSafe: { name: "description", content: "Description" },
 			},
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "robots", content: "index, follow" },
+				attributesKnownSafe: { name: "robots", content: "index, follow" },
 			},
 		];
 
@@ -839,18 +839,18 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "keywords", content: "original, keywords" },
+				attributesKnownSafe: { name: "keywords", content: "original, keywords" },
 			},
 			{
 				tag: "meta",
-				attributesDangerousVals: {
+				attributesKnownSafe: {
 					name: "description",
 					content: "Updated description",
 				},
 			},
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "viewport", content: "width=device-width" },
+				attributesKnownSafe: { name: "viewport", content: "width=device-width" },
 			},
 		];
 
@@ -904,7 +904,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "Test Description" },
+				attributesKnownSafe: { name: "description", content: "Test Description" },
 			},
 		];
 
@@ -952,7 +952,7 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesDangerousVals: { name: "description", content: "Identical content" },
+				attributesKnownSafe: { name: "description", content: "Identical content" },
 			},
 		];
 

@@ -16,7 +16,7 @@ import (
 type Element struct {
 	Tag                 string            `json:"tag,omitempty"`
 	Attributes          map[string]string `json:"attributes,omitempty"`
-	AttributesKnownSafe map[string]string `json:"attributesDangerousVals,omitempty"`
+	AttributesKnownSafe map[string]string `json:"attributesKnownSafe,omitempty"`
 	BooleanAttributes   []string          `json:"booleanAttributes,omitempty"`
 	TextContent         string            `json:"textContent,omitempty"`
 	DangerousInnerHTML  string            `json:"dangerousInnerHTML,omitempty"`
@@ -36,7 +36,6 @@ func AddSha256HashInline(el *Element, includeConvenienceIntegrityAttribute bool)
 	if el.AttributesKnownSafe == nil {
 		el.AttributesKnownSafe = make(map[string]string)
 	}
-	// __TODO this should be resolved right?
 	sha256Hash := cryptoutil.Sha256Hash([]byte(el.DangerousInnerHTML))
 	sha256HashBase64 := bytesutil.ToBase64(sha256Hash[:])
 	if includeConvenienceIntegrityAttribute {

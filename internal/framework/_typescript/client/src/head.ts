@@ -64,9 +64,9 @@ export function updateHeadEls(type: "meta" | "rest", blocks: Array<HeadEl>) {
 			continue;
 		}
 		const newEl = document.createElement(block.tag);
-		if (block.attributesDangerousVals) {
-			for (const key of Object.keys(block.attributesDangerousVals)) {
-				const value = block.attributesDangerousVals[key];
+		if (block.attributesKnownSafe) {
+			for (const key of Object.keys(block.attributesKnownSafe)) {
+				const value = block.attributesKnownSafe[key];
 				if (value === null || value === undefined) {
 					Panic(
 						`Attribute value for '${key}' in tag '${block.tag}' cannot be null or undefined.`,

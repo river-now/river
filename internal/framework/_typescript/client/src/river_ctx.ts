@@ -1,6 +1,6 @@
 export type HeadEl = {
 	tag?: string;
-	attributesDangerousVals?: Record<string, string>;
+	attributesKnownSafe?: Record<string, string>;
 	booleanAttributes?: Array<string>;
 	dangerousInnerHTML?: string;
 };
