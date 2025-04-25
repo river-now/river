@@ -429,22 +429,44 @@ func TestComplexNestedStructures(t *testing.T) {
 	})
 
 	t.Run("ItemResource", func(t *testing.T) {
-		// should work because Child is marked as optional
+		/////// PTR VERSIONS
+
+		// should work because Child is not marked as required
 		p1 := &ParentOptionalChild{Child: nil}
 		if err := attemptValidation("", p1); err != nil {
-			t.Errorf("unexpected error: %v", err)
+			t.Errorf("p1: unexpected error: %v", err)
 		}
 
 		// should fail because Child is marked as required
 		p2 := &ParentRequiredChild{Child: nil}
 		if err := attemptValidation("", p2); err == nil {
-			t.Error("expected error for nil Child")
+			t.Error("p2: expected error for nil Child")
 		}
 
 		// should fail because Child value is invalid
 		p3 := &ParentOptionalChild{Child: &Child{A: "b"}}
 		if err := attemptValidation("", p3); err == nil {
-			t.Error("expected error for invalid Child value")
+			t.Error("p3: expected error for invalid Child value")
+		}
+
+		/////// DIRECT VERSIONS
+
+		// should work because Child is not marked as required
+		p12 := ParentOptionalChild{Child: nil}
+		if err := attemptValidation("", p12); err != nil {
+			t.Errorf("p12: unexpected error: %v", err)
+		}
+
+		// should fail because Child is marked as required
+		p22 := ParentRequiredChild{Child: nil}
+		if err := attemptValidation("", p22); err == nil {
+			t.Error("p22: expected error for nil Child")
+		}
+
+		// should fail because Child value is invalid
+		p32 := ParentOptionalChild{Child: &Child{A: "b"}}
+		if err := attemptValidation("", p32); err == nil {
+			t.Error("p32: expected error for invalid Child value")
 		}
 	})
 }
@@ -458,7 +480,6 @@ type ParentRequiredChild struct {
 
 func (c *ParentOptionalChild) Validate() error {
 	v := Object(c)
-	v.Optional("Child")
 	return v.Error()
 }
 func (c *ParentRequiredChild) Validate() error {

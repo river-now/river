@@ -66,7 +66,7 @@ func (c *AnyChecker) init(required bool) *AnyChecker {
 	if c.done {
 		return c
 	}
-	if c.trueValue == nil || isEffectivelyZero(c.reflectValue) {
+	if isEffectivelyZero(c.reflectValue) {
 		if required {
 			c.fail(fmt.Sprintf("%s is required", c.label))
 		} else {
@@ -74,14 +74,11 @@ func (c *AnyChecker) init(required bool) *AnyChecker {
 		}
 		return c
 	}
-	c.safeRunOwnValidate()
-	return c
-}
-
-func (c *AnyChecker) safeRunOwnValidate() {
-	if errors := safeRunOwnValidate(c.label, c.trueValue, c.typeState); len(errors) > 0 {
-		c.errors = append(c.errors, errors...)
+	if errs := validateRecursive(c.label, c.reflectValue); len(errs) > 0 {
+		c.errors = append(c.errors, errs...)
+		c.done = true
 	}
+	return c
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -188,84 +185,104 @@ func Object(object any) *ObjectChecker {
 /////// UTILS
 /////////////////////////////////////////////////////////////////////
 
-func safeRunOwnValidate(label string, trueValue any, typeState typeState) []error {
-	var errors []error
+func validateRecursive(label string, currentValue reflect.Value) []error {
+	var errs []error
 
-	if safeIsNil(typeState.reflectValue) {
-		return errors
+	if !currentValue.IsValid() || safeIsNil(currentValue) {
+		return errs
 	}
 
-	if impl, ok := trueValue.(Validator); ok {
-		if err := impl.Validate(); err != nil {
-			errors = append(errors, fmt.Errorf("%s: %w", label, err))
-		}
-	}
-	if typeState.isStructLike || typeState.isMapLike {
-		if locErrs := callValidateOnStructOrMapElements(label, typeState); len(locErrs) > 0 {
-			errors = append(errors, locErrs...)
-		}
-	}
-	if typeState.isSliceOrArrayLike {
-		if locErrs := callValidateOnSliceOrArrayElements(label, typeState.reflectValue); len(locErrs) > 0 {
-			errors = append(errors, locErrs...)
-		}
-	}
-	return errors
-}
+	validatedByDirectCall := false
+	validatorInterface := reflect.TypeOf((*Validator)(nil)).Elem()
 
-func callValidateOnStructOrMapElements(label string, typeState typeState) []error {
-	var errors []error
-	reflectValue := typeState.reflectValue
-	if typeState.isMapWithStrKeysLike {
-		base := safeDereference(reflectValue)
-		for _, keyReflectValue := range base.MapKeys() {
-			// KEY
-			keyLabel := fmt.Sprintf("%s[%s]", label, keyReflectValue.String())
-			keyTrueValue := keyReflectValue.Interface()
-			keyTypeState := getTypeState(keyReflectValue)
-			if locErrs := safeRunOwnValidate(keyLabel, keyTrueValue, keyTypeState); len(locErrs) > 0 {
-				errors = append(errors, locErrs...)
+	if currentValue.CanInterface() {
+		if impl, ok := currentValue.Interface().(Validator); ok {
+			if err := impl.Validate(); err != nil {
+				if !IsValidationError(err) {
+					errs = append(errs, fmt.Errorf("%s: %w", label, err))
+				} else {
+					errs = append(errs, err)
+				}
 			}
-			// VALUE
-			valReflectValue := base.MapIndex(keyReflectValue)
-			valLabel := fmt.Sprintf("%s[%s]", label, keyReflectValue.String())
-			valTrueValue := valReflectValue.Interface()
-			valTypeState := getTypeState(valReflectValue)
-			if locErrs := safeRunOwnValidate(valLabel, valTrueValue, valTypeState); len(locErrs) > 0 {
-				errors = append(errors, locErrs...)
+			validatedByDirectCall = true
+		}
+	}
+
+	if !validatedByDirectCall && currentValue.Kind() != reflect.Ptr && currentValue.CanAddr() {
+		ptrValue := currentValue.Addr()
+		if ptrValue.Type().Implements(validatorInterface) && ptrValue.CanInterface() {
+			if impl, ok := ptrValue.Interface().(Validator); ok {
+				if err := impl.Validate(); err != nil {
+					if !IsValidationError(err) {
+						errs = append(errs, fmt.Errorf("%s: %w", label, err))
+					} else {
+						errs = append(errs, err)
+					}
+				}
 			}
 		}
-	} else if typeState.isStructLike {
-		base := safeDereference(reflectValue)
-		for i := range base.NumField() {
-			fieldReflectValue := base.Field(i)
-			if !fieldReflectValue.CanInterface() {
+	}
+
+	baseValue := currentValue
+	if baseValue.Kind() == reflect.Ptr {
+		if baseValue.IsNil() {
+			return errs
+		}
+		baseValue = baseValue.Elem()
+	}
+
+	switch baseValue.Kind() {
+	case reflect.Struct:
+		for i := range baseValue.NumField() {
+			field := baseValue.Type().Field(i)
+			fieldValue := baseValue.Field(i)
+			if !field.IsExported() {
 				continue
 			}
-			label := fmt.Sprintf("%s.%s", label, base.Type().Field(i).Name)
-			trueValue := fieldReflectValue.Interface()
-			typeState := getTypeState(fieldReflectValue)
-			if locErrs := safeRunOwnValidate(label, trueValue, typeState); len(locErrs) > 0 {
-				errors = append(errors, locErrs...)
+			fieldLabel := fmt.Sprintf("%s.%s", label, field.Name)
+			if locErrs := validateRecursive(fieldLabel, fieldValue); len(locErrs) > 0 {
+				errs = append(errs, locErrs...)
+			}
+		}
+	case reflect.Map:
+		if baseValue.IsNil() {
+			break
+		}
+		iter := baseValue.MapRange()
+		for iter.Next() {
+			key := iter.Key()
+			val := iter.Value()
+			keyLabelPart := "<unstringable_key>"
+			if key.IsValid() {
+				if key.CanInterface() {
+					keyLabelPart = fmt.Sprintf("%v", key.Interface())
+				} else if key.Kind() == reflect.String {
+					keyLabelPart = key.String()
+				}
+			}
+			mapLabel := fmt.Sprintf("%s[%s]", label, keyLabelPart)
+
+			if locErrs := validateRecursive(mapLabel+"(key)", key); len(locErrs) > 0 {
+				errs = append(errs, locErrs...)
+			}
+			if locErrs := validateRecursive(mapLabel+"(value)", val); len(locErrs) > 0 {
+				errs = append(errs, locErrs...)
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		if baseValue.Kind() == reflect.Slice && baseValue.IsNil() {
+			break
+		}
+		for i := range baseValue.Len() {
+			elemValue := baseValue.Index(i)
+			elemLabel := fmt.Sprintf("%s[%d]", label, i)
+			if locErrs := validateRecursive(elemLabel, elemValue); len(locErrs) > 0 {
+				errs = append(errs, locErrs...)
 			}
 		}
 	}
-	return errors
-}
 
-func callValidateOnSliceOrArrayElements(label string, reflectValue reflect.Value) []error {
-	var errors []error
-	base := safeDereference(reflectValue)
-	for i := range base.Len() {
-		elReflectValue := base.Index(i)
-		elLabel := fmt.Sprintf("%s[%d]", label, i)
-		elTrueValue := elReflectValue.Interface()
-		elTypeState := getTypeState(elReflectValue)
-		if locErrors := safeRunOwnValidate(elLabel, elTrueValue, elTypeState); len(locErrors) > 0 {
-			errors = append(errors, locErrors...)
-		}
-	}
-	return errors
+	return errs
 }
 
 func safeDereference(reflectValue reflect.Value) reflect.Value {
@@ -335,8 +352,31 @@ func safeIsNil(v reflect.Value) bool {
 }
 
 func attemptValidation(label string, x any) error {
-	if errs := safeRunOwnValidate(label, x, getTypeState(reflect.ValueOf(x))); len(errs) > 0 {
+	if x == nil {
+		return nil
+	}
+
+	v := reflect.ValueOf(x)
+	var effectiveValue reflect.Value = v
+
+	validatorInterface := reflect.TypeOf((*Validator)(nil)).Elem()
+
+	canCallDirectly := false
+	if v.Type().Implements(validatorInterface) {
+		canCallDirectly = true
+	} else if v.CanAddr() && reflect.PointerTo(v.Type()).Implements(validatorInterface) {
+		canCallDirectly = true
+	}
+
+	if !canCallDirectly && v.Kind() != reflect.Ptr && reflect.PointerTo(v.Type()).Implements(validatorInterface) {
+		copyPtr := reflect.New(v.Type())
+		copyPtr.Elem().Set(v)
+		effectiveValue = copyPtr
+	}
+
+	if errs := validateRecursive(label, effectiveValue); len(errs) > 0 {
 		return &ValidationError{Err: errors.Join(errs...)}
 	}
+
 	return nil
 }
