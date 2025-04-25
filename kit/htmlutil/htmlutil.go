@@ -32,15 +32,12 @@ var (
 	}
 )
 
-func AddSha256HashInline(el *Element, includeConvenienceIntegrityAttribute bool) (string, error) {
+func AddSha256HashInline(el *Element) (string, error) {
 	if el.AttributesKnownSafe == nil {
 		el.AttributesKnownSafe = make(map[string]string)
 	}
 	sha256Hash := cryptoutil.Sha256Hash([]byte(el.DangerousInnerHTML))
 	sha256HashBase64 := bytesutil.ToBase64(sha256Hash[:])
-	if includeConvenienceIntegrityAttribute {
-		el.AttributesKnownSafe["integrity"] = "sha256-" + sha256HashBase64
-	}
 	return sha256HashBase64, nil
 }
 

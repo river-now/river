@@ -31,38 +31,38 @@ type SSRInnerHTMLInput struct {
 // They are stripped off later in order to get the correct sha256 hash.
 // Then they are added back via htmlutil.RenderElement.
 const ssrInnerHTMLTmplStr = `<script>
-	globalThis[Symbol.for("{{.RiverSymbolStr}}")] = {};
-	const x = globalThis[Symbol.for("{{.RiverSymbolStr}}")];
-	x.isDev = {{.IsDev}};
-	x.viteDevURL = {{.ViteDevURL}};
-	x.publicPathPrefix = "{{.PublicPathPrefix}}";
-	x.patternToWaitFnMap = {};
-	x.buildID = {{.BuildID}};
-	x.loadersData = {{.LoadersData}};
-	x.importURLs = {{.ImportURLs}};
-	x.exportKeys = {{.ExportKeys}};
-	x.outermostErrorIndex = {{.OutermostErrorIndex}};
-	x.matchedPatterns = {{.MatchedPatterns}};
-	x.splatValues = {{.SplatValues}};
-	x.params = {{.Params}};
-	x.hasRootData = {{.HasRootData}};
-	if (!x.isDev) {
-		const deps = {{.Deps}};
-		deps.forEach((y) => {
-			const link = document.createElement("link");
-			link.rel = "modulepreload";
-			link.href = x.publicPathPrefix + y;
-			document.head.appendChild(link);
-		});
-		const cssBundles = {{.CSSBundles}};
-		cssBundles.forEach((y) => {
-			const link = document.createElement("link");
-			link.rel = "stylesheet";
-			link.href = x.publicPathPrefix + y;
-			link.setAttribute("data-river-css-bundle", y);
-			document.head.appendChild(link);
-		});
-	}
+globalThis[Symbol.for("{{.RiverSymbolStr}}")] = {};
+const x = globalThis[Symbol.for("{{.RiverSymbolStr}}")];
+x.isDev = {{.IsDev}};
+x.viteDevURL = {{.ViteDevURL}};
+x.publicPathPrefix = "{{.PublicPathPrefix}}";
+x.patternToWaitFnMap = {};
+x.buildID = {{.BuildID}};
+x.loadersData = {{.LoadersData}};
+x.importURLs = {{.ImportURLs}};
+x.exportKeys = {{.ExportKeys}};
+x.outermostErrorIndex = {{.OutermostErrorIndex}};
+x.matchedPatterns = {{.MatchedPatterns}};
+x.splatValues = {{.SplatValues}};
+x.params = {{.Params}};
+x.hasRootData = {{.HasRootData}};
+if (!x.isDev) {
+	const deps = {{.Deps}};
+	deps.forEach((y) => {
+		const link = document.createElement("link");
+		link.rel = "modulepreload";
+		link.href = x.publicPathPrefix + y;
+		document.head.appendChild(link);
+	});
+	const cssBundles = {{.CSSBundles}};
+	cssBundles.forEach((y) => {
+		const link = document.createElement("link");
+		link.rel = "stylesheet";
+		link.href = x.publicPathPrefix + y;
+		link.setAttribute("data-river-css-bundle", y);
+		document.head.appendChild(link);
+	});
+}
 </script>`
 
 var ssrInnerTmpl = template.Must(template.New("ssr").Parse(ssrInnerHTMLTmplStr))
@@ -108,7 +108,7 @@ func (h *River) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOutpu
 		DangerousInnerHTML:  innerHTML,
 	}
 
-	sha256Hash, err := htmlutil.AddSha256HashInline(&el, true)
+	sha256Hash, err := htmlutil.AddSha256HashInline(&el)
 	if err != nil {
 		wrapped := fmt.Errorf("could not handle CSP for SSR inner HTML: %w", err)
 		Log.Error(wrapped.Error())

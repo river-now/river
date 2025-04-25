@@ -31,7 +31,7 @@ func TestGetCriticalCSSStyleElement(t *testing.T) {
 	env.createTestFile(t, "dist/static/internal/critical.css", criticalCSS)
 
 	result := env.config.GetCriticalCSSStyleElement()
-	expected := template.HTML(`<style id="` + CriticalCSSElementID + `" integrity="sha256-XeYlw2NVzOfB1UCIJqCyGr+0n7bA4fFslFpvKu84IAw=">body { color: red; }</style>`)
+	expected := template.HTML(`<style id="` + CriticalCSSElementID + "\">\nbody { color: red; }</style>")
 
 	parsedResult, err := htmltestutil.ParseHTML(string(result))
 	if err != nil {

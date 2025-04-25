@@ -182,7 +182,7 @@ func TestAddSha256HashInline(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := AddSha256HashInline(&tt.element, true)
+			_, err := AddSha256HashInline(&tt.element)
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("expected error, got nil")
@@ -190,10 +190,6 @@ func TestAddSha256HashInline(t *testing.T) {
 			} else {
 				if err != nil {
 					t.Errorf("unexpected error: %v", err)
-				}
-				// Check that the integrity attribute was added
-				if tt.element.AttributesKnownSafe["integrity"] == "" {
-					t.Errorf("integrity attribute not added")
 				}
 			}
 		})

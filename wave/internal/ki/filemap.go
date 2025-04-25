@@ -118,7 +118,7 @@ func (c *Config) getInitialPublicFileMapDetails() (*publicFileMapDetails, error)
 		DangerousInnerHTML: fmt.Sprintf(innerHTMLFormatStr, publicFileMapURL, c._uc.Core.PublicPathPrefix),
 	}
 
-	sha256Hash, err := htmlutil.AddSha256HashInline(&scriptEl, true)
+	sha256Hash, err := htmlutil.AddSha256HashInline(&scriptEl)
 	if err != nil {
 		return nil, fmt.Errorf("error handling CSP: %w", err)
 	}

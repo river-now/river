@@ -3,10 +3,8 @@ package validate
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 )
 
 // JSONBodyInto decodes an HTTP request body into a struct and validates it.
@@ -49,13 +47,6 @@ func URLSearchParamsInto(r *http.Request, destStructPtr any) error {
 	}
 	if err := attemptValidation("validate.URLSearchParamsInto", destStructPtr); err != nil {
 		return err
-	}
-	return nil
-}
-
-func attemptValidation(label string, x any) error {
-	if errs := safeRunOwnValidate(label, x, getTypeState(reflect.ValueOf(x))); len(errs) > 0 {
-		return &ValidationError{Err: errors.Join(errs...)}
 	}
 	return nil
 }

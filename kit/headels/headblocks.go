@@ -109,7 +109,6 @@ func (inst *Instance) Render(input *SortedHeadEls) (template.HTML, error) {
 		b.WriteString("\n")
 	}
 	b.WriteString(inst.restEnd)
-	b.WriteString("\n")
 
 	return template.HTML(b.String()), nil
 }

@@ -121,10 +121,10 @@ func (c *Config) getInitialCriticalCSSStatus() (*criticalCSSStatus, error) {
 	el := htmlutil.Element{
 		Tag:                 "style",
 		AttributesKnownSafe: map[string]string{"id": CriticalCSSElementID},
-		DangerousInnerHTML:  result.code_str,
+		DangerousInnerHTML:  "\n" + result.code_str,
 	}
 
-	sha256Hash, err := htmlutil.AddSha256HashInline(&el, true)
+	sha256Hash, err := htmlutil.AddSha256HashInline(&el)
 	if err != nil {
 		c.Logger.Error(fmt.Sprintf("error handling CSP: %v", err))
 		return nil, err

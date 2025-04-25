@@ -190,6 +190,11 @@ func Object(object any) *ObjectChecker {
 
 func safeRunOwnValidate(label string, trueValue any, typeState typeState) []error {
 	var errors []error
+
+	if safeIsNil(typeState.reflectValue) {
+		return errors
+	}
+
 	if impl, ok := trueValue.(Validator); ok {
 		if err := impl.Validate(); err != nil {
 			errors = append(errors, fmt.Errorf("%s: %w", label, err))
@@ -320,4 +325,18 @@ func isEffectivelyZero(v reflect.Value) bool {
 	default:
 		return v.IsZero()
 	}
+}
+
+func safeIsNil(v reflect.Value) bool {
+	if v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
+		return v.IsNil()
+	}
+	return false
+}
+
+func attemptValidation(label string, x any) error {
+	if errs := safeRunOwnValidate(label, x, getTypeState(reflect.ValueOf(x))); len(errs) > 0 {
+		return &ValidationError{Err: errors.Join(errs...)}
+	}
+	return nil
 }

@@ -73,15 +73,15 @@ var SystemThemeScript, SystemThemeScriptSha256Hash = mustGetSystemThemeScript()
 
 func mustGetSystemThemeScript() (template.HTML, string) {
 	el := &htmlutil.Element{Tag: "script", DangerousInnerHTML: string(systemThemeScriptInnerHTML)}
-	sha256Hash, _ := htmlutil.AddSha256HashInline(el, false)
+	sha256Hash, _ := htmlutil.AddSha256HashInline(el)
 	renderedEl, _ := htmlutil.RenderElement(el)
 	return renderedEl, sha256Hash
 }
 
 const systemThemeScriptInnerHTML = template.HTML(`
-	if (window.document.documentElement.classList.contains("system")) {
-		const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-		window.document.documentElement.classList.add(isDark ? "dark" : "light");
-		window.document.documentElement.classList.remove(isDark ? "light" : "dark");
-	}
+if (window.document.documentElement.classList.contains("system")) {
+	const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+	window.document.documentElement.classList.add(isDark ? "dark" : "light");
+	window.document.documentElement.classList.remove(isDark ? "light" : "dark");
+}
 `)

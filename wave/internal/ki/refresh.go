@@ -103,117 +103,105 @@ func GetRefreshScriptInner(port int) string {
 // changeTypes: "rebuilding", "other", "normal", "critical", "revalidate"
 // Element IDs: "wave-refreshscript-rebuilding", "wave-normal-css", "wave-critical-css"
 const refreshScriptFmt = `
-	function base64ToUTF8(base64) {
-		const bytes = Uint8Array.from(atob(base64), (m) => m.codePointAt(0) || 0);
-		return new TextDecoder().decode(bytes);
+function base64ToUTF8(base64) {
+	const bytes = Uint8Array.from(atob(base64), (m) => m.codePointAt(0) || 0);
+	return new TextDecoder().decode(bytes);
+}
+function getCurrentEl() {
+	return document.getElementById("wave-refreshscript-rebuilding");
+}
+const scrollYKey = "__wave_internal__devScrollY";
+const scrollY = localStorage.getItem(scrollYKey);
+if (scrollY) {
+	setTimeout(() => {
+		localStorage.removeItem(scrollYKey);
+		console.info("Wave: Restoring previous scroll position");
+		window.scrollTo({ top: scrollY, behavior: "smooth" })
+	}, 150);
+}
+const ws = new WebSocket("ws://localhost:%d/events");
+ws.onmessage = (e) => {
+	const { changeType, criticalCSS, normalCSSURL } = JSON.parse(e.data);
+	if (changeType == "rebuilding") {
+		console.log("Wave: Rebuilding server...");
+		const currentEl = getCurrentEl();
+		if (!currentEl) {
+			const el = document.createElement("div");
+			el.innerHTML = "Rebuilding...";
+			el.id = "wave-refreshscript-rebuilding";
+			el.style.display = "flex";
+			el.style.position = "fixed";
+			el.style.inset = "0";
+			el.style.width = "100%%";
+			el.style.backgroundColor = "#333a";
+			el.style.color = "white";
+			el.style.textAlign = "center";
+			el.style.padding = "10px";
+			el.style.zIndex = "1000";
+			el.style.fontFamily = "monospace";
+			el.style.fontSize = "7vw";
+			el.style.fontWeight = "bold";
+			el.style.textShadow = "2px 2px 2px #000";
+			el.style.justifyContent = "center";
+			el.style.alignItems = "center";
+			el.style.opacity = "0";
+			el.style.transition = "opacity 0.05s";
+			document.body.appendChild(el);
+			setTimeout(() => {
+				el.style.opacity = "1";
+			}, 10);
+		}
 	}
-	
-	function getCurrentEl() {
-		return document.getElementById("wave-refreshscript-rebuilding");
+	if (changeType == "other") {
+		const scrollY = window.scrollY;
+		if (scrollY > 0) {
+			localStorage.setItem(scrollYKey, scrollY);
+		}
+		window.location.reload();
 	}
-
-	const scrollYKey = "__wave_internal__devScrollY";
-	const scrollY = localStorage.getItem(scrollYKey);
-	if (scrollY) {
-		setTimeout(() => {
-			localStorage.removeItem(scrollYKey);
-			console.info("Wave: Restoring previous scroll position");
-			window.scrollTo({ top: scrollY, behavior: "smooth" })
-		}, 150);
+	if (changeType == "normal") {
+		const oldLink = document.getElementById("wave-normal-css");
+		const newLink = document.createElement("link");
+		newLink.id = "wave-normal-css";
+		newLink.rel = "stylesheet";
+		newLink.href = normalCSSURL;
+		newLink.onload = () => oldLink.remove();
+		oldLink.parentNode.insertBefore(newLink, oldLink.nextSibling);
 	}
-
-	const ws = new WebSocket("ws://localhost:%d/events");
-
-	ws.onmessage = (e) => {
-		const { changeType, criticalCSS, normalCSSURL } = JSON.parse(e.data);
-
-		if (changeType == "rebuilding") {
-			console.log("Wave: Rebuilding server...");
-			const currentEl = getCurrentEl();
-			if (!currentEl) {
-				const el = document.createElement("div");
-				el.innerHTML = "Rebuilding...";
-				el.id = "wave-refreshscript-rebuilding";
-				el.style.display = "flex";
-				el.style.position = "fixed";
-				el.style.inset = "0";
-				el.style.width = "100%%";
-				el.style.backgroundColor = "#333a";
-				el.style.color = "white";
-				el.style.textAlign = "center";
-				el.style.padding = "10px";
-				el.style.zIndex = "1000";
-				el.style.fontFamily = "monospace";
-				el.style.fontSize = "7vw";
-				el.style.fontWeight = "bold";
-				el.style.textShadow = "2px 2px 2px #000";
-				el.style.justifyContent = "center";
-				el.style.alignItems = "center";
-				el.style.opacity = "0";
-				el.style.transition = "opacity 0.05s";
-				document.body.appendChild(el);
-				setTimeout(() => {
-					el.style.opacity = "1";
-				}, 10);
-			}
-		}
-
-		if (changeType == "other") {
-			const scrollY = window.scrollY;
-			if (scrollY > 0) {
-				localStorage.setItem(scrollYKey, scrollY);
-			}
-			window.location.reload();
-		}
-
-		if (changeType == "normal") {
-			const oldLink = document.getElementById("wave-normal-css");
-			const newLink = document.createElement("link");
-			newLink.id = "wave-normal-css";
-			newLink.rel = "stylesheet";
-			newLink.href = normalCSSURL;
-			newLink.onload = () => oldLink.remove();
-			oldLink.parentNode.insertBefore(newLink, oldLink.nextSibling);
-		}
-
-		if (changeType == "critical") {
-			const oldStyle = document.getElementById("wave-critical-css");
-			const newStyle = document.createElement("style");
-			newStyle.id = "wave-critical-css";
-			newStyle.innerHTML = base64ToUTF8(criticalCSS);
-			document.head.replaceChild(newStyle, oldStyle);
-		}
-			
-		if (changeType == "revalidate") {
-			console.log("Wave: Revalidating...");
-			const el = getCurrentEl();
-			if ("__waveRevalidate" in window) {
-				__waveRevalidate().then(() => {
-					console.log("Wave: Revalidated");
-					el?.remove();
-				});
-			} else {
-				console.error("No __waveRevalidate() found");
+	if (changeType == "critical") {
+		const oldStyle = document.getElementById("wave-critical-css");
+		const newStyle = document.createElement("style");
+		newStyle.id = "wave-critical-css";
+		newStyle.innerHTML = base64ToUTF8(criticalCSS);
+		document.head.replaceChild(newStyle, oldStyle);
+	}
+	if (changeType == "revalidate") {
+		console.log("Wave: Revalidating...");
+		const el = getCurrentEl();
+		if ("__waveRevalidate" in window) {
+			__waveRevalidate().then(() => {
+				console.log("Wave: Revalidated");
 				el?.remove();
-			}
+			});
+		} else {
+			console.error("No __waveRevalidate() found");
+			el?.remove();
 		}
-	};
-
-	ws.onclose = () => {
-		console.log("Wave: WebSocket closed");
-		window.location.reload();
-	};
-
-	ws.onerror = (e) => {
-		console.log("Wave: WebSocket error", e);
-		ws.close();
-		window.location.reload();
-	};
-
-	window.addEventListener("beforeunload", () => {
-		ws.onclose = () => {};
-		ws.close();
-	});
+	}
+};
+ws.onclose = () => {
+	console.log("Wave: WebSocket closed");
+	window.location.reload();
+};
+ws.onerror = (e) => {
+	console.log("Wave: WebSocket error", e);
+	ws.close();
+	window.location.reload();
+};
+window.addEventListener("beforeunload", () => {
+	ws.onclose = () => {};
+	ws.close();
+});
 `
 
 var upgrader = websocket.Upgrader{

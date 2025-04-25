@@ -248,91 +248,63 @@ func (p Profile) Validate() error {
 }
 
 type Status struct {
-	Active bool
+	Active string // "true" or "false"
 }
 
+const statusErr = "status must be 'true' or 'false'"
+
 func (s *Status) Validate() error {
-	if s == nil {
-		return errors.New("status cannot be nil")
+	if s.Active != "true" && s.Active != "false" {
+		return errors.New(statusErr)
 	}
 	return nil
 }
 
 func TestValidatorInterface(t *testing.T) {
-	t.Run("DirectValidation", func(t *testing.T) {
-		// Invalid user
-		u := User{Username: "ab", Password: "short"}
-		err := Any("user", u).Required().Error()
-		if err == nil {
-			t.Error("expected validation error")
-		} else {
-			if !strings.Contains(err.Error(), "username must be at least 3 characters") {
-				t.Error("expected username validation error")
-			}
+	// Invalid user
+	u1 := User{Username: "ab", Password: "short"}
+	err := Any("user", u1).Required().Error()
+	if err == nil {
+		t.Error("expected validation error")
+	} else {
+		if !strings.Contains(err.Error(), "username must be at least 3 characters") {
+			t.Error("expected username validation error")
 		}
+	}
 
-		// Invalid user due to nested field that implements Validator (Status)
-		u = User{Username: "john", Password: "password123"}
-		err = Any("user", u).Required().Error()
-		if err == nil {
-			t.Error("expected validation error")
-		} else {
-			if !strings.Contains(err.Error(), "status cannot be nil") {
-				t.Error("expected status validation error")
-			}
+	// Bad profile status
+	u2 := User{Username: "john", Password: "password123", Profile: Profile{Status: &Status{}}}
+	err = Any("user", u2).Required().Error()
+	if err == nil {
+		t.Error("expected validation error")
+	} else {
+		if !strings.Contains(err.Error(), statusErr) {
+			t.Error("expected status validation error")
 		}
-	})
+	}
 
-	t.Run("NestedValidation", func(t *testing.T) {
-		// Invalid nested field
-		u := User{
-			Username: "john",
-			Password: "password123",
-			Profile: Profile{
-				Email: "invalid-email",
-			},
+	// Bad profile email
+	u3 := User{
+		Username: "john",
+		Password: "password123",
+		Profile:  Profile{Email: "invalid-email"},
+	}
+	err = Any("user", u3).Required().Error()
+	if err == nil {
+		t.Error("expected validation error")
+	} else {
+		if !strings.Contains(err.Error(), "invalid email format") {
+			t.Error("expected email validation error")
 		}
-		err := Any("user", u).Required().Error()
-		if err == nil {
-			t.Error("expected validation error")
-		} else {
-			if !strings.Contains(err.Error(), "invalid email format") {
-				t.Error("expected email validation error")
-			}
-		}
+	}
 
-		// Valid nested field (Status is truthy
-		u.Profile.Email = "john@example.com"
-		u.Profile.Status = &Status{Active: true}
-		err = Any("user", u).Required().Error()
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-	})
-
-	t.Run("PointerValidation", func(t *testing.T) {
-		// Missing required pointer field
-		u := User{
-			Username: "john",
-			Password: "password123",
-			Profile: Profile{
-				Email:  "john@example.com",
-				Status: nil,
-			},
-		}
-		err := Any("user", u).Required().Error()
-		if err == nil {
-			t.Error("expected validation error for nil Status")
-		}
-
-		// Valid pointer field
-		status := Status{Active: true}
-		u.Profile.Status = &status
-		err = Any("user", u).Required().Error()
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-	})
+	// Good profile email and status
+	u3.Profile.Email = "john@example.com"
+	u3.Profile.Status = &Status{Active: "true"}
+	err = Any("user", u3).Required().Error()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 }
 
 // Complex nested structures tests
@@ -455,6 +427,54 @@ func TestComplexNestedStructures(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("ItemResource", func(t *testing.T) {
+		// should work because Child is marked as optional
+		p1 := &ParentOptionalChild{Child: nil}
+		if err := attemptValidation("", p1); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+
+		// should fail because Child is marked as required
+		p2 := &ParentRequiredChild{Child: nil}
+		if err := attemptValidation("", p2); err == nil {
+			t.Error("expected error for nil Child")
+		}
+
+		// should fail because Child value is invalid
+		p3 := &ParentOptionalChild{Child: &Child{A: "b"}}
+		if err := attemptValidation("", p3); err == nil {
+			t.Error("expected error for invalid Child value")
+		}
+	})
+}
+
+type ParentOptionalChild struct {
+	Child *Child `json:"child,omitempty"`
+}
+type ParentRequiredChild struct {
+	Child *Child `json:"child,omitempty"`
+}
+
+func (c *ParentOptionalChild) Validate() error {
+	v := Object(c)
+	v.Optional("Child")
+	return v.Error()
+}
+func (c *ParentRequiredChild) Validate() error {
+	v := Object(c)
+	v.Required("Child")
+	return v.Error()
+}
+
+type Child struct {
+	A string `json:"a"`
+}
+
+func (c *Child) Validate() error {
+	v := Object(c)
+	v.Required("A").In([]string{"a"})
+	return v.Error()
 }
 
 // Test safeDereference and getObjectState
@@ -766,4 +786,39 @@ func TestValidationError(t *testing.T) {
 			t.Error("validation error should contain original error message")
 		}
 	})
+}
+
+type MyStruct struct {
+	Name string
+}
+
+func (s *MyStruct) Validate() error {
+	if s.Name == "" {
+		return errors.New("name is required")
+	}
+	return nil
+}
+
+type MySlice []*MyStruct
+
+func TestSliceWithNilItems(t *testing.T) {
+	Bob := MySlice{&MyStruct{Name: "Bob"}}
+	Empty := MySlice{&MyStruct{}}
+	Nil := MySlice{nil}
+
+	err := attemptValidation("Bob", Bob)
+	if err != nil {
+		t.Errorf("unexpected error for non-empty slice: %v", err)
+	}
+
+	err = attemptValidation("Empty", Empty)
+	if err == nil {
+		t.Error("expected error for empty struct in slice")
+	}
+
+	err = attemptValidation("Nil", Nil)
+	if err != nil {
+		// because when an item is nil, we do not try to call safeRunOwnValidate on it
+		t.Error("expected no error for nil item in slice")
+	}
 }

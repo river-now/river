@@ -74,7 +74,7 @@ export function Root(props: RouteProps<"">) {
 						href="/start"
 						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
 					>
-						Start
+						Get Started
 					</Link>
 
 					<div class="flex-1" />
