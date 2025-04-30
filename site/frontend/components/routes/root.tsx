@@ -33,7 +33,11 @@ export function Root(props: RouteProps<"">) {
 				<div class="flex items-center max-w-full mx-auto p-4 border-b border-[#7777]">
 					<h1 class="flex">
 						<Link href="/" class="inline-flex items-center gap-3">
-							<img class="w-10 sm:w-14" src={hashedURL("logo.svg")} alt="River logo" />
+							<img
+								class="w-10 sm:w-14 aspect-2/1"
+								src={hashedURL("logo.svg")}
+								alt="River logo"
+							/>
 							<div class="flex gap-2 items-baseline">
 								<div class="sm:text-xl">River</div>
 								<div class="text-xs opacity-70 hidden sm:block">

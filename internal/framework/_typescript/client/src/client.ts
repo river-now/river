@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import { createBrowserHistory, type Update } from "history";
+import { debounce } from "river.now/kit/debounce";
 import {
 	getAnchorDetailsFromEvent,
 	getHrefDetails,
@@ -8,17 +9,17 @@ import {
 	getIsGETRequest,
 } from "river.now/kit/url";
 import { updateHeadEls } from "./head.ts";
-import { parseFetchResponseForRedirectData, type RedirectData } from "./redirects.ts";
+import {
+	getBuildIDFromResponse,
+	parseFetchResponseForRedirectData,
+	type RedirectData,
+} from "./redirects.ts";
 import {
 	type GetRouteDataOutput,
 	internal_RiverClientGlobal,
 	type RiverClientGlobal,
 } from "./river_ctx.ts";
 import { isAbortError, LogError, LogInfo, Panic } from "./utils.ts";
-
-if (import.meta.env.MODE === "development") {
-	(window as any).__waveRevalidate = devRevalidate;
-}
 
 /////////////////////////////////////////////////////////////////////
 // COMMON
@@ -57,7 +58,6 @@ type NavigationType =
 	| "browserHistory"
 	| "userNavigation"
 	| "revalidation"
-	| "dev-revalidation"
 	| "redirect"
 	| "prefetch";
 
@@ -141,8 +141,18 @@ export function beginNavigation(props: NavigateProps): NavigationControl {
 	return control;
 }
 
+type PartialWaitFnJSON = Pick<
+	GetRouteDataOutput,
+	| "matchedPatterns"
+	| "splatValues"
+	| "params"
+	| "hasRootData"
+	| "loadersData"
+	| "importURLs"
+>;
+
 function resolveWaitFnPropsFromJSON(
-	json: GetRouteDataOutput,
+	json: PartialWaitFnJSON,
 	buildID: string,
 	idx: number,
 ) {
@@ -169,7 +179,8 @@ async function __completeNavigation(x: NavigationResult) {
 	if (newID && newID !== oldID) {
 		dispatchBuildIDEvent({ newID, oldID, fromGETAction: false });
 	}
-	await x.waitFnPromise;
+	const clientLoadersData = await x.waitFnPromise;
+	internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
 	try {
 		await __reRenderApp({
 			json: x.json,
@@ -237,6 +248,9 @@ async function __fetchRouteData(
 
 		// Add missing deps modulepreload links
 		for (const x of depsToPreload ?? []) {
+			if (x === "") {
+				continue;
+			}
 			const newLink = getMaybeNewPreloadLink(x);
 			if (!newLink) {
 				continue;
@@ -479,7 +493,7 @@ export function getPrefetchHandlers<E extends Event>(
 // REDIRECTS
 /////////////////////////////////////////////////////////////////////
 
-const RIVER_HARD_RELOAD_QUERY_PARAM = "__river_hard_reload";
+const RIVER_HARD_RELOAD_QUERY_PARAM = "river_reload";
 
 async function effectuateRedirectDataResult(
 	redirectData: RedirectData,
@@ -494,7 +508,10 @@ async function effectuateRedirectDataResult(
 			}
 			if (redirectData.hrefDetails.isInternal) {
 				const url = new URL(redirectData.href, window.location.href);
-				url.searchParams.set(RIVER_HARD_RELOAD_QUERY_PARAM, Date.now().toString());
+				url.searchParams.set(
+					RIVER_HARD_RELOAD_QUERY_PARAM,
+					redirectData.latestBuildID,
+				);
 				window.location.href = url.href;
 			}
 			return {
@@ -751,7 +768,7 @@ function setLoadingStatus({
 	type: NavigationType | "submission";
 	value: boolean;
 }) {
-	if (type === "dev-revalidation" || type === "prefetch") {
+	if (type === "prefetch") {
 		return;
 	}
 
@@ -827,7 +844,7 @@ function resolvePublicHref(relativeHref: string): string {
 		? baseURL + relativeHref
 		: baseURL + "/" + relativeHref;
 	if (import.meta.env.DEV) {
-		final += "?__river_dev=1";
+		final += "?river_dev=1";
 	}
 	return final;
 }
@@ -946,18 +963,28 @@ export async function navigate(href: string, options?: { replace?: boolean }) {
 	});
 }
 
-export async function revalidate() {
+async function revalidateNonDebounced() {
 	await __navigate({
 		href: window.location.href,
 		navigationType: "revalidation",
 	});
 }
 
-export async function devRevalidate() {
-	await __navigate({
-		href: window.location.href,
-		navigationType: "dev-revalidation",
-	});
+export const revalidate = debounce(revalidateNonDebounced, 10);
+
+let devTimeSetupClientLoadersDebounced: () => Promise<void> = () => Promise.resolve();
+
+if (import.meta.env.DEV) {
+	(globalThis as any).__waveRevalidate = revalidate;
+
+	devTimeSetupClientLoadersDebounced = debounce(async () => {
+		setLoadingStatus({ type: "revalidation", value: true });
+		await setupClientLoaders();
+		setLoadingStatus({ type: "revalidation", value: false });
+		window.dispatchEvent(
+			new CustomEvent(RIVER_ROUTE_CHANGE_EVENT_KEY, { detail: {} }),
+		);
+	}, 10);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -1069,8 +1096,57 @@ export function getRootEl() {
 
 let latestHMRTimestamp = Date.now();
 
+let hmrRevalidateSet: Set<string>;
+
+export let hmrRunClientLoaders: (importMeta: ImportMeta) => void = () => {};
+
+if (import.meta.env.DEV) {
+	hmrRunClientLoaders = (importMeta: ImportMeta) => {
+		if (hmrRevalidateSet === undefined) {
+			hmrRevalidateSet = new Set();
+		}
+		if (import.meta.env.DEV && import.meta.hot) {
+			const thisURL = new URL(importMeta.url, location.href);
+			thisURL.search = "";
+			const thisPathname = thisURL.pathname;
+			const alreadyRegistered = hmrRevalidateSet.has(thisPathname);
+			if (alreadyRegistered) {
+				return;
+			}
+			hmrRevalidateSet.add(thisPathname);
+			import.meta.hot.on("vite:afterUpdate", (props) => {
+				for (const update of props.updates) {
+					if (update.type === "js-update") {
+						const updateURL = new URL(update.path, location.href);
+						updateURL.search = "";
+						if (updateURL.pathname === thisURL.pathname) {
+							devTimeSetupClientLoadersDebounced();
+						}
+					}
+				}
+			});
+		}
+	};
+}
+
+async function setupClientLoaders() {
+	const clientLoadersData = await runWaitFns(
+		{
+			hasRootData: internal_RiverClientGlobal.get("hasRootData"),
+			importURLs: internal_RiverClientGlobal.get("importURLs"),
+			loadersData: internal_RiverClientGlobal.get("loadersData"),
+			matchedPatterns: internal_RiverClientGlobal.get("matchedPatterns"),
+			params: internal_RiverClientGlobal.get("params"),
+			splatValues: internal_RiverClientGlobal.get("splatValues"),
+		},
+		internal_RiverClientGlobal.get("buildID"),
+	);
+
+	internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
+}
+
 export async function initClient(renderFn: () => void) {
-	if (import.meta.hot) {
+	if (import.meta.env.DEV && import.meta.hot) {
 		import.meta.hot.on("vite:afterUpdate", () => {
 			latestHMRTimestamp = Date.now();
 			LogInfo("HMR update detected", latestHMRTimestamp);
@@ -1088,6 +1164,9 @@ export async function initClient(renderFn: () => void) {
 
 	// HANDLE COMPONENTS
 	await handleComponents(internal_RiverClientGlobal.get("importURLs"));
+
+	// SETUP CLIENT LOADERS
+	await setupClientLoaders();
 
 	// RUN THE RENDER FUNCTION
 	renderFn();
@@ -1108,6 +1187,9 @@ async function importNewComponentsAndGetModulesMap(
 	const dedupedImportURLs = [...new Set(importURLs ?? [])];
 	const dedupedModules = await Promise.all(
 		dedupedImportURLs.map(async (x) => {
+			if (x === "") {
+				return;
+			}
 			return await import(/* @vite-ignore */ resolvePublicHref(x));
 		}),
 	);
@@ -1131,7 +1213,7 @@ async function handleComponents(importURLs: Array<string>) {
 }
 
 async function runWaitFns(
-	json: GetRouteDataOutput,
+	json: PartialWaitFnJSON,
 	buildID: string,
 ): Promise<Array<any>> {
 	await importNewComponentsAndGetModulesMap(json.importURLs);
@@ -1146,6 +1228,8 @@ async function runWaitFns(
 			waitFnPromises.push(
 				patternToWaitFnMap[pattern](resolveWaitFnPropsFromJSON(json, buildID, i)),
 			);
+		} else {
+			waitFnPromises.push(Promise.resolve());
 		}
 		i++;
 	}
@@ -1156,12 +1240,6 @@ async function runWaitFns(
 /////////////////////////////////////////////////////////////////////
 // BUILD ID
 /////////////////////////////////////////////////////////////////////
-
-const buildIDHeader = "X-River-Build-Id";
-
-function getBuildIDFromResponse(response: Response | undefined) {
-	return response?.headers.get(buildIDHeader) || "";
-}
 
 const BUILD_ID_EVENT_KEY = "river:build-id";
 

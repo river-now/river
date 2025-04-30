@@ -1,12 +1,17 @@
 import { useAtomValue } from "jotai";
 import type { JSX } from "react";
-import type {
-	getCurrentRiverData,
-	RiverRouteGeneric,
-	RiverRoutePropsGeneric,
-	RiverUntypedLoader,
+import {
+	type getCurrentRiverData,
+	internal_RiverClientGlobal,
+	type RiverRouteGeneric,
+	type RiverRoutePropsGeneric,
+	type RiverUntypedLoader,
 } from "river.now/client";
-import { currentRiverDataAtom, loadersDataAtom } from "./react.tsx";
+import {
+	clientLoadersDataAtom,
+	currentRiverDataAtom,
+	loadersDataAtom,
+} from "./react.tsx";
 
 export type RiverRouteProps<
 	Loader extends RiverUntypedLoader = RiverUntypedLoader,
@@ -34,5 +39,31 @@ export function makeTypedUseLoaderData<Loader extends RiverUntypedLoader>() {
 	>(props: Props): LoaderData {
 		const loadersData = useAtomValue(loadersDataAtom);
 		return loadersData?.[props.idx];
+	};
+}
+
+export function makeTypedAddClientLoader<
+	OuterLoader extends RiverUntypedLoader,
+	RootData,
+>() {
+	const m = internal_RiverClientGlobal.get("patternToWaitFnMap");
+	return function addClientLoader<
+		Pattern extends OuterLoader["pattern"],
+		Loader extends Extract<OuterLoader, { pattern: Pattern }>,
+		CurrentRiverData = ReturnType<typeof getCurrentRiverData<RootData>>,
+		LoaderData = Loader["phantomOutputType"] | undefined,
+		T = any,
+	>(
+		p: Pattern,
+		fn: (props: CurrentRiverData & { loaderData: LoaderData }) => Promise<T>,
+	) {
+		(m as any)[p] = fn;
+
+		return function useClientLoaderData(
+			props: RiverRouteProps,
+		): Awaited<ReturnType<typeof fn>> | undefined {
+			const clientLoadersData = useAtomValue(clientLoadersDataAtom);
+			return clientLoadersData?.[props.idx];
+		};
 	};
 }

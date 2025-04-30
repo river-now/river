@@ -161,7 +161,7 @@ export function riverVitePlugin(): Plugin {
 							...[
 								"**/*.go",
 								"**/__dist/**/*",
-								"**/backend/__static",
+								"**/backend/__static/**/*",
 								"**/wave.config.json",
 								"**/frontend/river.gen.ts",
 								"**/frontend/routes.ts"

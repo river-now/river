@@ -2,12 +2,12 @@ export {
 	addBuildIDListener,
 	addRouteChangeListener,
 	addStatusListener,
-	devRevalidate,
 	getBuildID,
 	getHistoryInstance,
 	getPrefetchHandlers,
 	getRootEl,
 	getStatus,
+	hmrRunClientLoaders,
 	initClient,
 	makeLinkOnClickFn,
 	navigate,
@@ -18,7 +18,6 @@ export {
 } from "./src/client.ts";
 export {
 	makeFinalLinkProps,
-	makeTypedPreload,
 	type RiverLinkPropsBase,
 	type RiverRootOutletPropsGeneric,
 	type RiverRouteGeneric,

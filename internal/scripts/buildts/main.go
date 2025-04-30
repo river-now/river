@@ -41,6 +41,7 @@ func buildKit() {
 		Bundle:      true,
 		EntryPoints: []string{
 			"./kit/_typescript/converters/converters.ts",
+			"./kit/_typescript/cookies/cookies.ts",
 			"./kit/_typescript/debounce/debounce.ts",
 			"./kit/_typescript/fmt/fmt.ts",
 			"./kit/_typescript/json/json.ts",

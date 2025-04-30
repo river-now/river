@@ -42,8 +42,9 @@ export type RiverClientGlobal = shared & {
 		string,
 		(
 			props: ReturnType<typeof getCurrentRiverData> & { loaderData: any },
-		) => Promise<void>
+		) => Promise<any>
 	>;
+	clientLoadersData: Array<any>;
 };
 
 export function __getRiverClientGlobal() {

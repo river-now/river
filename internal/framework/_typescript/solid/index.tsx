@@ -1,4 +1,5 @@
 export {
+	makeTypedAddClientLoader,
 	makeTypedUseCurrentRiverData,
 	makeTypedUseLoaderData,
 	type RiverRoute,

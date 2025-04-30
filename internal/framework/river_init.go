@@ -31,14 +31,9 @@ func (h *River) validateAndDecorateNestedRouter(nestedRouter *mux.NestedRouter) 
 		panic("nestedRouter is nil")
 	}
 	for _, p := range h._paths {
-		_is_already_registered := nestedRouter.IsRegistered(p.Pattern)
+		_is_already_registered := nestedRouter.IsRegistered(p.OriginalPattern)
 		if !_is_already_registered {
-			mux.RegisterNestedPatternWithoutHandler(nestedRouter, p.Pattern)
-		}
-	}
-	for pattern := range nestedRouter.AllRoutes() {
-		if _, exists := h._paths[pattern]; !exists {
-			Log.Error(fmt.Sprintf("Warning: no client-side route found for pattern %v.", pattern))
+			mux.RegisterNestedPatternWithoutHandler(nestedRouter, p.OriginalPattern)
 		}
 	}
 }
@@ -79,7 +74,7 @@ func (h *River) initInner(isDev bool) error {
 		h._paths = make(map[string]*Path, len(pathsFile.Paths))
 	}
 	for _, p := range pathsFile.Paths {
-		h._paths[p.Pattern] = p
+		h._paths[p.OriginalPattern] = p
 	}
 	h._clientEntrySrc = pathsFile.ClientEntrySrc
 	h._clientEntryOut = pathsFile.ClientEntryOut
@@ -93,7 +88,11 @@ func (h *River) initInner(isDev bool) error {
 		return fmt.Errorf("error parsing root template: %w", err)
 	}
 	h._rootTemplate = tmpl
-	headElsInstance.InitUniqueRules(h.GetHeadElUniqueRules())
+	if h.GetHeadElUniqueRules != nil {
+		headElsInstance.InitUniqueRules(h.GetHeadElUniqueRules())
+	} else {
+		headElsInstance.InitUniqueRules(nil)
+	}
 	return nil
 }
 
