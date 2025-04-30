@@ -69,12 +69,12 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 	// (loaders are optional, client routes are obviously required)
 	maybeExtraLoaderPaths := h._paths
 	for _, path := range maybeExtraLoaderPaths {
-		if _, ok := seen[path.Pattern]; ok {
+		if _, ok := seen[path.OriginalPattern]; ok {
 			continue
 		}
 		item := tsgen.CollectionItem{
 			ArbitraryProperties: map[string]any{
-				base.DiscriminatorStr:     path.Pattern,
+				base.DiscriminatorStr:     path.OriginalPattern,
 				base.CategoryPropertyName: "loader",
 			},
 			PhantomTypes: map[string]AdHocType{
@@ -82,13 +82,13 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 			},
 		}
 		collection = append(collection, item)
-		seen[path.Pattern] = struct{}{}
+		seen[path.OriginalPattern] = struct{}{}
 	}
 
 	hasQueries, hasMutations := false, false
 
 	for _, action := range allActions {
-		method, pattern := action.Method(), action.Pattern()
+		method, pattern := action.Method(), action.OriginalPattern()
 		_, isQuery := queryMethods[method]
 		_, isMutation := mutationMethods[method]
 		if !isQuery && !isMutation {

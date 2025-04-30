@@ -14,11 +14,16 @@ import (
 )
 
 type Config struct {
-	Weak        bool
+	Strong      bool
 	Hash        func() hash.Hash
 	MaxBodySize int64
+	SkipFunc    func(r *http.Request) bool
 }
 
+// Simple, automatic, and conservative ETag middleware that handles (1) setting ETags
+// on GET and HEAD requests and (2) returning 304 responses as appropriate based on a
+// request's If-None-Match header. Defaults to weak ETags, but can be configered to
+// set strong ETags. ETags are determined by buffering and hashing the response body.
 func Auto(config ...*Config) func(http.Handler) http.Handler {
 	var configToUse *Config
 	if len(config) > 0 && config[0] != nil {
@@ -38,6 +43,10 @@ func Auto(config ...*Config) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
+			if configToUse.SkipFunc != nil && configToUse.SkipFunc(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
 			ew := newETagWriter(w, configToUse.Hash(), configToUse.MaxBodySize)
 			defer ew.Close()
 			next.ServeHTTP(ew, r)
@@ -45,7 +54,7 @@ func Auto(config ...*Config) func(http.Handler) http.Handler {
 				ew.WriteOriginalResponse()
 				return
 			}
-			etag := generateETag(ew.hash, configToUse.Weak)
+			etag := generateETag(ew.hash, configToUse.Strong)
 			ifNoneMatch := r.Header.Get("If-None-Match")
 			if ifNoneMatch != "" && etagMatches(ifNoneMatch, etag) {
 				respondNotModified(w, etag)
@@ -177,11 +186,11 @@ func canUseETag(ew *etagWriter) bool {
 	return true
 }
 
-func generateETag(h hash.Hash, weak bool) string {
+func generateETag(h hash.Hash, strong bool) string {
 	sum := h.Sum(nil)
 	tag := hex.EncodeToString(sum)
 
-	if weak {
+	if !strong {
 		return `W/"` + tag + `"`
 	}
 	return `"` + tag + `"`

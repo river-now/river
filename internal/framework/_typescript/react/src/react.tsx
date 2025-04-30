@@ -17,6 +17,7 @@ const rootDataAtom = atom(ctx.get("hasRootData") ? ctx.get("loadersData")[0] : n
 const paramsAtom = atom(ctx.get("params") ?? {});
 const splatValuesAtom = atom(ctx.get("splatValues") ?? []);
 export const loadersDataAtom = atom(ctx.get("loadersData"));
+export const clientLoadersDataAtom = atom(ctx.get("clientLoadersData"));
 export const currentRiverDataAtom = atom(getCurrentRiverData());
 
 export function RiverRootOutlet(
@@ -62,7 +63,14 @@ export function RiverRootOutlet(
 	const [params, setParams] = useAtom(paramsAtom);
 	const [splatValues, setSplatValues] = useAtom(splatValuesAtom);
 	const [loadersData, setLoadersData] = useAtom(loadersDataAtom);
+	const [clientLoadersData, setClientLoadersData] = useAtom(clientLoadersDataAtom);
 	const [currentRiverData, setCurrentRiverData] = useAtom(currentRiverDataAtom);
+
+	useEffect(() => {
+		if (idx === 0) {
+			setClientLoadersData(ctx.get("clientLoadersData"));
+		}
+	}, []);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	useEffect(() => {
@@ -75,6 +83,7 @@ export function RiverRootOutlet(
 				const newParams = ctx.get("params") ?? {};
 				const newSplatValues = ctx.get("splatValues") ?? [];
 				const newLoadersData = ctx.get("loadersData");
+				const newClientLoadersData = ctx.get("clientLoadersData");
 				const newCurrentRiverData = getCurrentRiverData();
 
 				flushSync(() => {
@@ -92,6 +101,9 @@ export function RiverRootOutlet(
 					}
 					if (!jsonDeepEquals(loadersData, newLoadersData)) {
 						setLoadersData(newLoadersData);
+					}
+					if (!jsonDeepEquals(clientLoadersData, newClientLoadersData)) {
+						setClientLoadersData(newClientLoadersData);
 					}
 					if (!jsonDeepEquals(currentRiverData, newCurrentRiverData)) {
 						setCurrentRiverData(newCurrentRiverData);
@@ -139,7 +151,14 @@ export function RiverRootOutlet(
 		[nextImportURL, nextExportKey],
 	);
 
+	const shouldFallbackOutletMemo = useMemo(() => {
+		return idx + 1 < loadersData.length;
+	}, [idx, loadersData]);
+
 	if (!CurrentComp) {
+		if (shouldFallbackOutletMemo) {
+			return <Outlet />;
+		}
 		return <></>;
 	}
 

@@ -1,6 +1,6 @@
-import { makeTypedPreload } from "river.now/client";
 import { addThemeChangeListener, getTheme } from "river.now/kit/theme";
 import {
+	makeTypedAddClientLoader,
 	makeTypedUseCurrentRiverData,
 	makeTypedUseLoaderData,
 	type RiverRouteProps,
@@ -12,7 +12,7 @@ export type RouteProps<P extends RiverLoaderPattern> = RiverRouteProps<RiverLoad
 
 export const useCurrentAppData = makeTypedUseCurrentRiverData<RiverRootData>();
 export const useLoaderData = makeTypedUseLoaderData<RiverLoader>();
-export const preload = makeTypedPreload<RiverLoader, RiverRootData>();
+export const addClientLoader = makeTypedAddClientLoader<RiverLoader, RiverRootData>();
 
 const [theme, set_theme_signal] = createSignal(getTheme());
 addThemeChangeListener((e) => set_theme_signal(e.detail.theme));

@@ -1,4 +1,4 @@
-import { debounce } from "../debounce/debounce.ts";
+import { debounce } from "river.now/kit/debounce";
 
 export function addOnWindowFocusListener(callback: () => void): void {
 	const debouncedCallback = debounce(callback, 10);

@@ -85,6 +85,8 @@ func (h *River) getUIRoutesData(
 		for _, path := range _matches {
 			foundPath := h._paths[path.OriginalPattern()]
 			if foundPath == nil {
+				_cachedItemSubset.ImportURLs = append(_cachedItemSubset.ImportURLs, "")
+				_cachedItemSubset.ExportKeys = append(_cachedItemSubset.ExportKeys, "")
 				continue
 			}
 			pathToUse := foundPath.OutPath

@@ -1,3 +1,5 @@
+include .env
+
 #####################################################################
 ####### GO
 #####################################################################
@@ -66,3 +68,12 @@ docker-site:
 
 docker-run-site:
 	docker run -d -p $(PORT):$(PORT) -e PORT=$(PORT) river-site
+
+ghcr-login:
+	@echo $(GITHUB_TOKEN) | docker login ghcr.io -u river-now --password-stdin
+
+ghcr-build:
+	@docker buildx build --platform linux/amd64 -t ghcr.io/river-now/river:latest -f Dockerfile.site . --load
+
+ghcr-push:
+	@docker push ghcr.io/river-now/river:latest

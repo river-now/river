@@ -238,7 +238,7 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	ignoredList := []string{
 		"**/*.go",
 		path.Join("**", h.Wave.GetDistDir()+"/**/*"),
-		path.Join("**", h.Wave.GetPrivateStaticDir()),
+		path.Join("**", h.Wave.GetPrivateStaticDir()+"/**/*"),
 		path.Join("**", h.Wave.GetConfigFile()),
 		path.Join("**", h.Wave.GetRiverTSGenOutPath()),
 		path.Join("**", h.Wave.GetRiverClientRouteDefsFile()),
@@ -442,10 +442,10 @@ func (h *River) Build(opts *BuildOptions) error {
 
 	for _, item := range nodeScriptResult {
 		h._paths[item.Pattern] = &Path{
-			Pattern:        item.Pattern,
-			SrcPath:        item.Module,
-			ExportKey:      item.Key,
-			ErrorExportKey: item.ErrorKey,
+			OriginalPattern: item.Pattern,
+			SrcPath:         item.Module,
+			ExportKey:       item.Key,
+			ErrorExportKey:  item.ErrorKey,
 		}
 	}
 

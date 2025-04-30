@@ -24,6 +24,10 @@
 			"import": "./npm_dist/kit/_typescript/converters/converters.js",
 			"types": "./npm_dist/kit/_typescript/converters/converters.d.ts"
 		},
+		"./kit/cookies": {
+			"import": "./npm_dist/kit/_typescript/cookies/cookies.js",
+			"types": "./npm_dist/kit/_typescript/cookies/cookies.d.ts"
+		},
 		"./kit/debounce": {
 			"import": "./npm_dist/kit/_typescript/debounce/debounce.js",
 			"types": "./npm_dist/kit/_typescript/debounce/debounce.d.ts"

@@ -112,7 +112,12 @@ func (m *Matcher) NormalizePattern(originalPattern string) *RegisteredPattern {
 	if m.usingExplicitIndexSegment {
 		// ignore trailing slashes
 		if strings.HasSuffix(normalizedPattern, "/") {
-			m.Log(fmt.Sprintf("WARN: Trailing slashes are ignored when using an explicit index segment. Pattern '%s' will be normalized without the trailing slash.", originalPattern))
+			if normalizedPattern != "/" {
+				log.Panicf(
+					"Error with pattern '%s'. With the exception of any absolute root pattern ('/'), trailing slashes are not permitted when using an explicit index segment. If you intend to make this an index route, add your explicit index segment. Otherwise, remove the trailing slash.",
+					originalPattern,
+				)
+			}
 			normalizedPattern = strings.TrimRight(normalizedPattern, "/")
 		}
 		// if is an idx route, clear the sig, but leave the trailing slash
@@ -182,26 +187,26 @@ func (m *Matcher) NormalizePattern(originalPattern string) *RegisteredPattern {
 }
 
 func (m *Matcher) RegisterPattern(originalPattern string) *RegisteredPattern {
-	n := m.NormalizePattern(originalPattern)
+	_normalized := m.NormalizePattern(originalPattern)
 
-	if _, alreadyRegistered := m.staticPatterns[n.normalizedPattern]; alreadyRegistered {
+	if _, alreadyRegistered := m.staticPatterns[_normalized.normalizedPattern]; alreadyRegistered {
 		m.Log(getAppropriateWarningMsg(originalPattern, m.usingExplicitIndexSegment))
 	}
-	if _, alreadyRegistered := m.dynamicPatterns[n.normalizedPattern]; alreadyRegistered {
+	if _, alreadyRegistered := m.dynamicPatterns[_normalized.normalizedPattern]; alreadyRegistered {
 		m.Log(getAppropriateWarningMsg(originalPattern, m.usingExplicitIndexSegment))
 	}
 
-	if getIsStatic(n.normalizedSegments) {
-		m.staticPatterns[n.normalizedPattern] = n
-		return n
+	if getIsStatic(_normalized.normalizedSegments) {
+		m.staticPatterns[_normalized.normalizedPattern] = _normalized
+		return _normalized
 	}
 
-	m.dynamicPatterns[n.normalizedPattern] = n
+	m.dynamicPatterns[_normalized.normalizedPattern] = _normalized
 
 	current := m.rootNode
 	var nodeScore int
 
-	for i, segment := range n.normalizedSegments {
+	for i, segment := range _normalized.normalizedSegments {
 		child := current.findOrCreateChild(segment.normalizedVal)
 		switch {
 		case segment.segType == segTypes.dynamic:
@@ -210,15 +215,15 @@ func (m *Matcher) RegisterPattern(originalPattern string) *RegisteredPattern {
 			nodeScore += scoreStaticMatch
 		}
 
-		if i == len(n.normalizedSegments)-1 {
+		if i == len(_normalized.normalizedSegments)-1 {
 			child.finalScore = nodeScore
-			child.pattern = n.normalizedPattern
+			child.pattern = _normalized.normalizedPattern
 		}
 
 		current = child
 	}
 
-	return n
+	return _normalized
 }
 
 func (m *Matcher) getSegmentTypeAssumeNormalized(segment string) segType {

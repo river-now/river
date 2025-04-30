@@ -19,7 +19,10 @@ let shouldScroll = false;
 
 const [latestEvent, setLatestEvent] = createSignal<RouteChangeEvent | null>(null);
 const [loadersData, setLoadersData] = createSignal(ctx.get("loadersData"));
-export { loadersData };
+const [clientLoadersData, setClientLoadersData] = createSignal(
+	ctx.get("clientLoadersData"),
+);
+export { clientLoadersData, loadersData };
 
 const [currentRiverData, setCurrentRiverData] = createSignal(getCurrentRiverData());
 export { currentRiverData };
@@ -28,6 +31,7 @@ addRouteChangeListener(() => setCurrentRiverData(getCurrentRiverData()));
 addRouteChangeListener((e) => {
 	setLatestEvent(e);
 	setLoadersData(ctx.get("loadersData"));
+	setClientLoadersData(ctx.get("clientLoadersData"));
 	setCurrentRiverData(getCurrentRiverData());
 });
 
@@ -48,6 +52,10 @@ export function RiverRootOutlet(
 	const [currentExportKey, setCurrentExportKey] = createSignal(
 		ctx.get("exportKeys")?.[idx],
 	);
+
+	if (idx === 0) {
+		setClientLoadersData(ctx.get("clientLoadersData"));
+	}
 
 	if (currentImportURL) {
 		createEffect(() => {
@@ -84,6 +92,13 @@ export function RiverRootOutlet(
 		return ctx.get("activeComponents")?.[idx];
 	});
 
+	const shouldFallbackOutletMemo = createMemo(() => {
+		if (currentCompMemo()) {
+			return false;
+		}
+		return idx + 1 < loadersData().length;
+	});
+
 	return (
 		<ErrorBoundary fallback={<div>ERROR</div>}>
 			<Show when={currentCompMemo()}>
@@ -93,6 +108,10 @@ export function RiverRootOutlet(
 						return <RiverRootOutlet {...localProps} {...props} idx={idx + 1} />;
 					},
 				})}
+			</Show>
+
+			<Show when={shouldFallbackOutletMemo()}>
+				<RiverRootOutlet {...props} idx={idx + 1} />
 			</Show>
 		</ErrorBoundary>
 	);

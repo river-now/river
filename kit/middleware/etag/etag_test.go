@@ -70,7 +70,7 @@ func TestETagMiddleware(t *testing.T) {
 				"If-None-Match": `W/"0a0a9f2a6772942557ab5355d76af442f8f65e01"`,
 			},
 			config: &Config{
-				Weak: true,
+				Strong: false,
 			},
 			expectedStatus: http.StatusNotModified,
 			expectedBody:   "",
@@ -254,7 +254,8 @@ func TestGenerateETag(t *testing.T) {
 	t.Run("Strong ETag", func(t *testing.T) {
 		h := md5.New()
 		h.Write(content)
-		etag := generateETag(h, false)
+		strong := true
+		etag := generateETag(h, strong)
 
 		if !strings.HasPrefix(etag, `"`) || !strings.HasSuffix(etag, `"`) {
 			t.Errorf("Strong ETag should be wrapped in double quotes, got: %s", etag)
@@ -268,7 +269,8 @@ func TestGenerateETag(t *testing.T) {
 	t.Run("Weak ETag", func(t *testing.T) {
 		h := md5.New()
 		h.Write(content)
-		etag := generateETag(h, true)
+		strong := false
+		etag := generateETag(h, strong)
 
 		if !strings.HasPrefix(etag, `W/"`) || !strings.HasSuffix(etag, `"`) {
 			t.Errorf("Weak ETag should be wrapped in W/\"...\", got: %s", etag)
@@ -1183,7 +1185,7 @@ func TestETagFormat(t *testing.T) {
 	// Test strong ETag
 	t.Run("Strong ETag", func(t *testing.T) {
 		middleware := Auto(&Config{
-			Weak: false,
+			Strong: true,
 		})
 		server := httptest.NewServer(middleware(handler))
 		defer server.Close()
@@ -1212,7 +1214,7 @@ func TestETagFormat(t *testing.T) {
 	// Test weak ETag
 	t.Run("Weak ETag", func(t *testing.T) {
 		middleware := Auto(&Config{
-			Weak: true,
+			Strong: false,
 		})
 		server := httptest.NewServer(middleware(handler))
 		defer server.Close()
@@ -1270,11 +1272,48 @@ func TestCustomHash(t *testing.T) {
 			// Different hash functions should produce different ETags
 			directHash := hashFunc()
 			directHash.Write([]byte("Hello, World!"))
-			expectedTag := `"` + hex.EncodeToString(directHash.Sum(nil)) + `"`
+			expectedTag := `W/"` + hex.EncodeToString(directHash.Sum(nil)) + `"`
 
 			if etag != expectedTag {
 				t.Errorf("With %s, expected ETag %q, got %q", name, expectedTag, etag)
 			}
 		})
+	}
+}
+
+func TestSkipFunc(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello, World!"))
+	})
+
+	middleware := Auto(&Config{
+		SkipFunc: func(r *http.Request) bool {
+			return r.URL.Path == "/skip"
+		},
+	})
+	server := httptest.NewServer(middleware(handler))
+	defer server.Close()
+
+	// Request to /skip should not have ETag
+	resp1, err := http.Get(server.URL + "/skip")
+	if err != nil {
+		t.Fatalf("Error making request to /skip: %v", err)
+	}
+	defer resp1.Body.Close()
+
+	if resp1.Header.Get("ETag") != "" {
+		t.Error("/skip request should not have ETag")
+	}
+
+	// Request to / should have ETag
+	resp2, err := http.Get(server.URL)
+	if err != nil {
+		t.Fatalf("Error making request to /: %v", err)
+	}
+
+	defer resp2.Body.Close()
+
+	if resp2.Header.Get("ETag") == "" {
+		t.Error("/ request should have ETag")
 	}
 }

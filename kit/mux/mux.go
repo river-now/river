@@ -231,9 +231,9 @@ var _handler_types = struct {
 type Route[I any, O any] struct {
 	genericsutil.ZeroHelper[I, O]
 
-	_router  *Router
-	_method  string
-	_pattern string
+	_router           *Router
+	_method           string
+	_original_pattern string
 
 	_http_mws []HTTPMiddleware
 	_task_mws []tasks.AnyRegisteredTask
@@ -255,7 +255,7 @@ type AnyRoute interface {
 	_get_task_handler() tasks.AnyRegisteredTask
 	_get_http_mws() []HTTPMiddleware
 	_get_task_mws() []tasks.AnyRegisteredTask
-	Pattern() string
+	OriginalPattern() string
 	Method() string
 }
 
@@ -267,7 +267,7 @@ func (route *Route[I, O]) _get_http_mws() []HTTPMiddleware {
 	return route._http_mws
 }
 func (route *Route[I, O]) _get_task_mws() []tasks.AnyRegisteredTask { return route._task_mws }
-func (route *Route[I, O]) Pattern() string                          { return route._pattern }
+func (route *Route[I, O]) OriginalPattern() string                  { return route._original_pattern }
 func (route *Route[I, O]) Method() string                           { return route._method }
 
 /////////////////////////////////////////////////////////////////////
@@ -625,15 +625,15 @@ func run_appropriate_mws(
 /////// INTERNAL HELPERS
 /////////////////////////////////////////////////////////////////////
 
-func _new_route_struct[I any, O any](_router *Router, _method, _pattern string) *Route[I, O] {
-	return &Route[I, O]{_router: _router, _method: _method, _pattern: _pattern}
+func _new_route_struct[I any, O any](_router *Router, _method, _original_pattern string) *Route[I, O] {
+	return &Route[I, O]{_router: _router, _method: _method, _original_pattern: _original_pattern}
 }
 
 func _must_register_route[I any, O any](_route *Route[I, O]) {
 	_method_matcher := _must_get_matcher(_route._router, _route._method)
-	_method_matcher._matcher.RegisterPattern(_route._pattern)
-	_method_matcher._routes[_route._pattern] = _route
-	_method_matcher._req_data_getters[_route._pattern] = _to_req_data_getter_impl(_route)
+	_method_matcher._matcher.RegisterPattern(_route._original_pattern)
+	_method_matcher._routes[_route._original_pattern] = _route
+	_method_matcher._req_data_getters[_route._original_pattern] = _to_req_data_getter_impl(_route)
 }
 
 func _req_data_starter[I any](_match *matcher.BestMatch, _tasks_registry *tasks.Registry, r *http.Request) *ReqData[I] {

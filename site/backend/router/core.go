@@ -1,7 +1,9 @@
 package router
 
 import (
+	"net/http"
 	app "site"
+	"strings"
 
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/river-now/river/kit/middleware/etag"
@@ -19,8 +21,11 @@ func Core() *mux.Router {
 
 	mux.SetGlobalHTTPMiddleware(r, chimw.Logger)
 	mux.SetGlobalHTTPMiddleware(r, chimw.Recoverer)
-	mux.SetGlobalHTTPMiddleware(r, etag.Auto())
-	mux.SetGlobalHTTPMiddleware(r, chimw.Compress(5))
+	mux.SetGlobalHTTPMiddleware(r, etag.Auto(&etag.Config{
+		SkipFunc: func(r *http.Request) bool {
+			return strings.HasPrefix(r.URL.Path, app.Wave.GetPublicPathPrefix())
+		},
+	}))
 	mux.SetGlobalHTTPMiddleware(r, secureheaders.Middleware)
 	mux.SetGlobalHTTPMiddleware(r, healthcheck.Healthz)
 	mux.SetGlobalHTTPMiddleware(r, robotstxt.Allow)

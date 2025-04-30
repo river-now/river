@@ -1,6 +1,6 @@
 # 🌊 River
 
-<img src="/site/frontend/__static/river-banner.webp" alt="River logo banner">
+<img src="site/frontend/__static/river-banner.webp" alt="River logo banner">
 
 ## Introduction
 

@@ -8,13 +8,20 @@ export type RedirectData = { href: string; hrefDetails: HrefDetails } & (
 	| {
 			status: "should";
 			shouldRedirectStrategy: "hard" | "soft";
+			latestBuildID: string;
 	  }
 );
+
+export function getBuildIDFromResponse(response: Response | undefined) {
+	return response?.headers.get("X-River-Build-Id") || "";
+}
 
 export function parseFetchResponseForRedirectData(
 	reqInit: RequestInit,
 	res: Response,
 ): RedirectData | null {
+	const latestBuildID = getBuildIDFromResponse(res);
+
 	const riverReloadTarget = res.headers.get("X-River-Reload");
 	if (riverReloadTarget) {
 		const newURL = new URL(riverReloadTarget, window.location.href);
@@ -28,6 +35,7 @@ export function parseFetchResponseForRedirectData(
 			status: "should",
 			href: riverReloadTarget,
 			shouldRedirectStrategy: "hard",
+			latestBuildID,
 		};
 	}
 
@@ -54,6 +62,7 @@ export function parseFetchResponseForRedirectData(
 			status: "should",
 			href: newURL.href,
 			shouldRedirectStrategy: hrefDetails.isInternal ? "soft" : "hard",
+			latestBuildID,
 		};
 	}
 
@@ -74,5 +83,6 @@ export function parseFetchResponseForRedirectData(
 		status: "should",
 		href: hrefDetails.absoluteURL,
 		shouldRedirectStrategy: hrefDetails.isInternal ? "soft" : "hard",
+		latestBuildID,
 	};
 }

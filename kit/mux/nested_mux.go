@@ -33,8 +33,8 @@ func (nr *NestedRouter) TasksRegistry() *tasks.Registry {
 	return nr._tasks_registry
 }
 
-func (nr *NestedRouter) IsRegistered(pattern string) bool {
-	_, exists := nr._routes[pattern]
+func (nr *NestedRouter) IsRegistered(originalPattern string) bool {
+	_, exists := nr._routes[originalPattern]
 	return exists
 }
 
@@ -85,8 +85,8 @@ func NewNestedRouter(opts *NestedOptions) *NestedRouter {
 type NestedRoute[O any] struct {
 	genericsutil.ZeroHelper[None, O]
 
-	_router  *NestedRouter
-	_pattern string
+	_router           *NestedRouter
+	_original_pattern string
 
 	_task_handler tasks.AnyRegisteredTask
 }
@@ -98,11 +98,11 @@ type NestedRoute[O any] struct {
 type AnyNestedRoute interface {
 	genericsutil.AnyZeroHelper
 	_get_task_handler() tasks.AnyRegisteredTask
-	Pattern() string
+	OriginalPattern() string
 }
 
 func (route *NestedRoute[O]) _get_task_handler() tasks.AnyRegisteredTask { return route._task_handler }
-func (route *NestedRoute[O]) Pattern() string                            { return route._pattern }
+func (route *NestedRoute[O]) OriginalPattern() string                    { return route._original_pattern }
 
 /////////////////////////////////////////////////////////////////////
 /////// CORE PATTERN REGISTRATION FUNCTIONS
@@ -246,16 +246,16 @@ func RunNestedTasks(
 /////// INTERNAL HELPERS
 /////////////////////////////////////////////////////////////////////
 
-func _new_nested_route_struct[O any](_router *NestedRouter, _pattern string) *NestedRoute[O] {
-	return &NestedRoute[O]{_router: _router, _pattern: _pattern}
+func _new_nested_route_struct[O any](_router *NestedRouter, _original_pattern string) *NestedRoute[O] {
+	return &NestedRoute[O]{_router: _router, _original_pattern: _original_pattern}
 }
 
 func _must_register_nested_route[O any](_route *NestedRoute[O]) {
 	_matcher := _route._router._matcher
-	_matcher.RegisterPattern(_route._pattern)
-	_, _already_exists := _route._router._routes[_route._pattern]
+	_matcher.RegisterPattern(_route._original_pattern)
+	_, _already_exists := _route._router._routes[_route._original_pattern]
 	if _already_exists {
-		panic(fmt.Sprintf("pattern already registered: %s", _route._pattern))
+		panic(fmt.Sprintf("Pattern '%s' is already registered. Perhaps you're unintentionally registering it twice?", _route._original_pattern))
 	}
-	_route._router._routes[_route._pattern] = _route
+	_route._router._routes[_route._original_pattern] = _route
 }

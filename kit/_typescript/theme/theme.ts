@@ -1,3 +1,5 @@
+import { getClientCookie, setClientCookie } from "river.now/kit/cookies";
+
 /////////////////////////////////////////////////////////////////////
 /////// SETUP
 /////////////////////////////////////////////////////////////////////
@@ -64,19 +66,19 @@ PREFERS_DARK_QUERY.addEventListener("change", () => {
 /////////////////////////////////////////////////////////////////////
 
 export function getTheme(): Theme {
-	const theme = __getMaybeCookie(THEME_COOKIE_NAME);
+	const theme = getClientCookie(THEME_COOKIE_NAME);
 	return __isTheme(theme) ? theme : THEMES.System;
 }
 
 export function getResolvedTheme(): ResolvedTheme {
-	const resolvedTheme = __getMaybeCookie(RESOLVED_THEME_COOKIE_NAME);
+	const resolvedTheme = getClientCookie(RESOLVED_THEME_COOKIE_NAME);
 	return __isResolvedTheme(resolvedTheme) ? resolvedTheme : THEMES.Light;
 }
 
 export function setTheme(theme: Theme) {
 	const resolvedTheme = __getResolvedThemeFromTheme(theme);
-	__setClientCookie(THEME_COOKIE_NAME, theme);
-	__setClientCookie(RESOLVED_THEME_COOKIE_NAME, resolvedTheme);
+	setClientCookie(THEME_COOKIE_NAME, theme);
+	setClientCookie(RESOLVED_THEME_COOKIE_NAME, resolvedTheme);
 	const detail: ThemeChangeEventDetail = { theme, resolvedTheme };
 	__setClassesAndDispatchEvent(detail);
 	bc.postMessage(detail);
@@ -94,9 +96,9 @@ export function addThemeChangeListener(
 type CleanupFunction = () => void;
 
 export function safeInitThemeCookies() {
-	const hasMainCookie = __isTheme(__getMaybeCookie(THEME_COOKIE_NAME));
+	const hasMainCookie = __isTheme(getClientCookie(THEME_COOKIE_NAME));
 	const hasResolvedCookie = __isResolvedTheme(
-		__getMaybeCookie(RESOLVED_THEME_COOKIE_NAME),
+		getClientCookie(RESOLVED_THEME_COOKIE_NAME),
 	);
 	if (!hasMainCookie || !hasResolvedCookie) {
 		setTheme(THEMES.System);
@@ -113,15 +115,6 @@ function __getResolvedThemeFromTheme(theme: Theme): ResolvedTheme {
 		resolvedTheme = PREFERS_DARK_QUERY.matches ? THEMES.Dark : THEMES.Light;
 	}
 	return resolvedTheme;
-}
-
-function __getMaybeCookie(name: string) {
-	const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
-	return match ? match[2] : undefined;
-}
-
-function __setClientCookie(name: string, value: string) {
-	document.cookie = `${name}=${value}; path=/; max-age=31536000; SameSite=Lax`;
 }
 
 function __setClassesAndDispatchEvent(detail: ThemeChangeEventDetail) {
