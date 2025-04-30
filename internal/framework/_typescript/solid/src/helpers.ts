@@ -56,7 +56,7 @@ export function makeTypedAddClientLoader<
 		(m as any)[p] = fn;
 
 		return function useClientLoaderData(
-			props: RiverRouteProps,
+			props: RiverRouteProps<Loader>,
 		): Accessor<Awaited<ReturnType<typeof fn>> | undefined> {
 			return createMemo(() => {
 				return clientLoadersData()?.[props.idx];

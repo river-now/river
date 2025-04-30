@@ -4,21 +4,22 @@ import { Link } from "../app_link.tsx";
 import { addClientLoader, type RouteProps, useLoaderData } from "../app_utils.ts";
 import { RenderedMarkdown } from "../rendered-markdown.tsx";
 
-// hmrRunClientLoaders(import.meta);
+// Use this if you want your client loaders to re-run when you save this file
+hmrRunClientLoaders(import.meta);
 
-// export const useClientLoaderData = addClientLoader("/*", async (props) => {
-// 	await new Promise((resolve) => setTimeout(resolve, 300));
-// 	return "jeff2";
-// });
+export const useClientLoaderData = addClientLoader("/*", async (props) => {
+	// This is pointless -- just an example of how to use a client loader
+	await new Promise((resolve) => setTimeout(resolve, 1));
+	return props.loaderData?.Title;
+});
 
 export function MD(props: RouteProps<"/*">) {
 	const loaderData = useLoaderData(props);
-	// const clientLoaderData = useClientLoaderData(props);
+	const clientLoaderData = useClientLoaderData(props);
 
 	return (
 		<div class="content">
-			{/* Client loader data: {clientLoaderData()} */}
-			<Show when={loaderData()?.Title}>{(n) => <h1>{n()}</h1>}</Show>
+			<Show when={clientLoaderData()}>{(n) => <h1>{n()}</h1>}</Show>
 			<Show when={loaderData()?.Date}>{(n) => <i>{n()}</i>}</Show>
 			<Show when={loaderData()?.Content}>
 				{(n) => <RenderedMarkdown markdown={n()} />}

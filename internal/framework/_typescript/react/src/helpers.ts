@@ -60,7 +60,7 @@ export function makeTypedAddClientLoader<
 		(m as any)[p] = fn;
 
 		return function useClientLoaderData(
-			props: RiverRouteProps,
+			props: RiverRouteProps<Loader>,
 		): Awaited<ReturnType<typeof fn>> | undefined {
 			const clientLoadersData = useAtomValue(clientLoadersDataAtom);
 			return clientLoadersData?.[props.idx];
