@@ -16,6 +16,22 @@ import (
 	"github.com/river-now/river/kit/validate"
 )
 
+/////// COMMON
+
+type (
+	None                      = genericsutil.None
+	TaskHandler[I any, O any] = tasks.RegisteredTask[*ReqData[I], O]
+	Params                    = matcher.Params
+)
+
+type ReqData[I any] struct {
+	_params         Params
+	_splat_vals     []string
+	_tasks_ctx      *tasks.TasksCtx
+	_input          I
+	_response_proxy *response.Proxy
+}
+
 /*
 
 Order of registration of handlers does not matter. Order of middleware
@@ -101,9 +117,9 @@ type Options struct {
 	DynamicParamPrefixRune rune // Optional. Defaults to ':'.
 	SplatSegmentRune       rune // Optional. Defaults to '*'.
 
-	// Required. Do validation or whatever you want here, and mutate the
-	// input ptr to the desired value (this is what will ultimately be
-	// returned by c.Input()).
+	// Required if using task handlers. Do validation or whatever you want here,
+	// and mutate the input ptr to the desired value (this is what will ultimately
+	// be returned by c.Input()).
 	MarshalInput func(r *http.Request, inputPtr any) error
 }
 
@@ -134,9 +150,14 @@ func NewRouter(opts *Options) *Router {
 		}
 	}
 
+	trToUse := opts.TasksRegistry
+	if trToUse == nil {
+		trToUse = tasks.NewRegistry("default")
+	}
+
 	return &Router{
 		_marshal_input:         opts.MarshalInput,
-		_tasks_registry:        opts.TasksRegistry,
+		_tasks_registry:        trToUse,
 		_method_to_matcher_map: make(map[string]*_Method_Matcher),
 		_matcher_opts:          _matcher_opts,
 		_mount_root:            mountRootToUse,
@@ -195,7 +216,7 @@ func SetMethodLevelHTTPMiddleware(router *Router, method string, httpMw HTTPMidd
 /////// PATTERN-LEVEL MIDDLEWARE APPLIERS
 /////////////////////////////////////////////////////////////////////
 
-func SetRouteLevelTaskMiddleware[PI any, PO any, MWO any](route *Route[PI, PO], taskMw *TaskMiddleware[MWO]) {
+func SetPatternLevelTaskMiddleware[PI any, PO any, MWO any](route *Route[PI, PO], taskMw *TaskMiddleware[MWO]) {
 	route._task_mws = append(route._task_mws, taskMw)
 }
 
@@ -474,6 +495,11 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	newR := rt._tasks_registry.GetRequestWithCtxIfNeeded(r)
+	if newR != nil {
+		r = newR
+	}
+
 	_handler_req_data_marker, err := _req_data_getter._get_req_data(r, _match)
 	if err != nil {
 		if validate.IsValidationError(err) {
@@ -574,6 +600,9 @@ func run_appropriate_mws(
 		_handler = _router._http_mws[i](_handler)
 	}
 
+	// Add tasksCtx to context
+	_handler = _router._tasks_registry.AddTasksCtxToRequestMw()(_handler)
+
 	/////// TASK MIDDLEWARES
 	_task_mws := _route_marker._get_task_mws()
 	_cap := len(_task_mws) + len(_method_matcher._task_mws) + len(_router._task_mws)
@@ -600,8 +629,10 @@ func run_appropriate_mws(
 				_response_proxy: _response_proxy,
 			}
 
-			_tasks_with_input = append(_tasks_with_input,
-				tasks.PrepAny(_tasks_ctx, task, _new_rd))
+			_tasks_with_input = append(
+				_tasks_with_input,
+				tasks.PrepAny(_tasks_ctx, task, _new_rd),
+			)
 		}
 
 		// Run all task middlewares in parallel
@@ -644,7 +675,7 @@ func _req_data_starter[I any](_match *matcher.BestMatch, _tasks_registry *tasks.
 	if len(_match.SplatValues) > 0 {
 		_req_data._splat_vals = _match.SplatValues
 	}
-	_req_data._tasks_ctx = _tasks_registry.NewCtxFromRequest(r)
+	_req_data._tasks_ctx = _tasks_registry.MustGetCtxFromRequest(r)
 	_req_data._response_proxy = response.NewProxy()
 	return _req_data
 }

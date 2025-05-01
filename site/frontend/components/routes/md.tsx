@@ -45,6 +45,6 @@ export function MD(props: RouteProps<"/*">) {
 	);
 }
 
-export function ErrorBoundary() {
-	return null;
+export function ErrorBoundary(props: { error: string }) {
+	return <div>Error: {props.error}</div>;
 }

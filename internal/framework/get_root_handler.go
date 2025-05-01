@@ -22,7 +22,7 @@ var headElsInstance = headels.NewInstance("river")
 func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 	h.validateAndDecorateNestedRouter(nestedRouter)
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		res := response.New(w)
 		res.SetHeader(buildIDHeader, h._buildID)
 
@@ -42,25 +42,21 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 			return
 		}
 
-		uiRouteData, err := h.getUIRouteData(w, r, nestedRouter)
+		uiRouteData := h.getUIRouteData(w, r, nestedRouter)
 
-		if err != nil && isErrNotFound(err) {
-			Log.Error("Not found", "path", r.URL.Path)
+		if uiRouteData.notFound {
 			res.NotFound()
 			return
 		}
 
-		if uiRouteData.didRedirect {
+		if uiRouteData.didErr || uiRouteData.didRedirect {
 			return
 		}
 
-		if err != nil {
-			Log.Error(fmt.Sprintf("Error getting route data: %v\n", err))
-			res.InternalServerError()
-			return
+		routeData := &final_ui_data{
+			ui_data_core:    uiRouteData.ui_data_core,
+			ui_data_stage_2: uiRouteData.state_2_final,
 		}
-
-		routeData := uiRouteData.uiRouteOutput
 
 		currentCacheControlHeader := w.Header().Get("Cache-Control")
 
@@ -119,6 +115,7 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 		}
 
 		var rootTemplateData map[string]any
+		var err error
 		if h.GetRootTemplateData != nil {
 			rootTemplateData, err = h.GetRootTemplateData(r)
 		} else {
@@ -170,6 +167,10 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 
 		res.HTMLBytes(buf.Bytes())
 	})
+
+	handler = nestedRouter.TasksRegistry().AddTasksCtxToRequestMw()(handler).ServeHTTP
+
+	return handler
 }
 
 // If true, is JSON, but may or may not be from an up-to-date client.

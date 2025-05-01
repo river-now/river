@@ -18,6 +18,7 @@ import {
 	type GetRouteDataOutput,
 	internal_RiverClientGlobal,
 	type RiverClientGlobal,
+	type RouteErrorComponent,
 } from "./river_ctx.ts";
 import { isAbortError, LogError, LogInfo, Panic } from "./utils.ts";
 
@@ -866,14 +867,18 @@ async function __reRenderApp({
 }) {
 	// NOW ACTUALLY SET EVERYTHING
 	const identicalKeysToSet = [
+		"outermostError",
+		"outermostErrorIdx",
+		"errorExportKey",
+
+		"matchedPatterns",
 		"loadersData",
 		"importURLs",
 		"exportKeys",
-		"outermostErrorIndex",
-		"matchedPatterns",
-		"splatValues",
-		"params",
 		"hasRootData",
+
+		"params",
+		"splatValues",
 	] as const satisfies ReadonlyArray<keyof RiverClientGlobal>;
 
 	for (const key of identicalKeysToSet) {
@@ -1145,12 +1150,26 @@ async function setupClientLoaders() {
 	internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
 }
 
-export async function initClient(renderFn: () => void) {
+export async function initClient(
+	renderFn: () => void,
+	options?: {
+		defaultErrorBoundary?: RouteErrorComponent;
+	},
+) {
 	if (import.meta.env.DEV && import.meta.hot) {
 		import.meta.hot.on("vite:afterUpdate", () => {
 			latestHMRTimestamp = Date.now();
 			LogInfo("HMR update detected", latestHMRTimestamp);
 		});
+	}
+
+	if (options?.defaultErrorBoundary) {
+		internal_RiverClientGlobal.set(
+			"defaultErrorBoundary",
+			options.defaultErrorBoundary,
+		);
+	} else {
+		internal_RiverClientGlobal.set("defaultErrorBoundary", defaultErrorBoundary);
 	}
 
 	// HANDLE HISTORY STUFF
@@ -1200,17 +1219,40 @@ async function handleComponents(importURLs: Array<string>) {
 	const modulesMap = await importNewComponentsAndGetModulesMap(importURLs);
 	const originalImportURLs = internal_RiverClientGlobal.get("importURLs");
 	const exportKeys = internal_RiverClientGlobal.get("exportKeys") ?? [];
+
 	internal_RiverClientGlobal.set(
 		"activeComponents",
 		originalImportURLs.map(
 			(x, i) => modulesMap.get(x)?.[exportKeys[i] ?? "default"] ?? null,
 		),
 	);
-	internal_RiverClientGlobal.set(
-		"activeErrorBoundaries",
-		originalImportURLs.map((x, i) => modulesMap.get(x)?.ErrorBoundary ?? null),
-	);
+
+	const outermostErrorIdx = internal_RiverClientGlobal.get("outermostErrorIdx");
+
+	if (outermostErrorIdx != null) {
+		let errorComp: any;
+
+		const errorModuleImportURL = originalImportURLs[outermostErrorIdx];
+
+		if (errorModuleImportURL) {
+			const errorModule = modulesMap.get(errorModuleImportURL);
+
+			const errorExportKey = internal_RiverClientGlobal.get("errorExportKey");
+			if (errorExportKey) {
+				errorComp = errorModule[errorExportKey];
+			}
+		}
+
+		internal_RiverClientGlobal.set(
+			"activeErrorBoundary",
+			errorComp ?? internal_RiverClientGlobal.get("defaultErrorBoundary"),
+		);
+	}
 }
+
+const defaultErrorBoundary: RouteErrorComponent = (props: { error: string }) => {
+	return "Route error: " + props.error;
+};
 
 async function runWaitFns(
 	json: PartialWaitFnJSON,

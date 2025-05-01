@@ -6,25 +6,19 @@ import (
 	"strings"
 
 	"github.com/river-now/river/kit/htmlutil"
-	"github.com/river-now/river/kit/mux"
 )
 
 type SSRInnerHTMLInput struct {
-	RiverSymbolStr      string
-	IsDev               bool
-	BuildID             string
-	ViteDevURL          string
-	LoadersData         []any
-	ImportURLs          []string
-	ExportKeys          []string
-	OutermostErrorIndex int
-	MatchedPatterns     []string
-	SplatValues         SplatValues
-	Params              mux.Params
-	HasRootData         bool
-	Deps                []string
-	CSSBundles          []string
-	PublicPathPrefix    string
+	RiverSymbolStr string
+
+	IsDev            bool
+	ViteDevURL       string
+	BuildID          string
+	PublicPathPrefix string
+
+	*ui_data_core
+
+	CSSBundles []string
 }
 
 // Sadly, must include the script tags so html/template parses this correctly.
@@ -33,19 +27,21 @@ type SSRInnerHTMLInput struct {
 const ssrInnerHTMLTmplStr = `<script>
 globalThis[Symbol.for("{{.RiverSymbolStr}}")] = {};
 const x = globalThis[Symbol.for("{{.RiverSymbolStr}}")];
+x.patternToWaitFnMap = {};
 x.isDev = {{.IsDev}};
 x.viteDevURL = {{.ViteDevURL}};
-x.publicPathPrefix = "{{.PublicPathPrefix}}";
-x.patternToWaitFnMap = {};
 x.buildID = {{.BuildID}};
+x.publicPathPrefix = "{{.PublicPathPrefix}}";
+x.outermostError = {{.OutermostError}};
+x.outermostErrorIdx = {{.OutermostErrorIdx}};
+x.errorExportKey = {{.ErrorExportKey}};
+x.matchedPatterns = {{.MatchedPatterns}};
 x.loadersData = {{.LoadersData}};
 x.importURLs = {{.ImportURLs}};
 x.exportKeys = {{.ExportKeys}};
-x.outermostErrorIndex = {{.OutermostErrorIndex}};
-x.matchedPatterns = {{.MatchedPatterns}};
-x.splatValues = {{.SplatValues}};
-x.params = {{.Params}};
 x.hasRootData = {{.HasRootData}};
+x.params = {{.Params}};
+x.splatValues = {{.SplatValues}};
 if (!x.isDev) {
 	const deps = {{.Deps}};
 	deps.forEach((y) => {
@@ -72,25 +68,20 @@ type GetSSRInnerHTMLOutput struct {
 	Sha256Hash string
 }
 
-func (h *River) GetSSRInnerHTML(routeData *UIRouteOutput) (*GetSSRInnerHTMLOutput, error) {
+func (h *River) GetSSRInnerHTML(routeData *final_ui_data) (*GetSSRInnerHTMLOutput, error) {
 	var htmlBuilder strings.Builder
 
 	dto := SSRInnerHTMLInput{
-		RiverSymbolStr:      RiverSymbolStr,
-		IsDev:               h._isDev,
-		BuildID:             h._buildID,
-		ViteDevURL:          routeData.ViteDevURL,
-		LoadersData:         routeData.LoadersData,
-		ImportURLs:          routeData.ImportURLs,
-		ExportKeys:          routeData.ExportKeys,
-		OutermostErrorIndex: routeData.OutermostErrorIndex,
-		MatchedPatterns:     routeData.MatchedPatterns,
-		SplatValues:         routeData.SplatValues,
-		Params:              routeData.Params,
-		HasRootData:         routeData.HasRootData,
-		Deps:                routeData.Deps,
-		CSSBundles:          routeData.CSSBundles,
-		PublicPathPrefix:    h.Wave.GetPublicPathPrefix(),
+		RiverSymbolStr: RiverSymbolStr,
+
+		IsDev:            h._isDev,
+		ViteDevURL:       routeData.ViteDevURL,
+		BuildID:          h._buildID,
+		PublicPathPrefix: h.Wave.GetPublicPathPrefix(),
+
+		ui_data_core: routeData.ui_data_core,
+
+		CSSBundles: routeData.CSSBundles,
 	}
 	if err := ssrInnerTmpl.Execute(&htmlBuilder, dto); err != nil {
 		wrapped := fmt.Errorf("could not execute SSR inner HTML template: %w", err)

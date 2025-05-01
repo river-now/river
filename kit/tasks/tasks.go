@@ -97,21 +97,23 @@ func Register[I any, O any](tr *Registry, f genericsutil.IOFunc[*Arg[I], O]) *Re
 /////// TASKS REGISTRY
 /////////////////////////////////////////////////////////////////////
 
+// Always create with tasks.NewRegistry(key)
 type Registry struct {
+	key      string
 	count    int
 	registry map[int]genericsutil.AnyIOFunc
 }
 
 func (tr *Registry) NewCtxFromNativeContext(parentContext context.Context) *TasksCtx {
-	return newTasksCtx(tr, parentContext, nil)
+	return tr.newTasksCtx(parentContext, nil)
 }
 
 func (tr *Registry) NewCtxFromRequest(r *http.Request) *TasksCtx {
-	return newTasksCtx(tr, r.Context(), r)
+	return tr.newTasksCtx(r.Context(), r)
 }
 
-func NewRegistry() *Registry {
-	return &Registry{registry: make(map[int]genericsutil.AnyIOFunc)}
+func NewRegistry(key string) *Registry {
+	return &Registry{key: key, registry: make(map[int]genericsutil.AnyIOFunc)}
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -128,13 +130,60 @@ type TasksCtx struct {
 	cancel  context.CancelFunc
 }
 
-func newTasksCtx(registry *Registry, parentContext context.Context, r *http.Request) *TasksCtx {
+type tasksCtxContextKeyType string
+
+var tasksCtxContextKey tasksCtxContextKeyType = "_tasks_ctx_"
+
+func (tr *Registry) toContextKey() tasksCtxContextKeyType {
+	return tasksCtxContextKey + tasksCtxContextKeyType(tr.key)
+}
+
+func (tr *Registry) GetCtxFromRequest(r *http.Request) *TasksCtx {
+	_tasks_ctx, ok := r.Context().Value(tr.toContextKey()).(*TasksCtx)
+	if !ok {
+		return nil
+	}
+	return _tasks_ctx
+}
+
+func (tr *Registry) MustGetCtxFromRequest(r *http.Request) *TasksCtx {
+	_tasks_ctx, ok := r.Context().Value(tr.toContextKey()).(*TasksCtx)
+	if !ok {
+		panic("tasks context not found in request")
+	}
+	return _tasks_ctx
+}
+
+func (tr *Registry) GetRequestWithCtxIfNeeded(r *http.Request) *http.Request {
+	existing := tr.GetCtxFromRequest(r)
+	if existing != nil {
+		return nil
+	}
+	tasksCtx := tr.NewCtxFromRequest(r)
+	contextWithValue := context.WithValue(r.Context(), tr.toContextKey(), tasksCtx)
+	return r.WithContext(contextWithValue)
+}
+
+func (tr *Registry) AddTasksCtxToRequestMw() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			newR := tr.GetRequestWithCtxIfNeeded(r)
+			if newR == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, newR)
+		})
+	}
+}
+
+func (tr *Registry) newTasksCtx(parentContext context.Context, r *http.Request) *TasksCtx {
 	contextWithCancel, cancel := context.WithCancel(parentContext)
 
 	c := &TasksCtx{
 		mu:       &sync.Mutex{},
 		request:  r,
-		registry: registry,
+		registry: tr,
 		context:  contextWithCancel,
 		cancel:   cancel,
 	}
@@ -244,6 +293,10 @@ func (c *TasksCtx) ParallelPreload(preparedTasks ...AnyPreparedTask) bool {
 
 func (c *TasksCtx) doOnce(taskID int, ctx *TasksCtx, input any) {
 	taskHelper := c.registry.registry[taskID]
+
+	if taskHelper == nil {
+		panic(fmt.Sprintf("task with id %d not found in registry", taskID))
+	}
 
 	c.mu.Lock()
 	if _, ok := c.results.results[taskID]; !ok {

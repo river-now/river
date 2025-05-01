@@ -10,7 +10,7 @@ import (
 	"github.com/river-now/river/kit/validate"
 )
 
-var tasksRegistry = tasks.NewRegistry()
+var tasksRegistry = tasks.NewRegistry("jd")
 
 var r = mux.NewRouter(&mux.Options{
 	TasksRegistry: tasksRegistry,
@@ -84,7 +84,7 @@ func registerRoutes() {
 		w.Write([]byte("slash"))
 	})
 
-	mux.SetRouteLevelTaskMiddleware(x, AuthTask)
+	mux.SetPatternLevelTaskMiddleware(x, AuthTask)
 }
 
 // var _ = Get("/", func(rd *router.ReqData[Test]) (string, error) {

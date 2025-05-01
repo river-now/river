@@ -11,44 +11,71 @@ import (
 	"github.com/river-now/river/kit/response"
 	"github.com/river-now/river/kit/tasks"
 	"github.com/river-now/river/kit/typed"
+	"golang.org/x/sync/errgroup"
 )
+
+/////////////////////////////////////////////////////////////////////
+/////// MISC
+/////////////////////////////////////////////////////////////////////
 
 type SplatValues []string
 
-type ActivePathData struct {
-	HeadEls     []*htmlutil.Element
-	LoadersData []any
-	// LoadersErrMsgs      []string
-	LoadersErrs         []error
-	ImportURLs          []string
-	ExportKeys          []string
-	OutermostErrorIndex int
-	MatchedPatterns     []string
-	SplatValues         SplatValues
-	Params              mux.Params
-	Deps                []string
-	HasRootData         bool
-}
-
-type cachedItemSubset struct {
-	ImportURLs []string
-	ExportKeys []string
-	Deps       []string
-}
-
 var gmpdCache = typed.SyncMap[string, *cachedItemSubset]{}
 
-type uiRoutesData struct {
-	activePathData *ActivePathData
-	didRedirect    bool
-	didErr         bool
-	found          bool
+type cachedItemSubset struct {
+	ImportURLs      []string
+	ExportKeys      []string
+	ErrorExportKeys []string
+	Deps            []string
 }
 
-// Returns nil if no match is found
-func (h *River) getUIRoutesData(
+/////////////////////////////////////////////////////////////////////
+/////// CORE TYPES
+/////////////////////////////////////////////////////////////////////
+
+type ui_data_core struct {
+	OutermostError    string `json:"outermostError,omitempty"`
+	OutermostErrorIdx *int   `json:"outermostErrorIdx,omitempty"`
+	ErrorExportKey    string `json:"errorExportKey,omitempty"`
+
+	MatchedPatterns []string `json:"matchedPatterns,omitempty"`
+	LoadersData     []any    `json:"loadersData,omitempty"`
+	ImportURLs      []string `json:"importURLs,omitempty"`
+	ExportKeys      []string `json:"exportKeys,omitempty"`
+	HasRootData     bool     `json:"hasRootData,omitempty"`
+
+	Params      mux.Params  `json:"params,omitempty"`
+	SplatValues SplatValues `json:"splatValues,omitempty"`
+
+	Deps []string `json:"deps,omitempty"`
+}
+
+type ui_data_stage_2 struct {
+	Title string              `json:"title,omitempty"`
+	Meta  []*htmlutil.Element `json:"metaHeadEls,omitempty"`
+	Rest  []*htmlutil.Element `json:"restHeadEls,omitempty"`
+
+	CSSBundles []string `json:"cssBundles,omitempty"`
+	ViteDevURL string   `json:"viteDevURL,omitempty"`
+}
+
+type ui_data_all struct {
+	notFound         bool
+	didRedirect      bool
+	didErr           bool
+	ui_data_core     *ui_data_core
+	stage_1_head_els []*htmlutil.Element
+	state_2_final    *ui_data_stage_2
+}
+
+type final_ui_data struct {
+	*ui_data_core
+	*ui_data_stage_2
+}
+
+func (h *River) get_ui_data_stage_1(
 	w http.ResponseWriter, r *http.Request, nestedRouter *mux.NestedRouter, tasksCtx *tasks.TasksCtx,
-) *uiRoutesData {
+) *ui_data_all {
 	realPath := matcher.StripTrailingSlash(r.URL.Path)
 	if realPath == "" {
 		realPath = "/"
@@ -56,7 +83,7 @@ func (h *River) getUIRoutesData(
 
 	_match_results, found := mux.FindNestedMatches(nestedRouter, r)
 	if !found {
-		return &uiRoutesData{}
+		return &ui_data_all{notFound: true}
 	}
 
 	_matches := _match_results.Matches
@@ -87,6 +114,7 @@ func (h *River) getUIRoutesData(
 			if foundPath == nil {
 				_cachedItemSubset.ImportURLs = append(_cachedItemSubset.ImportURLs, "")
 				_cachedItemSubset.ExportKeys = append(_cachedItemSubset.ExportKeys, "")
+				_cachedItemSubset.ErrorExportKeys = append(_cachedItemSubset.ErrorExportKeys, "")
 				continue
 			}
 			pathToUse := foundPath.OutPath
@@ -95,6 +123,7 @@ func (h *River) getUIRoutesData(
 			}
 			_cachedItemSubset.ImportURLs = append(_cachedItemSubset.ImportURLs, "/"+pathToUse)
 			_cachedItemSubset.ExportKeys = append(_cachedItemSubset.ExportKeys, foundPath.ExportKey)
+			_cachedItemSubset.ErrorExportKeys = append(_cachedItemSubset.ErrorExportKeys, foundPath.ErrorExportKey)
 		}
 		_cachedItemSubset.Deps = h.getDeps(_matches)
 		_cachedItemSubset, _ = gmpdCache.LoadOrStore(cacheKey, _cachedItemSubset)
@@ -114,11 +143,11 @@ func (h *River) getUIRoutesData(
 		_merged_response_proxy.ApplyToResponseWriter(w, r)
 
 		if _merged_response_proxy.IsError() {
-			return &uiRoutesData{didErr: true, found: true}
+			return &ui_data_all{didErr: true}
 		}
 
 		if _merged_response_proxy.IsRedirect() {
-			return &uiRoutesData{didRedirect: true, found: true}
+			return &ui_data_all{didRedirect: true}
 		}
 	}
 
@@ -128,7 +157,6 @@ func (h *River) getUIRoutesData(
 	}
 
 	loadersData := make([]any, numberOfLoaders)
-	// loadersErrMsgs := make([]string, numberOfLoaders)
 	loadersErrs := make([]error, numberOfLoaders)
 
 	if numberOfLoaders > 0 {
@@ -140,13 +168,10 @@ func (h *River) getUIRoutesData(
 		}
 	}
 
-	var thereAreErrors bool
-	outermostErrorIndex := -1
+	var outermostErrorIdx *int
 	for i, err := range loadersErrs {
 		if err != nil {
-			Log.Error(fmt.Sprintf("ERROR: %s", err))
-			thereAreErrors = true
-			outermostErrorIndex = i
+			outermostErrorIdx = &i
 			break
 		}
 	}
@@ -158,29 +183,39 @@ func (h *River) getUIRoutesData(
 		}
 	}
 
-	if thereAreErrors {
-		headElsDoubleSlice := loadersHeadEls[:outermostErrorIndex]
+	if outermostErrorIdx != nil {
+		derefOuterMostErrorIdx := *outermostErrorIdx
+
+		headElsDoubleSlice := loadersHeadEls[:derefOuterMostErrorIdx]
 		headEls := make([]*htmlutil.Element, 0, len(headElsDoubleSlice))
 		for _, slice := range headElsDoubleSlice {
 			headEls = append(headEls, slice...)
 		}
 
-		apd := &ActivePathData{
-			LoadersData: loadersData[:outermostErrorIndex],
-			// LoadersErrMsgs:      loadersErrs[:outermostErrorIndex+1],
-			ImportURLs:          _cachedItemSubset.ImportURLs[:outermostErrorIndex+1],
-			ExportKeys:          _cachedItemSubset.ExportKeys[:outermostErrorIndex+1],
-			OutermostErrorIndex: outermostErrorIndex,
-			MatchedPatterns:     matchedPatterns[:outermostErrorIndex+1],
-			SplatValues:         _match_results.SplatValues,
-			Params:              _match_results.Params,
-			Deps:                _cachedItemSubset.Deps,
-			LoadersErrs:         loadersErrs[:outermostErrorIndex+1],
-			HeadEls:             headEls,
-			HasRootData:         hasRootData,
+		cutIdx := derefOuterMostErrorIdx + 1
+
+		ui_data := &ui_data_all{
+			ui_data_core: &ui_data_core{
+				OutermostError:    loadersErrs[derefOuterMostErrorIdx].Error(),
+				OutermostErrorIdx: outermostErrorIdx,
+				ErrorExportKey:    _cachedItemSubset.ErrorExportKeys[derefOuterMostErrorIdx],
+
+				MatchedPatterns: matchedPatterns[:cutIdx],
+				LoadersData:     loadersData[:cutIdx],
+				ImportURLs:      _cachedItemSubset.ImportURLs[:cutIdx],
+				ExportKeys:      _cachedItemSubset.ExportKeys[:cutIdx],
+				HasRootData:     hasRootData,
+
+				Params:      _match_results.Params,
+				SplatValues: _match_results.SplatValues,
+
+				Deps: _cachedItemSubset.Deps,
+			},
+
+			stage_1_head_els: headEls,
 		}
 
-		return &uiRoutesData{activePathData: apd, found: true}
+		return ui_data
 	}
 
 	headEls := make([]*htmlutil.Element, 0, len(loadersHeadEls))
@@ -188,20 +223,85 @@ func (h *River) getUIRoutesData(
 		headEls = append(headEls, slice...)
 	}
 
-	apd := &ActivePathData{
-		LoadersData: loadersData,
-		// LoadersErrMsgs:      loadersErrMsgs,
-		ImportURLs:          _cachedItemSubset.ImportURLs,
-		ExportKeys:          _cachedItemSubset.ExportKeys,
-		OutermostErrorIndex: outermostErrorIndex,
-		MatchedPatterns:     matchedPatterns,
-		SplatValues:         _match_results.SplatValues,
-		Params:              _match_results.Params,
-		Deps:                _cachedItemSubset.Deps,
-		LoadersErrs:         loadersErrs,
-		HeadEls:             headEls,
-		HasRootData:         hasRootData,
+	ui_data := &ui_data_all{
+		ui_data_core: &ui_data_core{
+			OutermostError:    "",
+			OutermostErrorIdx: nil,
+
+			MatchedPatterns: matchedPatterns,
+			LoadersData:     loadersData,
+			ImportURLs:      _cachedItemSubset.ImportURLs,
+			ExportKeys:      _cachedItemSubset.ExportKeys,
+			HasRootData:     hasRootData,
+
+			Params:      _match_results.Params,
+			SplatValues: _match_results.SplatValues,
+
+			Deps: _cachedItemSubset.Deps,
+		},
+
+		stage_1_head_els: headEls,
 	}
 
-	return &uiRoutesData{activePathData: apd, found: true}
+	return ui_data
+}
+
+func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
+	nestedRouter *mux.NestedRouter,
+) *ui_data_all {
+	res := response.New(w)
+
+	tasksCtx := nestedRouter.TasksRegistry().MustGetCtxFromRequest(r)
+
+	eg := errgroup.Group{}
+
+	var defaultHeadEls []*htmlutil.Element
+	var err error
+
+	eg.Go(func() error {
+		if h.GetDefaultHeadEls != nil {
+			defaultHeadEls, err = h.GetDefaultHeadEls(r)
+			if err != nil {
+				return fmt.Errorf("GetDefaultHeadEls error: %w", err)
+			}
+		} else {
+			defaultHeadEls = []*htmlutil.Element{}
+		}
+		return nil
+	})
+
+	uiRoutesData := h.get_ui_data_stage_1(w, r, nestedRouter, tasksCtx)
+
+	if uiRoutesData.notFound || uiRoutesData.didRedirect || uiRoutesData.didErr {
+		return uiRoutesData
+	}
+
+	err = eg.Wait()
+	if err != nil {
+		Log.Error(err.Error())
+		res.InternalServerError()
+		return &ui_data_all{didErr: true}
+	}
+
+	var hb []*htmlutil.Element
+	hb = make([]*htmlutil.Element, 0, len(uiRoutesData.stage_1_head_els)+len(defaultHeadEls))
+	hb = append(hb, defaultHeadEls...)
+	hb = append(hb, uiRoutesData.stage_1_head_els...)
+
+	headEls := headElsInstance.ToSortedHeadEls(hb)
+
+	ui_data := &ui_data_all{
+		ui_data_core: uiRoutesData.ui_data_core,
+
+		state_2_final: &ui_data_stage_2{
+			Title: headEls.Title,
+			Meta:  headEls.Meta,
+			Rest:  headEls.Rest,
+
+			CSSBundles: h.getCSSBundles(uiRoutesData.ui_data_core.Deps),
+			ViteDevURL: h.getViteDevURL(),
+		},
+	}
+
+	return ui_data
 }

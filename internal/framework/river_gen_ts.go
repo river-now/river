@@ -11,7 +11,7 @@ import (
 type AdHocType = rpc.AdHocType
 
 type TSGenOptions struct {
-	UIRouter      *mux.NestedRouter
+	LoadersRouter *mux.NestedRouter
 	ActionsRouter *mux.Router
 	AdHocTypes    []*AdHocType
 	ExtraTSCode   string
@@ -33,11 +33,11 @@ var mutationMethods = map[string]struct{}{
 func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 	var collection []tsgen.CollectionItem
 
-	allLoaders := opts.UIRouter.AllRoutes()
+	allLoaders := opts.LoadersRouter.AllRoutes()
 	allActions := opts.ActionsRouter.AllRoutes()
 
 	expectedRootDataPattern := ""
-	if opts.UIRouter.GetExplicitIndexSegment() != "" {
+	if opts.LoadersRouter.GetExplicitIndexSegment() != "" {
 		expectedRootDataPattern = "/"
 	}
 

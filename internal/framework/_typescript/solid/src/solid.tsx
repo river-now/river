@@ -28,11 +28,18 @@ const [currentRiverData, setCurrentRiverData] = createSignal(getCurrentRiverData
 export { currentRiverData };
 addRouteChangeListener(() => setCurrentRiverData(getCurrentRiverData()));
 
+const [outermostErrorIdx, setOutermostErrorIdx] = createSignal(
+	ctx.get("outermostErrorIdx"),
+);
+const [outermostError, setOutermostError] = createSignal(ctx.get("outermostError"));
+
 addRouteChangeListener((e) => {
 	setLatestEvent(e);
 	setLoadersData(ctx.get("loadersData"));
 	setClientLoadersData(ctx.get("clientLoadersData"));
 	setCurrentRiverData(getCurrentRiverData());
+	setOutermostErrorIdx(ctx.get("outermostErrorIdx"));
+	setOutermostError(ctx.get("outermostError"));
 });
 
 addBuildIDListener((e) => {
@@ -46,6 +53,7 @@ export function RiverRootOutlet(
 	props: RiverRootOutletPropsGeneric<JSX.Element>,
 ): JSX.Element {
 	const idx = props.idx ?? 0;
+
 	const [currentImportURL, setCurrentImportURL] = createSignal(
 		ctx.get("importURLs")?.[idx],
 	);
@@ -86,21 +94,38 @@ export function RiverRootOutlet(
 		});
 	}
 
+	const isErrorIdx = createMemo(() => {
+		return idx === outermostErrorIdx();
+	});
+
 	const currentCompMemo = createMemo(() => {
+		if (isErrorIdx()) {
+			return null;
+		}
 		currentImportURL();
 		currentExportKey();
 		return ctx.get("activeComponents")?.[idx];
 	});
 
 	const shouldFallbackOutletMemo = createMemo(() => {
+		if (isErrorIdx()) {
+			return false;
+		}
 		if (currentCompMemo()) {
 			return false;
 		}
 		return idx + 1 < loadersData().length;
 	});
 
+	const errorCompMemo = createMemo(() => {
+		if (!isErrorIdx()) {
+			return null;
+		}
+		return ctx.get("activeErrorBoundary");
+	});
+
 	return (
-		<ErrorBoundary fallback={<div>ERROR</div>}>
+		<ErrorBoundary fallback={"Client error."}>
 			<Show when={currentCompMemo()}>
 				{currentCompMemo()({
 					idx: idx,
@@ -113,6 +138,8 @@ export function RiverRootOutlet(
 			<Show when={shouldFallbackOutletMemo()}>
 				<RiverRootOutlet {...props} idx={idx + 1} />
 			</Show>
+
+			<Show when={isErrorIdx()}>{errorCompMemo()?.({ error: outermostError() })}</Show>
 		</ErrorBoundary>
 	);
 }

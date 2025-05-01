@@ -10,7 +10,7 @@ import (
 	"github.com/river-now/river/kit/tasks"
 )
 
-var tasksRegistry = tasks.NewRegistry()
+var tasksRegistry = tasks.NewRegistry("jd")
 
 var r = mux.NewNestedRouter(&mux.NestedOptions{
 	TasksRegistry:        tasksRegistry,

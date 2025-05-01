@@ -12,17 +12,23 @@ type Meta = {
 };
 
 type shared = {
+	outermostError?: string;
+	outermostErrorIdx?: number;
+	errorExportKey?: string;
+
+	matchedPatterns: Array<string>;
 	loadersData: Array<any>;
 	importURLs: Array<string>;
 	exportKeys: Array<string>;
-	outermostErrorIndex: number;
-	params: Record<string, string>;
-	matchedPatterns: Array<string>;
-	splatValues: Array<string>;
 	hasRootData: boolean;
+
+	params: Record<string, string>;
+	splatValues: Array<string>;
+
 	buildID: string;
-	activeErrorBoundaries: Array<any> | null;
+
 	activeComponents: Array<any> | null;
+	activeErrorBoundary?: any;
 };
 
 export type GetRouteDataOutput = Omit<shared, "buildID"> &
@@ -32,6 +38,8 @@ export type GetRouteDataOutput = Omit<shared, "buildID"> &
 	};
 
 export const RIVER_SYMBOL = Symbol.for("__river_internal__");
+
+export type RouteErrorComponent = (props: { error: string }) => any;
 
 export type RiverClientGlobal = shared & {
 	isDev: boolean;
@@ -45,6 +53,7 @@ export type RiverClientGlobal = shared & {
 		) => Promise<any>
 	>;
 	clientLoadersData: Array<any>;
+	defaultErrorBoundary: RouteErrorComponent;
 };
 
 export function __getRiverClientGlobal() {

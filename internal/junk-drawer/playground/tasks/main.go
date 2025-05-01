@@ -9,7 +9,7 @@ import (
 	"github.com/river-now/river/kit/tasks"
 )
 
-var tasksRegistry = tasks.NewRegistry()
+var tasksRegistry = tasks.NewRegistry("jd")
 
 var (
 	Auth    = tasks.Register(tasksRegistry, auth)

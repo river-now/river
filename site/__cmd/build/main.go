@@ -16,7 +16,7 @@ func main() {
 	app.Wave.Builder(func(isDev bool) error {
 		return app.River.Build(&river.BuildOptions{
 			IsDev:         isDev,
-			UIRouter:      router.UIRouter,
+			LoadersRouter: router.LoadersRouter,
 			ActionsRouter: router.ActionsRouter,
 			AdHocTypes:    []*river.AdHocType{},
 			ExtraTSCode:   a.BuildString(),

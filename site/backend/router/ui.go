@@ -11,11 +11,11 @@ import (
 	"github.com/river-now/river/wave"
 )
 
-var UIRouter = mux.NewNestedRouter(&mux.NestedOptions{TasksRegistry: sharedTasksRegistry})
+var LoadersRouter = mux.NewNestedRouter(&mux.NestedOptions{TasksRegistry: sharedTasksRegistry})
 
 func newLoader[O any](pattern string, f mux.TaskHandlerFunc[mux.None, O]) *mux.TaskHandler[mux.None, O] {
-	loaderTask := mux.TaskHandlerFromFunc(UIRouter.TasksRegistry(), f)
-	mux.RegisterNestedTaskHandler(UIRouter, pattern, loaderTask)
+	loaderTask := mux.TaskHandlerFromFunc(LoadersRouter.TasksRegistry(), f)
+	mux.RegisterNestedTaskHandler(LoadersRouter, pattern, loaderTask)
 	return loaderTask
 }
 
@@ -26,16 +26,16 @@ type RootData struct {
 var currentNPMVersion = "v" + river.Internal__GetCurrentNPMVersion()
 
 var _ = newLoader("", func(c *mux.NestedReqData) (*RootData, error) {
-	r := c.Request()
+	req, res := c.Request(), c.ResponseProxy()
 
 	if !wave.GetIsDev() {
-		if river.IsJSONRequest(r) {
+		if river.IsJSONRequest(req) {
 			// Because this app has no user-specific data, we can cache the JSON response
 			// pretty aggressively.
-			c.ResponseProxy().SetHeader("Cache-Control", "public, max-age=10, s-maxage=20, must-revalidate")
+			res.SetHeader("Cache-Control", "public, max-age=10, s-maxage=20, must-revalidate")
 		} else {
 			// Don't cache HTML, but stop short of "no-store" so it's still eligible for ETag revalidation
-			c.ResponseProxy().SetHeader("Cache-Control", "no-cache")
+			res.SetHeader("Cache-Control", "no-cache")
 		}
 	}
 

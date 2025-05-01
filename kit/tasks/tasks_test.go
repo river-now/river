@@ -12,7 +12,7 @@ import (
 
 func TestTasks(t *testing.T) {
 	t.Run("BasicTaskExecution", func(t *testing.T) {
-		registry := NewRegistry()
+		registry := NewRegistry("test")
 		task := Register(registry, func(c *Arg[string]) (string, error) {
 			return "Hello, " + c.Input, nil
 		})
@@ -29,7 +29,7 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("ParallelExecution", func(t *testing.T) {
-		registry := NewRegistry()
+		registry := NewRegistry("test")
 
 		task1 := Register(registry, func(c *Arg[int]) (int, error) {
 			time.Sleep(100 * time.Millisecond)
@@ -69,7 +69,7 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("TaskDependencies", func(t *testing.T) {
-		registry := NewRegistry()
+		registry := NewRegistry("test")
 
 		authTask := Register(registry, func(c *Arg[string]) (string, error) {
 			return "token-" + c.Input, nil
@@ -95,7 +95,7 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("ContextCancellation", func(t *testing.T) {
-		registry := NewRegistry()
+		registry := NewRegistry("test")
 
 		task := Register(registry, func(c *Arg[string]) (string, error) {
 			time.Sleep(200 * time.Millisecond)
@@ -118,7 +118,7 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("ErrorHandling", func(t *testing.T) {
-		registry := NewRegistry()
+		registry := NewRegistry("test")
 
 		task := Register(registry, func(c *Arg[string]) (string, error) {
 			return "", errors.New("task failed")
@@ -139,7 +139,7 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("OnceExecution", func(t *testing.T) {
-		registry := NewRegistry()
+		registry := NewRegistry("test")
 
 		var counter int
 		var mu sync.Mutex
@@ -175,7 +175,7 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("HTTPRequestContext", func(t *testing.T) {
-		registry := NewRegistry()
+		registry := NewRegistry("test")
 
 		task := Register(registry, func(c *Arg[string]) (string, error) {
 			return c.Request().URL.String(), nil
@@ -196,7 +196,7 @@ func TestTasks(t *testing.T) {
 
 func TestTasksWithSharedDependencies_Simple(t *testing.T) {
 	t.Run("ParallelTasksWithSharedDependencies", func(t *testing.T) {
-		registry := NewRegistry()
+		registry := NewRegistry("test")
 
 		// This simulates the Auth task
 		var authCounter int
@@ -283,7 +283,7 @@ func TestTasksWithSharedDependencies_Simple(t *testing.T) {
 
 func TestTasksWithSharedDependencies_MoreThorough(t *testing.T) {
 	t.Run("ComprehensiveParallelTasksWithSharedDependencies", func(t *testing.T) {
-		registry := NewRegistry()
+		registry := NewRegistry("test")
 
 		// Track execution order and timing
 		var executionOrder []string

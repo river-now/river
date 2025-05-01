@@ -14,7 +14,7 @@ import (
 	"github.com/river-now/river/kit/tasks"
 )
 
-var sharedTasksRegistry = tasks.NewRegistry()
+var sharedTasksRegistry = tasks.NewRegistry("site")
 
 func Core() *mux.Router {
 	r := mux.NewRouter(nil)
@@ -35,7 +35,7 @@ func Core() *mux.Router {
 	mux.RegisterHandler(r, "GET", app.Wave.GetPublicPathPrefix()+"*", app.Wave.MustGetServeStaticHandler(true))
 
 	// river UI routes
-	mux.RegisterHandler(r, "GET", "/*", app.River.GetUIHandler(UIRouter))
+	mux.RegisterHandler(r, "GET", "/*", app.River.GetUIHandler(LoadersRouter))
 
 	// river API routes
 	actionsHandler := app.River.GetActionsHandler(ActionsRouter)

@@ -462,7 +462,7 @@ func (h *River) Build(opts *BuildOptions) error {
 	}
 
 	tsgenOutput, err := h.GenerateTypeScript(&TSGenOptions{
-		UIRouter:      opts.UIRouter,
+		LoadersRouter: opts.LoadersRouter,
 		ActionsRouter: opts.ActionsRouter,
 		AdHocTypes:    opts.AdHocTypes,
 		ExtraTSCode:   opts.ExtraTSCode,
@@ -640,7 +640,7 @@ func (h *River) toPathsFile_StageTwo() (*PathsFile, error) {
 
 type BuildOptions struct {
 	IsDev         bool
-	UIRouter      *mux.NestedRouter
+	LoadersRouter *mux.NestedRouter
 	ActionsRouter *mux.Router
 	AdHocTypes    []*AdHocType
 	ExtraTSCode   string
