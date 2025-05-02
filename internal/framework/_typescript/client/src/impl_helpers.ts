@@ -2,7 +2,7 @@
 /////// ROUTE COMPONENTS
 /////////////////////////////////////////////////////////////////////
 
-import { getPrefetchHandlers, makeLinkOnClickFn } from "./client.ts";
+import { getPrefetchHandlers, makeLinkOnClickFn, type ScrollState } from "./client.ts";
 import { internal_RiverClientGlobal } from "./river_ctx.ts";
 
 export type RiverUntypedLoader = {

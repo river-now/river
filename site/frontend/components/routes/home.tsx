@@ -1,11 +1,5 @@
-import { RiverRootOutlet } from "river.now/solid";
-import "../../css/tailwind-output.css";
 import { Link } from "../app_link.tsx";
 import type { RouteProps } from "../app_utils.ts";
-
-export function App() {
-	return <RiverRootOutlet />;
-}
 
 export function Home(props: RouteProps<"/">) {
 	return (

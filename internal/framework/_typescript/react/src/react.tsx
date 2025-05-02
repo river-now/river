@@ -1,16 +1,18 @@
-import { atom, useAtom } from "jotai";
-import { type JSX, useEffect, useMemo, useState } from "react";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { type JSX, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import {
 	addBuildIDListener,
+	addLocationListener,
 	addRouteChangeListener,
+	applyScrollState,
 	internal_RiverClientGlobal as ctx,
 	getCurrentRiverData,
+	getLocation,
 	type RiverRootOutletPropsGeneric,
+	type RouteChangeEvent,
 } from "river.now/client";
 import { jsonDeepEquals } from "river.now/kit/json";
-
-let shouldScroll = false;
 
 const importURLsAtom = atom(ctx.get("importURLs"));
 const rootDataAtom = atom(ctx.get("hasRootData") ? ctx.get("loadersData")[0] : null);
@@ -19,6 +21,17 @@ const splatValuesAtom = atom(ctx.get("splatValues") ?? []);
 export const loadersDataAtom = atom(ctx.get("loadersData"));
 export const clientLoadersDataAtom = atom(ctx.get("clientLoadersData"));
 export const currentRiverDataAtom = atom(getCurrentRiverData());
+
+const outermostErrorIdxAtom = atom(ctx.get("outermostErrorIdx"));
+const outermostErrorAtom = atom(ctx.get("outermostError"));
+
+const latestEventAtom = atom<RouteChangeEvent | null>(null);
+
+const locationAtom = atom(getLocation());
+
+export function useLocation() {
+	return useAtomValue(locationAtom);
+}
 
 export function RiverRootOutlet(
 	props: RiverRootOutletPropsGeneric<JSX.Element>,
@@ -66,6 +79,11 @@ export function RiverRootOutlet(
 	const [clientLoadersData, setClientLoadersData] = useAtom(clientLoadersDataAtom);
 	const [currentRiverData, setCurrentRiverData] = useAtom(currentRiverDataAtom);
 
+	const [outermostErrorIdx, setOutermostErrorIdx] = useAtom(outermostErrorIdxAtom);
+	const [outermostError, setOutermostError] = useAtom(outermostErrorAtom);
+
+	const [latestEvent, setLatestEvent] = useAtom(latestEventAtom);
+
 	useEffect(() => {
 		if (idx === 0) {
 			setClientLoadersData(ctx.get("clientLoadersData"));
@@ -85,6 +103,9 @@ export function RiverRootOutlet(
 				const newLoadersData = ctx.get("loadersData");
 				const newClientLoadersData = ctx.get("clientLoadersData");
 				const newCurrentRiverData = getCurrentRiverData();
+
+				const newOutermostErrorIdx = ctx.get("outermostErrorIdx");
+				const newOutermostError = ctx.get("outermostError");
 
 				flushSync(() => {
 					if (!jsonDeepEquals(importURLs, newImportURLs)) {
@@ -108,22 +129,40 @@ export function RiverRootOutlet(
 					if (!jsonDeepEquals(currentRiverData, newCurrentRiverData)) {
 						setCurrentRiverData(newCurrentRiverData);
 					}
+					if (outermostErrorIdx !== newOutermostErrorIdx) {
+						setOutermostErrorIdx(newOutermostErrorIdx);
+					}
+					if (outermostError !== newOutermostError) {
+						setOutermostError(newOutermostError);
+					}
+					setLatestEvent(e);
 				});
-
-				if (e.detail.scrollState) {
-					shouldScroll = true;
-					window.requestAnimationFrame(() => {
-						if (shouldScroll && e.detail.scrollState) {
-							window.scrollTo(e.detail.scrollState.x, e.detail.scrollState.y);
-							shouldScroll = false;
-						}
-					});
-				}
 			});
 		}
 	}, [idx]);
 
+	useLayoutEffect(() => {
+		if (!latestEvent || idx !== 0) {
+			return;
+		}
+		window.requestAnimationFrame(() => {
+			applyScrollState(latestEvent.detail.scrollState);
+		});
+	}, [idx, latestEvent]);
+
+	const setLocation = useSetAtom(locationAtom);
+
 	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
+	useEffect(() => {
+		if (idx === 0) {
+			return addLocationListener(() => {
+				flushSync(() => {
+					setLocation(getLocation());
+				});
+			});
+		}
+	}, [idx]);
+
 	useEffect(() => {
 		if (idx === 0) {
 			return addBuildIDListener((e) => {
@@ -137,11 +176,17 @@ export function RiverRootOutlet(
 		}
 	}, [idx]);
 
+	const isErrorIdx = useMemo(() => {
+		return idx === outermostErrorIdx;
+	}, [idx, outermostErrorIdx]);
+
 	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
-	const CurrentComp = useMemo(
-		() => ctx.get("activeComponents")?.[idx],
-		[currentImportURL, currentExportKey],
-	);
+	const CurrentComp = useMemo(() => {
+		if (isErrorIdx) {
+			return null;
+		}
+		return ctx.get("activeComponents")?.[idx];
+	}, [currentImportURL, currentExportKey, isErrorIdx]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	const Outlet = useMemo(
@@ -152,8 +197,28 @@ export function RiverRootOutlet(
 	);
 
 	const shouldFallbackOutletMemo = useMemo(() => {
+		if (isErrorIdx) {
+			return false;
+		}
+		if (CurrentComp) {
+			return false;
+		}
 		return idx + 1 < loadersData.length;
-	}, [idx, loadersData]);
+	}, [idx, loadersData, isErrorIdx, CurrentComp]);
+
+	const ErrorComp = useMemo(() => {
+		if (!isErrorIdx) {
+			return null;
+		}
+		return ctx.get("activeErrorBoundary");
+	}, [isErrorIdx]);
+
+	if (isErrorIdx) {
+		if (ErrorComp) {
+			return <ErrorComp error={outermostError} />;
+		}
+		return <>{`Error: ${outermostError || "unknown"}`}</>;
+	}
 
 	if (!CurrentComp) {
 		if (shouldFallbackOutletMemo) {

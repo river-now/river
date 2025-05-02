@@ -1,21 +1,22 @@
 import {
 	addBuildIDListener,
+	addLocationListener,
 	addRouteChangeListener,
+	applyScrollState,
 	internal_RiverClientGlobal as ctx,
 	getCurrentRiverData,
+	getLocation,
 	type RiverRootOutletPropsGeneric,
 	type RouteChangeEvent,
 } from "river.now/client";
 import {
 	createEffect,
 	createMemo,
+	createRenderEffect,
 	createSignal,
-	ErrorBoundary,
 	type JSX,
 	Show,
 } from "solid-js";
-
-let shouldScroll = false;
 
 const [latestEvent, setLatestEvent] = createSignal<RouteChangeEvent | null>(null);
 const [loadersData, setLoadersData] = createSignal(ctx.get("loadersData"));
@@ -47,6 +48,13 @@ addBuildIDListener((e) => {
 		return;
 	}
 	setCurrentRiverData(getCurrentRiverData());
+});
+
+const [location, setLocation] = createSignal(getLocation());
+export { location };
+
+addLocationListener(() => {
+	setLocation(getLocation());
 });
 
 export function RiverRootOutlet(
@@ -81,25 +89,25 @@ export function RiverRootOutlet(
 			if (currentExportKey() !== newCurrentExportKey) {
 				setCurrentExportKey(newCurrentExportKey);
 			}
-
-			if (idx === 0 && e.detail.scrollState) {
-				shouldScroll = true;
-				window.requestAnimationFrame(() => {
-					if (shouldScroll && e.detail.scrollState) {
-						window.scrollTo(e.detail.scrollState.x, e.detail.scrollState.y);
-						shouldScroll = false;
-					}
-				});
-			}
 		});
 	}
 
-	const isErrorIdx = createMemo(() => {
+	createRenderEffect(() => {
+		const e = latestEvent();
+		if (!e || idx !== 0) {
+			return;
+		}
+		window.requestAnimationFrame(() => {
+			applyScrollState(e.detail.scrollState);
+		});
+	});
+
+	const isErrorIdxMemo = createMemo(() => {
 		return idx === outermostErrorIdx();
 	});
 
 	const currentCompMemo = createMemo(() => {
-		if (isErrorIdx()) {
+		if (isErrorIdxMemo()) {
 			return null;
 		}
 		currentImportURL();
@@ -108,7 +116,7 @@ export function RiverRootOutlet(
 	});
 
 	const shouldFallbackOutletMemo = createMemo(() => {
-		if (isErrorIdx()) {
+		if (isErrorIdxMemo()) {
 			return false;
 		}
 		if (currentCompMemo()) {
@@ -118,14 +126,14 @@ export function RiverRootOutlet(
 	});
 
 	const errorCompMemo = createMemo(() => {
-		if (!isErrorIdx()) {
+		if (!isErrorIdxMemo()) {
 			return null;
 		}
 		return ctx.get("activeErrorBoundary");
 	});
 
 	return (
-		<ErrorBoundary fallback={"Client error."}>
+		<>
 			<Show when={currentCompMemo()}>
 				{currentCompMemo()({
 					idx: idx,
@@ -139,7 +147,10 @@ export function RiverRootOutlet(
 				<RiverRootOutlet {...props} idx={idx + 1} />
 			</Show>
 
-			<Show when={isErrorIdx()}>{errorCompMemo()?.({ error: outermostError() })}</Show>
-		</ErrorBoundary>
+			<Show when={isErrorIdxMemo()}>
+				{errorCompMemo()?.({ error: outermostError() }) ??
+					`Error: ${outermostError() || "unknown"}`}
+			</Show>
+		</>
 	);
 }

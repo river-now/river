@@ -1,9 +1,12 @@
 export {
 	addBuildIDListener,
+	addLocationListener,
 	addRouteChangeListener,
 	addStatusListener,
+	applyScrollState,
 	getBuildID,
 	getHistoryInstance,
+	getLocation,
 	getPrefetchHandlers,
 	getRootEl,
 	getStatus,

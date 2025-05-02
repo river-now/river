@@ -28,7 +28,7 @@ import { isAbortError, LogError, LogInfo, Panic } from "./utils.ts";
 
 const RIVER_ROUTE_CHANGE_EVENT_KEY = "river:route-change";
 
-type ScrollState = { x: number; y: number };
+export type ScrollState = { x: number; y: number } | { hash: string };
 type RouteChangeEventDetail = {
 	scrollState?: ScrollState;
 	index?: number;
@@ -189,7 +189,6 @@ async function __completeNavigation(x: NavigationResult) {
 			runHistoryOptions: x.props,
 			cssBundlePromises: x.cssBundlePromises,
 		});
-		setLoadingStatus({ type: x.props.navigationType, value: false });
 	} catch (error) {
 		handleNavError(error, x.props);
 	}
@@ -323,6 +322,26 @@ function handleNavError(error: unknown, props: NavigateProps) {
 	}
 }
 
+function isJustAHashChange(
+	anchorDetails: ReturnType<typeof getAnchorDetailsFromEvent>,
+): boolean {
+	if (!anchorDetails) {
+		return false;
+	}
+	const { pathname, search, hash } = new URL(
+		anchorDetails.anchor.href,
+		window.location.href,
+	);
+	if (
+		hash &&
+		pathname === window.location.pathname &&
+		search === window.location.search
+	) {
+		return true;
+	}
+	return false;
+}
+
 /////////////////////////////////////////////////////////////////////
 // PREFETCH
 /////////////////////////////////////////////////////////////////////
@@ -391,7 +410,11 @@ export function getPrefetchHandlers<E extends Event>(
 
 		// We don't really want to prefetch if the user is already on the page.
 		// In those cases, wait for an actual click.
-		const alreadyThere = hrefDetails.url.href === new URL(window.location.href).href;
+		const a = hrefDetails.url;
+		const b = new URL(window.location.href);
+		a.hash = "";
+		b.hash = "";
+		const alreadyThere = a.href === b.href;
 		if (alreadyThere) {
 			return;
 		}
@@ -455,6 +478,11 @@ export function getPrefetchHandlers<E extends Event>(
 			return;
 		}
 
+		if (isJustAHashChange(anchorDetails)) {
+			saveScrollState();
+			return;
+		}
+
 		e.preventDefault();
 		setLoadingStatus({ type: "userNavigation", value: true });
 
@@ -488,6 +516,13 @@ export function getPrefetchHandlers<E extends Event>(
 		stop,
 		onClick,
 	};
+}
+
+function saveScrollState() {
+	scrollStateMapSubKey.set(lastKnownCustomLocation.key, {
+		x: window.scrollX,
+		y: window.scrollY,
+	});
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -850,12 +885,7 @@ function resolvePublicHref(relativeHref: string): string {
 	return final;
 }
 
-async function __reRenderApp({
-	json,
-	navigationType,
-	runHistoryOptions,
-	cssBundlePromises,
-}: {
+type RerenderAppProps = {
 	json: GetRouteDataOutput;
 	navigationType: NavigationType;
 	runHistoryOptions?: {
@@ -864,7 +894,34 @@ async function __reRenderApp({
 		replace?: boolean;
 	};
 	cssBundlePromises: Array<any>;
-}) {
+};
+
+async function __reRenderApp(props: RerenderAppProps) {
+	setLoadingStatus({ type: props.navigationType, value: false });
+
+	const shouldUseViewTransitions =
+		internal_RiverClientGlobal.get("useViewTransitions") &&
+		!!document.startViewTransition &&
+		props.navigationType !== "prefetch" &&
+		props.navigationType !== "revalidation";
+
+	if (shouldUseViewTransitions) {
+		const transition = document.startViewTransition(async () => {
+			await __reRenderAppInner(props);
+		});
+		await transition.finished;
+		return;
+	}
+
+	await __reRenderAppInner(props);
+}
+
+async function __reRenderAppInner({
+	json,
+	navigationType,
+	runHistoryOptions,
+	cssBundlePromises,
+}: RerenderAppProps) {
 	// NOW ACTUALLY SET EVERYTHING
 	const identicalKeysToSet = [
 		"outermostError",
@@ -887,18 +944,12 @@ async function __reRenderApp({
 
 	await handleComponents(json.importURLs);
 
-	// Changing the title instantly makes it feel faster
-	// The temp textarea trick is to decode any HTML entities in the title
-	const tempTxt = document.createElement("textarea");
-	tempTxt.innerHTML = json.title ?? "";
-	if (document.title !== tempTxt.value) {
-		document.title = tempTxt.value;
-	}
-
 	let scrollStateToDispatch: ScrollState | undefined;
 
 	if (runHistoryOptions) {
 		const { href, scrollStateToRestore, replace } = runHistoryOptions;
+
+		const hash = href.split("#")[1];
 
 		if (navigationType === "userNavigation" || navigationType === "redirect") {
 			const target = new URL(href, window.location.href).href;
@@ -908,14 +959,29 @@ async function __reRenderApp({
 			} else {
 				getHistoryInstance().replace(href);
 			}
-			scrollStateToDispatch = { x: 0, y: 0 };
+
+			scrollStateToDispatch = hash ? { hash } : { x: 0, y: 0 };
 		}
 
-		if (navigationType === "browserHistory" && scrollStateToRestore) {
-			scrollStateToDispatch = scrollStateToRestore;
+		if (navigationType === "browserHistory") {
+			if (scrollStateToRestore) {
+				scrollStateToDispatch = scrollStateToRestore;
+			} else if (hash) {
+				scrollStateToDispatch = { hash };
+			}
 		}
 
 		// if revalidation, do nothing
+	}
+
+	// Changing the title instantly makes it feel faster
+	// The temp textarea trick is to decode any HTML entities in the title.
+	// This should come after pushing to history though, so that the title is
+	// correct in the history entry.
+	const tempTxt = document.createElement("textarea");
+	tempTxt.innerHTML = json.title ?? "";
+	if (document.title !== tempTxt.value) {
+		document.title = tempTxt.value;
 	}
 
 	// dispatch event
@@ -980,7 +1046,7 @@ export const revalidate = debounce(revalidateNonDebounced, 10);
 let devTimeSetupClientLoadersDebounced: () => Promise<void> = () => Promise.resolve();
 
 if (import.meta.env.DEV) {
-	(globalThis as any).__waveRevalidate = revalidate;
+	(window as any).__waveRevalidate = revalidate;
 
 	devTimeSetupClientLoadersDebounced = debounce(async () => {
 		setLoadingStatus({ type: "revalidation", value: true });
@@ -999,8 +1065,8 @@ if (import.meta.env.DEV) {
 const scrollStateMapKey = "__river__scrollStateMap";
 type ScrollStateMap = Map<string, ScrollState>;
 
-function getScrollStateMapFromLocalStorage() {
-	const scrollStateMapString = localStorage.getItem(scrollStateMapKey);
+function getScrollStateMapFromSessionStorage() {
+	const scrollStateMapString = sessionStorage.getItem(scrollStateMapKey);
 	let scrollStateMap: ScrollStateMap;
 	if (scrollStateMapString) {
 		scrollStateMap = new Map(JSON.parse(scrollStateMapString));
@@ -1010,15 +1076,15 @@ function getScrollStateMapFromLocalStorage() {
 	return scrollStateMap;
 }
 
-function setScrollStateMapToLocalStorage(newScrollStateMap: ScrollStateMap) {
-	localStorage.setItem(
+function setScrollStateMapToSessionStorage(newScrollStateMap: ScrollStateMap) {
+	sessionStorage.setItem(
 		scrollStateMapKey,
 		JSON.stringify(Array.from(newScrollStateMap.entries())),
 	);
 }
 
 function setScrollStateMapSubKey(key: string, value: ScrollState) {
-	const scrollStateMap = getScrollStateMapFromLocalStorage();
+	const scrollStateMap = getScrollStateMapFromSessionStorage();
 	scrollStateMap.set(key, value);
 
 	// if new item would brought it over 50 entries, delete the oldest one
@@ -1027,11 +1093,11 @@ function setScrollStateMapSubKey(key: string, value: ScrollState) {
 		scrollStateMap.delete(oldestKey ?? Panic());
 	}
 
-	setScrollStateMapToLocalStorage(scrollStateMap);
+	setScrollStateMapToSessionStorage(scrollStateMap);
 }
 
 function readScrollStateMapSubKey(key: string) {
-	const scrollStateMap = getScrollStateMapFromLocalStorage();
+	const scrollStateMap = getScrollStateMapFromSessionStorage();
 	return scrollStateMap.get(key);
 }
 
@@ -1067,18 +1133,38 @@ function setNativeScrollRestorationToManual() {
 }
 
 async function customHistoryListener({ action, location }: Update) {
-	// save current scroll state to map
-	scrollStateMapSubKey.set(lastKnownCustomLocation.key, {
-		x: window.scrollX,
-		y: window.scrollY,
-	});
+	if (location.key !== lastKnownCustomLocation.key) {
+		dispatchLocationEvent();
+	}
+
+	const popWithinSameDoc =
+		action === "POP" &&
+		location.pathname === lastKnownCustomLocation.pathname &&
+		location.search === lastKnownCustomLocation.search;
+
+	const removingHash =
+		popWithinSameDoc && lastKnownCustomLocation.hash && !location.hash;
+	const addingHash =
+		popWithinSameDoc && !lastKnownCustomLocation.hash && location.hash;
+	const updatingHash = popWithinSameDoc && location.hash;
+
+	if (!popWithinSameDoc) {
+		saveScrollState();
+	}
 
 	if (action === "POP") {
-		if (
-			location.key !== lastKnownCustomLocation.key &&
-			(location.pathname !== lastKnownCustomLocation.pathname ||
-				location.search !== lastKnownCustomLocation.search)
-		) {
+		const newHash = location.hash.slice(1);
+
+		if (addingHash || updatingHash) {
+			applyScrollState({ hash: newHash });
+		}
+
+		if (removingHash) {
+			const stored = scrollStateMapSubKey.read(location.key);
+			applyScrollState(stored ?? { x: 0, y: 0 });
+		}
+
+		if (!popWithinSameDoc) {
 			await __navigate({
 				href: window.location.href,
 				navigationType: "browserHistory",
@@ -1087,7 +1173,6 @@ async function customHistoryListener({ action, location }: Update) {
 		}
 	}
 
-	// now set lastKnownCustomLocation to new location
 	lastKnownCustomLocation = location;
 }
 
@@ -1150,10 +1235,46 @@ async function setupClientLoaders() {
 	internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
 }
 
+const pageRefreshScrollStateKey = "__river__pageRefreshScrollState";
+
+type pageRefreshScrollState = {
+	x: number;
+	y: number;
+	unix: number;
+	href: string;
+};
+
+window.addEventListener("beforeunload", () => {
+	const scrollState: pageRefreshScrollState = {
+		x: window.scrollX,
+		y: window.scrollY,
+		unix: Date.now(),
+		href: window.location.href,
+	};
+	sessionStorage.setItem(pageRefreshScrollStateKey, JSON.stringify(scrollState));
+});
+
+function checkIfShouldScrollPostRefresh() {
+	const scrollStateString = sessionStorage.getItem(pageRefreshScrollStateKey);
+	if (scrollStateString) {
+		const scrollState: pageRefreshScrollState = JSON.parse(scrollStateString);
+		if (
+			scrollState.href === window.location.href &&
+			Date.now() - scrollState.unix < 5_000
+		) {
+			sessionStorage.removeItem(pageRefreshScrollStateKey);
+			window.requestAnimationFrame(() => {
+				applyScrollState(scrollState);
+			});
+		}
+	}
+}
+
 export async function initClient(
 	renderFn: () => void,
 	options?: {
 		defaultErrorBoundary?: RouteErrorComponent;
+		useViewTransitions?: boolean;
 	},
 ) {
 	if (import.meta.env.DEV && import.meta.hot) {
@@ -1170,6 +1291,10 @@ export async function initClient(
 		);
 	} else {
 		internal_RiverClientGlobal.set("defaultErrorBoundary", defaultErrorBoundary);
+	}
+
+	if (options?.useViewTransitions) {
+		internal_RiverClientGlobal.set("useViewTransitions", true);
 	}
 
 	// HANDLE HISTORY STUFF
@@ -1189,6 +1314,8 @@ export async function initClient(
 
 	// RUN THE RENDER FUNCTION
 	renderFn();
+
+	checkIfShouldScrollPostRefresh();
 
 	window.addEventListener(
 		"touchstart",
@@ -1251,7 +1378,7 @@ async function handleComponents(importURLs: Array<string>) {
 }
 
 const defaultErrorBoundary: RouteErrorComponent = (props: { error: string }) => {
-	return "Route error: " + props.error;
+	return "Route Error: " + props.error;
 };
 
 async function runWaitFns(
@@ -1277,6 +1404,26 @@ async function runWaitFns(
 	}
 
 	return Promise.all(waitFnPromises);
+}
+
+/////////////////////////////////////////////////////////////////////
+// LOCATION EVENTS
+/////////////////////////////////////////////////////////////////////
+
+const LOCATION_EVENT_KEY = "river:location";
+
+function dispatchLocationEvent() {
+	window.dispatchEvent(new CustomEvent(LOCATION_EVENT_KEY));
+}
+
+export const addLocationListener = makeListenerAdder<BuildIDEvent>(LOCATION_EVENT_KEY);
+
+export function getLocation() {
+	return {
+		pathname: window.location.pathname,
+		search: window.location.search,
+		hash: window.location.hash,
+	};
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -1332,12 +1479,12 @@ type LinkOnClickCallbacks<E extends Event> = LinkOnClickCallbacksBase<E>;
 export function makeLinkOnClickFn<E extends Event>(
 	callbacks: LinkOnClickCallbacks<E>,
 ) {
-	return async (event: E) => {
-		if (event.defaultPrevented) {
+	return async (e: E) => {
+		if (e.defaultPrevented) {
 			return;
 		}
 
-		const anchorDetails = getAnchorDetailsFromEvent(event as unknown as MouseEvent);
+		const anchorDetails = getAnchorDetailsFromEvent(e as unknown as MouseEvent);
 		if (!anchorDetails) {
 			return;
 		}
@@ -1348,10 +1495,15 @@ export function makeLinkOnClickFn<E extends Event>(
 			return;
 		}
 
-		if (isEligibleForDefaultPrevention && isInternal) {
-			event.preventDefault();
+		if (isJustAHashChange(anchorDetails)) {
+			saveScrollState();
+			return;
+		}
 
-			await callbacks.beforeBegin?.(event);
+		if (isEligibleForDefaultPrevention && isInternal) {
+			e.preventDefault();
+
+			await callbacks.beforeBegin?.(e);
 
 			const x = beginNavigation({
 				href: anchor.href,
@@ -1366,11 +1518,32 @@ export function makeLinkOnClickFn<E extends Event>(
 				return;
 			}
 
-			await callbacks.beforeRender?.(event);
+			await callbacks.beforeRender?.(e);
 
 			await __completeNavigation(res);
 
-			await callbacks.afterRender?.(event);
+			await callbacks.afterRender?.(e);
 		}
 	};
+}
+
+/////////////////////////////////////////////////////////////////////
+/////// SCROLL STATE
+/////////////////////////////////////////////////////////////////////
+
+export function applyScrollState(state?: ScrollState) {
+	if (!state) {
+		const id = window.location.hash.slice(1);
+		if (id) {
+			window.document.getElementById(id)?.scrollIntoView();
+		}
+		return;
+	}
+	if ("hash" in state) {
+		if (state.hash) {
+			document.getElementById(state.hash)?.scrollIntoView();
+		}
+	} else {
+		window.scrollTo(state.x, state.y);
+	}
 }

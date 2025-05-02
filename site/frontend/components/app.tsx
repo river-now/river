@@ -1,10 +1,13 @@
 import { setTheme, THEMES } from "river.now/kit/theme";
-import { Link } from "../app_link.tsx";
-import { type RouteProps, theme, useCurrentAppData } from "../app_utils.ts";
+import { RiverRootOutlet } from "river.now/solid";
+import { Show } from "solid-js";
+import "../css/tailwind-output.css";
+import { Link } from "./app_link.tsx";
+import { theme, useCurrentAppData } from "./app_utils.ts";
 
 // lazy load the nprogress module because it's not that important,
 // but we still want it on every page
-import("../global_loader.ts");
+import("./global_loader.ts");
 
 const theme_to_label_map = {
 	[THEMES.Light]: hashedURL("sun.svg"),
@@ -26,7 +29,7 @@ function preload_img(url: string) {
 	});
 }
 
-export function Root(props: RouteProps<"">) {
+export function App() {
 	return (
 		<>
 			<nav class="w-full sticky top-0 bg-white dark:bg-[#111] z-50">
@@ -81,6 +84,29 @@ export function Root(props: RouteProps<"">) {
 						Get Started
 					</Link>
 
+					<Link
+						href="/faq"
+						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
+					>
+						FAQs
+					</Link>
+
+					<Show when={(import.meta as any).env.MODE === "development"}>
+						<Link
+							href="/faq#explicit-index-segments"
+							class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
+						>
+							/faq#explicit-index-segments
+						</Link>
+
+						<Link
+							href="#explicit-index-segments"
+							class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
+						>
+							#explicit-index-segments
+						</Link>
+					</Show>
+
 					<div class="flex-1" />
 					<a
 						href="https://x.com/riverframework"
@@ -102,8 +128,8 @@ export function Root(props: RouteProps<"">) {
 				</div>
 			</nav>
 
-			<main>
-				<props.Outlet />
+			<main class="z-1">
+				<RiverRootOutlet />
 			</main>
 		</>
 	);

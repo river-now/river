@@ -29,7 +29,6 @@ COPY site/ ./
 ### backend-builder
 FROM builder-base as backend-builder
 WORKDIR /monorepo
-COPY go.mod go.sum ./
 COPY . .
 COPY --from=river-npm-deps /monorepo/npm_dist ./npm_dist
 COPY --from=frontend-deps /monorepo/site ./site
@@ -47,7 +46,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=readonly -v \
 	./__cmd/app
 
 ### server
-FROM alpine:latest as server
+FROM alpine:latest
 WORKDIR /app
 RUN apk --no-cache add ca-certificates
 COPY --from=backend-builder /monorepo/__main .

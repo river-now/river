@@ -13,6 +13,8 @@ import (
 var Markdown = fsmarkdown.New(fsmarkdown.Options{
 	FS:                app.Wave.MustGetPrivateFS(),
 	FrontmatterParser: func(r io.Reader, v any) ([]byte, error) { return frontmatter.Parse(r, v) },
-	MarkdownParser:    func(b []byte) []byte { return blackfriday.Run(b) },
-	IsDev:             wave.GetIsDev(),
+	MarkdownParser: func(b []byte) []byte {
+		return blackfriday.Run(b, blackfriday.WithExtensions(blackfriday.AutoHeadingIDs))
+	},
+	IsDev: wave.GetIsDev(),
 })

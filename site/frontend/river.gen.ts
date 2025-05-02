@@ -81,7 +81,6 @@ const rollupOptions = {
 		"frontend/components/routes/dyn.tsx",
 		"frontend/components/routes/home.tsx",
 		"frontend/components/routes/md.tsx",
-		"frontend/components/routes/root.tsx",
 		"frontend/entry.tsx",
 	] as string[],
 	preserveEntrySignatures: "exports-only",

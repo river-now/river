@@ -111,10 +111,10 @@ function getCurrentEl() {
 	return document.getElementById("wave-refreshscript-rebuilding");
 }
 const scrollYKey = "__wave_internal__devScrollY";
-const scrollY = localStorage.getItem(scrollYKey);
+const scrollY = sessionStorage.getItem(scrollYKey);
 if (scrollY) {
 	setTimeout(() => {
-		localStorage.removeItem(scrollYKey);
+		sessionStorage.removeItem(scrollYKey);
 		console.info("Wave: Restoring previous scroll position");
 		window.scrollTo({ top: scrollY, behavior: "smooth" })
 	}, 150);
@@ -155,7 +155,7 @@ ws.onmessage = (e) => {
 	if (changeType == "other") {
 		const scrollY = window.scrollY;
 		if (scrollY > 0) {
-			localStorage.setItem(scrollYKey, scrollY);
+			sessionStorage.setItem(scrollYKey, scrollY);
 		}
 		window.location.reload();
 	}
@@ -179,7 +179,7 @@ ws.onmessage = (e) => {
 		console.log("Wave: Revalidating...");
 		const el = getCurrentEl();
 		if ("__waveRevalidate" in window) {
-			__waveRevalidate().then(() => {
+			window.__waveRevalidate().then(() => {
 				console.log("Wave: Revalidated");
 				el?.remove();
 			});

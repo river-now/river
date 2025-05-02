@@ -1,12 +1,16 @@
 type Fn = (...args: Array<any>) => any;
 
-export function debounce<T extends Fn>(fn: T, delayInMs: number): T {
-	let timeoutID: number | undefined;
+export function debounce<T extends Fn>(
+	fn: T,
+	delayInMs: number,
+): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
+	let timeoutID: number;
 
-	return ((...args: Array<any>) => {
-		clearTimeout(timeoutID);
-		timeoutID = window.setTimeout(() => {
-			fn(...args);
-		}, delayInMs);
-	}) as T;
+	return (...args: Parameters<T>) =>
+		new Promise<Awaited<ReturnType<T>>>((resolve) => {
+			clearTimeout(timeoutID);
+			timeoutID = window.setTimeout(() => {
+				resolve(fn(...args));
+			}, delayInMs);
+		});
 }

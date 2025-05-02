@@ -26,9 +26,13 @@ input[type="submit"] {
 	}
 	h1,
 	h2,
-	h3 {
+	h3,
+	h4,
+	h5,
+	h6 {
 		margin-bottom: 1.5rem;
 		color: var(--resolved-green);
+		scroll-margin-top: 7rem;
 	}
 	h1 {
 		font-size: 3rem;
@@ -40,6 +44,18 @@ input[type="submit"] {
 	}
 	h3 {
 		font-size: 1.5rem;
+	}
+	h4 {
+		font-size: 1.3rem;
+		font-style: italic;
+	}
+	h5 {
+		font-size: 1.15rem;
+		font-weight: bold;
+	}
+	h6 {
+		font-size: 1rem;
+		font-style: italic;
 	}
 
 	pre {
