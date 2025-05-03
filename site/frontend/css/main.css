@@ -37,17 +37,19 @@ input[type="submit"] {
 	h1 {
 		font-size: 3rem;
 		text-align: center;
+		font-weight: bold;
 	}
 	h2 {
-		font-weight: bold;
 		font-size: 2rem;
+		text-align: center;
 	}
 	h3 {
 		font-size: 1.5rem;
+		font-weight: bold;
+		font-style: italic;
 	}
 	h4 {
 		font-size: 1.3rem;
-		font-style: italic;
 	}
 	h5 {
 		font-size: 1.15rem;

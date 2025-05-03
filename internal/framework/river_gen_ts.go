@@ -3,6 +3,7 @@ package framework
 import (
 	"net/http"
 
+	"github.com/river-now/river/kit/matcher"
 	"github.com/river-now/river/kit/mux"
 	"github.com/river-now/river/kit/rpc"
 	"github.com/river-now/river/kit/tsgen"
@@ -36,6 +37,9 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 	allLoaders := opts.LoadersRouter.AllRoutes()
 	allActions := opts.ActionsRouter.AllRoutes()
 
+	loadersDynamicRune := opts.LoadersRouter.GetDynamicParamPrefixRune()
+	actionsDynamicRune := opts.ActionsRouter.GetDynamicParamPrefixRune()
+
 	expectedRootDataPattern := ""
 	if opts.LoadersRouter.GetExplicitIndexSegment() != "" {
 		expectedRootDataPattern = "/"
@@ -52,6 +56,8 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 				base.CategoryPropertyName: "loader",
 			},
 		}
+		params := extractDynamicParamsFromPattern(pattern, loadersDynamicRune)
+		item.ArbitraryProperties["params"] = params
 		if loader != nil {
 			item.PhantomTypes = map[string]AdHocType{
 				"phantomOutputType": {TypeInstance: loader.O()},
@@ -81,6 +87,8 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 				"phantomOutputType": {TypeInstance: mux.None{}},
 			},
 		}
+		params := extractDynamicParamsFromPattern(path.OriginalPattern, actionsDynamicRune)
+		item.ArbitraryProperties["params"] = params
 		collection = append(collection, item)
 		seen[path.OriginalPattern] = struct{}{}
 	}
@@ -106,6 +114,8 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 				base.CategoryPropertyName: categoryPropertyName,
 			},
 		}
+		params := extractDynamicParamsFromPattern(pattern, actionsDynamicRune)
+		item.ArbitraryProperties["params"] = params
 		if action != nil {
 			item.PhantomTypes = map[string]AdHocType{
 				"phantomInputType":  {TypeInstance: action.I()},
@@ -115,8 +125,10 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 		collection = append(collection, item)
 	}
 
+	hasLoaders := len(allLoaders) > 0
+
 	categories := []rpc.CategorySpecificOptions{}
-	if len(allLoaders) > 0 {
+	if hasLoaders {
 		categories = append(categories, rpc.CategorySpecificOptions{
 			BaseOptions:          base,
 			CategoryValue:        "loader",
@@ -154,9 +166,29 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 	extraTSToUse := rpc.BuildFromCategories(categories)
 
 	if foundRootData {
-		extraTSToUse += "export type RiverRootData = Extract<(typeof routes)[number], { isRootData: true }>[\"phantomOutputType\"];\n"
+		extraTSToUse += "\nexport type RiverRootData = Extract<(typeof routes)[number], { isRootData: true }>[\"phantomOutputType\"];\n"
 	} else {
 		extraTSToUse += "export type RiverRootData = null;\n"
+	}
+
+	if hasLoaders || hasQueries || hasMutations {
+		fTypeIn := []string{}
+		pTypeIn := []string{}
+		if hasLoaders {
+			fTypeIn = append(fTypeIn, "RiverLoader")
+			pTypeIn = append(pTypeIn, "RiverLoaderPattern")
+		}
+		if hasQueries {
+			fTypeIn = append(fTypeIn, "RiverQuery")
+			pTypeIn = append(pTypeIn, "RiverQueryPattern")
+		}
+		if hasMutations {
+			fTypeIn = append(fTypeIn, "RiverMutation")
+			pTypeIn = append(pTypeIn, "RiverMutationPattern")
+		}
+		extraTSToUse += "type RiverFunction = " + tsgen.TypeUnion(fTypeIn) + ";\n"
+		extraTSToUse += "type RiverPattern = " + tsgen.TypeUnion(pTypeIn) + ";\n"
+		extraTSToUse += `export type RiverRouteParams<T extends RiverPattern> = (Extract<RiverFunction, { pattern: T }>["params"])[number];` + "\n"
 	}
 
 	if opts.ExtraTSCode != "" {
@@ -169,4 +201,15 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 		AdHocTypes:        opts.AdHocTypes,
 		ExtraTSCode:       extraTSToUse,
 	})
+}
+
+func extractDynamicParamsFromPattern(pattern string, dynamicRune rune) []string {
+	dynamicParams := []string{}
+	segments := matcher.ParseSegments(pattern)
+	for _, segment := range segments {
+		if len(segment) > 0 && segment[0] == byte(dynamicRune) {
+			dynamicParams = append(dynamicParams, segment[1:])
+		}
+	}
+	return dynamicParams
 }

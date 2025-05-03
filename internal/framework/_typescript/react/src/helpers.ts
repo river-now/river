@@ -1,17 +1,14 @@
 import { useAtomValue } from "jotai";
 import type { JSX } from "react";
 import {
-	type getCurrentRiverData,
+	type getRouterData,
 	internal_RiverClientGlobal,
 	type RiverRouteGeneric,
 	type RiverRoutePropsGeneric,
 	type RiverUntypedLoader,
+	type UseRouterDataFunction,
 } from "river.now/client";
-import {
-	clientLoadersDataAtom,
-	currentRiverDataAtom,
-	loadersDataAtom,
-} from "./react.tsx";
+import { clientLoadersDataAtom, loadersDataAtom, routerDataAtom } from "./react.tsx";
 
 export type RiverRouteProps<
 	Loader extends RiverUntypedLoader = RiverUntypedLoader,
@@ -23,11 +20,13 @@ export type RiverRoute<
 	Pattern extends Loader["pattern"] = string,
 > = RiverRouteGeneric<JSX.Element, Loader, Pattern>;
 
-export function makeTypedUseCurrentRiverData<RootData>() {
-	return () =>
-		useAtomValue(currentRiverDataAtom) as ReturnType<
-			typeof getCurrentRiverData<RootData>
-		>;
+export function makeTypedUseRouterData<
+	OuterLoader extends RiverUntypedLoader,
+	RootData,
+>() {
+	return (() => {
+		return useAtomValue(routerDataAtom);
+	}) as UseRouterDataFunction<OuterLoader, RootData>;
 }
 
 export function makeTypedUseLoaderData<Loader extends RiverUntypedLoader>() {
@@ -50,13 +49,10 @@ export function makeTypedAddClientLoader<
 	return function addClientLoader<
 		Pattern extends OuterLoader["pattern"],
 		Loader extends Extract<OuterLoader, { pattern: Pattern }>,
-		CurrentRiverData = ReturnType<typeof getCurrentRiverData<RootData>>,
+		RouterData = ReturnType<typeof getRouterData<RootData>>,
 		LoaderData = Loader["phantomOutputType"] | undefined,
 		T = any,
-	>(
-		p: Pattern,
-		fn: (props: CurrentRiverData & { loaderData: LoaderData }) => Promise<T>,
-	) {
+	>(p: Pattern, fn: (props: RouterData & { loaderData: LoaderData }) => Promise<T>) {
 		(m as any)[p] = fn;
 
 		return function useClientLoaderData(

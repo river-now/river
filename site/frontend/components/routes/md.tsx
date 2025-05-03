@@ -9,7 +9,8 @@ hmrRunClientLoaders(import.meta);
 
 export const useClientLoaderData = addClientLoader("/*", async (props) => {
 	// This is pointless -- just an example of how to use a client loader
-	// await new Promise((resolve) => setTimeout(resolve, 100));
+	// await new Promise((r) => setTimeout(r, 1_000));
+	console.log("Client loader running");
 	return props.loaderData?.Title;
 });
 

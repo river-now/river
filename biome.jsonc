@@ -10,7 +10,7 @@
 		"includes": [
 			"**",
 			"!**/node_modules",
-			"!npm_dist",
+			"!npm_dist/**/*",
 			"!wave/configschema/*schema.json",
 			"!**/__dist",
 			"!**/frontend/river.gen.ts",

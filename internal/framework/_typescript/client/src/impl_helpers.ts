@@ -2,13 +2,14 @@
 /////// ROUTE COMPONENTS
 /////////////////////////////////////////////////////////////////////
 
-import { getPrefetchHandlers, makeLinkOnClickFn, type ScrollState } from "./client.ts";
-import { internal_RiverClientGlobal } from "./river_ctx.ts";
+import { getPrefetchHandlers, makeLinkOnClickFn } from "./client.ts";
+import { type getRouterData, internal_RiverClientGlobal } from "./river_ctx.ts";
 
 export type RiverUntypedLoader = {
 	_type: string;
 	pattern: string;
 	phantomOutputType: any;
+	params: ReadonlyArray<string>;
 };
 
 export type RiverRoutePropsGeneric<
@@ -30,6 +31,35 @@ export type RiverRouteGeneric<
 export type RiverRootOutletPropsGeneric<JSXElement> = {
 	idx?: number;
 	defaultServerErrorComponent?: () => JSXElement;
+};
+
+type ParamsForPattern<
+	Loader extends RiverUntypedLoader,
+	Pattern extends Loader["pattern"],
+> = Extract<Loader, { pattern: Pattern }>["params"][number];
+
+type BaseRouterData<RootData, Params extends string> = ReturnType<
+	typeof getRouterData<RootData, Record<Params, string>>
+>;
+
+type Wrapper<UseAccessor extends boolean, T> = UseAccessor extends false ? T : () => T;
+
+export type UseRouterDataFunction<
+	OuterLoader extends RiverUntypedLoader,
+	RootData,
+	UseAccessor extends boolean = false,
+> = {
+	<Pattern extends OuterLoader["pattern"]>(
+		props: RiverRoutePropsGeneric<any, OuterLoader, Pattern>,
+	): Wrapper<
+		UseAccessor,
+		BaseRouterData<RootData, ParamsForPattern<OuterLoader, Pattern>>
+	>;
+	<Pattern extends OuterLoader["pattern"]>(): Wrapper<
+		UseAccessor,
+		BaseRouterData<RootData, ParamsForPattern<OuterLoader, Pattern>>
+	>;
+	(): Wrapper<UseAccessor, BaseRouterData<RootData, string>>;
 };
 
 /////////////////////////////////////////////////////////////////////

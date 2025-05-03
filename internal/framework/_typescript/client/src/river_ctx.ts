@@ -48,9 +48,7 @@ export type RiverClientGlobal = shared & {
 	isTouchDevice: boolean;
 	patternToWaitFnMap: Record<
 		string,
-		(
-			props: ReturnType<typeof getCurrentRiverData> & { loaderData: any },
-		) => Promise<any>
+		(props: ReturnType<typeof getRouterData> & { loaderData: any }) => Promise<any>
 	>;
 	clientLoadersData: Array<any>;
 	defaultErrorBoundary: RouteErrorComponent;
@@ -76,7 +74,10 @@ export const internal_RiverClientGlobal = __getRiverClientGlobal();
 // to debug ctx in browser, paste this:
 // const river_ctx = window[Symbol.for("__river_internal__")];
 
-export function getCurrentRiverData<T = any>() {
+export function getRouterData<
+	T = any,
+	P extends Record<string, string> = Record<string, string>,
+>() {
 	let rootData: T | null = null;
 	if (internal_RiverClientGlobal.get("hasRootData")) {
 		rootData = internal_RiverClientGlobal.get("loadersData")[0];
@@ -85,7 +86,7 @@ export function getCurrentRiverData<T = any>() {
 		buildID: internal_RiverClientGlobal.get("buildID") || "",
 		matchedPatterns: internal_RiverClientGlobal.get("matchedPatterns") || [],
 		splatValues: internal_RiverClientGlobal.get("splatValues") || [],
-		params: internal_RiverClientGlobal.get("params") || {},
+		params: (internal_RiverClientGlobal.get("params") || {}) as P,
 		rootData,
 	};
 }

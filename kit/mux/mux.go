@@ -81,6 +81,16 @@ func (rt *Router) TasksRegistry() *tasks.Registry {
 	return rt._tasks_registry
 }
 
+func (rt *Router) GetExplicitIndexSegment() string {
+	return rt._matcher_opts.ExplicitIndexSegment
+}
+func (rt *Router) GetDynamicParamPrefixRune() rune {
+	return rt._matcher_opts.DynamicParamPrefixRune
+}
+func (rt *Router) GetSplatSegmentRune() rune {
+	return rt._matcher_opts.SplatSegmentRune
+}
+
 // Takes zero or one pattern strings. If no arguments are provided, returns
 // the mount root, otherwise returns the mount root joined with the
 // provided pattern. Discards any extra arguments. For example, if

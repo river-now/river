@@ -33,6 +33,12 @@ type Matcher struct {
 func (m *Matcher) GetExplicitIndexSegment() string {
 	return m.explicitIndexSegment
 }
+func (m *Matcher) GetDynamicParamPrefixRune() rune {
+	return m.dynamicParamPrefixRune
+}
+func (m *Matcher) GetSplatSegmentRune() rune {
+	return m.splatSegmentRune
+}
 
 type Match struct {
 	*RegisteredPattern

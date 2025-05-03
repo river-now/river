@@ -1,5 +1,7 @@
-import { useCurrentAppData } from "../app_utils.ts";
+import { type RouteProps, useRouterData } from "../app_utils.ts";
 
-export function Dyn() {
-	return <div>{useCurrentAppData().params.dyn}</div>;
+export function Dyn(props: RouteProps<"/__/:dyn">) {
+	const routerData = useRouterData(props);
+
+	return <div>{routerData().params.dyn}</div>;
 }

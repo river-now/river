@@ -64,3 +64,10 @@ func StringUnion(strs []string) string {
 	}
 	return strings.Join(quoted, " | ")
 }
+
+func TypeUnion(typeVars []string) string {
+	if len(typeVars) == 0 {
+		return ""
+	}
+	return strings.Join(typeVars, " | ")
+}

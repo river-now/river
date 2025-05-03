@@ -7,8 +7,8 @@ import {
 	addRouteChangeListener,
 	applyScrollState,
 	internal_RiverClientGlobal as ctx,
-	getCurrentRiverData,
 	getLocation,
+	getRouterData,
 	type RiverRootOutletPropsGeneric,
 	type RouteChangeEvent,
 } from "river.now/client";
@@ -20,7 +20,7 @@ const paramsAtom = atom(ctx.get("params") ?? {});
 const splatValuesAtom = atom(ctx.get("splatValues") ?? []);
 export const loadersDataAtom = atom(ctx.get("loadersData"));
 export const clientLoadersDataAtom = atom(ctx.get("clientLoadersData"));
-export const currentRiverDataAtom = atom(getCurrentRiverData());
+export const routerDataAtom = atom(getRouterData());
 
 const outermostErrorIdxAtom = atom(ctx.get("outermostErrorIdx"));
 const outermostErrorAtom = atom(ctx.get("outermostError"));
@@ -77,7 +77,7 @@ export function RiverRootOutlet(
 	const [splatValues, setSplatValues] = useAtom(splatValuesAtom);
 	const [loadersData, setLoadersData] = useAtom(loadersDataAtom);
 	const [clientLoadersData, setClientLoadersData] = useAtom(clientLoadersDataAtom);
-	const [currentRiverData, setCurrentRiverData] = useAtom(currentRiverDataAtom);
+	const [routerData, setRouterData] = useAtom(routerDataAtom);
 
 	const [outermostErrorIdx, setOutermostErrorIdx] = useAtom(outermostErrorIdxAtom);
 	const [outermostError, setOutermostError] = useAtom(outermostErrorAtom);
@@ -102,7 +102,7 @@ export function RiverRootOutlet(
 				const newSplatValues = ctx.get("splatValues") ?? [];
 				const newLoadersData = ctx.get("loadersData");
 				const newClientLoadersData = ctx.get("clientLoadersData");
-				const newCurrentRiverData = getCurrentRiverData();
+				const newRouterData = getRouterData();
 
 				const newOutermostErrorIdx = ctx.get("outermostErrorIdx");
 				const newOutermostError = ctx.get("outermostError");
@@ -126,8 +126,8 @@ export function RiverRootOutlet(
 					if (!jsonDeepEquals(clientLoadersData, newClientLoadersData)) {
 						setClientLoadersData(newClientLoadersData);
 					}
-					if (!jsonDeepEquals(currentRiverData, newCurrentRiverData)) {
-						setCurrentRiverData(newCurrentRiverData);
+					if (!jsonDeepEquals(routerData, newRouterData)) {
+						setRouterData(newRouterData);
 					}
 					if (outermostErrorIdx !== newOutermostErrorIdx) {
 						setOutermostErrorIdx(newOutermostErrorIdx);
@@ -170,7 +170,7 @@ export function RiverRootOutlet(
 					return;
 				}
 				flushSync(() => {
-					setCurrentRiverData(getCurrentRiverData());
+					setRouterData(getRouterData());
 				});
 			});
 		}

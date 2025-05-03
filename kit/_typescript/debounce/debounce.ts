@@ -6,11 +6,12 @@ export function debounce<T extends Fn>(
 ): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
 	let timeoutID: number;
 
-	return (...args: Parameters<T>) =>
-		new Promise<Awaited<ReturnType<T>>>((resolve) => {
+	return (...args: Parameters<T>) => {
+		return new Promise<Awaited<ReturnType<T>>>((resolve) => {
 			clearTimeout(timeoutID);
 			timeoutID = window.setTimeout(() => {
 				resolve(fn(...args));
 			}, delayInMs);
 		});
+	};
 }

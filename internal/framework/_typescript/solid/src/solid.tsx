@@ -4,8 +4,8 @@ import {
 	addRouteChangeListener,
 	applyScrollState,
 	internal_RiverClientGlobal as ctx,
-	getCurrentRiverData,
 	getLocation,
+	getRouterData,
 	type RiverRootOutletPropsGeneric,
 	type RouteChangeEvent,
 } from "river.now/client";
@@ -25,9 +25,9 @@ const [clientLoadersData, setClientLoadersData] = createSignal(
 );
 export { clientLoadersData, loadersData };
 
-const [currentRiverData, setCurrentRiverData] = createSignal(getCurrentRiverData());
-export { currentRiverData };
-addRouteChangeListener(() => setCurrentRiverData(getCurrentRiverData()));
+const [routerData, setRouterData] = createSignal(getRouterData());
+export { routerData };
+addRouteChangeListener(() => setRouterData(getRouterData()));
 
 const [outermostErrorIdx, setOutermostErrorIdx] = createSignal(
 	ctx.get("outermostErrorIdx"),
@@ -38,7 +38,7 @@ addRouteChangeListener((e) => {
 	setLatestEvent(e);
 	setLoadersData(ctx.get("loadersData"));
 	setClientLoadersData(ctx.get("clientLoadersData"));
-	setCurrentRiverData(getCurrentRiverData());
+	setRouterData(getRouterData());
 	setOutermostErrorIdx(ctx.get("outermostErrorIdx"));
 	setOutermostError(ctx.get("outermostError"));
 });
@@ -47,7 +47,7 @@ addBuildIDListener((e) => {
 	if (!e.detail.fromGETAction) {
 		return;
 	}
-	setCurrentRiverData(getCurrentRiverData());
+	setRouterData(getRouterData());
 });
 
 const [location, setLocation] = createSignal(getLocation());

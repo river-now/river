@@ -1,7 +1,7 @@
 export {
 	makeTypedAddClientLoader,
-	makeTypedUseCurrentRiverData,
 	makeTypedUseLoaderData,
+	makeTypedUseRouterData,
 	type RiverRoute,
 	type RiverRouteProps,
 } from "./src/helpers.ts";

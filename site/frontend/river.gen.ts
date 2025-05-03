@@ -10,23 +10,27 @@ const routes = [
 	{
 		_type: "loader",
 		isRootData: true,
+		params: [],
 		pattern: "",
 		phantomOutputType: null as unknown as RootData,
 	},
 	{
 		_type: "loader",
+		params: ["dyn"],
+		pattern: "/__/:dyn",
+		phantomOutputType: undefined,
+	},
+	{
+		_type: "loader",
+		params: [],
 		pattern: "/",
 		phantomOutputType: null as unknown as string,
 	},
 	{
 		_type: "loader",
+		params: [],
 		pattern: "/*",
 		phantomOutputType: null as unknown as DetailedPage,
-	},
-	{
-		_type: "loader",
-		pattern: "/__/:dyn",
-		phantomOutputType: undefined,
 	},
 ] as const;
 
@@ -66,7 +70,11 @@ export type RiverLoader = Extract<(typeof routes)[number], { _type: "loader" }>;
 export type RiverLoaders = { [K in RiverLoaderPattern]: Extract<RiverLoader, { pattern: K }>; };
 export type RiverLoaderPattern = RiverLoader["pattern"];
 export type RiverLoaderOutput<T extends RiverLoaderPattern> = Extract<RiverLoader, { pattern: T }>["phantomOutputType"];
+
 export type RiverRootData = Extract<(typeof routes)[number], { isRootData: true }>["phantomOutputType"];
+type RiverFunction = RiverLoader;
+type RiverPattern = RiverLoaderPattern;
+export type RiverRouteParams<T extends RiverPattern> = (Extract<RiverFunction, { pattern: T }>["params"])[number];
 
 export const ACTIONS_ROUTER_MOUNT_ROOT = "/river-api/";
 

@@ -41,6 +41,12 @@ func (nr *NestedRouter) IsRegistered(originalPattern string) bool {
 func (nr *NestedRouter) GetExplicitIndexSegment() string {
 	return nr._matcher.GetExplicitIndexSegment()
 }
+func (nr *NestedRouter) GetDynamicParamPrefixRune() rune {
+	return nr._matcher.GetDynamicParamPrefixRune()
+}
+func (nr *NestedRouter) GetSplatSegmentRune() rune {
+	return nr._matcher.GetSplatSegmentRune()
+}
 
 /////////////////////////////////////////////////////////////////////
 /////// NEW ROUTER

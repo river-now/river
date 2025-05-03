@@ -1,8 +1,8 @@
 import { addThemeChangeListener, getTheme } from "river.now/kit/theme";
 import {
 	makeTypedAddClientLoader,
-	makeTypedUseCurrentRiverData,
 	makeTypedUseLoaderData,
+	makeTypedUseRouterData,
 	type RiverRouteProps,
 } from "river.now/solid";
 import { createSignal } from "solid-js";
@@ -10,7 +10,7 @@ import type { RiverLoader, RiverLoaderPattern, RiverRootData } from "../river.ge
 
 export type RouteProps<P extends RiverLoaderPattern> = RiverRouteProps<RiverLoader, P>;
 
-export const useCurrentAppData = makeTypedUseCurrentRiverData<RiverRootData>();
+export const useRouterData = makeTypedUseRouterData<RiverLoader, RiverRootData>();
 export const useLoaderData = makeTypedUseLoaderData<RiverLoader>();
 export const addClientLoader = makeTypedAddClientLoader<RiverLoader, RiverRootData>();
 

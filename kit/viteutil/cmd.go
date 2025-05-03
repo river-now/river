@@ -147,6 +147,8 @@ func (c *BuildCtx) ProdBuild() error {
 		c.cmd.Args = append(c.cmd.Args, "--config", c.opts.ViteConfigFile)
 	}
 
+	os.Setenv("ROLLDOWN_OPTIONS_VALIDATION", "loose")
+
 	Log.Info("Running vite build (prod)...",
 		"command", fmt.Sprintf(`"%s"`, strings.Join(c.cmd.Args, " ")),
 	)
