@@ -30,12 +30,13 @@ export function makeTypedUseRouterData<
 export function makeTypedUseLoaderData<Loader extends RiverUntypedLoader>() {
 	return function useLoaderData<
 		Props extends RiverRouteProps<Loader>,
-		LoaderData =
-			| Extract<Loader, { pattern: Props["__phantom_pattern"] }>["phantomOutputType"]
-			| undefined,
+		LoaderData = Extract<
+			Loader,
+			{ pattern: Props["__phantom_pattern"] }
+		>["phantomOutputType"],
 	>(props: Props): Accessor<LoaderData> {
 		return createMemo(() => {
-			return loadersData()?.[props.idx];
+			return loadersData()[props.idx];
 		});
 	};
 }
@@ -49,16 +50,16 @@ export function makeTypedAddClientLoader<
 		Pattern extends OuterLoader["pattern"],
 		Loader extends Extract<OuterLoader, { pattern: Pattern }>,
 		RouterData = ReturnType<typeof getRouterData<RootData>>,
-		LoaderData = Loader["phantomOutputType"] | undefined,
+		LoaderData = Loader["phantomOutputType"],
 		T = any,
 	>(p: Pattern, fn: (props: RouterData & { loaderData: LoaderData }) => Promise<T>) {
 		(m as any)[p] = fn;
 
 		return function useClientLoaderData(
 			props: RiverRouteProps<Loader>,
-		): Accessor<Awaited<ReturnType<typeof fn>> | undefined> {
+		): Accessor<Awaited<ReturnType<typeof fn>>> {
 			return createMemo(() => {
-				return clientLoadersData()?.[props.idx];
+				return clientLoadersData()[props.idx];
 			});
 		};
 	};

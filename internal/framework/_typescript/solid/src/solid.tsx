@@ -6,7 +6,6 @@ import {
 	internal_RiverClientGlobal as ctx,
 	getLocation,
 	getRouterData,
-	type RiverRootOutletPropsGeneric,
 	type RouteChangeEvent,
 } from "river.now/client";
 import {
@@ -18,21 +17,22 @@ import {
 	Show,
 } from "solid-js";
 
+/////////////////////////////////////////////////////////////////////
+/////// CORE SETUP
+/////////////////////////////////////////////////////////////////////
+
 const [latestEvent, setLatestEvent] = createSignal<RouteChangeEvent | null>(null);
 const [loadersData, setLoadersData] = createSignal(ctx.get("loadersData"));
 const [clientLoadersData, setClientLoadersData] = createSignal(
 	ctx.get("clientLoadersData"),
 );
-export { clientLoadersData, loadersData };
-
 const [routerData, setRouterData] = createSignal(getRouterData());
-export { routerData };
-addRouteChangeListener(() => setRouterData(getRouterData()));
-
 const [outermostErrorIdx, setOutermostErrorIdx] = createSignal(
 	ctx.get("outermostErrorIdx"),
 );
 const [outermostError, setOutermostError] = createSignal(ctx.get("outermostError"));
+
+export { clientLoadersData, loadersData, routerData };
 
 addRouteChangeListener((e) => {
 	setLatestEvent(e);
@@ -43,6 +43,10 @@ addRouteChangeListener((e) => {
 	setOutermostError(ctx.get("outermostError"));
 });
 
+/////////////////////////////////////////////////////////////////////
+/////// BUILD ID LISTENER
+/////////////////////////////////////////////////////////////////////
+
 addBuildIDListener((e) => {
 	if (!e.detail.fromGETAction) {
 		return;
@@ -50,17 +54,28 @@ addBuildIDListener((e) => {
 	setRouterData(getRouterData());
 });
 
+/////////////////////////////////////////////////////////////////////
+/////// LOCATION
+/////////////////////////////////////////////////////////////////////
+
 const [location, setLocation] = createSignal(getLocation());
+
 export { location };
 
 addLocationListener(() => {
 	setLocation(getLocation());
 });
 
-export function RiverRootOutlet(
-	props: RiverRootOutletPropsGeneric<JSX.Element>,
-): JSX.Element {
+/////////////////////////////////////////////////////////////////////
+/////// COMPONENT
+/////////////////////////////////////////////////////////////////////
+
+export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 	const idx = props.idx ?? 0;
+
+	if (idx === 0) {
+		setClientLoadersData(ctx.get("clientLoadersData"));
+	}
 
 	const [currentImportURL, setCurrentImportURL] = createSignal(
 		ctx.get("importURLs")?.[idx],
@@ -68,10 +83,6 @@ export function RiverRootOutlet(
 	const [currentExportKey, setCurrentExportKey] = createSignal(
 		ctx.get("exportKeys")?.[idx],
 	);
-
-	if (idx === 0) {
-		setClientLoadersData(ctx.get("clientLoadersData"));
-	}
 
 	if (currentImportURL) {
 		createEffect(() => {

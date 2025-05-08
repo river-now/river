@@ -157,9 +157,17 @@ func getCollectionStr(opts Opts, merged tsgencore.Results) (string, error) {
 
 			typeInfo := merged.GetTypeInfo(&adHocType)
 
+			// NOTE: This assumes that your handlers are resilient
+			// against return nil values. Technically, Go's JSON
+			// marshalling would return "null" for nil values, and
+			// the below does NOT reflect that. It assumes that
+			// the type is set to its effective dereferenced (in
+			// the case of pointers) and/or initialized (in the case of
+			// maps or slices) "ultimate" zero value of the type.
+
 			switch {
-			case typeInfo == nil || typeInfo.IsTSUndefined():
-				write(phantomTypeLine, "undefined")
+			case typeInfo == nil || typeInfo.IsTSNull():
+				write(phantomTypeLine, "null")
 			case typeInfo.IsTSUnknown():
 				write(phantomTypeLine, "null as unknown")
 			case typeInfo.ResolvedName != "":
@@ -169,7 +177,7 @@ func getCollectionStr(opts Opts, merged tsgencore.Results) (string, error) {
 				write(phantomTypeLine, "null as unknown as ")
 				write(phantomTypeLine, typeInfo.TSStr)
 			default:
-				write(phantomTypeLine, "undefined")
+				write(phantomTypeLine, "null")
 			}
 
 			write(phantomTypeLine, ",", 1)

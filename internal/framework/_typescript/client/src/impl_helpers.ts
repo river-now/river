@@ -28,11 +28,6 @@ export type RiverRouteGeneric<
 	Pattern extends T["pattern"] = T["pattern"],
 > = (props: RiverRoutePropsGeneric<JSXElement, T, Pattern>) => JSXElement;
 
-export type RiverRootOutletPropsGeneric<JSXElement> = {
-	idx?: number;
-	defaultServerErrorComponent?: () => JSXElement;
-};
-
 type ParamsForPattern<
 	Loader extends RiverUntypedLoader,
 	Pattern extends Loader["pattern"],

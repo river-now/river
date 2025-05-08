@@ -3,18 +3,21 @@ package mux
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"path"
 
+	"github.com/river-now/river/kit/colorlog"
 	"github.com/river-now/river/kit/contextutil"
 	"github.com/river-now/river/kit/genericsutil"
 	"github.com/river-now/river/kit/matcher"
 	"github.com/river-now/river/kit/opt"
+	"github.com/river-now/river/kit/reflectutil"
 	"github.com/river-now/river/kit/response"
 	"github.com/river-now/river/kit/tasks"
 	"github.com/river-now/river/kit/validate"
 )
+
+var muxLog = colorlog.New("mux")
 
 /////// COMMON
 
@@ -500,7 +503,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_req_data_getter, ok := _method_matcher._req_data_getters[_orig_pattern]
 	if !ok {
-		log.Println("Internal server error: no request data getter found")
+		muxLog.Error("Internal server error: no request data getter found")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -513,12 +516,12 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_handler_req_data_marker, err := _req_data_getter._get_req_data(r, _match)
 	if err != nil {
 		if validate.IsValidationError(err) {
-			log.Println("Validation error:", err)
+			muxLog.Error("Validation error", "error", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		log.Println("Internal server error:", err)
+		muxLog.Error("Internal server error", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -545,14 +548,14 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		_prepared_task := tasks.PrepAny(_tasks_ctx, _route._get_task_handler(), _handler_req_data_marker._get_underlying_req_data_instance())
 		if ok := _tasks_ctx.ParallelPreload(_prepared_task); !ok {
-			log.Println("Error preloading task")
+			muxLog.Error("Error running task handler", "pattern", _route.OriginalPattern())
 			res.InternalServerError()
 			return
 		}
 
 		_data, err := _prepared_task.GetAny()
 		if err != nil {
-			log.Println("Error getting task data:", err)
+			muxLog.Error("Error getting task data", "error", err)
 			res.InternalServerError()
 			return
 		}
@@ -564,9 +567,16 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if reflectutil.ExcludingNoneGetIsNilOrUltimatelyPointsToNil(_data) {
+			muxLog.Warn(
+				"Do not return nil values from task handlers unless: (i) the underlying type is an empty struct or pointer to an empty struct; or (ii) you are returning an error.",
+				"pattern", _route.OriginalPattern(),
+			)
+		}
+
 		_json_bytes, err := json.Marshal(_data)
 		if err != nil {
-			log.Println("Error marshalling JSON:", err)
+			muxLog.Error("Error marshalling JSON", "error", err)
 			res.InternalServerError()
 			return
 		}

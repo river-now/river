@@ -417,7 +417,7 @@ func (c *typeCollector) generateStructTypeFields(t reflect.Type) []string {
 
 func getBasicTSType(t reflect.Type) string {
 	if t == nil {
-		return "undefined"
+		return "null"
 	}
 
 	switch t.Kind() {
@@ -436,7 +436,7 @@ func getBasicTSType(t reflect.Type) string {
 
 func (c *typeCollector) getTypeScriptType(t reflect.Type) string {
 	if t == nil {
-		return "undefined"
+		return "null"
 	}
 
 	var typeStr string
@@ -491,13 +491,6 @@ func (c *typeCollector) getTypeScriptType(t reflect.Type) string {
 
 	default:
 		typeStr = "unknown"
-	}
-
-	if IsMarkedNullable(t) {
-		typeStr = fmt.Sprintf("%s | null", typeStr)
-	}
-	if IsMarkedOptional(t) {
-		typeStr = fmt.Sprintf("%s | undefined", typeStr)
 	}
 
 	return typeStr

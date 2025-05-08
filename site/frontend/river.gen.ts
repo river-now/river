@@ -18,7 +18,7 @@ const routes = [
 		_type: "loader",
 		params: ["dyn"],
 		pattern: "/__/:dyn",
-		phantomOutputType: undefined,
+		phantomOutputType: null,
 	},
 	{
 		_type: "loader",

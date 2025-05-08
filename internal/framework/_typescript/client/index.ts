@@ -22,7 +22,6 @@ export {
 export {
 	makeFinalLinkProps,
 	type RiverLinkPropsBase,
-	type RiverRootOutletPropsGeneric,
 	type RiverRouteGeneric,
 	type RiverRoutePropsGeneric,
 	type RiverUntypedLoader,

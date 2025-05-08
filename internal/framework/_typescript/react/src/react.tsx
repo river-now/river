@@ -1,6 +1,12 @@
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { type JSX, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { flushSync } from "react-dom";
+import { atom, createStore, Provider, useAtomValue } from "jotai";
+import {
+	type JSX,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	addBuildIDListener,
 	addLocationListener,
@@ -9,23 +15,55 @@ import {
 	internal_RiverClientGlobal as ctx,
 	getLocation,
 	getRouterData,
-	type RiverRootOutletPropsGeneric,
 	type RouteChangeEvent,
 } from "river.now/client";
-import { jsonDeepEquals } from "river.now/kit/json";
 
-const importURLsAtom = atom(ctx.get("importURLs"));
-const rootDataAtom = atom(ctx.get("hasRootData") ? ctx.get("loadersData")[0] : null);
-const paramsAtom = atom(ctx.get("params") ?? {});
-const splatValuesAtom = atom(ctx.get("splatValues") ?? []);
-export const loadersDataAtom = atom(ctx.get("loadersData"));
-export const clientLoadersDataAtom = atom(ctx.get("clientLoadersData"));
-export const routerDataAtom = atom(getRouterData());
+/////////////////////////////////////////////////////////////////////
+/////// JOTAI STORE
+/////////////////////////////////////////////////////////////////////
 
+const jotaiStore = createStore();
+
+export function RiverProvider({ children }: React.PropsWithChildren): JSX.Element {
+	return <Provider store={jotaiStore}>{children}</Provider>;
+}
+
+/////////////////////////////////////////////////////////////////////
+/////// CORE SETUP
+/////////////////////////////////////////////////////////////////////
+
+const latestEventAtom = atom<RouteChangeEvent | null>(null);
+const loadersDataAtom = atom(ctx.get("loadersData"));
+const clientLoadersDataAtom = atom(ctx.get("clientLoadersData"));
+const routerDataAtom = atom(getRouterData());
 const outermostErrorIdxAtom = atom(ctx.get("outermostErrorIdx"));
 const outermostErrorAtom = atom(ctx.get("outermostError"));
 
-const latestEventAtom = atom<RouteChangeEvent | null>(null);
+export { clientLoadersDataAtom, loadersDataAtom, routerDataAtom };
+
+addRouteChangeListener((e) => {
+	jotaiStore.set(latestEventAtom, e);
+	jotaiStore.set(loadersDataAtom, ctx.get("loadersData"));
+	jotaiStore.set(clientLoadersDataAtom, ctx.get("clientLoadersData"));
+	jotaiStore.set(routerDataAtom, getRouterData());
+	jotaiStore.set(outermostErrorIdxAtom, ctx.get("outermostErrorIdx"));
+	jotaiStore.set(outermostErrorAtom, ctx.get("outermostError"));
+});
+
+/////////////////////////////////////////////////////////////////////
+/////// BUILD ID LISTENER
+/////////////////////////////////////////////////////////////////////
+
+addBuildIDListener((e) => {
+	if (!e.detail.fromGETAction) {
+		return;
+	}
+	jotaiStore.set(routerDataAtom, getRouterData());
+});
+
+/////////////////////////////////////////////////////////////////////
+/////// LOCATION
+/////////////////////////////////////////////////////////////////////
 
 const locationAtom = atom(getLocation());
 
@@ -33,10 +71,28 @@ export function useLocation() {
 	return useAtomValue(locationAtom);
 }
 
-export function RiverRootOutlet(
-	props: RiverRootOutletPropsGeneric<JSX.Element>,
-): JSX.Element {
+addLocationListener(() => {
+	jotaiStore.set(locationAtom, getLocation());
+});
+
+/////////////////////////////////////////////////////////////////////
+/////// COMPONENT
+/////////////////////////////////////////////////////////////////////
+
+export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 	const idx = props.idx ?? 0;
+
+	const initialRenderRef = useRef(true);
+	if (idx === 0 && initialRenderRef.current) {
+		initialRenderRef.current = false;
+		jotaiStore.set(clientLoadersDataAtom, ctx.get("clientLoadersData"));
+	}
+
+	const latestEvent = useAtomValue(latestEventAtom);
+	const outermostErrorIdx = useAtomValue(outermostErrorIdxAtom);
+	const loadersData = useAtomValue(loadersDataAtom);
+	const outermostError = useAtomValue(outermostErrorAtom);
+
 	const [currentImportURL, setCurrentImportURL] = useState(
 		ctx.get("importURLs")?.[idx],
 	);
@@ -48,98 +104,31 @@ export function RiverRootOutlet(
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	useEffect(() => {
-		return addRouteChangeListener(() => {
-			const newCurrentImportURL = ctx.get("importURLs")?.[idx];
-			const newCurrentExportKey = ctx.get("exportKeys")?.[idx];
-			const newNextImportURL = ctx.get("importURLs")?.[idx + 1];
-			const newNextExportKey = ctx.get("exportKeys")?.[idx + 1];
-
-			flushSync(() => {
-				if (currentImportURL !== newCurrentImportURL) {
-					setCurrentImportURL(newCurrentImportURL);
-				}
-				if (currentExportKey !== newCurrentExportKey) {
-					setCurrentExportKey(newCurrentExportKey);
-				}
-				if (nextImportURL !== newNextImportURL) {
-					setNextImportURL(newNextImportURL);
-				}
-				if (nextExportKey !== newNextExportKey) {
-					setNextExportKey(newNextExportKey);
-				}
-			});
-		});
-	}, [currentImportURL, currentExportKey]);
-
-	const [importURLs, setImportURLs] = useAtom(importURLsAtom);
-	const [rootData, setRootData] = useAtom(rootDataAtom);
-	const [params, setParams] = useAtom(paramsAtom);
-	const [splatValues, setSplatValues] = useAtom(splatValuesAtom);
-	const [loadersData, setLoadersData] = useAtom(loadersDataAtom);
-	const [clientLoadersData, setClientLoadersData] = useAtom(clientLoadersDataAtom);
-	const [routerData, setRouterData] = useAtom(routerDataAtom);
-
-	const [outermostErrorIdx, setOutermostErrorIdx] = useAtom(outermostErrorIdxAtom);
-	const [outermostError, setOutermostError] = useAtom(outermostErrorAtom);
-
-	const [latestEvent, setLatestEvent] = useAtom(latestEventAtom);
-
-	useEffect(() => {
-		if (idx === 0) {
-			setClientLoadersData(ctx.get("clientLoadersData"));
+		if (!currentImportURL || !latestEvent) {
+			return;
 		}
-	}, []);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
-	useEffect(() => {
-		if (idx === 0) {
-			return addRouteChangeListener((e) => {
-				const newImportURLs = ctx.get("importURLs");
-				const newRootData = ctx.get(
-					ctx.get("hasRootData") ? ctx.get("loadersData")[0] : null,
-				);
-				const newParams = ctx.get("params") ?? {};
-				const newSplatValues = ctx.get("splatValues") ?? [];
-				const newLoadersData = ctx.get("loadersData");
-				const newClientLoadersData = ctx.get("clientLoadersData");
-				const newRouterData = getRouterData();
+		const newCurrentImportURL = ctx.get("importURLs")?.[idx];
+		const newCurrentExportKey = ctx.get("exportKeys")?.[idx];
 
-				const newOutermostErrorIdx = ctx.get("outermostErrorIdx");
-				const newOutermostError = ctx.get("outermostError");
-
-				flushSync(() => {
-					if (!jsonDeepEquals(importURLs, newImportURLs)) {
-						setImportURLs(newImportURLs);
-					}
-					if (!jsonDeepEquals(rootData, newRootData)) {
-						setRootData(newRootData);
-					}
-					if (!jsonDeepEquals(params, newParams)) {
-						setParams(newParams);
-					}
-					if (!jsonDeepEquals(splatValues, newSplatValues)) {
-						setSplatValues(newSplatValues);
-					}
-					if (!jsonDeepEquals(loadersData, newLoadersData)) {
-						setLoadersData(newLoadersData);
-					}
-					if (!jsonDeepEquals(clientLoadersData, newClientLoadersData)) {
-						setClientLoadersData(newClientLoadersData);
-					}
-					if (!jsonDeepEquals(routerData, newRouterData)) {
-						setRouterData(newRouterData);
-					}
-					if (outermostErrorIdx !== newOutermostErrorIdx) {
-						setOutermostErrorIdx(newOutermostErrorIdx);
-					}
-					if (outermostError !== newOutermostError) {
-						setOutermostError(newOutermostError);
-					}
-					setLatestEvent(e);
-				});
-			});
+		if (currentImportURL !== newCurrentImportURL) {
+			setCurrentImportURL(newCurrentImportURL);
 		}
-	}, [idx]);
+		if (currentExportKey !== newCurrentExportKey) {
+			setCurrentExportKey(newCurrentExportKey);
+		}
+
+		// these are also needed for Outlets to render correctly
+		const newNextImportURL = ctx.get("importURLs")?.[idx + 1];
+		const newNextExportKey = ctx.get("exportKeys")?.[idx + 1];
+
+		if (nextImportURL !== newNextImportURL) {
+			setNextImportURL(newNextImportURL);
+		}
+		if (nextExportKey !== newNextExportKey) {
+			setNextExportKey(newNextExportKey);
+		}
+	}, [latestEvent]);
 
 	useLayoutEffect(() => {
 		if (!latestEvent || idx !== 0) {
@@ -148,45 +137,19 @@ export function RiverRootOutlet(
 		window.requestAnimationFrame(() => {
 			applyScrollState(latestEvent.detail.scrollState);
 		});
-	}, [idx, latestEvent]);
+	}, [latestEvent, idx]);
 
-	const setLocation = useSetAtom(locationAtom);
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
-	useEffect(() => {
-		if (idx === 0) {
-			return addLocationListener(() => {
-				flushSync(() => {
-					setLocation(getLocation());
-				});
-			});
-		}
-	}, [idx]);
-
-	useEffect(() => {
-		if (idx === 0) {
-			return addBuildIDListener((e) => {
-				if (!e.detail.fromGETAction) {
-					return;
-				}
-				flushSync(() => {
-					setRouterData(getRouterData());
-				});
-			});
-		}
-	}, [idx]);
-
-	const isErrorIdx = useMemo(() => {
+	const isErrorIdxMemo = useMemo(() => {
 		return idx === outermostErrorIdx;
 	}, [idx, outermostErrorIdx]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
-	const CurrentComp = useMemo(() => {
-		if (isErrorIdx) {
+	const CurrentCompMemo = useMemo(() => {
+		if (isErrorIdxMemo) {
 			return null;
 		}
 		return ctx.get("activeComponents")?.[idx];
-	}, [currentImportURL, currentExportKey, isErrorIdx]);
+	}, [isErrorIdxMemo, currentImportURL, currentExportKey]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	const Outlet = useMemo(
@@ -197,35 +160,35 @@ export function RiverRootOutlet(
 	);
 
 	const shouldFallbackOutletMemo = useMemo(() => {
-		if (isErrorIdx) {
+		if (isErrorIdxMemo) {
 			return false;
 		}
-		if (CurrentComp) {
+		if (CurrentCompMemo) {
 			return false;
 		}
 		return idx + 1 < loadersData.length;
-	}, [idx, loadersData, isErrorIdx, CurrentComp]);
+	}, [isErrorIdxMemo, CurrentCompMemo, idx, loadersData]);
 
-	const ErrorComp = useMemo(() => {
-		if (!isErrorIdx) {
+	const ErrorCompMemo = useMemo(() => {
+		if (!isErrorIdxMemo) {
 			return null;
 		}
 		return ctx.get("activeErrorBoundary");
-	}, [isErrorIdx]);
+	}, [isErrorIdxMemo]);
 
-	if (isErrorIdx) {
-		if (ErrorComp) {
-			return <ErrorComp error={outermostError} />;
+	if (isErrorIdxMemo) {
+		if (ErrorCompMemo) {
+			return <ErrorCompMemo error={outermostError} />;
 		}
 		return <>{`Error: ${outermostError || "unknown"}`}</>;
 	}
 
-	if (!CurrentComp) {
+	if (!CurrentCompMemo) {
 		if (shouldFallbackOutletMemo) {
 			return <Outlet />;
 		}
 		return <></>;
 	}
 
-	return <CurrentComp idx={idx} Outlet={Outlet} />;
+	return <CurrentCompMemo idx={idx} Outlet={Outlet} />;
 }

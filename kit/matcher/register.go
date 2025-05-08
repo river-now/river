@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	"github.com/river-now/river/kit/colorlog"
 )
 
 const (
@@ -92,18 +94,14 @@ var segTypes = struct {
 }
 
 func getAppropriateWarningMsg(pattern string, usingExplicitIndexSegment bool) string {
-	base := fmt.Sprintf("WARN: Pattern '%s' is already registered.", pattern)
+	base := fmt.Sprintf("Pattern '%s' is already registered.", pattern)
 	if usingExplicitIndexSegment {
 		return base + " When you use an explicit index segment, trailing slashes are ignored, which may be the reason for your effectively duplicated patterns."
 	}
 	return base
 }
 
-func (m *Matcher) Log(msg string) {
-	if !m.quiet {
-		log.Println(msg)
-	}
-}
+var matcherLog = colorlog.New("matcher")
 
 func (m *Matcher) NormalizePattern(originalPattern string) *RegisteredPattern {
 	normalizedPattern := originalPattern
@@ -190,10 +188,14 @@ func (m *Matcher) RegisterPattern(originalPattern string) *RegisteredPattern {
 	_normalized := m.NormalizePattern(originalPattern)
 
 	if _, alreadyRegistered := m.staticPatterns[_normalized.normalizedPattern]; alreadyRegistered {
-		m.Log(getAppropriateWarningMsg(originalPattern, m.usingExplicitIndexSegment))
+		if !m.quiet {
+			matcherLog.Warn(getAppropriateWarningMsg(originalPattern, m.usingExplicitIndexSegment))
+		}
 	}
 	if _, alreadyRegistered := m.dynamicPatterns[_normalized.normalizedPattern]; alreadyRegistered {
-		m.Log(getAppropriateWarningMsg(originalPattern, m.usingExplicitIndexSegment))
+		if !m.quiet {
+			matcherLog.Warn(getAppropriateWarningMsg(originalPattern, m.usingExplicitIndexSegment))
+		}
 	}
 
 	if getIsStatic(_normalized.normalizedSegments) {

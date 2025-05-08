@@ -133,15 +133,17 @@ func RegisterNestedPatternWithoutHandler(router *NestedRouter, pattern string) {
 /////////////////////////////////////////////////////////////////////
 
 type NestedTasksResult struct {
-	_pattern string
-	_data    any
-	_err     error
+	_pattern  string
+	_data     any
+	_err      error
+	_ran_task bool
 }
 
 func (ntr *NestedTasksResult) Pattern() string { return ntr._pattern }
 func (ntr *NestedTasksResult) OK() bool        { return ntr._err == nil }
 func (ntr *NestedTasksResult) Data() any       { return ntr._data }
 func (ntr *NestedTasksResult) Err() error      { return ntr._err }
+func (ntr *NestedTasksResult) RanTask() bool   { return ntr._ran_task }
 
 type NestedTasksResults struct {
 	Params          Params
@@ -219,6 +221,8 @@ func RunNestedTasks(
 			// In this case, just continue.
 			continue
 		}
+
+		_res._ran_task = true
 
 		_rd := &ReqData[None]{
 			_params:         findNestedMatchesResults.Params,

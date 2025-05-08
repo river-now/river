@@ -7,23 +7,6 @@ import (
 	"slices"
 )
 
-// If you want any type to have " | optional" and/or " | null" in the
-// generated TypeScript, add a marker method of "TSOptional()" and/or
-// "TSNullable()" to the type.
-
-type TSOptionalMarker interface{ TSOptional() }
-type TSNullableMarker interface{ TSNullable() }
-
-var OptionalMarkerReflectType = reflect.TypeOf((*TSOptionalMarker)(nil)).Elem()
-var NullableMarkerReflectType = reflect.TypeOf((*TSNullableMarker)(nil)).Elem()
-
-func IsMarkedOptional(t reflect.Type) bool {
-	return t != nil && t.Implements(OptionalMarkerReflectType)
-}
-func IsMarkedNullable(t reflect.Type) bool {
-	return t != nil && t.Implements(NullableMarkerReflectType)
-}
-
 type IDStr = string
 type _results = map[IDStr]*TypeInfo
 
@@ -37,9 +20,9 @@ type TypeInfo struct {
 }
 
 var _any any
-var _undefined_id = getID(&AdHocType{TypeInstance: nil})
+var _null_id = getID(&AdHocType{TypeInstance: nil})
 var _unknown_id = getID(&AdHocType{TypeInstance: &_any}) // ptr intentional to get interface {}
-func (t *TypeInfo) IsTSUndefined() bool                  { return t._id == _undefined_id }
+func (t *TypeInfo) IsTSNull() bool                       { return t._id == _null_id }
 func (t *TypeInfo) IsTSUnknown() bool                    { return t._id == _unknown_id }
 func (t *TypeInfo) IsTSBasicType() bool                  { return isBasicType(t.ReflectType) }
 

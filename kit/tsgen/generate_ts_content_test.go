@@ -525,7 +525,7 @@ func TestGenerateTSContent_NullTypes(t *testing.T) {
 					"routeType": "loader",
 				},
 				PhantomTypes: map[string]AdHocType{
-					"phantomOutputType": {TypeInstance: nil, TSTypeName: "ShouldBeUndefined"},
+					"phantomOutputType": {TypeInstance: nil, TSTypeName: "ShouldBeNull"},
 				},
 			},
 		},
@@ -538,8 +538,8 @@ func TestGenerateTSContent_NullTypes(t *testing.T) {
 	}
 
 	// Verify nil type instance handled correctly
-	assertContains(t, content, "phantomOutputType: undefined")
-	assertNotContains(t, content, "export type ShouldBeUndefined")
+	assertContains(t, content, "phantomOutputType: null")
+	assertNotContains(t, content, "export type ShouldBeNull")
 }
 
 // Test structs with identical field structures but different types

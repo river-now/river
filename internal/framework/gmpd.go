@@ -8,6 +8,7 @@ import (
 	"github.com/river-now/river/kit/htmlutil"
 	"github.com/river-now/river/kit/matcher"
 	"github.com/river-now/river/kit/mux"
+	"github.com/river-now/river/kit/reflectutil"
 	"github.com/river-now/river/kit/response"
 	"github.com/river-now/river/kit/tasks"
 	"github.com/river-now/river/kit/typed"
@@ -164,6 +165,18 @@ func (h *River) get_ui_data_stage_1(
 			if result != nil {
 				loadersData[i] = result.Data()
 				loadersErrs[i] = result.Err()
+
+				if result.RanTask() && loadersErrs[i] == nil {
+					shouldWarn := reflectutil.ExcludingNoneGetIsNilOrUltimatelyPointsToNil(
+						loadersData[i],
+					)
+					if shouldWarn {
+						Log.Warn(
+							"Do not return nil values from loaders unless: (i) the underlying type is an empty struct or pointer to an empty struct; or (ii) you are returning an error.",
+							"pattern", matchedPatterns[i],
+						)
+					}
+				}
 			}
 		}
 	}

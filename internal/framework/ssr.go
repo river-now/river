@@ -28,6 +28,7 @@ const ssrInnerHTMLTmplStr = `<script>
 globalThis[Symbol.for("{{.RiverSymbolStr}}")] = {};
 const x = globalThis[Symbol.for("{{.RiverSymbolStr}}")];
 x.patternToWaitFnMap = {};
+x.clientLoadersData = [];
 x.isDev = {{.IsDev}};
 x.viteDevURL = {{.ViteDevURL}};
 x.buildID = {{.BuildID}};
