@@ -120,10 +120,18 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 
 	if (idx === 0 && initialRenderRef.current) {
 		initialRenderRef.current = false;
-		jotaiStore.set(navigationStateAtom, (prev) => ({
-			...prev,
+		jotaiStore.set(navigationStateAtom, {
+			latestEvent: null,
+			loadersData: ctx.get("loadersData"),
 			clientLoadersData: ctx.get("clientLoadersData"),
-		}));
+			routerData: getRouterData(),
+			outermostError: ctx.get("outermostError"),
+			outermostErrorIdx: ctx.get("outermostErrorIdx"),
+			activeComponents: ctx.get("activeComponents"),
+			activeErrorBoundary: ctx.get("activeErrorBoundary"),
+			importURLs: ctx.get("importURLs"),
+			exportKeys: ctx.get("exportKeys"),
+		});
 	}
 
 	const [currentImportURL, setCurrentImportURL] = useState(importURLs?.[idx]);
