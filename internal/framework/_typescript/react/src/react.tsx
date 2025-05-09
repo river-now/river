@@ -32,22 +32,42 @@ export function RiverProvider({ children }: React.PropsWithChildren): JSX.Elemen
 /////// CORE SETUP
 /////////////////////////////////////////////////////////////////////
 
-const latestEventAtom = atom<RouteChangeEvent | null>(null);
-const loadersDataAtom = atom(ctx.get("loadersData"));
-const clientLoadersDataAtom = atom(ctx.get("clientLoadersData"));
-const routerDataAtom = atom(getRouterData());
-const outermostErrorIdxAtom = atom(ctx.get("outermostErrorIdx"));
-const outermostErrorAtom = atom(ctx.get("outermostError"));
+const navigationStateAtom = atom({
+	latestEvent: null as RouteChangeEvent | null,
+	loadersData: ctx.get("loadersData"),
+	clientLoadersData: ctx.get("clientLoadersData"),
+	routerData: getRouterData(),
+	outermostError: ctx.get("outermostError"),
+	outermostErrorIdx: ctx.get("outermostErrorIdx"),
+	activeComponents: ctx.get("activeComponents"),
+	activeErrorBoundary: ctx.get("activeErrorBoundary"),
+	importURLs: ctx.get("importURLs"),
+	exportKeys: ctx.get("exportKeys"),
+});
 
-export { clientLoadersDataAtom, loadersDataAtom, routerDataAtom };
+export const loadersDataAtom = atom((get) => {
+	return get(navigationStateAtom).loadersData;
+});
+export const clientLoadersDataAtom = atom((get) => {
+	return get(navigationStateAtom).clientLoadersData;
+});
+export const routerDataAtom = atom((get) => {
+	return get(navigationStateAtom).routerData;
+});
 
 addRouteChangeListener((e) => {
-	jotaiStore.set(latestEventAtom, e);
-	jotaiStore.set(loadersDataAtom, ctx.get("loadersData"));
-	jotaiStore.set(clientLoadersDataAtom, ctx.get("clientLoadersData"));
-	jotaiStore.set(routerDataAtom, getRouterData());
-	jotaiStore.set(outermostErrorIdxAtom, ctx.get("outermostErrorIdx"));
-	jotaiStore.set(outermostErrorAtom, ctx.get("outermostError"));
+	jotaiStore.set(navigationStateAtom, {
+		latestEvent: e,
+		loadersData: ctx.get("loadersData"),
+		clientLoadersData: ctx.get("clientLoadersData"),
+		routerData: getRouterData(),
+		outermostError: ctx.get("outermostError"),
+		outermostErrorIdx: ctx.get("outermostErrorIdx"),
+		activeComponents: ctx.get("activeComponents"),
+		activeErrorBoundary: ctx.get("activeErrorBoundary"),
+		importURLs: ctx.get("importURLs"),
+		exportKeys: ctx.get("exportKeys"),
+	});
 });
 
 /////////////////////////////////////////////////////////////////////
@@ -58,7 +78,10 @@ addBuildIDListener((e) => {
 	if (!e.detail.fromGETAction) {
 		return;
 	}
-	jotaiStore.set(routerDataAtom, getRouterData());
+	jotaiStore.set(navigationStateAtom, (prev) => ({
+		...prev,
+		routerData: getRouterData(),
+	}));
 });
 
 /////////////////////////////////////////////////////////////////////
@@ -83,24 +106,30 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 	const idx = props.idx ?? 0;
 
 	const initialRenderRef = useRef(true);
+	const state = useAtomValue(navigationStateAtom);
+	const {
+		latestEvent,
+		loadersData,
+		outermostError,
+		outermostErrorIdx,
+		activeComponents,
+		activeErrorBoundary,
+		importURLs,
+		exportKeys,
+	} = state;
+
 	if (idx === 0 && initialRenderRef.current) {
 		initialRenderRef.current = false;
-		jotaiStore.set(clientLoadersDataAtom, ctx.get("clientLoadersData"));
+		jotaiStore.set(navigationStateAtom, (prev) => ({
+			...prev,
+			clientLoadersData: ctx.get("clientLoadersData"),
+		}));
 	}
 
-	const latestEvent = useAtomValue(latestEventAtom);
-	const outermostErrorIdx = useAtomValue(outermostErrorIdxAtom);
-	const loadersData = useAtomValue(loadersDataAtom);
-	const outermostError = useAtomValue(outermostErrorAtom);
-
-	const [currentImportURL, setCurrentImportURL] = useState(
-		ctx.get("importURLs")?.[idx],
-	);
-	const [currentExportKey, setCurrentExportKey] = useState(
-		ctx.get("exportKeys")?.[idx],
-	);
-	const [nextImportURL, setNextImportURL] = useState(ctx.get("importURLs")?.[idx + 1]);
-	const [nextExportKey, setNextExportKey] = useState(ctx.get("exportKeys")?.[idx + 1]);
+	const [currentImportURL, setCurrentImportURL] = useState(importURLs?.[idx]);
+	const [currentExportKey, setCurrentExportKey] = useState(exportKeys?.[idx]);
+	const [nextImportURL, setNextImportURL] = useState(importURLs?.[idx + 1]);
+	const [nextExportKey, setNextExportKey] = useState(exportKeys?.[idx + 1]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	useEffect(() => {
@@ -108,8 +137,8 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 			return;
 		}
 
-		const newCurrentImportURL = ctx.get("importURLs")?.[idx];
-		const newCurrentExportKey = ctx.get("exportKeys")?.[idx];
+		const newCurrentImportURL = importURLs?.[idx];
+		const newCurrentExportKey = exportKeys?.[idx];
 
 		if (currentImportURL !== newCurrentImportURL) {
 			setCurrentImportURL(newCurrentImportURL);
@@ -119,8 +148,8 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		}
 
 		// these are also needed for Outlets to render correctly
-		const newNextImportURL = ctx.get("importURLs")?.[idx + 1];
-		const newNextExportKey = ctx.get("exportKeys")?.[idx + 1];
+		const newNextImportURL = importURLs?.[idx + 1];
+		const newNextExportKey = exportKeys?.[idx + 1];
 
 		if (nextImportURL !== newNextImportURL) {
 			setNextImportURL(newNextImportURL);
@@ -128,7 +157,7 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		if (nextExportKey !== newNextExportKey) {
 			setNextExportKey(newNextExportKey);
 		}
-	}, [latestEvent]);
+	}, [latestEvent, importURLs, exportKeys]);
 
 	useLayoutEffect(() => {
 		if (!latestEvent || idx !== 0) {
@@ -148,8 +177,8 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		if (isErrorIdxMemo) {
 			return null;
 		}
-		return ctx.get("activeComponents")?.[idx];
-	}, [isErrorIdxMemo, currentImportURL, currentExportKey]);
+		return activeComponents?.[idx];
+	}, [isErrorIdxMemo, currentImportURL, currentExportKey, activeComponents]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	const Outlet = useMemo(
@@ -173,8 +202,8 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		if (!isErrorIdxMemo) {
 			return null;
 		}
-		return ctx.get("activeErrorBoundary");
-	}, [isErrorIdxMemo]);
+		return activeErrorBoundary;
+	}, [isErrorIdxMemo, activeErrorBoundary]);
 
 	if (isErrorIdxMemo) {
 		if (ErrorCompMemo) {

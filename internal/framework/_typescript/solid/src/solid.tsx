@@ -9,6 +9,7 @@ import {
 	type RouteChangeEvent,
 } from "river.now/client";
 import {
+	batch,
 	createEffect,
 	createMemo,
 	createRenderEffect,
@@ -31,16 +32,30 @@ const [outermostErrorIdx, setOutermostErrorIdx] = createSignal(
 	ctx.get("outermostErrorIdx"),
 );
 const [outermostError, setOutermostError] = createSignal(ctx.get("outermostError"));
+const [activeComponents, setActiveComponents] = createSignal(
+	ctx.get("activeComponents"),
+);
+const [activeErrorBoundary, setActiveErrorBoundary] = createSignal(
+	ctx.get("activeErrorBoundary"),
+);
+const [importURLs, setImportURLs] = createSignal(ctx.get("importURLs"));
+const [exportKeys, setExportKeys] = createSignal(ctx.get("exportKeys"));
 
 export { clientLoadersData, loadersData, routerData };
 
 addRouteChangeListener((e) => {
-	setLatestEvent(e);
-	setLoadersData(ctx.get("loadersData"));
-	setClientLoadersData(ctx.get("clientLoadersData"));
-	setRouterData(getRouterData());
-	setOutermostErrorIdx(ctx.get("outermostErrorIdx"));
-	setOutermostError(ctx.get("outermostError"));
+	batch(() => {
+		setLatestEvent(e);
+		setLoadersData(ctx.get("loadersData"));
+		setClientLoadersData(ctx.get("clientLoadersData"));
+		setRouterData(getRouterData());
+		setOutermostErrorIdx(ctx.get("outermostErrorIdx"));
+		setOutermostError(ctx.get("outermostError"));
+		setActiveComponents(ctx.get("activeComponents"));
+		setActiveErrorBoundary(ctx.get("activeErrorBoundary"));
+		setImportURLs(ctx.get("importURLs"));
+		setExportKeys(ctx.get("exportKeys"));
+	});
 });
 
 /////////////////////////////////////////////////////////////////////
@@ -74,15 +89,17 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 	const idx = props.idx ?? 0;
 
 	if (idx === 0) {
-		setClientLoadersData(ctx.get("clientLoadersData"));
+		batch(() => {
+			setClientLoadersData(ctx.get("clientLoadersData"));
+			setActiveComponents(ctx.get("activeComponents"));
+			setActiveErrorBoundary(ctx.get("activeErrorBoundary"));
+			setImportURLs(ctx.get("importURLs"));
+			setExportKeys(ctx.get("exportKeys"));
+		});
 	}
 
-	const [currentImportURL, setCurrentImportURL] = createSignal(
-		ctx.get("importURLs")?.[idx],
-	);
-	const [currentExportKey, setCurrentExportKey] = createSignal(
-		ctx.get("exportKeys")?.[idx],
-	);
+	const [currentImportURL, setCurrentImportURL] = createSignal(importURLs()?.[idx]);
+	const [currentExportKey, setCurrentExportKey] = createSignal(exportKeys()?.[idx]);
 
 	if (currentImportURL) {
 		createEffect(() => {
@@ -91,15 +108,17 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 				return;
 			}
 
-			const newCurrentImportURL = ctx.get("importURLs")?.[idx];
-			const newCurrentExportKey = ctx.get("exportKeys")?.[idx];
+			batch(() => {
+				const newCurrentImportURL = importURLs()?.[idx];
+				const newCurrentExportKey = exportKeys()?.[idx];
 
-			if (currentImportURL() !== newCurrentImportURL) {
-				setCurrentImportURL(newCurrentImportURL);
-			}
-			if (currentExportKey() !== newCurrentExportKey) {
-				setCurrentExportKey(newCurrentExportKey);
-			}
+				if (currentImportURL() !== newCurrentImportURL) {
+					setCurrentImportURL(newCurrentImportURL);
+				}
+				if (currentExportKey() !== newCurrentExportKey) {
+					setCurrentExportKey(newCurrentExportKey);
+				}
+			});
 		});
 	}
 
@@ -123,7 +142,7 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		}
 		currentImportURL();
 		currentExportKey();
-		return ctx.get("activeComponents")?.[idx];
+		return activeComponents()?.[idx];
 	});
 
 	const shouldFallbackOutletMemo = createMemo(() => {
@@ -140,7 +159,7 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		if (!isErrorIdxMemo()) {
 			return null;
 		}
-		return ctx.get("activeErrorBoundary");
+		return activeErrorBoundary();
 	});
 
 	return (
