@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import type { JSX } from "react";
+import { type JSX, useMemo } from "react";
 import {
 	type getRouterData,
 	internal_RiverClientGlobal,
@@ -40,6 +40,36 @@ export function makeTypedUseLoaderData<Loader extends RiverUntypedLoader>() {
 		const loadersData = useAtomValue(loadersDataAtom);
 		return loadersData[props.idx];
 	};
+}
+
+export function makeTypedUsePatternLoaderData<Loader extends RiverUntypedLoader>() {
+	return function usePatternData<Pattern extends string = string>(
+		pattern: Pattern,
+	): Extract<Loader, { pattern: Pattern }>["phantomOutputType"] | undefined {
+		const routerData = useAtomValue(routerDataAtom);
+		const loadersData = useAtomValue(loadersDataAtom);
+		const idx = useMemo(() => {
+			return routerData.matchedPatterns.findIndex((p) => p === pattern);
+		}, [routerData.matchedPatterns, pattern]);
+		if (idx === -1) {
+			return undefined;
+		}
+		return loadersData[idx];
+	};
+}
+
+export function usePatternClientLoaderData<ClientLoaderData = any>(
+	pattern: string,
+): ClientLoaderData | undefined {
+	const routerData = useAtomValue(routerDataAtom);
+	const clientLoadersData = useAtomValue(clientLoadersDataAtom);
+	const idx = useMemo(() => {
+		return routerData.matchedPatterns.findIndex((p) => p === pattern);
+	}, [routerData.matchedPatterns, pattern]);
+	if (idx === -1) {
+		return undefined;
+	}
+	return clientLoadersData[idx];
 }
 
 export function makeTypedAddClientLoader<

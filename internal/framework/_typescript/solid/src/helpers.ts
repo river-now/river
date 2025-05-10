@@ -41,6 +41,42 @@ export function makeTypedUseLoaderData<Loader extends RiverUntypedLoader>() {
 	};
 }
 
+export function makeTypedUsePatternLoaderData<Loader extends RiverUntypedLoader>() {
+	return function usePatternData<Pattern extends string = string>(
+		pattern: Pattern,
+	): Accessor<Extract<Loader, { pattern: Pattern }>["phantomOutputType"] | undefined> {
+		const idx = createMemo(() => {
+			const matchedPatterns = routerData().matchedPatterns;
+			return matchedPatterns.findIndex((p) => p === pattern);
+		});
+		const loaderData = createMemo(() => {
+			const index = idx();
+			if (index === -1) {
+				return undefined;
+			}
+			return loadersData()[index];
+		});
+		return loaderData;
+	};
+}
+
+export function usePatternClientLoaderData<
+	ClientLoaderData extends Accessor<any> = Accessor<any>,
+>(pattern: string): Accessor<ReturnType<ClientLoaderData> | undefined> {
+	const idx = createMemo(() => {
+		const matchedPatterns = routerData().matchedPatterns;
+		return matchedPatterns.findIndex((p) => p === pattern);
+	});
+	const clientLoaderData = createMemo(() => {
+		const index = idx();
+		if (index === -1) {
+			return undefined;
+		}
+		return clientLoadersData()[index];
+	});
+	return clientLoaderData;
+}
+
 export function makeTypedAddClientLoader<
 	OuterLoader extends RiverUntypedLoader,
 	RootData,

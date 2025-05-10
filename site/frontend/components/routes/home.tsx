@@ -1,7 +1,26 @@
+import { usePatternClientLoaderData } from "river.now/solid";
 import { Link } from "../app_link.tsx";
-import type { RouteProps } from "../app_utils.ts";
+import {
+	addClientLoader,
+	type RouteProps,
+	usePatternLoaderData,
+} from "../app_utils.ts";
+
+const useClientLoaderData = addClientLoader("", async (props) => {
+	// This is pointless -- just an example of how to use a client loader
+	// await new Promise((r) => setTimeout(r, 1_000));
+	console.log("Client loader running");
+	return props.loaderData.LatestVersion;
+});
+
+type RootCLD = ReturnType<typeof useClientLoaderData>;
 
 export function Home(props: RouteProps<"/">) {
+	const x = usePatternLoaderData("");
+	const y = usePatternClientLoaderData<RootCLD>("");
+	// console.log("x", x());
+	// console.log("y", y());
+
 	return (
 		<div class="flex h-full justify-center flex-col items-center mb-16 gap-6">
 			<h2 class="text-center text-3xl sm:text-5xl w-3xl max-w-full leading-normal my-6">
