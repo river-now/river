@@ -173,9 +173,8 @@ func getCollectionStr(opts Opts, merged tsgencore.Results) (string, error) {
 			case typeInfo.ResolvedName != "":
 				write(phantomTypeLine, "null as unknown as ")
 				write(phantomTypeLine, typeInfo.ResolvedName)
-			case typeInfo.IsTSBasicType():
-				write(phantomTypeLine, "null as unknown as ")
-				write(phantomTypeLine, typeInfo.TSStr)
+			case typeInfo.TSStr == "Record<never, never>":
+				write(phantomTypeLine, "null")
 			default:
 				write(phantomTypeLine, "null as unknown as ")
 				write(phantomTypeLine, typeInfo.TSStr)
