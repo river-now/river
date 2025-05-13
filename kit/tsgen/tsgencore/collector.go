@@ -68,7 +68,7 @@ func (c *typeCollector) collectType(t reflect.Type, userDefinedAlias ...string) 
 		}
 		entry.visited = true
 
-		if isBasicType(t) && !isRoot {
+		if !isRoot && isBasicType(t) {
 			entry.coreType = c.getTypeScriptType(t)
 			return
 		}

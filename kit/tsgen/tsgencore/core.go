@@ -60,9 +60,6 @@ func traverseType(adHocType *AdHocType) (_results, IDStr) {
 	t := getEffectiveReflectType(adHocType.TypeInstance)
 
 	effectiveRequestedName := getEffectiveRequestedName(t, adHocType.TSTypeName)
-	if effectiveRequestedName == "" {
-		return _results{}, ""
-	}
 
 	c := newTypeCollector()
 	c.rootType = t

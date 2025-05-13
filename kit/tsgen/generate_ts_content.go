@@ -177,7 +177,8 @@ func getCollectionStr(opts Opts, merged tsgencore.Results) (string, error) {
 				write(phantomTypeLine, "null as unknown as ")
 				write(phantomTypeLine, typeInfo.TSStr)
 			default:
-				write(phantomTypeLine, "null")
+				write(phantomTypeLine, "null as unknown as ")
+				write(phantomTypeLine, typeInfo.TSStr)
 			}
 
 			write(phantomTypeLine, ",", 1)
