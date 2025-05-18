@@ -338,7 +338,7 @@ func RegisterHandler(router *Router, method, pattern string, httpHandler http.Ha
 /////////////////////////////////////////////////////////////////////
 
 // Interface to allow for type-agnostic handling of generic-typed request data.
-type _Req_Data_Marker interface {
+type req_data_marker interface {
 	_get_input() any
 	_get_underlying_req_data_instance() any
 
@@ -349,24 +349,26 @@ type _Req_Data_Marker interface {
 	ResponseProxy() *response.Proxy
 }
 
-// Implementing the reqDataMarker interface on the ReqData struct.
+// Implementing the req_data_marker interface on the ReqData struct.
 func (rd *ReqData[I]) _get_input() any                        { return rd._input }
 func (rd *ReqData[I]) _get_underlying_req_data_instance() any { return rd }
 
-func (rd *ReqData[I]) Input() I                       { return rd._input }
 func (rd *ReqData[I]) Params() Params                 { return rd._params }
 func (rd *ReqData[I]) SplatValues() []string          { return rd._splat_vals }
 func (rd *ReqData[I]) TasksCtx() *tasks.TasksCtx      { return rd._tasks_ctx }
 func (rd *ReqData[I]) Request() *http.Request         { return rd._tasks_ctx.Request() }
 func (rd *ReqData[I]) ResponseProxy() *response.Proxy { return rd._response_proxy }
 
+// Supplemental to req_data_marker interface
+func (rd *ReqData[I]) Input() I { return rd._input }
+
 type _Req_Data_Getter interface {
-	_get_req_data(r *http.Request, match *matcher.BestMatch) (_Req_Data_Marker, error)
+	_get_req_data(r *http.Request, match *matcher.BestMatch) (req_data_marker, error)
 }
 
 type _Req_Data_Getter_Impl[I any] func(*http.Request, *matcher.BestMatch) (*ReqData[I], error)
 
-func (f _Req_Data_Getter_Impl[I]) _get_req_data(r *http.Request, m *matcher.BestMatch) (_Req_Data_Marker, error) {
+func (f _Req_Data_Getter_Impl[I]) _get_req_data(r *http.Request, m *matcher.BestMatch) (req_data_marker, error) {
 	return f(r, m)
 }
 
@@ -374,31 +376,26 @@ func (f _Req_Data_Getter_Impl[I]) _get_req_data(r *http.Request, m *matcher.Best
 /////// NATIVE CONTEXT
 /////////////////////////////////////////////////////////////////////
 
-// __TODO, not fully implemented yet, but the point of this is so that
-// users can access the request data from http handlers. Not
-// necessary for task handlers.
+var context_store = contextutil.NewStore[req_data_marker]("__river_kit_mux_req_data_interface")
 
-var _context_store = contextutil.NewStore[_Req_Data_Marker]("_req_data")
-
-func GetReqData[I any](r *http.Request) *ReqData[I] {
-	_req_data_marker := _context_store.GetValueFromContext(r.Context())
-	return genericsutil.AssertOrZero[*ReqData[I]](_req_data_marker)
+func get_req_data_mrkr(r *http.Request) req_data_marker {
+	return context_store.GetValueFromContext(r.Context())
 }
 
-func GetParam[I any](r *http.Request, key string) string {
-	return GetParams[I](r)[key]
+func GetParam(r *http.Request, key string) string {
+	return GetParams(r)[key]
 }
 
-func GetParams[I any](r *http.Request) Params {
-	if _req_data := GetReqData[I](r); _req_data != nil {
-		return _req_data._params
+func GetParams(r *http.Request) Params {
+	if req_data_mrkr := get_req_data_mrkr(r); req_data_mrkr != nil {
+		return req_data_mrkr.Params()
 	}
-	return nil
+	return make(Params, 0)
 }
 
-func GetSplatValues[I any](r *http.Request) []string {
-	if _req_data := GetReqData[I](r); _req_data != nil {
-		return _req_data._splat_vals
+func GetSplatValues(r *http.Request) []string {
+	if _req_data_mrkr := get_req_data_mrkr(r); _req_data_mrkr != nil {
+		return _req_data_mrkr.SplatValues()
 	}
 	return nil
 }
@@ -526,7 +523,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r = _context_store.GetRequestWithContext(r, _handler_req_data_marker)
+	r = context_store.GetRequestWithContext(r, _handler_req_data_marker)
 
 	if _route._get_handler_type() == _handler_types._http {
 		_handler := _route._get_http_handler()
@@ -603,7 +600,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func run_appropriate_mws(
 	_router *Router,
-	_req_data_marker _Req_Data_Marker,
+	_req_data_marker req_data_marker,
 	_method_matcher *_Method_Matcher,
 	_route_marker AnyRoute,
 	_handler http.Handler,
