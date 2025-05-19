@@ -144,6 +144,13 @@ func TestEdgeCases(t *testing.T) {
 		t.Fatalf("expected error for nil source, got nil")
 	}
 
+	// Errs (not panics) on typed nils
+	var typedNil *TestStruct = nil
+	_, err = ToGob(typedNil)
+	if err == nil {
+		t.Fatalf("expected error for typed nil source, got nil")
+	}
+
 	// Test FromGobInto with empty gob bytes
 	var decodedStruct TestStruct
 	err = FromGobInto([]byte{}, &decodedStruct)

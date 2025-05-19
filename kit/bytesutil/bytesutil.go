@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
+	"reflect"
 )
 
 // Random returns a slice of cryptographically random bytes of length byteLen.
@@ -52,6 +53,10 @@ func ToBase64Multi(bytes ...[]byte) []string {
 
 // ToGob encodes an arbitrary value into a gob-encoded byte slice.
 func ToGob(src any) ([]byte, error) {
+	rv := reflect.ValueOf(src)
+	if rv.Kind() == reflect.Ptr && rv.IsNil() {
+		return nil, fmt.Errorf("bytesutil.ToGob: cannot encode nil pointer value")
+	}
 	var a bytes.Buffer
 	enc := gob.NewEncoder(&a)
 	err := enc.Encode(src)
