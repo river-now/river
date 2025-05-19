@@ -229,6 +229,7 @@ func RunNestedTasks(
 			_splat_vals:     findNestedMatchesResults.SplatValues,
 			_tasks_ctx:      tasksCtx,
 			_input:          None{},
+			_req:            r,
 			_response_proxy: _response_proxy,
 		}
 

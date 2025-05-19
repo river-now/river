@@ -105,11 +105,11 @@ type Registry struct {
 }
 
 func (tr *Registry) NewCtxFromNativeContext(parentContext context.Context) *TasksCtx {
-	return tr.newTasksCtx(parentContext, nil)
+	return tr.newTasksCtx(parentContext)
 }
 
 func (tr *Registry) NewCtxFromRequest(r *http.Request) *TasksCtx {
-	return tr.newTasksCtx(r.Context(), r)
+	return tr.newTasksCtx(r.Context())
 }
 
 func NewRegistry(key string) *Registry {
@@ -122,7 +122,6 @@ func NewRegistry(key string) *Registry {
 
 type TasksCtx struct {
 	mu       *sync.Mutex
-	request  *http.Request
 	registry *Registry
 	results  *TaskResults
 
@@ -177,12 +176,11 @@ func (tr *Registry) AddTasksCtxToRequestMw() func(http.Handler) http.Handler {
 	}
 }
 
-func (tr *Registry) newTasksCtx(parentContext context.Context, r *http.Request) *TasksCtx {
+func (tr *Registry) newTasksCtx(parentContext context.Context) *TasksCtx {
 	contextWithCancel, cancel := context.WithCancel(parentContext)
 
 	c := &TasksCtx{
 		mu:       &sync.Mutex{},
-		request:  r,
 		registry: tr,
 		context:  contextWithCancel,
 		cancel:   cancel,
@@ -191,10 +189,6 @@ func (tr *Registry) newTasksCtx(parentContext context.Context, r *http.Request) 
 	c.results = newResults(c)
 
 	return c
-}
-
-func (c *TasksCtx) Request() *http.Request {
-	return c.request
 }
 
 func (c *TasksCtx) NativeContext() context.Context {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"sync"
 	"testing"
 	"time"
@@ -171,25 +170,6 @@ func TestTasks(t *testing.T) {
 
 		if counter != 1 {
 			t.Errorf("Expected task to run once, ran %d times", counter)
-		}
-	})
-
-	t.Run("HTTPRequestContext", func(t *testing.T) {
-		registry := NewRegistry("test")
-
-		task := Register(registry, func(c *Arg[string]) (string, error) {
-			return c.Request().URL.String(), nil
-		})
-
-		req, _ := http.NewRequest("GET", "http://example.com", nil)
-		ctx := registry.NewCtxFromRequest(req)
-		result, err := task.Prep(ctx, "test").Get()
-
-		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
-		}
-		if result != "http://example.com" {
-			t.Errorf("Expected 'http://example.com', got '%s'", result)
 		}
 	})
 }

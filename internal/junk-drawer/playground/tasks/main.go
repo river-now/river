@@ -37,7 +37,7 @@ func main() {
 }
 
 func auth(c *tasks.ArgNoInput) (int, error) {
-	fmt.Println("running auth   ...", c.Request().URL, time.Now().UnixMilli())
+	fmt.Println("running auth   ...", time.Now().UnixMilli())
 	// return 0, errors.New("auth error")
 
 	time.Sleep(2 * time.Second)
@@ -61,7 +61,7 @@ func user(c *tasks.Arg[string]) (string, error) {
 }
 
 func user2(c *tasks.Arg[string]) (string, error) {
-	fmt.Println("running user2  ...", c.Request().URL, time.Now().UnixMilli())
+	fmt.Println("running user2  ...", time.Now().UnixMilli())
 	token, _ := Auth.PrepNoInput(c.TasksCtx).Get()
 	fmt.Println("user2 retrieved token", token)
 
@@ -73,7 +73,7 @@ func user2(c *tasks.Arg[string]) (string, error) {
 
 func profile(c *tasks.Arg[string]) (string, error) {
 	user_id := c.Input
-	fmt.Println("running profile...", c.Request().URL, time.Now().UnixMilli())
+	fmt.Println("running profile...", time.Now().UnixMilli())
 	user := User.Prep(c.TasksCtx, user_id)
 	user2 := User2.Prep(c.TasksCtx, user_id)
 

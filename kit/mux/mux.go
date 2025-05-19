@@ -32,6 +32,7 @@ type ReqData[I any] struct {
 	_splat_vals     []string
 	_tasks_ctx      *tasks.TasksCtx
 	_input          I
+	_req            *http.Request
 	_response_proxy *response.Proxy
 }
 
@@ -356,7 +357,7 @@ func (rd *ReqData[I]) _get_underlying_req_data_instance() any { return rd }
 func (rd *ReqData[I]) Params() Params                 { return rd._params }
 func (rd *ReqData[I]) SplatValues() []string          { return rd._splat_vals }
 func (rd *ReqData[I]) TasksCtx() *tasks.TasksCtx      { return rd._tasks_ctx }
-func (rd *ReqData[I]) Request() *http.Request         { return rd._tasks_ctx.Request() }
+func (rd *ReqData[I]) Request() *http.Request         { return rd._req }
 func (rd *ReqData[I]) ResponseProxy() *response.Proxy { return rd._response_proxy }
 
 // Supplemental to req_data_marker interface
@@ -643,6 +644,7 @@ func run_appropriate_mws(
 				_splat_vals:     _req_data_marker.SplatValues(),
 				_tasks_ctx:      _tasks_ctx,
 				_input:          None{},
+				_req:            r,
 				_response_proxy: _response_proxy,
 			}
 
@@ -693,6 +695,7 @@ func _req_data_starter[I any](_match *matcher.BestMatch, _tasks_registry *tasks.
 		_req_data._splat_vals = _match.SplatValues
 	}
 	_req_data._tasks_ctx = _tasks_registry.MustGetCtxFromRequest(r)
+	_req_data._req = r
 	_req_data._response_proxy = response.NewProxy()
 	return _req_data
 }
