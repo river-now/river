@@ -1,12 +1,14 @@
-# 🌊 River
+# River
 
 <img src="site/frontend/__static/river-banner.webp" alt="River logo banner">
 
 ## Introduction
 
-River is a framework for writing modern, type-safe web applications with Go and
-TypeScript. River provides the benefits of modern web development frameworks
-without the downsides of isomorphic JavaScript and component hydration patterns.
+River is a Go / TypeScript meta-framework with first-class support for React,
+Solid, and Preact – built on Vite.
+
+River provides the benefits of modern web development frameworks without the
+downsides of isomorphic JavaScript and component hydration patterns.
 
 Core Features:
 

@@ -16,7 +16,7 @@ const (
 	Domain          = "river.now"
 	Origin          = "https://" + Domain
 	SiteTitle       = "river.now"
-	SiteDescription = "River is a framework for writing modern, type-safe web applications with Go and TypeScript."
+	SiteDescription = "River is a Go / TypeScript meta-framework with first-class support for React, Solid, and Preact – built on Vite."
 )
 
 var River = &river.River{
