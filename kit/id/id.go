@@ -1,70 +1,48 @@
 package id
 
 import (
-	"encoding/base64"
-	"strings"
-
-	"github.com/river-now/river/kit/bytesutil"
+	"crypto/rand"
 )
 
-// New generates a cryptographically random string ID of length idLen,
-// consisting of mixed-case alphanumeric characters (A-Z, a-z, 0-9),
-// with no special characters or padding. The idLen parameter must be
-// between 0 and 255 inclusive.
-func New(idLen uint8) (string, error) {
+const defaultCharset = "0123456789" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz"
 
-	// if zero length, return empty string
+// New generates a cryptographically random string ID of the specified length.
+// By default, IDs consist of mixed-case alphanumeric characters (0-9, A-Z, a-z).
+// A single optional custom charset can be provided if you want to use different characters.
+// The idLen parameter must be between 0 and 255 inclusive.
+func New(idLen uint8, optionalCharset ...string) (string, error) {
 	if idLen == 0 {
 		return "", nil
 	}
-
-	l := int(idLen)
-
-	// get random bytes
-	bytes, err := bytesutil.Random(l)
-	if err != nil {
+	bytes := make([]byte, int(idLen))
+	if _, err := rand.Read(bytes); err != nil {
 		return "", err
 	}
-
-	// encode as unpadded, url-safe base64
-	encoded := base64.RawURLEncoding.EncodeToString(bytes)
-
-	// use a strings.Builder and set capacity to idLen
-	result := strings.Builder{}
-	result.Grow(l)
-
-	// iterate over encoded bytes, filtering out non-alphanumeric characters
-	for _, ch := range encoded {
-		if ch != '-' && ch != '_' {
-			result.WriteRune(ch)
-			if result.Len() == l {
-				break
-			}
-		}
+	charset := defaultCharset
+	if len(optionalCharset) > 0 {
+		charset = optionalCharset[0]
 	}
-
-	// if len is less than idLen, get another ID and append to result
-	// extremely unlikely this would ever happen, if even possible
-	if result.Len() < l {
-		supplIdLen := uint8(l - result.Len())
-		suppl, err := New(supplIdLen)
-		if err != nil {
-			return "", err
-		}
-		result.WriteString(suppl)
+	for i := range bytes {
+		bytes[i] = charset[bytes[i]%byte(len(charset))]
 	}
-
-	// return the final id
-	return result.String(), nil
+	return string(bytes), nil
 }
 
-// NewMulti generates count number of cryptographically random string IDs of length idLen,
-// consisting of mixed-case alphanumeric characters (A-Z, a-z, 0-9), with no special
-// characters or padding. The idLen parameter must be between 0 and 255 inclusive.
-func NewMulti(idLen uint8, count uint8) ([]string, error) {
-	ids := make([]string, count)
-	for i := uint8(0); i < count; i++ {
-		id, err := New(idLen)
+// NewMulti generates multiple cryptographically random string IDs of the specified length and quantity.
+// By default, IDs consist of mixed-case alphanumeric characters (0-9, A-Z, a-z).
+// A single optional custom charset can be provided if you want to use different characters.
+// The idLen parameter must be between 0 and 255 inclusive.
+func NewMulti(idLen uint8, quantity uint8, optionalCharset ...string) ([]string, error) {
+	ids := make([]string, quantity)
+	useOptionalCharset := len(optionalCharset) > 0
+	for i := uint8(0); i < quantity; i++ {
+		var id string
+		var err error
+		if useOptionalCharset {
+			id, err = New(idLen, optionalCharset[0])
+		} else {
+			id, err = New(idLen)
+		}
 		if err != nil {
 			return nil, err
 		}
