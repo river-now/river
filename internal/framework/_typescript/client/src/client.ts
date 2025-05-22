@@ -9,6 +9,7 @@ import {
 	getIsGETRequest,
 } from "river.now/kit/url";
 import { updateHeadEls } from "./head.ts";
+import type { historyInstance, historyListener } from "./history_types.ts";
 import {
 	getBuildIDFromResponse,
 	parseFetchResponseForRedirectData,
@@ -1110,19 +1111,19 @@ const scrollStateMapSubKey = {
 // CUSTOM HISTORY
 /////////////////////////////////////////////////////////////////////
 
-let __customHistory: ReturnType<typeof createBrowserHistory>;
+let __customHistory: historyInstance;
 let lastKnownCustomLocation: (typeof __customHistory)["location"];
 
-export function getHistoryInstance() {
+export function getHistoryInstance(): historyInstance {
 	if (!__customHistory) {
-		__customHistory = createBrowserHistory();
+		__customHistory = createBrowserHistory() as unknown as historyInstance;
 	}
 	return __customHistory;
 }
 
 function initCustomHistory() {
 	lastKnownCustomLocation = getHistoryInstance().location;
-	getHistoryInstance().listen(customHistoryListener);
+	getHistoryInstance().listen(customHistoryListener as unknown as historyListener);
 	setNativeScrollRestorationToManual();
 }
 

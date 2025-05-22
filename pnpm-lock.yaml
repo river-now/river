@@ -33,7 +33,7 @@ importers:
         specifier: ^0.6.0
         version: 0.6.0(esbuild@0.25.3)(solid-js@1.9.6)
       history:
-        specifier: ^5.3.0
+        specifier: 5.3.0
         version: 5.3.0
       jotai:
         specifier: ^2.12.3
