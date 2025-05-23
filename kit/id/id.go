@@ -2,6 +2,7 @@ package id
 
 import (
 	"crypto/rand"
+	"fmt"
 )
 
 const defaultCharset = "0123456789" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz"
@@ -10,22 +11,38 @@ const defaultCharset = "0123456789" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghij
 // By default, IDs consist of mixed-case alphanumeric characters (0-9, A-Z, a-z).
 // A single optional custom charset can be provided if you want to use different characters.
 // The idLen parameter must be between 0 and 255 inclusive.
+// If provided, the custom charset length must be between 1 and 255 inclusive.
 func New(idLen uint8, optionalCharset ...string) (string, error) {
 	if idLen == 0 {
 		return "", nil
-	}
-	bytes := make([]byte, int(idLen))
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
 	}
 	charset := defaultCharset
 	if len(optionalCharset) > 0 {
 		charset = optionalCharset[0]
 	}
-	for i := range bytes {
-		bytes[i] = charset[bytes[i]%byte(len(charset))]
+	charsetLen := len(charset)
+	if charsetLen == 0 || charsetLen > 255 {
+		return "", fmt.Errorf(
+			"charset length must be between 1 and 255 inclusive, got %d", charsetLen,
+		)
 	}
-	return string(bytes), nil
+	effectiveTotalValues := (256 / charsetLen) * charsetLen
+	idOutputBytes := make([]byte, idLen)
+	randomByteHolder := make([]byte, 1)
+	for i := uint8(0); i < idLen; i++ {
+		for {
+			_, err := rand.Read(randomByteHolder)
+			if err != nil {
+				return "", fmt.Errorf("failed to read random bytes: %w", err)
+			}
+			randomVal := randomByteHolder[0]
+			if int(randomVal) < effectiveTotalValues {
+				idOutputBytes[i] = charset[randomVal%byte(charsetLen)]
+				break
+			}
+		}
+	}
+	return string(idOutputBytes), nil
 }
 
 // NewMulti generates multiple cryptographically random string IDs of the specified length and quantity.

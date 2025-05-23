@@ -1,6 +1,7 @@
 package id
 
 import (
+	"math"
 	"strings"
 	"testing"
 )
@@ -162,5 +163,60 @@ func TestNewMultiCustomCharset(t *testing.T) {
 	}
 	if len(ids) != 0 {
 		t.Errorf("NewMulti() with zero quantity returned non-empty slice: %v", ids)
+	}
+}
+
+// Modulo bias tests
+
+const maxRelativeDeviation = 0.02
+
+func TestUniformityDigits(t *testing.T) {
+	const (
+		charset  = "0123456789"
+		idLen    = 20
+		samples  = 50_000
+		totalOut = idLen * samples
+	)
+	counts := generateAndCount(t, idLen, samples, charset)
+	checkUniform(t, counts, totalOut)
+}
+
+func TestUniformityPrime17(t *testing.T) {
+	const (
+		charset  = "ABCDEFGHIJKLMNOPQ"
+		idLen    = 20
+		samples  = 50_000
+		totalOut = idLen * samples
+	)
+	counts := generateAndCount(t, idLen, samples, charset)
+	checkUniform(t, counts, totalOut)
+}
+
+func generateAndCount(t *testing.T, idLen, quantity int, charset string) []int {
+	counts := make([]int, len(charset))
+	for range quantity {
+		s, err := New(uint8(idLen), charset)
+		if err != nil {
+			t.Fatalf("New failed: %v", err)
+		}
+		for _, r := range s {
+			idx := strings.IndexRune(charset, r)
+			if idx < 0 {
+				t.Fatalf("character %q not in charset", r)
+			}
+			counts[idx]++
+		}
+	}
+	return counts
+}
+
+func checkUniform(t *testing.T, counts []int, totalChars int) {
+	exp := float64(totalChars) / float64(len(counts))
+	for i, c := range counts {
+		relDev := math.Abs(float64(c)-exp) / exp
+		if relDev > maxRelativeDeviation {
+			t.Fatalf("bias detected: char[%d]=%d, want ≈%.0f (rel dev %.2f%%)",
+				i, c, exp, relDev*100)
+		}
 	}
 }
