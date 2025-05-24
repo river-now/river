@@ -26,6 +26,7 @@ func main() {
 	buildClient()
 	buildReact()
 	buildSolid()
+	buildPreact()
 }
 
 func buildKit() {
@@ -67,9 +68,11 @@ func buildClient() {
 		Write:       true,
 		Bundle:      true,
 		EntryPoints: []string{"./internal/framework/_typescript/client/index.ts"},
-		External:    []string{"river.now"},
-		Outdir:      "./npm_dist/internal/framework/_typescript/client",
-		Tsconfig:    tsconfig,
+		External: []string{
+			"river.now",
+		},
+		Outdir:   "./npm_dist/internal/framework/_typescript/client",
+		Tsconfig: tsconfig,
 	})
 }
 
@@ -85,9 +88,13 @@ func buildReact() {
 		Write:       true,
 		Bundle:      true,
 		EntryPoints: []string{"./internal/framework/_typescript/react/index.tsx"},
-		External:    []string{"river.now", "jotai", "react", "react-dom"},
-		Outdir:      "./npm_dist/internal/framework/_typescript/react",
-		Tsconfig:    tsconfig,
+		External: []string{
+			"river.now",
+			"react", "react-dom",
+			"jotai",
+		},
+		Outdir:   "./npm_dist/internal/framework/_typescript/react",
+		Tsconfig: tsconfig,
 	})
 }
 
@@ -100,6 +107,29 @@ func buildSolid() {
 	}
 
 	log.Println("solid: esbuild (via node) succeeded")
+}
+
+func buildPreact() {
+	tsconfig := "./internal/framework/_typescript/preact/tsconfig.json"
+	runTSC(tsconfig)
+	build("preact", esbuild.BuildOptions{
+		Sourcemap:   esbuild.SourceMapLinked,
+		Target:      esbuild.ESNext,
+		Format:      esbuild.FormatESModule,
+		TreeShaking: esbuild.TreeShakingTrue,
+		Splitting:   true,
+		Write:       true,
+		Bundle:      true,
+		EntryPoints: []string{"./internal/framework/_typescript/preact/index.tsx"},
+		External: []string{
+			"river.now",
+			"preact", "preact/hooks",
+			"@preact/signals",
+			"preact/jsx-runtime", "preact/compat", "preact/test-utils",
+		},
+		Outdir:   "./npm_dist/internal/framework/_typescript/preact",
+		Tsconfig: tsconfig,
+	})
 }
 
 /////////////////////////////////////////////////////////////////////

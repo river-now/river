@@ -49,6 +49,9 @@ tscheck-fw-react:
 tscheck-fw-solid:
 	@pnpm tsc --noEmit --project ./internal/framework/_typescript/solid
 
+tscheck-fw-preact:
+	@pnpm tsc --noEmit --project ./internal/framework/_typescript/preact
+
 tsprepforpub: tsreset tstest tslint tscheck
 
 tspublishpre: tsprepforpub

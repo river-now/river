@@ -73,9 +73,17 @@ func (h *River) writePathsToDisk_StageOne() error {
 }
 
 var (
-	reactDedupeList  = []string{"react", "react-dom"}
-	preactDedupeList = []string{"preact", "preact/hooks"}
-	solidDedupeList  = []string{"solid-js", "solid-js/web"}
+	reactDedupeList = []string{
+		"react", "react-dom",
+	}
+	preactDedupeList = []string{
+		"preact", "preact/hooks",
+		"@preact/signals",
+		"preact/jsx-runtime", "preact/compat", "preact/test-utils",
+	}
+	solidDedupeList = []string{
+		"solid-js", "solid-js/web",
+	}
 )
 
 // 0 = func name, 1,2 = backtick literal, 3 = public dir, 4 = backtick literal
