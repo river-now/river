@@ -60,30 +60,31 @@ func (inst *Instance) InitUniqueRules(e *HeadEls) {
 	})
 }
 
-type SortedHeadEls struct {
-	Title string
+type SortedAndPreEscapedHeadEls struct {
+	Title *htmlutil.Element
 	Meta  []*htmlutil.Element
 	Rest  []*htmlutil.Element
 }
 
-func (inst *Instance) Render(input *SortedHeadEls) (template.HTML, error) {
+const roughSafeAvgElLen = 80
+
+func (inst *Instance) Render(input *SortedAndPreEscapedHeadEls) (template.HTML, error) {
 	inst.InitUniqueRules(nil)
 
 	metaSize := len(inst.metaStart) + len(inst.metaEnd)
 	restSize := len(inst.restStart) + len(inst.restEnd)
 	estimatedSize := metaSize + restSize + 4 // Newlines
-	if input.Title != "" {
-		estimatedSize += len(input.Title) + len("<title></title>")
+	if input.Title != nil {
+		estimatedSize += roughSafeAvgElLen
 	}
-	estimatedSize += len(input.Meta) * 50 // Rough estimate per meta tag
-	estimatedSize += len(input.Rest) * 50 // Rough estimate per other tag
+	estimatedSize += len(input.Meta) * roughSafeAvgElLen
+	estimatedSize += len(input.Rest) * roughSafeAvgElLen
 
 	var b strings.Builder
 	b.Grow(estimatedSize)
 
-	if input.Title != "" {
-		titleEl := &htmlutil.Element{Tag: "title", TextContent: input.Title}
-		if err := htmlutil.RenderElementToBuilder(titleEl, &b); err != nil {
+	if input.Title != nil {
+		if err := htmlutil.RenderElementToBuilder(input.Title, &b); err != nil {
 			return "", fmt.Errorf("error rendering title: %w", err)
 		}
 		b.WriteString("\n")
@@ -113,12 +114,12 @@ func (inst *Instance) Render(input *SortedHeadEls) (template.HTML, error) {
 	return template.HTML(b.String()), nil
 }
 
-func (inst *Instance) ToSortedHeadEls(els []*htmlutil.Element) *SortedHeadEls {
+func (inst *Instance) ToSortedAndPreEscapedHeadEls(els []*htmlutil.Element) *SortedAndPreEscapedHeadEls {
 	inst.InitUniqueRules(nil)
 
 	deduped := inst.dedupeHeadEls(els)
 
-	headEls := &SortedHeadEls{
+	headEls := &SortedAndPreEscapedHeadEls{
 		Meta: make([]*htmlutil.Element, 0, len(deduped)),
 		Rest: make([]*htmlutil.Element, 0, len(deduped)),
 	}
@@ -127,11 +128,7 @@ func (inst *Instance) ToSortedHeadEls(els []*htmlutil.Element) *SortedHeadEls {
 		safeEl := htmlutil.EscapeIntoTrusted(el)
 		switch {
 		case isTitle(&safeEl):
-			if safeEl.TextContent != "" {
-				headEls.Title = safeEl.TextContent
-			} else {
-				headEls.Title = safeEl.DangerousInnerHTML
-			}
+			headEls.Title = &safeEl
 		case isMeta(&safeEl):
 			headEls.Meta = append(headEls.Meta, &safeEl)
 		default:

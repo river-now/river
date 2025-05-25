@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/river-now/river/kit/headels"
 	"github.com/river-now/river/kit/htmlutil"
 	"github.com/river-now/river/kit/matcher"
 	"github.com/river-now/river/kit/mux"
@@ -52,12 +53,9 @@ type ui_data_core struct {
 }
 
 type ui_data_stage_2 struct {
-	Title string              `json:"title,omitempty"`
-	Meta  []*htmlutil.Element `json:"metaHeadEls,omitempty"`
-	Rest  []*htmlutil.Element `json:"restHeadEls,omitempty"`
-
-	CSSBundles []string `json:"cssBundles,omitempty"`
-	ViteDevURL string   `json:"viteDevURL,omitempty"`
+	SortedAndPreEscapedHeadEls *headels.SortedAndPreEscapedHeadEls
+	CSSBundles                 []string
+	ViteDevURL                 string
 }
 
 type ui_data_all struct {
@@ -71,7 +69,13 @@ type ui_data_all struct {
 
 type final_ui_data struct {
 	*ui_data_core
-	*ui_data_stage_2
+
+	Title *htmlutil.Element   `json:"title,omitempty"`
+	Meta  []*htmlutil.Element `json:"metaHeadEls,omitempty"`
+	Rest  []*htmlutil.Element `json:"restHeadEls,omitempty"`
+
+	CSSBundles []string `json:"cssBundles,omitempty"`
+	ViteDevURL string   `json:"viteDevURL,omitempty"`
 }
 
 func (h *River) get_ui_data_stage_1(
@@ -301,18 +305,15 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 	hb = append(hb, defaultHeadEls...)
 	hb = append(hb, uiRoutesData.stage_1_head_els...)
 
-	headEls := headElsInstance.ToSortedHeadEls(hb)
+	headEls := headElsInstance.ToSortedAndPreEscapedHeadEls(hb)
 
 	ui_data := &ui_data_all{
 		ui_data_core: uiRoutesData.ui_data_core,
 
 		state_2_final: &ui_data_stage_2{
-			Title: headEls.Title,
-			Meta:  headEls.Meta,
-			Rest:  headEls.Rest,
-
-			CSSBundles: h.getCSSBundles(uiRoutesData.ui_data_core.Deps),
-			ViteDevURL: h.getViteDevURL(),
+			SortedAndPreEscapedHeadEls: headEls,
+			CSSBundles:                 h.getCSSBundles(uiRoutesData.ui_data_core.Deps),
+			ViteDevURL:                 h.getViteDevURL(),
 		},
 	}
 

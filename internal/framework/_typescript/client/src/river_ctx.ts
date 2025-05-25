@@ -6,9 +6,9 @@ export type HeadEl = {
 };
 
 type Meta = {
-	title: string;
-	metaHeadEls: Array<HeadEl>;
-	restHeadEls: Array<HeadEl>;
+	title: HeadEl | null | undefined;
+	metaHeadEls: Array<HeadEl> | null | undefined;
+	restHeadEls: Array<HeadEl> | null | undefined;
 };
 
 type shared = {

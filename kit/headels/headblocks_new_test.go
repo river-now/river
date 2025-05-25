@@ -238,11 +238,11 @@ func TestToSortedHeadEls(t *testing.T) {
 		{Tag: "meta", Attributes: map[string]string{"property": "og:title", "content": "OG Title"}},
 	}
 
-	sorted := inst.ToSortedHeadEls(elements)
+	sorted := inst.ToSortedAndPreEscapedHeadEls(elements)
 
 	// Check that the title was extracted correctly
-	if sorted.Title != "Page Title" {
-		t.Errorf("Expected title 'Page Title', got '%s'", sorted.Title)
+	if sorted.Title.DangerousInnerHTML != "Page Title" {
+		t.Errorf("Expected title 'Page Title', got '%s'", sorted.Title.TextContent)
 	}
 
 	// Check that meta elements are in Meta
@@ -260,11 +260,11 @@ func TestToSortedHeadEls(t *testing.T) {
 		{Tag: "title", DangerousInnerHTML: "Dangerous <b>Title</b>"},
 	}
 
-	sorted2 := inst.ToSortedHeadEls(elements2)
+	sorted2 := inst.ToSortedAndPreEscapedHeadEls(elements2)
 
 	// Check that the title was extracted correctly from DangerousInnerHTML
-	if sorted2.Title != "Dangerous <b>Title</b>" {
-		t.Errorf("Expected title from DangerousInnerHTML, got '%s'", sorted2.Title)
+	if sorted2.Title.DangerousInnerHTML != "Dangerous <b>Title</b>" {
+		t.Errorf("Expected title from DangerousInnerHTML, got '%s'", sorted2.Title.TextContent)
 	}
 }
 
@@ -314,7 +314,7 @@ func TestEdgeCases(t *testing.T) {
 		Tag: "", // Empty tag should cause rendering error
 	}
 
-	sorted := &SortedHeadEls{
+	sorted := &SortedAndPreEscapedHeadEls{
 		Meta: []*htmlutil.Element{invalidEl},
 	}
 

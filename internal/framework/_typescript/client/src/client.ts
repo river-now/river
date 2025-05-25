@@ -980,7 +980,7 @@ async function __reRenderAppInner({
 	// This should come after pushing to history though, so that the title is
 	// correct in the history entry.
 	const tempTxt = document.createElement("textarea");
-	tempTxt.innerHTML = json.title ?? "";
+	tempTxt.innerHTML = json.title?.dangerousInnerHTML ?? "";
 	if (document.title !== tempTxt.value) {
 		document.title = tempTxt.value;
 	}

@@ -11,8 +11,8 @@ import (
 var testInstance = NewInstance("bob")
 
 func TestGetHeadElements(t *testing.T) {
-	routeData := &SortedHeadEls{
-		Title: "Test Title",
+	routeData := &SortedAndPreEscapedHeadEls{
+		Title: &htmlutil.Element{Tag: "title", TextContent: "Test Title"},
 		Meta: []*htmlutil.Element{
 			{Tag: "meta", Attributes: map[string]string{"name": "description", "content": "Test Description"}},
 		},

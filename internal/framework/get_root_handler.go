@@ -54,8 +54,12 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 		}
 
 		routeData := &final_ui_data{
-			ui_data_core:    uiRouteData.ui_data_core,
-			ui_data_stage_2: uiRouteData.state_2_final,
+			ui_data_core: uiRouteData.ui_data_core,
+			Title:        uiRouteData.state_2_final.SortedAndPreEscapedHeadEls.Title,
+			Meta:         uiRouteData.state_2_final.SortedAndPreEscapedHeadEls.Meta,
+			Rest:         uiRouteData.state_2_final.SortedAndPreEscapedHeadEls.Rest,
+			CSSBundles:   uiRouteData.state_2_final.CSSBundles,
+			ViteDevURL:   uiRouteData.state_2_final.ViteDevURL,
 		}
 
 		currentCacheControlHeader := w.Header().Get("Cache-Control")
@@ -83,11 +87,7 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 		var headElements template.HTML
 
 		eg.Go(func() error {
-			he, err := headElsInstance.Render(&headels.SortedHeadEls{
-				Title: routeData.Title,
-				Meta:  routeData.Meta,
-				Rest:  routeData.Rest,
-			})
+			he, err := headElsInstance.Render(uiRouteData.state_2_final.SortedAndPreEscapedHeadEls)
 			if err != nil {
 				return fmt.Errorf("error getting head elements: %w", err)
 			}
