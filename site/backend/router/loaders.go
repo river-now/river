@@ -35,7 +35,7 @@ var _ = newLoader("/", func(c *mux.NestedReqData) (*RootData, error) {
 		if river.IsJSONRequest(req) {
 			// Because this app has no user-specific data, we can cache the JSON response
 			// pretty aggressively.
-			res.SetHeader("Cache-Control", "public, max-age=10, s-maxage=20, must-revalidate")
+			// res.SetHeader("Cache-Control", "public, max-age=10, s-maxage=20, must-revalidate")
 		} else {
 			// Don't cache HTML, but stop short of "no-store" so it's still eligible for ETag revalidation
 			res.SetHeader("Cache-Control", "no-cache")
