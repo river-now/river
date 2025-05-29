@@ -78,10 +78,9 @@ export function getRouterData<
 	T = any,
 	P extends Record<string, string> = Record<string, string>,
 >() {
-	let rootData: T | null = null;
-	if (internal_RiverClientGlobal.get("hasRootData")) {
-		rootData = internal_RiverClientGlobal.get("loadersData")[0];
-	}
+	const rootData: T = internal_RiverClientGlobal.get("hasRootData")
+		? internal_RiverClientGlobal.get("loadersData")[0]
+		: null;
 	return {
 		buildID: internal_RiverClientGlobal.get("buildID") || "",
 		matchedPatterns: internal_RiverClientGlobal.get("matchedPatterns") || [],

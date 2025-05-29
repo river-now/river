@@ -65,7 +65,6 @@ input[type="submit"] {
 		background-color: light-dark(#fcf4e7, black);
 		padding: 0.75rem 1rem;
 		max-width: 100%;
-		overflow-x: auto;
 		border: 1px solid #7777;
 	}
 	code {

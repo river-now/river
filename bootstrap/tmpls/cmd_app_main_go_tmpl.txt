@@ -1,6 +1,6 @@
 package main
 
-import "{{.GoModuleName}}/backend/server"
+import "{{.GoImportBase}}/backend/server"
 
 func main() {
 	server.Serve()

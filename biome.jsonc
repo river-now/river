@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.0.0-beta.1/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.0.0-beta.5/schema.json",
 	"vcs": {
 		"enabled": false,
 		"clientKind": "git",
@@ -11,7 +11,6 @@
 			"**",
 			"!**/node_modules",
 			"!npm_dist/**/*",
-			"!wave/configschema/*schema.json",
 			"!**/__dist",
 			"!**/frontend/river.gen.ts",
 			"!**/frontend/css/tailwind-output.css"
@@ -43,7 +42,6 @@
 				"noCommaOperator": "error",
 				"useNodejsImportProtocol": "error",
 				"useAsConstAssertion": "error",
-				"useNumericLiterals": "error",
 				"useEnumInitializers": "error",
 				"useSelfClosingElements": "error",
 				"useConst": "error",
@@ -73,6 +71,9 @@
 			},
 			"suspicious": {
 				"noExplicitAny": "off" // permit explicit any
+			},
+			"a11y": {
+				"noStaticElementInteractions": "off"
 			}
 		}
 	},

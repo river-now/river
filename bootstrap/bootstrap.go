@@ -10,7 +10,8 @@ import (
 )
 
 type Options struct {
-	GoModuleName string
+	// e.g., "appname" or "modroot/apps/appname"
+	GoImportBase string
 	// "react", "solid", or "preact"
 	UIVariant string
 	// "npm", "pnpm", "yarn", or "bun"
@@ -119,8 +120,8 @@ var (
 )
 
 func Init(o Options) {
-	if o.GoModuleName == "" {
-		panic("GoModuleName must be set")
+	if o.GoImportBase == "" {
+		panic("GoImportBase must be set")
 	}
 
 	do := o.derived()

@@ -47,4 +47,4 @@ var Wave = wave.New(&wave.Config{
 	StaticFSEmbedDirective: "all:__dist/static",
 })
 
-var Log = colorlog.New("{{.GoModuleName}}")
+var Log = colorlog.New("{{.GoImportBase}}")

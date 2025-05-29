@@ -2,4 +2,4 @@ package router
 
 import "github.com/river-now/river/kit/tasks"
 
-var SharedTasksRegistry = tasks.NewRegistry("{{.GoModuleName}}")
+var SharedTasksRegistry = tasks.NewRegistry("{{.GoImportBase}}")

@@ -43,7 +43,7 @@ func getEffectiveRequestedName(t reflect.Type, requestedName string) string {
 
 func getNaturalName(t reflect.Type) string {
 	if t != nil {
-		n := t.Name()
+		n := toSanitizedName(t)
 		if n != "" && isBasicType(t) {
 			return ""
 		}
@@ -197,3 +197,20 @@ func getIDFromReflectType(t reflect.Type, requestedName string) IDStr {
 	}
 	return fmt.Sprintf("$tsgen$%v$tsgen$", t)
 }
+
+/////// Type name sanitization
+
+func toSanitizedName(t reflect.Type) string {
+	return sanitizeTypeName(t.Name())
+}
+
+func sanitizeTypeName(name string) string {
+	x := invalidJSIdentifierChars.ReplaceAllString(name, "_")
+	// if last char is underscore, remove it
+	if len(x) > 0 && x[len(x)-1] == '_' {
+		x = x[:len(x)-1]
+	}
+	return x
+}
+
+var invalidJSIdentifierChars = regexp.MustCompile(`[^a-zA-Z0-9_$]`)

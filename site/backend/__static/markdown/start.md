@@ -13,7 +13,8 @@ installed on your machine.
 Start in the directory where you want your new River app to live.
 
 Then, if you don't already have a Go module initiated, do so. You can name your
-module anything you want.
+module anything you want, and it's fine if your `go.mod` file lives in a parent
+directory.
 
 ```go
 go mod init app
@@ -44,7 +45,7 @@ import "github.com/river-now/river/bootstrap"
 
 func main() {
 	bootstrap.Init(bootstrap.Options{
-		GoModuleName:     "app",   // Whatever you chose in Step 1
+		GoImportBase:     "app",   // e.g., "appname" or "modroot/apps/appname"
 		UIVariant:        "react", // "react", "solid", or "preact"
 		JSPackageManager: "npm",   // "npm", "pnpm", "yarn", or "bun"
 	})
@@ -58,7 +59,7 @@ project in your current working directory and (ii)&nbsp;install the required
 packages for the `UIVariant` you chose (using the `JSPackageManager` you chose).
 
 ```sh
-go run ./__init/main.go
+go run ./__bootstrap/main.go
 ```
 
 ## Step 5

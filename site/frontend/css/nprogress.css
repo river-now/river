@@ -18,7 +18,9 @@
 	right: 0px;
 	width: 100px;
 	height: 100%;
-	box-shadow: 0 0 10px var(--light-green), 0 0 5px var(--light-green);
+	box-shadow:
+		0 0 10px var(--light-green),
+		0 0 5px var(--light-green);
 	opacity: 1;
 	transform: rotate(3deg) translate(0px, -4px);
 }

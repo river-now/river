@@ -47,7 +47,7 @@ func (c *typeCollector) getOrCreateEntry(t reflect.Type, userDefinedAlias ...str
 	} else {
 		var requestedName string
 		if !isBasicType(t) {
-			requestedName = t.Name()
+			requestedName = toSanitizedName(t)
 		}
 		if requestedName != "" {
 			entry.requestedName = requestedName

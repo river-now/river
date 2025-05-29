@@ -1,8 +1,8 @@
 package server
 
 import (
-	app "{{.GoModuleName}}"
-	"{{.GoModuleName}}/backend/router"
+	app "{{.GoImportBase}}"
+	"{{.GoImportBase}}/backend/router"
 	"context"
 	"fmt"
 	"log"

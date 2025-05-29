@@ -1,6 +1,6 @@
 {
 	"name": "river.now",
-	"version": "0.33.0",
+	"version": "0.34.0",
 	"type": "module",
 	"license": "BSD-3-Clause",
 	"repository": {
@@ -67,7 +67,7 @@
 		"kit/_typescript/"
 	],
 	"devDependencies": {
-		"@biomejs/biome": "2.0.0-beta.1",
+		"@biomejs/biome": "2.0.0-beta.5",
 		"@preact/signals": "^2.0.4",
 		"@types/jsdom": "^21.1.7",
 		"@types/node": "^22.15.3",

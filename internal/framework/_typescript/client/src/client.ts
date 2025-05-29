@@ -606,16 +606,18 @@ export async function handleRedirects(props: {
 		...bodyParentObj,
 	};
 
+	let redirectData: RedirectData | null = null;
+
 	try {
 		res = await fetch(props.url, finalRequestInit);
 
-		const redirectData = parseFetchResponseForRedirectData(finalRequestInit, res);
+		redirectData = parseFetchResponseForRedirectData(finalRequestInit, res);
 
 		if (props.isPrefetch || !redirectData || redirectData.status === "did") {
 			return { redirectData, response: res };
 		}
 
-		await effectuateRedirectDataResult(redirectData);
+		redirectData = await effectuateRedirectDataResult(redirectData);
 	} catch (error) {
 		// If this was an attempted redirect, potentially a CORS error here.
 		// Recommend returning a client redirect instruction instead.
@@ -637,7 +639,7 @@ export async function handleRedirects(props: {
 		}
 	}
 
-	return { redirectData: null, response: res };
+	return { redirectData, response: res };
 }
 
 /////////////////////////////////////////////////////////////////////
