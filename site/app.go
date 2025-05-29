@@ -7,6 +7,7 @@ import (
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/colorlog"
 	"github.com/river-now/river/kit/headels"
+	"github.com/river-now/river/kit/htmlutil"
 	"github.com/river-now/river/kit/theme"
 	"github.com/river-now/river/kit/xyz"
 	"github.com/river-now/river/wave"
@@ -23,21 +24,20 @@ var River = &river.River{
 	Wave: Wave,
 
 	GetHeadElUniqueRules: func() *headels.HeadEls {
-		e := river.NewHeadEls(2)
+		e := river.NewHeadEls(7)
 
 		e.Meta(e.Property("og:title"))
 		e.Meta(e.Property("og:description"))
 		e.Meta(e.Property("og:type"))
 		e.Meta(e.Property("og:image"))
 		e.Meta(e.Property("og:url"))
-
 		e.Meta(e.Name("twitter:card"))
 		e.Meta(e.Name("twitter:site"))
 
 		return e
 	},
 
-	GetDefaultHeadEls: func(r *http.Request) ([]*river.HeadEl, error) {
+	GetDefaultHeadEls: func(r *http.Request) ([]*htmlutil.Element, error) {
 		root := xyz.GetRootURL(r)
 		imgURL := root + Wave.GetPublicURL("river-banner.webp")
 		currentURL := root

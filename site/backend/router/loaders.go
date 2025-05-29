@@ -1,9 +1,9 @@
 package router
 
 import (
+	"app"
+	"app/backend/markdown"
 	"fmt"
-	app "site"
-	"site/backend/markdown"
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/mux"
@@ -11,7 +11,10 @@ import (
 	"github.com/river-now/river/wave"
 )
 
-var LoadersRouter = mux.NewNestedRouter(&mux.NestedOptions{TasksRegistry: sharedTasksRegistry})
+var LoadersRouter = mux.NewNestedRouter(&mux.NestedOptions{
+	TasksRegistry:        sharedTasksRegistry,
+	ExplicitIndexSegment: "_index",
+})
 
 func newLoader[O any](pattern string, f mux.TaskHandlerFunc[mux.None, O]) *mux.TaskHandler[mux.None, O] {
 	loaderTask := mux.TaskHandlerFromFunc(LoadersRouter.TasksRegistry(), f)
@@ -25,7 +28,7 @@ type RootData struct {
 
 var currentNPMVersion = "v" + river.Internal__GetCurrentNPMVersion()
 
-var _ = newLoader("", func(c *mux.NestedReqData) (*RootData, error) {
+var _ = newLoader("/", func(c *mux.NestedReqData) (*RootData, error) {
 	req, res := c.Request(), c.ResponseProxy()
 
 	if !wave.GetIsDev() {
@@ -39,12 +42,10 @@ var _ = newLoader("", func(c *mux.NestedReqData) (*RootData, error) {
 		}
 	}
 
-	return &RootData{
-		LatestVersion: currentNPMVersion,
-	}, nil
+	return &RootData{LatestVersion: currentNPMVersion}, nil
 })
 
-var _ = newLoader("/", func(c *mux.NestedReqData) (string, error) {
+var _ = newLoader("/_index", func(c *mux.NestedReqData) (string, error) {
 	return app.SiteDescription, nil
 })
 

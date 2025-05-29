@@ -1,8 +1,8 @@
 package markdown
 
 import (
+	"app"
 	"io"
-	app "site"
 
 	"github.com/adrg/frontmatter"
 	"github.com/river-now/river/kit/xyz/fsmarkdown"

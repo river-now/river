@@ -1,0 +1,9 @@
+{
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "go run ./__cmd/build --dev",
+		"build": "go run ./__cmd/build"
+	},
+	"devDependencies": {}
+}

@@ -6,7 +6,7 @@ import {
 	usePatternLoaderData,
 } from "../app_utils.ts";
 
-const useClientLoaderData = addClientLoader("", async (props) => {
+const useClientLoaderData = addClientLoader("/", async (props) => {
 	// This is pointless -- just an example of how to use a client loader
 	// await new Promise((r) => setTimeout(r, 1_000));
 	console.log("Client loader running");
@@ -15,7 +15,7 @@ const useClientLoaderData = addClientLoader("", async (props) => {
 
 type RootCLD = ReturnType<typeof useClientLoaderData>;
 
-export function Home(props: RouteProps<"/">) {
+export function Home(props: RouteProps<"/_index">) {
 	const x = usePatternLoaderData("");
 	const y = usePatternClientLoaderData<RootCLD>("");
 	// console.log("x", x());

@@ -1,0 +1,9 @@
+import { RiverRootOutlet } from "river.now/{{.UIVariant}}";
+
+export function App() {
+	return (
+		<main>
+			<RiverRootOutlet />
+		</main>
+	);
+}

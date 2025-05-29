@@ -11,7 +11,7 @@ const routes = [
 		_type: "loader",
 		isRootData: true,
 		params: [],
-		pattern: "",
+		pattern: "/",
 		phantomOutputType: null as unknown as RootData,
 	},
 	{
@@ -23,14 +23,14 @@ const routes = [
 	{
 		_type: "loader",
 		params: [],
-		pattern: "/",
-		phantomOutputType: null as unknown as string,
+		pattern: "/*",
+		phantomOutputType: null as unknown as DetailedPage,
 	},
 	{
 		_type: "loader",
 		params: [],
-		pattern: "/*",
-		phantomOutputType: null as unknown as DetailedPage,
+		pattern: "/_index",
+		phantomOutputType: null as unknown as string,
 	},
 ] as const;
 
@@ -76,7 +76,7 @@ type RiverFunction = RiverLoader;
 type RiverPattern = RiverLoaderPattern;
 export type RiverRouteParams<T extends RiverPattern> = (Extract<RiverFunction, { pattern: T }>["params"])[number];
 
-export const ACTIONS_ROUTER_MOUNT_ROOT = "/river-api/";
+export const ACTIONS_ROUTER_MOUNT_ROOT = "/api/";
 
 /**********************************************************************
 / River Vite Plugin:

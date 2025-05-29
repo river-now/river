@@ -1,0 +1,7 @@
+# Node
+node_modules
+
+# Wave
+__dist/static/*
+!__dist/static/.keep
+__dist/main*

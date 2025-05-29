@@ -1,8 +1,8 @@
 package main
 
 import (
-	"app"
-	"app/backend/router"
+	app "{{.GoModuleName}}"
+	"{{.GoModuleName}}/backend/router"
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/tsgen"

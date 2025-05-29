@@ -9,11 +9,22 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/river-now/river/kit/errutil"
 )
 
 // EnsureDir creates a directory if it does not exist.
 func EnsureDir(path string) error {
-	return os.MkdirAll(path, os.ModePerm)
+	return errutil.Maybe("fsutil.EnsureDir: ", os.MkdirAll(path, os.ModePerm))
+}
+
+func EnsureDirs(paths ...string) error {
+	for _, path := range paths {
+		if err := EnsureDir(path); err != nil {
+			return fmt.Errorf("fsutil.EnsureDirs: failed to ensure directory %s: %w", path, err)
+		}
+	}
+	return nil
 }
 
 // GetCallerDir returns the directory of the calling function.

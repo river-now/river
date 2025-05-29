@@ -110,17 +110,17 @@ func (c *Config) Build(opts BuildOptions) error {
 
 	hook_duration := time.Since(hook_start)
 
+	err = c.do_build_time_file_processing(true) // and once again after
+	if err != nil {
+		return fmt.Errorf("error processing build time files: %w", err)
+	}
+
 	err = configschema.Write(filepath.Join(
 		c._dist.S().Static.S().Internal.FullPath(),
 		"schema.json",
 	))
 	if err != nil {
 		return fmt.Errorf("error writing config schema: %w", err)
-	}
-
-	err = c.do_build_time_file_processing(true) // and once again after
-	if err != nil {
-		return fmt.Errorf("error processing build time files: %w", err)
 	}
 
 	go_compile_start := time.Now()
