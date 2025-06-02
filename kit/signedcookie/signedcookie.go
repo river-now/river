@@ -20,7 +20,7 @@ const SecretSize = 32 // SecretSize is the size, in bytes, of a cookie secret.
 
 // Manager handles the creation, signing, and verification of secure cookies.
 type Manager struct {
-	keyset keyset.Keyset
+	keyset *keyset.Keyset
 }
 
 // NewManager creates a new Manager instance with the provided secrets.
@@ -71,10 +71,14 @@ func (m Manager) SignCookie(unsignedCookie *http.Cookie, encrypt bool) error {
 func (m Manager) signValue(unsignedValue string, encrypt bool) (string, error) {
 	var prefix byte
 	var valueToSign []byte
+	firstKey, err := m.keyset.First()
+	if err != nil {
+		return "", fmt.Errorf("error getting first key from keyset: %w", err)
+	}
 	if encrypt {
 		prefix = 1
 		encrypted, err := cryptoutil.EncryptSymmetricXChaCha20Poly1305(
-			[]byte(unsignedValue), m.keyset[0],
+			[]byte(unsignedValue), firstKey,
 		)
 		if err != nil {
 			return "", err
@@ -84,7 +88,7 @@ func (m Manager) signValue(unsignedValue string, encrypt bool) (string, error) {
 		prefix = 0
 		valueToSign = []byte(unsignedValue)
 	}
-	signed, err := cryptoutil.SignSymmetric(valueToSign, m.keyset[0])
+	signed, err := cryptoutil.SignSymmetric(valueToSign, firstKey)
 	if err != nil {
 		return "", err
 	}

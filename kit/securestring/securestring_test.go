@@ -28,7 +28,7 @@ func randSecrets(n int) keyset.RootSecrets {
 	return out
 }
 
-func mustKeys(t *testing.T, n int) []cryptoutil.Key32 {
+func mustKeys(t *testing.T, n int) *keyset.Keyset {
 	secrets, err := ParseSecrets(randSecrets(n), []byte("george_testing_salt"))
 	if err != nil {
 		t.Fatalf("ParseSecrets error: %v", err)
@@ -223,8 +223,9 @@ func TestParseSecrets_SaltVariations(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ParseSecrets failed with nil salt: %v", err)
 		}
-		if len(keys) != 1 || keys[0] == nil {
-			t.Fatalf("expected valid keys with nil salt, got keys: %v", keys)
+		uKeys := keys.Unwrap()
+		if len(uKeys) != 1 || uKeys[0] == nil {
+			t.Fatalf("expected valid keys with nil salt, got keys: %v", uKeys)
 		}
 		ss, err := Serialize(keys, "test nil salt value")
 		if err != nil {
@@ -240,7 +241,8 @@ func TestParseSecrets_SaltVariations(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ParseSecrets failed with empty salt: %v", err)
 		}
-		if len(keys) != 1 || keys[0] == nil {
+		uKeys := keys.Unwrap()
+		if len(uKeys) != 1 || uKeys[0] == nil {
 			t.Fatalf("expected valid keys with empty salt, got keys: %v", keys)
 		}
 		ss, err := Serialize(keys, "test empty salt value")
@@ -265,14 +267,16 @@ func TestParseSecrets_SaltVariations(t *testing.T) {
 			t.Fatalf("ParseSecrets error with salt2: %v", err)
 		}
 
-		if len(keys1) != 1 || keys1[0] == nil {
+		uKeys1 := keys1.Unwrap()
+		uKeys2 := keys2.Unwrap()
+		if len(uKeys1) != 1 || uKeys1[0] == nil {
 			t.Fatal("keys1 is invalid")
 		}
-		if len(keys2) != 1 || keys2[0] == nil {
+		if len(uKeys2) != 1 || uKeys2[0] == nil {
 			t.Fatal("keys2 is invalid")
 		}
 
-		if reflect.DeepEqual(keys1[0], keys2[0]) {
+		if reflect.DeepEqual(uKeys1[0], uKeys2[0]) {
 			t.Fatalf("Expected different derived keys for different salts, but they were the same.")
 		}
 
@@ -301,11 +305,14 @@ func TestSecureString_KeyRotation(t *testing.T) {
 	oldKeyContainer := mustKeys(t, 1)
 	newKeyContainer := mustKeys(t, 1)
 
-	if reflect.DeepEqual(oldKeyContainer[0], newKeyContainer[0]) {
+	uOld := oldKeyContainer.Unwrap()
+	uNew := newKeyContainer.Unwrap()
+
+	if reflect.DeepEqual(uOld[0], uNew[0]) {
 		t.Fatalf("Test setup error: oldKey and newKey are the same, ensure mustKeys generates unique secrets.")
 	}
 
-	rotatedKeys := []cryptoutil.Key32{newKeyContainer[0], oldKeyContainer[0]}
+	rotatedKeys := &keyset.Keyset{UnwrappedKeyset: keyset.UnwrappedKeyset{uNew[0], uOld[0]}}
 
 	value := "sensitive data for rotation"
 	ss, err := Serialize(oldKeyContainer, value)
@@ -326,7 +333,7 @@ func TestSecureString_KeyRotation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Serialize with newKey failed: %v", err)
 	}
-	oldFirstRotatedKeys := []cryptoutil.Key32{oldKeyContainer[0], newKeyContainer[0]}
+	oldFirstRotatedKeys := &keyset.Keyset{UnwrappedKeyset: keyset.UnwrappedKeyset{uOld[0], uNew[0]}}
 	gotNew, err := Deserialize[string](oldFirstRotatedKeys, ssNew)
 	if err != nil {
 		t.Fatalf("Deserialize with oldFirstRotatedKeys failed: %v", err)
@@ -394,14 +401,16 @@ func TestSecureString_InvalidInputs(t *testing.T) {
 	})
 
 	t.Run("deserialize with no keys", func(t *testing.T) {
-		var noKeys []cryptoutil.Key32
+		noKeys := &keyset.Keyset{}
 		if _, err := Deserialize[string](noKeys, ssValid); err == nil {
 			t.Fatalf("expected error when deserializing with no keys")
 		}
 	})
 
 	t.Run("deserialize with only nil keys", func(t *testing.T) {
-		nilKeys := []cryptoutil.Key32{nil, nil}
+		nilKeys := &keyset.Keyset{
+			UnwrappedKeyset: keyset.UnwrappedKeyset{nil, nil},
+		}
 		if _, err := Deserialize[string](nilKeys, ssValid); err == nil {
 			t.Fatalf("expected error for only nil keys, as no valid key would be found")
 		}
@@ -410,7 +419,8 @@ func TestSecureString_InvalidInputs(t *testing.T) {
 
 func TestSecureString_Version(t *testing.T) {
 	kcs := mustKeys(t, 1)
-	if kcs[0] == nil {
+	uks := kcs.Unwrap()
+	if uks[0] == nil {
 		t.Fatal("Test setup: kcs[0] is nil")
 	}
 
@@ -425,7 +435,7 @@ func TestSecureString_Version(t *testing.T) {
 		t.Fatalf("FromBase64 failed: %v", err)
 	}
 
-	plaintext, err := cryptoutil.DecryptSymmetricXChaCha20Poly1305(ciphertext, kcs[0])
+	plaintext, err := cryptoutil.DecryptSymmetricXChaCha20Poly1305(ciphertext, uks[0])
 	if err != nil {
 		t.Fatalf("Manual DecryptSymmetricXChaCha20Poly1305 failed: %v", err)
 	}
@@ -436,7 +446,7 @@ func TestSecureString_Version(t *testing.T) {
 	originalVersion := plaintext[0]
 	plaintext[0] = 99
 
-	modifiedCiphertext, err := cryptoutil.EncryptSymmetricXChaCha20Poly1305(plaintext, kcs[0])
+	modifiedCiphertext, err := cryptoutil.EncryptSymmetricXChaCha20Poly1305(plaintext, uks[0])
 	if err != nil {
 		t.Fatalf("Manual EncryptSymmetricXChaCha20Poly1305 failed: %v", err)
 	}
@@ -447,7 +457,7 @@ func TestSecureString_Version(t *testing.T) {
 		t.Fatalf("expected version error when deserializing with modified version byte")
 	}
 	plaintext[0] = originalVersion
-	validCiphertextAgain, _ := cryptoutil.EncryptSymmetricXChaCha20Poly1305(plaintext, kcs[0])
+	validCiphertextAgain, _ := cryptoutil.EncryptSymmetricXChaCha20Poly1305(plaintext, uks[0])
 	validSSAgain := SecureString(bytesutil.ToBase64(validCiphertextAgain))
 	if _, err := Deserialize[string](kcs, validSSAgain); err != nil {
 		t.Fatalf("Failed to deserialize with original version after modification test: %v", err)
@@ -576,7 +586,9 @@ func TestSecureString_CornerCases(t *testing.T) {
 
 		if numKeys > 1 {
 			lastKeyIndex := numKeys - 1
-			keysWithLastActive := []cryptoutil.Key32{keyChain[lastKeyIndex]}
+			keysWithLastActive := &keyset.Keyset{
+				UnwrappedKeyset: keyset.UnwrappedKeyset{keyChain.Unwrap()[lastKeyIndex]},
+			}
 
 			ssLast, err := Serialize(keysWithLastActive, value)
 			if err != nil {

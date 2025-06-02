@@ -23,7 +23,7 @@ import (
 const KeySize = 32
 
 // Alias for a pointer to a size 32 byte array.
-type Key32 = *[KeySize]byte
+type Key32 *[KeySize]byte
 
 type Base64 = string
 
@@ -257,4 +257,24 @@ func DecryptSymmetricGeneric(toAEADFunc ToAEADFunc, ciphertext []byte, secretKey
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 
 	return aead.Open(nil, nonce, ciphertext, nil)
+}
+
+/////////////////////////////////////////////////////////////////////
+/////// CONVERTERS
+/////////////////////////////////////////////////////////////////////
+
+func ToKey32(b []byte) (Key32, error) {
+	if len(b) != KeySize {
+		return nil, errors.New("byte slice must be exactly 32 bytes")
+	}
+	var key [KeySize]byte
+	copy(key[:], b)
+	return &key, nil
+}
+
+func FromKey32(key Key32) ([]byte, error) {
+	if key == nil {
+		return nil, errors.New("key is nil")
+	}
+	return key[:], nil
 }

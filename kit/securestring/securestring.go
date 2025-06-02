@@ -22,10 +22,7 @@ const one_and_one_third_mb_in_bytes = one_mb_in_bytes + one_mb_in_bytes/3
 type SecureString string // Base64-encoded, encrypted value
 type RawValue any        // Any pre-serialization value
 
-func Serialize(keys keyset.Keyset, rv RawValue) (SecureString, error) {
-	if len(keys) == 0 {
-		return "", fmt.Errorf("invalid keys container: at least one key is required")
-	}
+func Serialize(ks *keyset.Keyset, rv RawValue) (SecureString, error) {
 	if rv == nil {
 		return "", fmt.Errorf("invalid raw value: nil value")
 	}
@@ -34,10 +31,11 @@ func Serialize(keys keyset.Keyset, rv RawValue) (SecureString, error) {
 		return "", fmt.Errorf("error encoding value to gob: %w", err)
 	}
 	plaintext := append([]byte{current_pkg_version}, gob_value...)
-	if keys[0] == nil {
-		return "", fmt.Errorf("invalid current key: nil value")
+	firstKey, err := ks.First()
+	if err != nil {
+		return "", fmt.Errorf("error getting first key from keyset: %w", err)
 	}
-	ciphertext, err := cryptoutil.EncryptSymmetricXChaCha20Poly1305(plaintext, keys[0])
+	ciphertext, err := cryptoutil.EncryptSymmetricXChaCha20Poly1305(plaintext, firstKey)
 	if err != nil {
 		return "", fmt.Errorf("error encrypting value: %w", err)
 	}
@@ -47,11 +45,8 @@ func Serialize(keys keyset.Keyset, rv RawValue) (SecureString, error) {
 	return SecureString(bytesutil.ToBase64(ciphertext)), nil
 }
 
-func Deserialize[T any](keys keyset.Keyset, ss SecureString) (T, error) {
+func Deserialize[T any](ks *keyset.Keyset, ss SecureString) (T, error) {
 	var zeroT T
-	if len(keys) == 0 {
-		return zeroT, fmt.Errorf("invalid keys container: at least one key is required")
-	}
 	if len(ss) == 0 {
 		return zeroT, fmt.Errorf("invalid secure string: empty value")
 	}
@@ -65,7 +60,7 @@ func Deserialize[T any](keys keyset.Keyset, ss SecureString) (T, error) {
 	if len(ciphertext) > one_mb_in_bytes {
 		return zeroT, fmt.Errorf("ciphertext too large (over 1MB)")
 	}
-	plaintext, err := keyset.Attempt(keys, func(k cryptoutil.Key32) ([]byte, error) {
+	plaintext, err := keyset.Attempt(ks, func(k cryptoutil.Key32) ([]byte, error) {
 		return cryptoutil.DecryptSymmetricXChaCha20Poly1305(ciphertext, k)
 	})
 	if err != nil {
@@ -82,7 +77,7 @@ func Deserialize[T any](keys keyset.Keyset, ss SecureString) (T, error) {
 	return out, nil
 }
 
-func ParseSecrets(secrets keyset.RootSecrets, salt []byte) (keyset.Keyset, error) {
+func ParseSecrets(secrets keyset.RootSecrets, salt []byte) (*keyset.Keyset, error) {
 	rootKeyset, err := keyset.RootSecretsToRootKeyset(secrets)
 	if err != nil {
 		return nil, fmt.Errorf("error creating root keyset: %w", err)

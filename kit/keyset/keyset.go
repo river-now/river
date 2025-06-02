@@ -1,11 +1,9 @@
 package keyset
 
-// __TODO add test suite
-
 import (
+	"errors"
 	"fmt"
 	"os"
-	"sync"
 
 	"github.com/river-now/river/kit/bytesutil"
 	"github.com/river-now/river/kit/cryptoutil"
@@ -23,104 +21,89 @@ type RootSecret string
 type RootSecrets []RootSecret
 
 // Latest-first slice of size 32 byte array pointers
-type Keyset []cryptoutil.Key32
+type UnwrappedKeyset []cryptoutil.Key32
 
-type ApplicationKeyset struct {
-	// Provide a latest-first slice of environment variable names pointing
-	// to base64-encoded 32-byte root secrets.
-	// Example: MustLoadRootKeyset("CURRENT_SECRET", "PREVIOUS_SECRET")
-	LatestFirstEnvVarNames []string
-	// Used as the HKDF salt param when creating scoped keysets.
-	ApplicationName string
-	once            sync.Once
-	rootKeyset      Keyset
+/////////////////////////////////////////////////////////////////////
+/////// KEYSET WRAPPER
+/////////////////////////////////////////////////////////////////////
+
+type Keyset struct{ UnwrappedKeyset UnwrappedKeyset }
+
+// Unwrap returns the underlying UnwrappedKeyset, which is a
+// latest-first slice of size 32 byte array pointers.
+func (wk *Keyset) Unwrap() UnwrappedKeyset { return wk.UnwrappedKeyset }
+
+// First returns the first key in the keyset, ensuring it is not nil
+// and is exactly 32 bytes long. If the keyset is empty or the first
+// key is nil or not 32 bytes, it returns an error.
+func (wk *Keyset) First() (cryptoutil.Key32, error) {
+	if len(wk.UnwrappedKeyset) == 0 {
+		return nil, fmt.Errorf("keyset is empty")
+	}
+	first := wk.UnwrappedKeyset[0]
+	if first == nil {
+		return nil, fmt.Errorf("first key in keyset is nil")
+	}
+	return first, nil
 }
 
-// Returns a getter function that returns a Keyset derived from the root
-// keyset using HKDF with the instance's ApplicationName and the provided
-// purpose string. The ApplicationName is used as the HKDF salt param, and
-// the purpose string is used as the HKDF info param. Panics if anything
-// is misconfigured.
-func (k *ApplicationKeyset) ScopedGetterMust(purpose string) func() Keyset {
-	if len(k.LatestFirstEnvVarNames) == 0 {
-		panic("ApplicationKeyset.LatestFirstEnvVarNames must not be empty")
-	}
-	if k.ApplicationName == "" {
-		panic("ApplicationKeyset.ApplicationName must not be empty")
-	}
-	k.once.Do(func() {
-		k.rootKeyset = MustLoadRootKeyset(k.LatestFirstEnvVarNames...)
-	})
-	return lazyget.New(func() Keyset {
-		return k.rootKeyset.MustHKDF([]byte(k.ApplicationName), purpose)
-	})
-}
+/////////////////////////////////////////////////////////////////////
+/////// ATTEMPT
+/////////////////////////////////////////////////////////////////////
 
 // Attempt runs the provided function for each key in the keyset
 // until either (i) an attempt does not return an error (meaning
 // it succeeded) or (ii) all keys have been attempted. This is
 // useful when you want to fallback to a prior key if the current
 // key fails due to a recent rotation.
-func Attempt[R any](keyset Keyset, f func(cryptoutil.Key32) (R, error)) (R, error) {
-	if len(keyset) == 0 {
-		return *new(R), fmt.Errorf("keyset is empty")
+func Attempt[R any](ks *Keyset, f func(cryptoutil.Key32) (R, error)) (R, error) {
+	var zeroR R
+	uks := ks.Unwrap()
+	if len(uks) == 0 {
+		return zeroR, fmt.Errorf("keyset is empty")
 	}
-	var lastErr error
-	for _, k := range keyset {
+	var errs []error
+	for i, k := range uks {
+		if k == nil {
+			return zeroR, fmt.Errorf("key %d is nil", i)
+		}
 		result, err := f(k)
 		if err == nil {
 			return result, nil
 		}
-		lastErr = err
+		errs = append(errs, fmt.Errorf("key %d: %w", i, err))
 	}
-	return *new(R), lastErr
+	return zeroR, errors.Join(errs...)
 }
 
-// Keyset.MustHKDF applies HKDF to each key in the base Keyset using
-// the provided salt and info string, returning a new Keyset consisting
-// of the derived keys, and panics if an error occurs.
-func (ks Keyset) MustHKDF(salt []byte, info string) Keyset {
-	derivedKeys, err := ks.HKDF(salt, info)
-	if err != nil {
-		panic(fmt.Sprintf("error deriving keys from keyset: %v", err))
-	}
-	return derivedKeys
-}
+/////////////////////////////////////////////////////////////////////
+/////// HKDF
+/////////////////////////////////////////////////////////////////////
 
 // Keyset.HKDF applies HKDF to each key in the base Keyset using the
 // provided salt and info string, returning a new Keyset consisting
 // of the derived keys.
-func (ks Keyset) HKDF(salt []byte, info string) (Keyset, error) {
-	if len(ks) == 0 {
+func (ks *Keyset) HKDF(salt []byte, info string) (*Keyset, error) {
+	uks := ks.Unwrap()
+	if len(uks) == 0 {
 		return nil, fmt.Errorf("root keyset is empty")
 	}
-	derivedKeys := make(Keyset, 0, len(ks))
-	for i, rootKey := range ks {
+	derivedKeys := make(UnwrappedKeyset, 0, len(uks))
+	for i, rootKey := range uks {
 		dk, err := cryptoutil.HkdfSha256(rootKey, salt, info)
 		if err != nil {
 			return nil, fmt.Errorf("error deriving key from root key %d: %w", i, err)
 		}
 		derivedKeys = append(derivedKeys, dk)
 	}
-	return derivedKeys, nil
-}
-
-// Pass in a latest-first slice of environment variable names pointing
-// to base64-encoded 32-byte root secrets.
-// Example: MustLoadRootKeyset("CURRENT_SECRET", "PREVIOUS_SECRET")
-func MustLoadRootKeyset(envVarNames ...string) Keyset {
-	keyset, err := LoadRootKeyset(envVarNames...)
-	if err != nil {
-		panic(fmt.Sprintf("error loading root keyset: %v", err))
-	}
-	return keyset
+	return &Keyset{UnwrappedKeyset: derivedKeys}, nil
 }
 
 // Pass in a latest-first slice of environment variable names pointing
 // to base64-encoded 32-byte root secrets.
 // Example: LoadRootKeyset("CURRENT_SECRET", "PREVIOUS_SECRET")
-func LoadRootKeyset(envVarNames ...string) (Keyset, error) {
-	rootSecrets, err := LoadRootSecrets(envVarNames...)
+func LoadRootKeyset(latestFirstEnvVarNames ...string) (*Keyset, error) {
+	rootSecrets, err := LoadRootSecrets(latestFirstEnvVarNames...)
 	if err != nil {
 		return nil, fmt.Errorf("error loading root secrets: %w", err)
 	}
@@ -133,11 +116,11 @@ func LoadRootKeyset(envVarNames ...string) (Keyset, error) {
 
 // RootSecretsToRootKeyset converts a slice of base64-encoded root
 // secrets into a Keyset.
-func RootSecretsToRootKeyset(rootSecrets RootSecrets) (Keyset, error) {
+func RootSecretsToRootKeyset(rootSecrets RootSecrets) (*Keyset, error) {
 	if len(rootSecrets) == 0 {
 		return nil, fmt.Errorf("at least 1 root secret is required")
 	}
-	keys := make(Keyset, 0, len(rootSecrets))
+	keys := make(UnwrappedKeyset, 0, len(rootSecrets))
 	for i, secret := range rootSecrets {
 		secretBytes, err := bytesutil.FromBase64(string(secret))
 		if err != nil {
@@ -148,28 +131,88 @@ func RootSecretsToRootKeyset(rootSecrets RootSecrets) (Keyset, error) {
 		if len(secretBytes) != cryptoutil.KeySize {
 			return nil, fmt.Errorf("secret %d is not 32 bytes", i)
 		}
-		keys = append(keys, cryptoutil.Key32(secretBytes))
+		key32, err := cryptoutil.ToKey32(secretBytes)
+		if err != nil {
+			return nil, fmt.Errorf("error converting secret %d to Key32: %w", i, err)
+		}
+		keys = append(keys, key32)
 	}
-	return keys, nil
+	return &Keyset{UnwrappedKeyset: keys}, nil
 }
 
 // Pass in a latest-first slice of environment variable names pointing
 // to base64-encoded 32-byte root secrets.
 // Example: LoadRootSecrets("CURRENT_SECRET", "PREVIOUS_SECRET")
-func LoadRootSecrets(envVarNames ...string) (RootSecrets, error) {
-	if len(envVarNames) == 0 {
+func LoadRootSecrets(latestFirstEnvVarNames ...string) (RootSecrets, error) {
+	if len(latestFirstEnvVarNames) == 0 {
 		return nil, fmt.Errorf("at least 1 env var key is required")
 	}
-	rootSecrets := make(RootSecrets, 0, len(envVarNames))
-	for _, envVarKey := range envVarNames {
-		if envVarKey == "" {
-			return nil, fmt.Errorf("env var key %s is empty", envVarKey)
+	rootSecrets := make(RootSecrets, 0, len(latestFirstEnvVarNames))
+	for i, envVarName := range latestFirstEnvVarNames {
+		if envVarName == "" {
+			return nil, fmt.Errorf("env var name at index %d is empty", i)
 		}
-		secret := os.Getenv(envVarKey)
+		secret := os.Getenv(envVarName)
 		if secret == "" {
-			return nil, fmt.Errorf("env var %s is not set", envVarKey)
+			return nil, fmt.Errorf("env var %s is not set", envVarName)
 		}
 		rootSecrets = append(rootSecrets, RootSecret(secret))
 	}
 	return rootSecrets, nil
+}
+
+/////////////////////////////////////////////////////////////////////
+/////// APP KEYSET
+/////////////////////////////////////////////////////////////////////
+
+type AppKeysetConfig struct {
+	// Provide a latest-first slice of environment variable names pointing
+	// to base64-encoded 32-byte root secrets.
+	// Example: []string{"CURRENT_SECRET", "PREVIOUS_SECRET"}
+	LatestFirstEnvVarNames []string
+	// Prepended to the HKDF info string to scope the keyset to a particular application.
+	ApplicationName string
+}
+
+type AppKeyset struct {
+	rootFn      func() *Keyset
+	hkdfFnMaker func(purpose string) func() *Keyset
+}
+
+func (ak *AppKeyset) Root() *Keyset                      { return ak.rootFn() }
+func (ak *AppKeyset) HKDF(purpose string) func() *Keyset { return ak.hkdfFnMaker(purpose) }
+
+// Panics if anything is misconfigured.
+func ToAppKeyset(cfg AppKeysetConfig) *AppKeyset {
+	if len(cfg.LatestFirstEnvVarNames) == 0 {
+		panic("at least 1 env var key is required for AppKeysetConfig.LatestFirstEnvVarNames")
+	}
+	if cfg.ApplicationName == "" {
+		panic("AppKeysetConfig.ApplicationName cannot be empty")
+	}
+	rootFn := lazyget.New(func() *Keyset {
+		rootKeyset, err := LoadRootKeyset(cfg.LatestFirstEnvVarNames...)
+		if err != nil {
+			panic(fmt.Sprintf("error loading root keyset: %v", err))
+		}
+		return rootKeyset
+	})
+	return &AppKeyset{
+		rootFn: rootFn,
+		hkdfFnMaker: func(purpose string) func() *Keyset {
+			return lazyget.New(func() *Keyset {
+				if purpose == "" {
+					panic("HKDF purpose cannot be empty")
+				}
+				derivedKeyset, err := rootFn().HKDF([]byte(cfg.ApplicationName), purpose)
+				if err != nil {
+					panic(fmt.Sprintf(
+						"error deriving keyset for purpose '%s' with application name '%s': %v",
+						purpose, cfg.ApplicationName, err,
+					))
+				}
+				return derivedKeyset
+			})
+		},
+	}
 }

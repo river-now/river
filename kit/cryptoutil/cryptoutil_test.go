@@ -666,7 +666,7 @@ func TestEmptyInputs(t *testing.T) {
 	// Test nil/empty inputs for encryption
 	for _, f := range []struct {
 		name    string
-		encrypt func([]byte, *[32]byte) ([]byte, error)
+		encrypt func([]byte, Key32) ([]byte, error)
 	}{
 		{"XChaCha20Poly1305", EncryptSymmetricXChaCha20Poly1305},
 		{"AESGCM", EncryptSymmetricAESGCM},
