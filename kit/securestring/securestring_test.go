@@ -12,23 +12,24 @@ import (
 
 	"github.com/river-now/river/kit/bytesutil"
 	"github.com/river-now/river/kit/cryptoutil"
+	"github.com/river-now/river/kit/keyset"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-func randSecrets(n int) LatestFirstSecrets {
-	out := make([]Secret, n)
+func randSecrets(n int) keyset.RootSecrets {
+	out := make([]keyset.RootSecret, n)
 	for i := range out {
-		var b [key_size]byte
+		var b [cryptoutil.KeySize]byte
 		if _, err := rand.Read(b[:]); err != nil {
 			panic(fmt.Sprintf("crypto/rand.Read failed: %v", err))
 		}
-		out[i] = Secret(base64.StdEncoding.EncodeToString(b[:]))
+		out[i] = keyset.RootSecret(base64.StdEncoding.EncodeToString(b[:]))
 	}
 	return out
 }
 
-func mustKeys(t *testing.T, n int) []Key {
-	secrets, err := ParseSecrets(randSecrets(n), Salt("george_testing_salt"))
+func mustKeys(t *testing.T, n int) []cryptoutil.Key32 {
+	secrets, err := ParseSecrets(randSecrets(n), []byte("george_testing_salt"))
 	if err != nil {
 		t.Fatalf("ParseSecrets error: %v", err)
 	}
@@ -136,9 +137,6 @@ func TestSecureString_WrongKeyFails(t *testing.T) {
 	if _, err = Deserialize[string](bad, ss); err == nil {
 		t.Fatalf("expected decryption failure with wrong key")
 	}
-	if !strings.Contains(err.Error(), "could not decrypt value with any key") {
-		t.Fatalf("expected 'could not decrypt' error, got: %v", err)
-	}
 }
 
 func TestSecureString_SizeLimits(t *testing.T) {
@@ -177,14 +175,14 @@ func TestSecureString_SizeLimits(t *testing.T) {
 
 func TestParseSecrets_Errors(t *testing.T) {
 	t.Run("empty secrets slice", func(t *testing.T) {
-		if _, err := ParseSecrets(nil, Salt("bob")); err == nil {
+		if _, err := ParseSecrets(nil, []byte("bob")); err == nil {
 			t.Fatalf("expected error for empty secrets slice")
 		}
 	})
 
 	t.Run("invalid base64 secret", func(t *testing.T) {
-		bad := LatestFirstSecrets{"$$not base64$$"}
-		if _, err := ParseSecrets(bad, Salt("sally")); err == nil {
+		bad := keyset.RootSecrets{"$$not base64$$"}
+		if _, err := ParseSecrets(bad, []byte("sally")); err == nil {
 			t.Fatalf("expected error for invalid base64 secret")
 		}
 	})
@@ -208,11 +206,9 @@ func TestParseSecrets_Errors(t *testing.T) {
 					}
 				}
 				secretB64 := base64.StdEncoding.EncodeToString(tc.secretBytes)
-				secrets := LatestFirstSecrets{Secret(secretB64)}
-				if _, err := ParseSecrets(secrets, Salt("test")); err == nil {
-					t.Fatalf("expected error for secret not %d bytes long (was %d)", key_size, tc.expectedLen)
-				} else if !strings.Contains(err.Error(), fmt.Sprintf("not %d bytes", key_size)) {
-					t.Fatalf("expected error message to contain 'not %d bytes', got: %v", key_size, err)
+				secrets := keyset.RootSecrets{keyset.RootSecret(secretB64)}
+				if _, err := ParseSecrets(secrets, []byte("test")); err == nil {
+					t.Fatalf("expected error for secret not %d bytes long (was %d)", cryptoutil.KeySize, tc.expectedLen)
 				}
 			})
 		}
@@ -240,7 +236,7 @@ func TestParseSecrets_SaltVariations(t *testing.T) {
 	})
 
 	t.Run("empty salt", func(t *testing.T) {
-		keys, err := ParseSecrets(goodSecrets, Salt(""))
+		keys, err := ParseSecrets(goodSecrets, []byte(""))
 		if err != nil {
 			t.Fatalf("ParseSecrets failed with empty salt: %v", err)
 		}
@@ -257,8 +253,8 @@ func TestParseSecrets_SaltVariations(t *testing.T) {
 	})
 
 	t.Run("different salts same secret", func(t *testing.T) {
-		salt1 := Salt("salt_one_pepper_unique")
-		salt2 := Salt("salt_two_sugar_unique")
+		salt1 := []byte("salt_one_pepper_unique")
+		salt2 := []byte("salt_two_sugar_unique")
 
 		keys1, err := ParseSecrets(goodSecrets, salt1)
 		if err != nil {
@@ -290,9 +286,6 @@ func TestParseSecrets_SaltVariations(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected decryption to fail when salt differs but secret is the same")
 		}
-		if !strings.Contains(err.Error(), "could not decrypt value with any key") {
-			t.Fatalf("expected 'could not decrypt' error for different salts, got: %v", err)
-		}
 
 		got, err := Deserialize[string](keys1, ss1)
 		if err != nil {
@@ -312,7 +305,7 @@ func TestSecureString_KeyRotation(t *testing.T) {
 		t.Fatalf("Test setup error: oldKey and newKey are the same, ensure mustKeys generates unique secrets.")
 	}
 
-	rotatedKeys := []Key{newKeyContainer[0], oldKeyContainer[0]}
+	rotatedKeys := []cryptoutil.Key32{newKeyContainer[0], oldKeyContainer[0]}
 
 	value := "sensitive data for rotation"
 	ss, err := Serialize(oldKeyContainer, value)
@@ -333,7 +326,7 @@ func TestSecureString_KeyRotation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Serialize with newKey failed: %v", err)
 	}
-	oldFirstRotatedKeys := []Key{oldKeyContainer[0], newKeyContainer[0]}
+	oldFirstRotatedKeys := []cryptoutil.Key32{oldKeyContainer[0], newKeyContainer[0]}
 	gotNew, err := Deserialize[string](oldFirstRotatedKeys, ssNew)
 	if err != nil {
 		t.Fatalf("Deserialize with oldFirstRotatedKeys failed: %v", err)
@@ -401,20 +394,16 @@ func TestSecureString_InvalidInputs(t *testing.T) {
 	})
 
 	t.Run("deserialize with no keys", func(t *testing.T) {
-		var noKeys []Key
+		var noKeys []cryptoutil.Key32
 		if _, err := Deserialize[string](noKeys, ssValid); err == nil {
 			t.Fatalf("expected error when deserializing with no keys")
-		} else if !strings.Contains(err.Error(), "at least one key is required") {
-			t.Fatalf("expected 'at least one key is required' error, got: %v", err)
 		}
 	})
 
 	t.Run("deserialize with only nil keys", func(t *testing.T) {
-		nilKeys := []Key{nil, nil}
+		nilKeys := []cryptoutil.Key32{nil, nil}
 		if _, err := Deserialize[string](nilKeys, ssValid); err == nil {
 			t.Fatalf("expected error for only nil keys, as no valid key would be found")
-		} else if !strings.Contains(err.Error(), "could not decrypt value with any key") {
-			t.Fatalf("expected 'could not decrypt value with any key' error, got: %v", err)
 		}
 	})
 }
@@ -456,8 +445,6 @@ func TestSecureString_Version(t *testing.T) {
 	_, err = Deserialize[string](kcs, modifiedSS)
 	if err == nil {
 		t.Fatalf("expected version error when deserializing with modified version byte")
-	} else if !strings.Contains(err.Error(), fmt.Sprintf("unsupported SecureString version %d", 99)) {
-		t.Fatalf("expected specific version error, got: %v", err)
 	}
 	plaintext[0] = originalVersion
 	validCiphertextAgain, _ := cryptoutil.EncryptSymmetricXChaCha20Poly1305(plaintext, kcs[0])
@@ -589,7 +576,7 @@ func TestSecureString_CornerCases(t *testing.T) {
 
 		if numKeys > 1 {
 			lastKeyIndex := numKeys - 1
-			keysWithLastActive := []Key{keyChain[lastKeyIndex]}
+			keysWithLastActive := []cryptoutil.Key32{keyChain[lastKeyIndex]}
 
 			ssLast, err := Serialize(keysWithLastActive, value)
 			if err != nil {

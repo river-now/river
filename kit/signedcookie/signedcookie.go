@@ -9,6 +9,7 @@ import (
 
 	"github.com/river-now/river/kit/bytesutil"
 	"github.com/river-now/river/kit/cryptoutil"
+	"github.com/river-now/river/kit/keyset"
 )
 
 ////////////////////////////////////////////////////////////////////
@@ -19,33 +20,17 @@ const SecretSize = 32 // SecretSize is the size, in bytes, of a cookie secret.
 
 // Manager handles the creation, signing, and verification of secure cookies.
 type Manager struct {
-	secretsBytes secretsBytes
+	keyset keyset.Keyset
 }
-
-// Secrets is a latest-first list of 32-byte, base64-encoded secrets.
-type Secrets []string
-type secretsBytes [][SecretSize]byte
 
 // NewManager creates a new Manager instance with the provided secrets.
 // It returns an error if no secrets are provided or if any secret is invalid.
-func NewManager(secrets Secrets) (*Manager, error) {
-	if len(secrets) < 1 {
-		return nil, errors.New("at least one secret is required")
+func NewManager(secrets keyset.RootSecrets) (*Manager, error) {
+	secretsBytes, err := keyset.RootSecretsToRootKeyset(secrets)
+	if err != nil {
+		return nil, fmt.Errorf("error converting root secrets to keyset: %w", err)
 	}
-	secretsBytes := make([][SecretSize]byte, len(secrets))
-	for i, secret := range secrets {
-		bytes, err := bytesutil.FromBase64(secret)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding base64: %w", err)
-		}
-		if len(bytes) != SecretSize {
-			return nil, fmt.Errorf("secret %d is not %d bytes", i, SecretSize)
-		}
-		copy(secretsBytes[i][:], bytes)
-	}
-	return &Manager{
-		secretsBytes: secretsBytes,
-	}, nil
+	return &Manager{keyset: secretsBytes}, nil
 }
 
 // VerifyAndReadCookieValue retrieves and verifies the value of a signed cookie.
@@ -86,10 +71,11 @@ func (m Manager) SignCookie(unsignedCookie *http.Cookie, encrypt bool) error {
 func (m Manager) signValue(unsignedValue string, encrypt bool) (string, error) {
 	var prefix byte
 	var valueToSign []byte
-
 	if encrypt {
 		prefix = 1
-		encrypted, err := cryptoutil.EncryptSymmetricXChaCha20Poly1305([]byte(unsignedValue), &m.secretsBytes[0])
+		encrypted, err := cryptoutil.EncryptSymmetricXChaCha20Poly1305(
+			[]byte(unsignedValue), m.keyset[0],
+		)
 		if err != nil {
 			return "", err
 		}
@@ -98,12 +84,10 @@ func (m Manager) signValue(unsignedValue string, encrypt bool) (string, error) {
 		prefix = 0
 		valueToSign = []byte(unsignedValue)
 	}
-
-	signed, err := cryptoutil.SignSymmetric(valueToSign, &m.secretsBytes[0])
+	signed, err := cryptoutil.SignSymmetric(valueToSign, m.keyset[0])
 	if err != nil {
 		return "", err
 	}
-
 	return bytesutil.ToBase64(append([]byte{prefix}, signed...)), nil
 }
 
@@ -114,28 +98,27 @@ func (m Manager) verifyAndReadValue(signedValue string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error decoding base64: %w", err)
 	}
-
 	if len(bytes) < 1 {
 		return "", errors.New("invalid signed value")
 	}
-
 	prefix := bytes[0]
 	signedBytes := bytes[1:]
-
-	for _, secret := range m.secretsBytes {
-		value, err := cryptoutil.VerifyAndReadSymmetric(signedBytes, &secret)
-		if err == nil {
-			if prefix == 1 {
-				decrypted, err := cryptoutil.DecryptSymmetricXChaCha20Poly1305(value, &secret)
-				if err != nil {
-					return "", err
+	return keyset.Attempt(m.keyset,
+		func(secret cryptoutil.Key32) (string, error) {
+			value, err := cryptoutil.VerifyAndReadSymmetric(signedBytes, secret)
+			if err == nil {
+				if prefix == 1 {
+					decrypted, err := cryptoutil.DecryptSymmetricXChaCha20Poly1305(value, secret)
+					if err != nil {
+						return "", err
+					}
+					return string(decrypted), nil
 				}
-				return string(decrypted), nil
+				return string(value), nil
 			}
-			return string(value), nil
-		}
-	}
-	return "", errors.New("cookie not valid")
+			return "", fmt.Errorf("error verifying signed value: %w", err)
+		},
+	)
 }
 
 ////////////////////////////////////////////////////////////////////
