@@ -77,15 +77,8 @@ func Deserialize[T any](ks *keyset.Keyset, ss SecureString) (T, error) {
 	return out, nil
 }
 
-func ParseSecrets(secrets keyset.RootSecrets, salt []byte) (*keyset.Keyset, error) {
-	rootKeyset, err := keyset.RootSecretsToRootKeyset(secrets)
-	if err != nil {
-		return nil, fmt.Errorf("error creating root keyset: %w", err)
-	}
-	return rootKeyset.HKDF(salt, toHKDFInfoStr())
-}
-
-func toHKDFInfoStr() string {
+// Deprecated: Use only if you need to support legacy encrypted values.
+func GetLegacyHKDFInfoStr() string {
 	return "river_kit_securestring_v" +
 		strconv.Itoa(int(current_pkg_version)) +
 		"_encryption_key"

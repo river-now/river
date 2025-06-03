@@ -29,6 +29,44 @@ func generateTestKey32() cryptoutil.Key32 {
 	return k32
 }
 
+func TestKeyset_ValidateMethod(t *testing.T) {
+	tests := []struct {
+		name    string
+		keyset  *Keyset
+		wantErr bool
+	}{
+		{
+			name:    "empty keyset",
+			keyset:  &Keyset{UnwrappedKeyset: UnwrappedKeyset{}},
+			wantErr: true,
+		},
+		{
+			name:    "single nil key",
+			keyset:  &Keyset{UnwrappedKeyset: UnwrappedKeyset{nil}},
+			wantErr: true,
+		},
+		{
+			name:    "valid single key",
+			keyset:  &Keyset{UnwrappedKeyset: UnwrappedKeyset{generateTestKey32()}},
+			wantErr: false,
+		},
+		{
+			name:    "valid multiple keys",
+			keyset:  &Keyset{UnwrappedKeyset: UnwrappedKeyset{generateTestKey32(), generateTestKey32()}},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.keyset.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestKeyset_Unwrap(t *testing.T) {
 	keys := UnwrappedKeyset{generateTestKey32(), generateTestKey32()}
 	ks := &Keyset{UnwrappedKeyset: keys}

@@ -13,7 +13,7 @@ import (
 // Base64-encoded 32-byte root secret.
 // You can generate new root secrets using the following command:
 // `openssl rand -base64 32`.
-type RootSecret string
+type RootSecret = string
 
 // Latest-first slice of base64-encoded 32-byte root secrets.
 // You can generate new root secrets using the following command:
@@ -29,14 +29,35 @@ type UnwrappedKeyset []cryptoutil.Key32
 
 type Keyset struct{ UnwrappedKeyset UnwrappedKeyset }
 
+func (wk *Keyset) Validate() error {
+	if wk == nil {
+		return fmt.Errorf("keyset is nil")
+	}
+	if len(wk.UnwrappedKeyset) == 0 {
+		return fmt.Errorf("keyset is empty")
+	}
+	for i, key := range wk.UnwrappedKeyset {
+		if key == nil {
+			return fmt.Errorf("key %d in keyset is nil", i)
+		}
+		if len(key) != cryptoutil.KeySize {
+			return fmt.Errorf("key %d in keyset is not 32 bytes", i)
+		}
+	}
+	return nil
+}
+
 // Unwrap returns the underlying UnwrappedKeyset, which is a
 // latest-first slice of size 32 byte array pointers.
 func (wk *Keyset) Unwrap() UnwrappedKeyset { return wk.UnwrappedKeyset }
 
 // First returns the first key in the keyset, ensuring it is not nil
-// and is exactly 32 bytes long. If the keyset is empty or the first
-// key is nil or not 32 bytes, it returns an error.
+// and is exactly 32 bytes long. If the keyset is nil or empty or the
+// first key is nil, it returns an error.
 func (wk *Keyset) First() (cryptoutil.Key32, error) {
+	if wk == nil {
+		return nil, fmt.Errorf("keyset is nil")
+	}
 	if len(wk.UnwrappedKeyset) == 0 {
 		return nil, fmt.Errorf("keyset is empty")
 	}

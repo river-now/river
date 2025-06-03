@@ -29,7 +29,7 @@ func randSecrets(n int) keyset.RootSecrets {
 }
 
 func mustKeys(t *testing.T, n int) *keyset.Keyset {
-	secrets, err := ParseSecrets(randSecrets(n), []byte("george_testing_salt"))
+	secrets, err := keyset.RootSecretsToRootKeyset(randSecrets(n))
 	if err != nil {
 		t.Fatalf("ParseSecrets error: %v", err)
 	}
@@ -169,134 +169,6 @@ func TestSecureString_SizeLimits(t *testing.T) {
 
 		if _, err := Deserialize[string](kcs, ss); err == nil {
 			t.Fatalf("expected Deserialize to fail for oversized base64 input (len(ss) check)")
-		}
-	})
-}
-
-func TestParseSecrets_Errors(t *testing.T) {
-	t.Run("empty secrets slice", func(t *testing.T) {
-		if _, err := ParseSecrets(nil, []byte("bob")); err == nil {
-			t.Fatalf("expected error for empty secrets slice")
-		}
-	})
-
-	t.Run("invalid base64 secret", func(t *testing.T) {
-		bad := keyset.RootSecrets{"$$not base64$$"}
-		if _, err := ParseSecrets(bad, []byte("sally")); err == nil {
-			t.Fatalf("expected error for invalid base64 secret")
-		}
-	})
-
-	t.Run("secret wrong length after decode", func(t *testing.T) {
-		tests := []struct {
-			name        string
-			secretBytes []byte
-			expectedLen int
-		}{
-			{"too short", []byte("not32bytes"), len("not32bytes")},
-			{"too long", []byte("this secret is definitely longer than 32 bytes"), len("this secret is definitely longer than 32 bytes")},
-			{"exactly 31 bytes", make([]byte, 31), 31},
-			{"exactly 33 bytes", make([]byte, 33), 33},
-		}
-		for _, tc := range tests {
-			t.Run(tc.name, func(t *testing.T) {
-				if strings.HasPrefix(tc.name, "exactly") {
-					for k := range tc.secretBytes {
-						tc.secretBytes[k] = byte(k + 1)
-					}
-				}
-				secretB64 := base64.StdEncoding.EncodeToString(tc.secretBytes)
-				secrets := keyset.RootSecrets{keyset.RootSecret(secretB64)}
-				if _, err := ParseSecrets(secrets, []byte("test")); err == nil {
-					t.Fatalf("expected error for secret not %d bytes long (was %d)", cryptoutil.KeySize, tc.expectedLen)
-				}
-			})
-		}
-	})
-}
-
-func TestParseSecrets_SaltVariations(t *testing.T) {
-	goodSecrets := randSecrets(1)
-
-	t.Run("nil salt", func(t *testing.T) {
-		keys, err := ParseSecrets(goodSecrets, nil)
-		if err != nil {
-			t.Fatalf("ParseSecrets failed with nil salt: %v", err)
-		}
-		uKeys := keys.Unwrap()
-		if len(uKeys) != 1 || uKeys[0] == nil {
-			t.Fatalf("expected valid keys with nil salt, got keys: %v", uKeys)
-		}
-		ss, err := Serialize(keys, "test nil salt value")
-		if err != nil {
-			t.Fatalf("Serialize failed with key derived from nil salt: %v", err)
-		}
-		if _, err := Deserialize[string](keys, ss); err != nil {
-			t.Fatalf("Deserialize failed with key derived from nil salt: %v", err)
-		}
-	})
-
-	t.Run("empty salt", func(t *testing.T) {
-		keys, err := ParseSecrets(goodSecrets, []byte(""))
-		if err != nil {
-			t.Fatalf("ParseSecrets failed with empty salt: %v", err)
-		}
-		uKeys := keys.Unwrap()
-		if len(uKeys) != 1 || uKeys[0] == nil {
-			t.Fatalf("expected valid keys with empty salt, got keys: %v", keys)
-		}
-		ss, err := Serialize(keys, "test empty salt value")
-		if err != nil {
-			t.Fatalf("Serialize failed with key derived from empty salt: %v", err)
-		}
-		if _, err := Deserialize[string](keys, ss); err != nil {
-			t.Fatalf("Deserialize failed with key derived from empty salt: %v", err)
-		}
-	})
-
-	t.Run("different salts same secret", func(t *testing.T) {
-		salt1 := []byte("salt_one_pepper_unique")
-		salt2 := []byte("salt_two_sugar_unique")
-
-		keys1, err := ParseSecrets(goodSecrets, salt1)
-		if err != nil {
-			t.Fatalf("ParseSecrets error with salt1: %v", err)
-		}
-		keys2, err := ParseSecrets(goodSecrets, salt2)
-		if err != nil {
-			t.Fatalf("ParseSecrets error with salt2: %v", err)
-		}
-
-		uKeys1 := keys1.Unwrap()
-		uKeys2 := keys2.Unwrap()
-		if len(uKeys1) != 1 || uKeys1[0] == nil {
-			t.Fatal("keys1 is invalid")
-		}
-		if len(uKeys2) != 1 || uKeys2[0] == nil {
-			t.Fatal("keys2 is invalid")
-		}
-
-		if reflect.DeepEqual(uKeys1[0], uKeys2[0]) {
-			t.Fatalf("Expected different derived keys for different salts, but they were the same.")
-		}
-
-		originalValue := "test salt difference"
-		ss1, err := Serialize(keys1, originalValue)
-		if err != nil {
-			t.Fatalf("Serialize with keys1 failed: %v", err)
-		}
-
-		_, err = Deserialize[string](keys2, ss1)
-		if err == nil {
-			t.Fatalf("expected decryption to fail when salt differs but secret is the same")
-		}
-
-		got, err := Deserialize[string](keys1, ss1)
-		if err != nil {
-			t.Fatalf("Deserialize with original keys1 failed: %v", err)
-		}
-		if got != originalValue {
-			t.Fatalf("Deserialize mismatch with original keys1: want %q, got %q", originalValue, got)
 		}
 	})
 }
