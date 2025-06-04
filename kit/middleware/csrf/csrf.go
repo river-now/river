@@ -49,10 +49,7 @@ type Protector struct {
 	hasOriginRestrictions bool
 }
 
-func NewProtector(cfg ProtectorConfig) (*Protector, error) {
-	if err := cfg.GetKeyset().Validate(); err != nil {
-		return nil, fmt.Errorf("csrf: invalid keyset: %w", err)
-	}
+func NewProtector(cfg ProtectorConfig) *Protector {
 	if cfg.TokenTTL == 0 {
 		cfg.TokenTTL = 4 * time.Hour
 	}
@@ -72,11 +69,12 @@ func NewProtector(cfg ProtectorConfig) (*Protector, error) {
 		cookieName:            cookieName,
 		allowedOrigins:        normalizedOrigins,
 		hasOriginRestrictions: len(normalizedOrigins) > 0,
-	}, nil
+	}
 }
 
 func (p *Protector) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("csrf.Protector.Middleware: %s %s\n", r.Method, r.URL.Path)
 		if p.isGETLike(r.Method) {
 			rp := response.NewProxy()
 			if err := p.issueCSRFTokenIfNeeded(rp, r); err != nil {

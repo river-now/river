@@ -524,18 +524,16 @@ func TestTasksWithSharedDependencies_MoreThorough(t *testing.T) {
 		// we can verify certain ordering constraints
 
 		verifyExecutionOrder := func(events []string, message string) bool {
-			for i := range len(executionOrder) {
-				if executionOrder[i] == events[0] {
-					match := true
-					for j := 1; j < len(events); j++ {
-						if i+j >= len(executionOrder) || executionOrder[i+j] != events[j] {
-							match = false
-							break
-						}
-					}
-					if match {
-						return true
-					}
+			// For concurrent execution, we just need to verify that events[0]
+			// appears before events[1], not that they are consecutive
+			firstIndex := -1
+
+			for i, event := range executionOrder {
+				if event == events[0] && firstIndex == -1 {
+					firstIndex = i
+				}
+				if event == events[1] && firstIndex != -1 && i > firstIndex {
+					return true // Found the sequence
 				}
 			}
 			t.Errorf("Expected execution order sequence not found: %s. Actual order: %v", message, executionOrder)

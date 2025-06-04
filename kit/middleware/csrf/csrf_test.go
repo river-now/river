@@ -35,11 +35,7 @@ func createTestProtector(t *testing.T, origins []string) *Protector {
 		AllowedOrigins: origins,
 		TokenTTL:       1 * time.Hour,
 	}
-	p, err := NewProtector(cfg)
-	if err != nil {
-		t.Fatalf("Failed to create protector: %v", err)
-	}
-	return p
+	return NewProtector(cfg)
 }
 
 func extractCSRFCookie(rr *httptest.ResponseRecorder, cookieName string) *http.Cookie {
@@ -60,17 +56,15 @@ func TestNewProtector(t *testing.T) {
 	testKeyset := createTestKeyset(t)
 
 	tests := []struct {
-		name    string
-		cfg     ProtectorConfig
-		wantErr bool
-		check   func(*testing.T, *Protector)
+		name  string
+		cfg   ProtectorConfig
+		check func(*testing.T, *Protector)
 	}{
 		{
 			name: "valid config with defaults",
 			cfg: ProtectorConfig{
 				GetKeyset: func() *keyset.Keyset { return testKeyset },
 			},
-			wantErr: false,
 			check: func(t *testing.T, p *Protector) {
 				if p.cfg.TokenTTL != 4*time.Hour {
 					t.Errorf("Expected default TTL of 4h, got %v", p.cfg.TokenTTL)
@@ -95,7 +89,6 @@ func TestNewProtector(t *testing.T) {
 				CookieSuffix:   "custom",
 				HeaderName:     "X-Custom-CSRF",
 			},
-			wantErr: false,
 			check: func(t *testing.T, p *Protector) {
 				if p.cfg.TokenTTL != 2*time.Hour {
 					t.Errorf("Expected TTL of 2h, got %v", p.cfg.TokenTTL)
@@ -114,22 +107,12 @@ func TestNewProtector(t *testing.T) {
 				}
 			},
 		},
-		{
-			name: "nil keyset",
-			cfg: ProtectorConfig{
-				GetKeyset: func() *keyset.Keyset { return nil },
-			},
-			wantErr: true,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, err := NewProtector(tt.cfg)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewProtector() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if err == nil && tt.check != nil {
+			p := NewProtector(tt.cfg)
+			if tt.check != nil {
 				tt.check(t, p)
 			}
 		})
@@ -498,7 +481,7 @@ func TestValidateTokenForSession(t *testing.T) {
 
 func TestTokenExpiration(t *testing.T) {
 	testKeyset := createTestKeyset(t)
-	p, _ := NewProtector(ProtectorConfig{
+	p := NewProtector(ProtectorConfig{
 		GetKeyset: func() *keyset.Keyset { return testKeyset },
 		TokenTTL:  100 * time.Millisecond, // Very short TTL for testing
 	})

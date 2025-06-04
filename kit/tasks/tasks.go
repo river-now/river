@@ -268,7 +268,7 @@ func (c *TasksCtx) ParallelPreload(preparedTasks ...AnyPreparedTask) bool {
 
 	if len(preparedTasks) == 1 {
 		t := preparedTasks[0]
-		c.doOnce(t.getTask().getID(), c, t.getInput())
+		c.doOnceSynchronous(t.getTask().getID(), c, t.getInput())
 		return c.results.AllOK()
 	}
 
@@ -283,6 +283,36 @@ func (c *TasksCtx) ParallelPreload(preparedTasks ...AnyPreparedTask) bool {
 	wg.Wait()
 
 	return c.results.AllOK()
+}
+
+func (c *TasksCtx) doOnceSynchronous(taskID int, ctx *TasksCtx, input any) {
+	taskHelper := c.registry.registry[taskID]
+
+	if taskHelper == nil {
+		panic(fmt.Sprintf("task with id %d not found in registry", taskID))
+	}
+
+	c.mu.Lock()
+	if _, ok := c.results.results[taskID]; !ok {
+		c.results.results[taskID] = &TaskResult{once: &sync.Once{}}
+	}
+	c.mu.Unlock()
+
+	if c.context.Err() != nil {
+		c.mu.Lock()
+		c.results.results[taskID].Data = taskHelper.O()
+		c.results.results[taskID].Err = c.context.Err()
+		c.mu.Unlock()
+		return
+	}
+
+	c.getSyncOnce(taskID).Do(func() {
+		data, err := taskHelper.ExecuteStrict(&anyArg{input: input, ctx: ctx})
+		c.mu.Lock()
+		c.results.results[taskID].Data = data
+		c.results.results[taskID].Err = err
+		c.mu.Unlock()
+	})
 }
 
 func (c *TasksCtx) doOnce(taskID int, ctx *TasksCtx, input any) {
