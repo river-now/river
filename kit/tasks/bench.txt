@@ -1,3 +1,4 @@
+OLD
 BenchmarkSingleTask-14                           1415763               852.6 ns/op
 BenchmarkParallelIndependentTasks-14              339517              3521 ns/op
 BenchmarkHighContention-14                        117373              9914 ns/op
@@ -11,3 +12,18 @@ BenchmarkParallelScaling/tasks-20-14               45626             25310 ns/op
 BenchmarkParallelScaling/tasks-50-14               18052             62503 ns/op
 BenchmarkContextCancellation-14                      219           5516973 ns/op
 BenchmarkRepeatedTaskCalls-14                   36035359                31.32 ns/op
+
+NEW
+BenchmarkSingleTask-14                           1639748               729.3 ns/op
+BenchmarkParallelIndependentTasks-14              290821              4141 ns/op
+BenchmarkHighContention-14                        183614              6586 ns/op
+BenchmarkTaskWithDependencies-14                  852668              1347 ns/op
+BenchmarkAllocations-14                          1558683               766.3 ns/op           840 B/op         14 allocs/op
+BenchmarkParallelScaling/tasks-1-14               702621              1520 ns/op
+BenchmarkParallelScaling/tasks-2-14               375597              3081 ns/op
+BenchmarkParallelScaling/tasks-5-14               213741              5521 ns/op
+BenchmarkParallelScaling/tasks-10-14              123957              9527 ns/op
+BenchmarkParallelScaling/tasks-20-14               63463             19179 ns/op
+BenchmarkParallelScaling/tasks-50-14               26301             53642 ns/op
+BenchmarkContextCancellation-14                      216           5469572 ns/op
+BenchmarkRepeatedTaskCalls-14                   100656138               11.92 ns/op

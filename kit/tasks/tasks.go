@@ -1,28 +1,18 @@
 package tasks
 
-// A "Task", as used in this package, is simply a function that takes in input,
-// returns data (or an error), and runs a maximum of one time per execution
-// context (typically, but not necessarily, a web request/response lifecycle),
-// even if invoked repeatedly during the lifetime of the execution context.
-//
-// One cool thing is that Tasks are automatically protected from circular deps
-// by Go's 'compile-time "initialization cycle" errors.
-
 import (
 	"context"
-	"errors"
-	"fmt"
 	"net/http"
 	"sync"
 
 	"github.com/river-now/river/kit/genericsutil"
+	"golang.org/x/sync/errgroup"
 )
 
 /////////////////////////////////////////////////////////////////////
 /////// ARGS
 /////////////////////////////////////////////////////////////////////
 
-// sole argument to TaskFunc
 type Arg[I any] struct {
 	Input I
 	*TasksCtx
@@ -30,100 +20,78 @@ type Arg[I any] struct {
 
 type ArgNoInput = Arg[genericsutil.None]
 
-type anyArg struct {
-	input any
-	ctx   *TasksCtx
-}
-
 /////////////////////////////////////////////////////////////////////
 /////// REGISTERED TASKS
 /////////////////////////////////////////////////////////////////////
 
 type AnyRegisteredTask interface {
-	genericsutil.AnyIOFunc
 	getID() int
+	execute(c *TasksCtx, input any) (any, error)
 }
 
-type ioFunc[I any, O any] = genericsutil.IOFunc[*Arg[I], O]
+type ioFunc[I any, O any] = func(c *Arg[I]) (O, error)
 
-// returned from tasks.Register(Registry, IOTask)
 type RegisteredTask[I any, O any] struct {
-	ioFunc[I, O]
+	fn ioFunc[I, O]
 	id int
 }
 
-func (task RegisteredTask[I, O]) getID() int { return task.id }
+func (task *RegisteredTask[I, O]) getID() int { return task.id }
 
-// Adds a task to the registry
-func Register[I any, O any](tr *Registry, f genericsutil.IOFunc[*Arg[I], O]) *RegisteredTask[I, O] {
-	id := tr.count
+func (task *RegisteredTask[I, O]) execute(c *TasksCtx, input any) (any, error) {
+	return task.fn(&Arg[I]{
+		TasksCtx: c,
+		Input:    genericsutil.AssertOrZero[I](input),
+	})
+}
+
+func Register[I any, O any](tr *Registry, f ioFunc[I, O]) *RegisteredTask[I, O] {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	task := &RegisteredTask[I, O]{
+		fn: f,
+		id: tr.count,
+	}
 	tr.count++
-
-	// This will ultimately be called (exactly once) by the TasksCtx.doOnce method
-	inner := func(anyArg *anyArg) (O, error) {
-		return f(&Arg[I]{
-			TasksCtx: anyArg.ctx,
-			Input:    genericsutil.AssertOrZero[I](anyArg.input),
-		})
-	}
-
-	// cast as a typed IO func (adds genericsutil helper methods)
-	asIOFunc := genericsutil.IOFunc[*anyArg, O](inner)
-
-	// type erasure
-	asAnyIOFunc := genericsutil.AnyIOFunc(asIOFunc)
-
-	// add to registry
-	tr.registry[id] = asAnyIOFunc
-
-	// This is the function that will be called by the TasksCtx.doOnce method
-	return &RegisteredTask[I, O]{
-		id: id,
-		ioFunc: func(c *Arg[I]) (O, error) {
-			c.TasksCtx.doOnce(id, c.TasksCtx, c.Input)
-			c.TasksCtx.mu.Lock()
-			defer c.TasksCtx.mu.Unlock()
-			result, ok := c.TasksCtx.results.results[id]
-			if !ok {
-				var o O
-				return o, fmt.Errorf("task result not found for task with id: %d", id)
-			}
-			return result.Data.(O), result.Err
-		},
-	}
+	return task
 }
 
 /////////////////////////////////////////////////////////////////////
 /////// TASKS REGISTRY
 /////////////////////////////////////////////////////////////////////
 
-// Always create with tasks.NewRegistry(key)
 type Registry struct {
-	key      string
-	count    int
-	registry map[int]genericsutil.AnyIOFunc
+	key   string
+	count int
+	mu    sync.Mutex
 }
 
 func (tr *Registry) NewCtxFromNativeContext(parentContext context.Context) *TasksCtx {
-	return tr.newTasksCtx(parentContext)
+	return newTasksCtx(parentContext, tr)
 }
 
 func (tr *Registry) NewCtxFromRequest(r *http.Request) *TasksCtx {
-	return tr.newTasksCtx(r.Context())
+	return newTasksCtx(r.Context(), tr)
 }
 
 func NewRegistry(key string) *Registry {
-	return &Registry{key: key, registry: make(map[int]genericsutil.AnyIOFunc)}
+	return &Registry{key: key}
 }
 
 /////////////////////////////////////////////////////////////////////
 /////// CTX
 /////////////////////////////////////////////////////////////////////
 
+type result struct {
+	once sync.Once
+	data any
+	err  error
+}
+
 type TasksCtx struct {
-	mu       *sync.Mutex
+	mu       sync.Mutex
 	registry *Registry
-	results  *TaskResults
+	results  map[AnyRegisteredTask]*result
 
 	context context.Context
 	cancel  context.CancelFunc
@@ -154,8 +122,7 @@ func (tr *Registry) MustGetCtxFromRequest(r *http.Request) *TasksCtx {
 }
 
 func (tr *Registry) GetRequestWithCtxIfNeeded(r *http.Request) *http.Request {
-	existing := tr.GetCtxFromRequest(r)
-	if existing != nil {
+	if tr.GetCtxFromRequest(r) != nil {
 		return nil
 	}
 	tasksCtx := tr.NewCtxFromRequest(r)
@@ -176,19 +143,15 @@ func (tr *Registry) AddTasksCtxToRequestMw() func(http.Handler) http.Handler {
 	}
 }
 
-func (tr *Registry) newTasksCtx(parentContext context.Context) *TasksCtx {
+func newTasksCtx(parentContext context.Context, tr *Registry) *TasksCtx {
 	contextWithCancel, cancel := context.WithCancel(parentContext)
 
-	c := &TasksCtx{
-		mu:       &sync.Mutex{},
+	return &TasksCtx{
 		registry: tr,
 		context:  contextWithCancel,
 		cancel:   cancel,
+		results:  make(map[AnyRegisteredTask]*result),
 	}
-
-	c.results = newResults(c)
-
-	return c
 }
 
 func (c *TasksCtx) NativeContext() context.Context {
@@ -197,6 +160,71 @@ func (c *TasksCtx) NativeContext() context.Context {
 
 func (c *TasksCtx) CancelNativeContext() {
 	c.cancel()
+}
+
+func (c *TasksCtx) getResult(task AnyRegisteredTask) *result {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if r, ok := c.results[task]; ok {
+		return r
+	}
+	r := &result{}
+	c.results[task] = r
+	return r
+}
+
+/////////////////////////////////////////////////////////////////////
+/////// PREP & GET & PREPANY
+/////////////////////////////////////////////////////////////////////
+
+// runOnce is the heart of the execution logic. It takes a result holder and
+// a function to execute, and ensures it runs exactly once, respecting context cancellation.
+func runOnce(c *TasksCtx, r *result, execFn func() (any, error)) {
+	r.once.Do(func() {
+		if err := c.context.Err(); err != nil {
+			r.err = err
+			return
+		}
+
+		type taskOutput struct {
+			data any
+			err  error
+		}
+		resultChan := make(chan taskOutput, 1)
+
+		go func() {
+			data, err := execFn()
+			resultChan <- taskOutput{data: data, err: err}
+		}()
+
+		select {
+		case <-c.context.Done():
+			r.err = c.context.Err()
+		case res := <-resultChan:
+			r.data = res.data
+			r.err = res.err
+		}
+	})
+}
+
+// get contains the memoization logic for type-safe calls.
+func get[I, O any](c *TasksCtx, task *RegisteredTask[I, O], input any) (O, error) {
+	r := c.getResult(task)
+
+	// Use the shared runOnce helper to perform the execution.
+	runOnce(c, r, func() (any, error) {
+		return task.execute(c, input)
+	})
+
+	if r.err != nil {
+		var zero O
+		return zero, r.err
+	}
+	if r.data == nil {
+		var zero O
+		return zero, r.err
+	}
+	return r.data.(O), r.err
 }
 
 func (task *RegisteredTask[I, O]) Prep(c *TasksCtx, input I) *PreparedTask[I, O] {
@@ -208,13 +236,11 @@ func (task *RegisteredTask[I, O]) PrepNoInput(c *TasksCtx) *PreparedTask[I, O] {
 }
 
 func (task *RegisteredTask[I, O]) Get(c *TasksCtx, input I) (O, error) {
-	pt := PreparedTask[I, O]{c: c, task: task, input: input}
-	return pt.Get()
+	return get(c, task, input)
 }
 
 func (task *RegisteredTask[I, O]) GetNoInput(c *TasksCtx) (O, error) {
-	pt := PreparedTask[I, O]{c: c, task: task, input: genericsutil.None{}}
-	return pt.Get()
+	return get(c, task, genericsutil.None{})
 }
 
 type AnyPreparedTask interface {
@@ -229,190 +255,66 @@ type PreparedTask[I any, O any] struct {
 	input any
 }
 
-func (twi *PreparedTask[I, O]) getTask() AnyRegisteredTask { return twi.task }
-func (twi *PreparedTask[I, O]) getInput() any              { return twi.input }
-func (twi *PreparedTask[I, O]) GetAny() (any, error) {
-	return twi.Get()
+func (pt *PreparedTask[I, O]) getTask() AnyRegisteredTask { return pt.task }
+func (pt *PreparedTask[I, O]) getInput() any              { return pt.input }
+func (pt *PreparedTask[I, O]) GetAny() (any, error) {
+	return pt.Get()
 }
 
-func (twi *PreparedTask[I, O]) Get() (O, error) {
-	return twi.task.ioFunc(&Arg[I]{
-		TasksCtx: twi.c,
-		Input:    genericsutil.AssertOrZero[I](twi.input),
-	})
+func (pt *PreparedTask[I, O]) Get() (O, error) {
+	return get(pt.c, pt.task, pt.input)
 }
 
-type anyPreparedTaskImpl struct {
+// preparedTaskFromAny is the internal implementation for a task prepared via PrepAny.
+type preparedTaskFromAny struct {
 	c     *TasksCtx
 	task  AnyRegisteredTask
 	input any
 }
 
-func (twi *anyPreparedTaskImpl) getTask() AnyRegisteredTask { return twi.task }
-func (twi *anyPreparedTaskImpl) getInput() any              { return twi.input }
-
-func (twi anyPreparedTaskImpl) GetAny() (any, error) {
-	twi.c.ParallelPreload(PrepAny(twi.c, twi.task, twi.input))
-	x := twi.c.results.results[twi.task.getID()]
-	return x.Data, x.Err
+func (p *preparedTaskFromAny) getTask() AnyRegisteredTask { return p.task }
+func (p *preparedTaskFromAny) getInput() any              { return p.input }
+func (p *preparedTaskFromAny) GetAny() (any, error) {
+	r := p.c.getResult(p.task)
+	// Use the shared runOnce helper to perform the execution.
+	runOnce(p.c, r, func() (any, error) {
+		// The `execute` method on the interface handles the erased types.
+		return p.task.execute(p.c, p.input)
+	})
+	return r.data, r.err
 }
 
-func PrepAny[I any](c *TasksCtx, task AnyRegisteredTask, input I) AnyPreparedTask {
-	return &anyPreparedTaskImpl{c: c, task: task, input: input}
+// PrepAny prepares a type-erased task for execution. It is designed for use
+// in generic routers or other dynamic scenarios where the concrete task
+// types are not known at compile time.
+func PrepAny(c *TasksCtx, task AnyRegisteredTask, input any) AnyPreparedTask {
+	return &preparedTaskFromAny{c: c, task: task, input: input}
 }
+
+/////////////////////////////////////////////////////////////////////
+/////// PARALLEL PRELOAD
+/////////////////////////////////////////////////////////////////////
 
 func (c *TasksCtx) ParallelPreload(preparedTasks ...AnyPreparedTask) bool {
 	if len(preparedTasks) == 0 {
 		return true
 	}
 
+	// Optimization: Bypass errgroup for a single task.
 	if len(preparedTasks) == 1 {
-		t := preparedTasks[0]
-		c.doOnceSynchronous(t.getTask().getID(), c, t.getInput())
-		return c.results.AllOK()
+		_, err := preparedTasks[0].GetAny()
+		return err == nil
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(preparedTasks))
-	for _, t := range preparedTasks {
-		go func() {
-			c.doOnce(t.getTask().getID(), c, t.getInput())
-			wg.Done()
-		}()
-	}
-	wg.Wait()
+	g, _ := errgroup.WithContext(c.context)
 
-	return c.results.AllOK()
-}
-
-func (c *TasksCtx) doOnceSynchronous(taskID int, ctx *TasksCtx, input any) {
-	taskHelper := c.registry.registry[taskID]
-
-	if taskHelper == nil {
-		panic(fmt.Sprintf("task with id %d not found in registry", taskID))
+	for _, pt := range preparedTasks {
+		taskToRun := pt // Capture loop variable
+		g.Go(func() error {
+			_, err := taskToRun.GetAny()
+			return err
+		})
 	}
 
-	c.mu.Lock()
-	if _, ok := c.results.results[taskID]; !ok {
-		c.results.results[taskID] = &TaskResult{once: &sync.Once{}}
-	}
-	c.mu.Unlock()
-
-	if c.context.Err() != nil {
-		c.mu.Lock()
-		c.results.results[taskID].Data = taskHelper.O()
-		c.results.results[taskID].Err = c.context.Err()
-		c.mu.Unlock()
-		return
-	}
-
-	c.getSyncOnce(taskID).Do(func() {
-		data, err := taskHelper.ExecuteStrict(&anyArg{input: input, ctx: ctx})
-		c.mu.Lock()
-		c.results.results[taskID].Data = data
-		c.results.results[taskID].Err = err
-		c.mu.Unlock()
-	})
-}
-
-func (c *TasksCtx) doOnce(taskID int, ctx *TasksCtx, input any) {
-	taskHelper := c.registry.registry[taskID]
-
-	if taskHelper == nil {
-		panic(fmt.Sprintf("task with id %d not found in registry", taskID))
-	}
-
-	c.mu.Lock()
-	if _, ok := c.results.results[taskID]; !ok {
-		c.results.results[taskID] = &TaskResult{once: &sync.Once{}}
-	}
-	c.mu.Unlock()
-
-	if c.context.Err() != nil {
-		c.mu.Lock()
-		c.results.results[taskID].Data = taskHelper.O()
-		c.results.results[taskID].Err = errors.New("parent context canceled")
-		c.mu.Unlock()
-		return
-	}
-
-	c.getSyncOnce(taskID).Do(func() {
-		// check if context is canceled
-		if c.context.Err() != nil {
-			c.mu.Lock()
-			c.results.results[taskID].Data = taskHelper.O()
-			c.results.results[taskID].Err = c.context.Err()
-			c.mu.Unlock()
-			return
-		}
-
-		resultChan := make(chan *TaskResult, 1)
-		go func() {
-			data, err := taskHelper.ExecuteStrict(&anyArg{input: input, ctx: ctx})
-			resultChan <- &TaskResult{Data: data, Err: err}
-		}()
-
-		select {
-		case <-c.context.Done():
-			c.mu.Lock()
-			c.results.results[taskID].Data = taskHelper.O()
-			c.results.results[taskID].Err = c.context.Err()
-			c.mu.Unlock()
-		case result := <-resultChan:
-			c.mu.Lock()
-			c.results.results[taskID].Data = result.Data
-			c.results.results[taskID].Err = result.Err
-			c.mu.Unlock()
-		}
-	})
-}
-
-func (c *TasksCtx) getSyncOnce(taskID int) *sync.Once {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	result, ok := c.results.results[taskID]
-	if !ok {
-		result = newTaskResult()
-		c.results.results[taskID] = result
-	}
-	return result.once
-}
-
-/////////////////////////////////////////////////////////////////////
-/////// RESULTS
-/////////////////////////////////////////////////////////////////////
-
-type TaskResult struct {
-	Data any
-	Err  error
-	once *sync.Once
-}
-
-func newTaskResult() *TaskResult {
-	return &TaskResult{once: &sync.Once{}}
-}
-
-func (r *TaskResult) OK() bool {
-	return r.Err == nil
-}
-
-type TaskResults struct {
-	c       *TasksCtx
-	results map[int]*TaskResult
-}
-
-func newResults(c *TasksCtx) *TaskResults {
-	return &TaskResults{
-		c:       c,
-		results: make(map[int]*TaskResult),
-	}
-}
-
-func (tr TaskResults) AllOK() bool {
-	for _, result := range tr.results {
-		if !result.OK() {
-			return false
-		}
-	}
-	return true
+	return g.Wait() == nil
 }

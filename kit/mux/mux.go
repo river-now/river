@@ -276,7 +276,7 @@ func SetMethodLevelTaskMiddleware[I any, O any](
 ) {
 	_method_matcher := _must_get_matcher(router, method)
 	_method_matcher._task_mws = append(_method_matcher._task_mws, taskMiddlewareWithOptions{
-		mw:   taskMw,
+		mw:   &taskMw,
 		opts: _get_first_opt(opts),
 	})
 }
