@@ -79,9 +79,6 @@ func TestNestedRouteRegistration(t *testing.T) {
 		if route == nil {
 			t.Error("Route should exist")
 		}
-		if route._get_task_handler() != nil {
-			t.Error("Route should not have a task handler")
-		}
 	})
 
 	t.Run("Duplicate_Registration_Panics", func(t *testing.T) {

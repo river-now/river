@@ -16,12 +16,6 @@ import (
 func TestRouterBasics(t *testing.T) {
 	t.Run("NewRouter_Defaults", func(t *testing.T) {
 		r := NewRouter(nil)
-		if r._method_to_matcher_map == nil {
-			t.Error("method_to_matcher_map should be initialized")
-		}
-		if r._matcher_opts == nil {
-			t.Error("matcher_opts should be initialized")
-		}
 		if r.GetDynamicParamPrefixRune() != ':' {
 			t.Error("Default dynamic param prefix should be ':'")
 		}

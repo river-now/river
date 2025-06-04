@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -19,14 +20,25 @@ type Task[I, O any] struct {
 }
 
 func NewTask[I, O any](fn func(ctx *Context, input I) (O, error)) *Task[I, O] {
+	if fn == nil {
+		return nil
+	}
 	return &Task[I, O]{fn: fn}
 }
 
 func (t *Task[I, O]) Do(ctx *Context, input any) (any, error) {
+	if t == nil {
+		return nil, errors.New("tasks: called Do on a nil Task pointer")
+	}
+	if t.fn == nil {
+		return nil, errors.New("tasks: Task's underlying function is nil")
+	}
+
 	typedInput, ok := input.(I)
 	if !ok {
-		var zero I
-		return nil, fmt.Errorf("invalid input type for task: expected %T, got %T", zero, input)
+		var zeroI I
+		var zeroO O
+		return zeroO, fmt.Errorf("invalid input type for task: expected %T, got %T", zeroI, input)
 	}
 	return Do(ctx, t, typedInput)
 }
@@ -66,9 +78,14 @@ func (c *Context) getOrCreateResult(taskPtr any) *result {
 }
 
 func Do[I, O any](ctx *Context, task *Task[I, O], input I) (O, error) {
+	if task == nil || task.fn == nil {
+		var zeroO O
+		return zeroO, errors.New("tasks: internal Do called with a nil task or task with a nil function")
+	}
+
 	r := ctx.getOrCreateResult(task)
 	r.once.Do(func() {
-		if err := ctx.parent.Err(); err != nil {
+		if err := ctx.Parent().Err(); err != nil {
 			r.err = err
 			return
 		}
@@ -82,18 +99,28 @@ func Do[I, O any](ctx *Context, task *Task[I, O], input I) (O, error) {
 			resultChan <- taskOutput{val: val, err: err}
 		}()
 		select {
-		case <-ctx.parent.Done():
-			r.err = ctx.parent.Err()
+		case <-ctx.Parent().Done():
+			r.err = ctx.Parent().Err()
 		case res := <-resultChan:
 			r.val = res.val
 			r.err = res.err
 		}
 	})
+
 	if r.err != nil {
-		var zero O
-		return zero, r.err
+		var zeroO O
+		return zeroO, r.err
 	}
-	return r.val.(O), nil
+	if r.val == nil {
+		var zeroO O
+		return zeroO, nil
+	}
+	val, ok := r.val.(O)
+	if !ok {
+		var zeroO O
+		return zeroO, fmt.Errorf("tasks: result type assertion failed, expected %T got %T", zeroO, r.val)
+	}
+	return val, nil
 }
 
 type Callable interface {
@@ -107,6 +134,14 @@ type BoundCall[O any] struct {
 }
 
 func Bind[I, O any](task *Task[I, O], input I) *BoundCall[O] {
+	if task == nil || task.fn == nil {
+		return &BoundCall[O]{
+			runner: func(ctx *Context) (O, error) {
+				var zero O
+				return zero, errors.New("tasks: Bind called with a nil or invalid task")
+			},
+		}
+	}
 	return &BoundCall[O]{
 		runner: func(ctx *Context) (O, error) {
 			return Do(ctx, task, input)
@@ -120,6 +155,9 @@ func (bc *BoundCall[O]) AssignTo(ptr *O) Callable {
 }
 
 func (bc *BoundCall[O]) Run(ctx *Context) error {
+	if bc.runner == nil {
+		return errors.New("tasks: BoundCall runner is nil")
+	}
 	res, err := bc.runner(ctx)
 	if err != nil {
 		return err
@@ -133,14 +171,23 @@ func (bc *BoundCall[O]) Run(ctx *Context) error {
 func (bc *BoundCall[O]) IsCallable() {}
 
 func Go(ctx *Context, calls ...Callable) error {
+	if ctx.Parent().Err() != nil {
+		return ctx.Parent().Err()
+	}
 	g, gCtx := errgroup.WithContext(ctx.parent)
 	groupCtx := &Context{
 		parent:  gCtx,
 		results: ctx.results,
 	}
 	for _, c := range calls {
+		if c == nil {
+			continue
+		}
 		call := c
 		g.Go(func() error {
+			if groupCtx.Parent().Err() != nil {
+				return groupCtx.Parent().Err()
+			}
 			return call.Run(groupCtx)
 		})
 	}
