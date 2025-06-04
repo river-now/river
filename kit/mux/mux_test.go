@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/river-now/river/kit/tasks"
 	"github.com/river-now/river/kit/validate"
 )
 
@@ -23,9 +22,6 @@ func TestRouterBasics(t *testing.T) {
 		if r._matcher_opts == nil {
 			t.Error("matcher_opts should be initialized")
 		}
-		if r._tasks_registry == nil {
-			t.Error("tasks_registry should be initialized")
-		}
 		if r.GetDynamicParamPrefixRune() != ':' {
 			t.Error("Default dynamic param prefix should be ':'")
 		}
@@ -35,18 +31,13 @@ func TestRouterBasics(t *testing.T) {
 	})
 
 	t.Run("NewRouter_WithOptions", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
 		opts := &Options{
-			TasksRegistry:          tr,
 			DynamicParamPrefixRune: '@',
 			SplatSegmentRune:       '#',
 			MountRoot:              "/api",
 		}
 		r := NewRouter(opts)
 
-		if r._tasks_registry != tr {
-			t.Error("TasksRegistry not set correctly")
-		}
 		if r.GetDynamicParamPrefixRune() != '@' {
 			t.Error("DynamicParamPrefixRune not set correctly")
 		}
@@ -158,7 +149,7 @@ func TestTaskHandlers(t *testing.T) {
 			},
 		})
 
-		handler := TaskHandlerFromFunc(r.TasksRegistry(), func(rd *ReqData[TestInput]) (TestOutput, error) {
+		handler := TaskHandlerFromFunc(func(rd *ReqData[TestInput]) (TestOutput, error) {
 			return TestOutput{Message: "Hello " + rd.Input().Name}, nil
 		})
 
@@ -185,7 +176,7 @@ func TestTaskHandlers(t *testing.T) {
 	t.Run("TaskHandler_With_None_Input", func(t *testing.T) {
 		r := NewRouter(nil)
 
-		handler := TaskHandlerFromFunc(r.TasksRegistry(), func(rd *ReqData[None]) (TestOutput, error) {
+		handler := TaskHandlerFromFunc(func(rd *ReqData[None]) (TestOutput, error) {
 			return TestOutput{Message: "No input needed"}, nil
 		})
 
@@ -438,7 +429,7 @@ func TestTaskMiddleware(t *testing.T) {
 		r := NewRouter(nil)
 		var middlewareCalled bool
 
-		taskMw := TaskMiddlewareFromFunc(r.TasksRegistry(), func(rd *ReqData[None]) (AuthInfo, error) {
+		taskMw := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (AuthInfo, error) {
 			middlewareCalled = true
 			return AuthInfo{UserID: "123"}, nil
 		})
@@ -462,7 +453,7 @@ func TestTaskMiddleware(t *testing.T) {
 		r := NewRouter(nil)
 		var middlewareCalled bool
 
-		taskMw := TaskMiddlewareFromFunc(r.TasksRegistry(), func(rd *ReqData[None]) (None, error) {
+		taskMw := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
 			middlewareCalled = true
 			return None{}, nil
 		})
@@ -575,7 +566,7 @@ func TestValidation(t *testing.T) {
 			},
 		})
 
-		handler := TaskHandlerFromFunc(r.TasksRegistry(), func(rd *ReqData[ValidatedInput]) (None, error) {
+		handler := TaskHandlerFromFunc(func(rd *ReqData[ValidatedInput]) (None, error) {
 			return None{}, nil
 		})
 
@@ -778,7 +769,7 @@ func BenchmarkRouter(b *testing.B) {
 			Result int `json:"result"`
 		}
 
-		handler := TaskHandlerFromFunc(r.TasksRegistry(), func(rd *ReqData[Input]) (Output, error) {
+		handler := TaskHandlerFromFunc(func(rd *ReqData[Input]) (Output, error) {
 			return Output{Result: rd.Input().Value * 2}, nil
 		})
 

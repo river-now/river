@@ -9,23 +9,9 @@ import (
 )
 
 func TestNestedRouterBasics(t *testing.T) {
-	t.Run("NewNestedRouter_RequiresTasksRegistry", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Error("Expected panic when TasksRegistry is nil")
-			}
-		}()
-
-		NewNestedRouter(&NestedOptions{TasksRegistry: nil})
-	})
-
 	t.Run("NewNestedRouter_WithDefaults", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
-		if nr.TasksRegistry() != tr {
-			t.Error("TasksRegistry not set correctly")
-		}
 		if nr.GetDynamicParamPrefixRune() != ':' {
 			t.Error("Default dynamic param prefix should be ':'")
 		}
@@ -38,9 +24,7 @@ func TestNestedRouterBasics(t *testing.T) {
 	})
 
 	t.Run("NewNestedRouter_WithOptions", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
 		nr := NewNestedRouter(&NestedOptions{
-			TasksRegistry:          tr,
 			DynamicParamPrefixRune: '@',
 			SplatSegmentRune:       '#',
 			ExplicitIndexSegment:   "_index",
@@ -60,10 +44,9 @@ func TestNestedRouterBasics(t *testing.T) {
 
 func TestNestedRouteRegistration(t *testing.T) {
 	t.Run("RegisterNestedTaskHandler", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
-		handler := TaskHandlerFromFunc(tr, func(rd *ReqData[None]) (string, error) {
+		handler := TaskHandlerFromFunc(func(rd *ReqData[None]) (string, error) {
 			return "test result", nil
 		})
 
@@ -83,8 +66,7 @@ func TestNestedRouteRegistration(t *testing.T) {
 	})
 
 	t.Run("RegisterNestedPatternWithoutHandler", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
 		RegisterNestedPatternWithoutHandler(nr, "/static")
 
@@ -109,8 +91,7 @@ func TestNestedRouteRegistration(t *testing.T) {
 			}
 		}()
 
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
 		RegisterNestedPatternWithoutHandler(nr, "/test")
 		RegisterNestedPatternWithoutHandler(nr, "/test") // Should panic
@@ -119,8 +100,7 @@ func TestNestedRouteRegistration(t *testing.T) {
 
 func TestFindNestedMatches(t *testing.T) {
 	t.Run("Single_Match", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
 		RegisterNestedPatternWithoutHandler(nr, "/users")
 
@@ -139,8 +119,7 @@ func TestFindNestedMatches(t *testing.T) {
 	})
 
 	t.Run("Nested_Matches", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
 		// Register nested patterns like a UI router would have
 		RegisterNestedPatternWithoutHandler(nr, "") // empty because we have no explicit index
@@ -177,8 +156,7 @@ func TestFindNestedMatches(t *testing.T) {
 	})
 
 	t.Run("No_Match", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
 		RegisterNestedPatternWithoutHandler(nr, "/users")
 
@@ -191,8 +169,7 @@ func TestFindNestedMatches(t *testing.T) {
 	})
 
 	t.Run("Splat_Pattern", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
 		RegisterNestedPatternWithoutHandler(nr, "/files/*")
 
@@ -214,17 +191,16 @@ func TestFindNestedMatches(t *testing.T) {
 
 func TestRunNestedTasks(t *testing.T) {
 	t.Run("Run_Multiple_Tasks", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
 		// Register handlers that return different data
-		layoutHandler := TaskHandlerFromFunc(tr, func(rd *ReqData[None]) (map[string]string, error) {
+		layoutHandler := TaskHandlerFromFunc(func(rd *ReqData[None]) (map[string]string, error) {
 			return map[string]string{"layout": "main"}, nil
 		})
-		pageHandler := TaskHandlerFromFunc(tr, func(rd *ReqData[None]) (map[string]string, error) {
+		pageHandler := TaskHandlerFromFunc(func(rd *ReqData[None]) (map[string]string, error) {
 			return map[string]string{"page": "users"}, nil
 		})
-		userHandler := TaskHandlerFromFunc(tr, func(rd *ReqData[None]) (map[string]string, error) {
+		userHandler := TaskHandlerFromFunc(func(rd *ReqData[None]) (map[string]string, error) {
 			return map[string]string{"user": rd.Params()["id"]}, nil
 		})
 
@@ -233,7 +209,7 @@ func TestRunNestedTasks(t *testing.T) {
 		RegisterNestedTaskHandler(nr, "/users/:id", userHandler)
 
 		req := httptest.NewRequest(http.MethodGet, "/users/456", nil)
-		tasksCtx := tr.NewCtxFromRequest(req)
+		tasksCtx := tasks.NewContext(req.Context())
 
 		results, found := FindNestedMatchesAndRunTasks(nr, tasksCtx, req)
 
@@ -277,10 +253,9 @@ func TestRunNestedTasks(t *testing.T) {
 	})
 
 	t.Run("Mixed_Handlers_And_No_Handlers", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
-		handler := TaskHandlerFromFunc(tr, func(rd *ReqData[None]) (string, error) {
+		handler := TaskHandlerFromFunc(func(rd *ReqData[None]) (string, error) {
 			return "with handler", nil
 		})
 
@@ -288,14 +263,14 @@ func TestRunNestedTasks(t *testing.T) {
 		RegisterNestedTaskHandler(nr, "/dynamic", handler)
 
 		req := httptest.NewRequest(http.MethodGet, "/dynamic", nil)
-		tasksCtx := tr.NewCtxFromRequest(req)
+		tasksCtx := tasks.NewContext(req.Context())
 
 		// Should match both patterns since /dynamic matches both /static and /dynamic patterns
 		// Wait, actually looking at the matcher, it would only match /dynamic
 		// Let me adjust the test to have patterns that would both match
 
 		// Reset and use patterns that would both match a single request
-		nr = NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr = NewNestedRouter(&NestedOptions{})
 		RegisterNestedPatternWithoutHandler(nr, "") // empty because we have no explicit index
 		RegisterNestedTaskHandler(nr, "/page", handler)
 
@@ -332,17 +307,16 @@ func TestRunNestedTasks(t *testing.T) {
 	})
 
 	t.Run("Task_Error_Handling", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
-		errorHandler := TaskHandlerFromFunc(tr, func(rd *ReqData[None]) (string, error) {
+		errorHandler := TaskHandlerFromFunc(func(rd *ReqData[None]) (string, error) {
 			return "", &testError{msg: "task failed"}
 		})
 
 		RegisterNestedTaskHandler(nr, "/error", errorHandler)
 
 		req := httptest.NewRequest(http.MethodGet, "/error", nil)
-		tasksCtx := tr.NewCtxFromRequest(req)
+		tasksCtx := tasks.NewContext(req.Context())
 
 		results, found := FindNestedMatchesAndRunTasks(nr, tasksCtx, req)
 
@@ -363,10 +337,9 @@ func TestRunNestedTasks(t *testing.T) {
 	})
 
 	t.Run("GetHasTaskHandler", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
-		handler := TaskHandlerFromFunc(tr, func(rd *ReqData[None]) (string, error) {
+		handler := TaskHandlerFromFunc(func(rd *ReqData[None]) (string, error) {
 			return "test", nil
 		})
 
@@ -375,7 +348,7 @@ func TestRunNestedTasks(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodGet, "/with-handler", nil)
 		matches, _ := FindNestedMatches(nr, req)
-		tasksCtx := tr.NewCtxFromRequest(req)
+		tasksCtx := tasks.NewContext(req.Context())
 
 		results := RunNestedTasks(nr, tasksCtx, req, matches)
 
@@ -395,13 +368,11 @@ func TestRunNestedTasks(t *testing.T) {
 
 func TestNestedRouterWithExplicitIndex(t *testing.T) {
 	t.Run("Explicit_Index_Segment", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
 		nr := NewNestedRouter(&NestedOptions{
-			TasksRegistry:        tr,
 			ExplicitIndexSegment: "_index",
 		})
 
-		handler := TaskHandlerFromFunc(tr, func(rd *ReqData[None]) (string, error) {
+		handler := TaskHandlerFromFunc(func(rd *ReqData[None]) (string, error) {
 			return "index page", nil
 		})
 
@@ -410,7 +381,7 @@ func TestNestedRouterWithExplicitIndex(t *testing.T) {
 
 		// This would match /users/ or /users
 		req := httptest.NewRequest(http.MethodGet, "/users/", nil)
-		tasksCtx := tr.NewCtxFromRequest(req)
+		tasksCtx := tasks.NewContext(req.Context())
 		results, found := FindNestedMatchesAndRunTasks(nr, tasksCtx, req)
 
 		if !found {
@@ -429,14 +400,13 @@ func TestNestedRouterWithExplicitIndex(t *testing.T) {
 
 func TestResponseProxies(t *testing.T) {
 	t.Run("Response_Proxies_Created", func(t *testing.T) {
-		tr := tasks.NewRegistry("test")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
-		handler1 := TaskHandlerFromFunc(tr, func(rd *ReqData[None]) (string, error) {
+		handler1 := TaskHandlerFromFunc(func(rd *ReqData[None]) (string, error) {
 			rd.ResponseProxy().SetHeader("X-Handler-1", "value1")
 			return "handler1", nil
 		})
-		handler2 := TaskHandlerFromFunc(tr, func(rd *ReqData[None]) (string, error) {
+		handler2 := TaskHandlerFromFunc(func(rd *ReqData[None]) (string, error) {
 			rd.ResponseProxy().SetHeader("X-Handler-2", "value2")
 			return "handler2", nil
 		})
@@ -445,7 +415,7 @@ func TestResponseProxies(t *testing.T) {
 		RegisterNestedTaskHandler(nr, "/page", handler2)
 
 		req := httptest.NewRequest(http.MethodGet, "/page", nil)
-		tasksCtx := tr.NewCtxFromRequest(req)
+		tasksCtx := tasks.NewContext(req.Context())
 
 		results, _ := FindNestedMatchesAndRunTasks(nr, tasksCtx, req)
 
@@ -477,8 +447,7 @@ func (e *testError) Error() string {
 // Benchmarks
 func BenchmarkNestedRouter(b *testing.B) {
 	b.Run("Simple_Nested_Match", func(b *testing.B) {
-		tr := tasks.NewRegistry("bench")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
 		RegisterNestedPatternWithoutHandler(nr, "/")
 		RegisterNestedPatternWithoutHandler(nr, "/users")
@@ -494,10 +463,9 @@ func BenchmarkNestedRouter(b *testing.B) {
 	})
 
 	b.Run("Nested_Tasks_Execution", func(b *testing.B) {
-		tr := tasks.NewRegistry("bench")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
-		handler := TaskHandlerFromFunc(tr, func(rd *ReqData[None]) (map[string]string, error) {
+		handler := TaskHandlerFromFunc(func(rd *ReqData[None]) (map[string]string, error) {
 			return map[string]string{"id": rd.Params()["id"]}, nil
 		})
 
@@ -510,14 +478,13 @@ func BenchmarkNestedRouter(b *testing.B) {
 		b.ResetTimer()
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			tasksCtx := tr.NewCtxFromRequest(req)
+			tasksCtx := tasks.NewContext(req.Context())
 			FindNestedMatchesAndRunTasks(nr, tasksCtx, req)
 		}
 	})
 
 	b.Run("Deep_Nesting", func(b *testing.B) {
-		tr := tasks.NewRegistry("bench")
-		nr := NewNestedRouter(&NestedOptions{TasksRegistry: tr})
+		nr := NewNestedRouter(&NestedOptions{})
 
 		// Create a deeply nested route structure
 		patterns := []string{

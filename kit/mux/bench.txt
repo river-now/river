@@ -10,15 +10,14 @@ BenchmarkRouter/WorstCaseMatch-14                5758496               204.2 ns/
 BenchmarkRouter/NestedDynamicRoute-14            3932948               296.6 ns/op           832 B/op          5 allocs/op
 
 June 3, 2025:
-BenchmarkRouter/SimpleStaticRoute-14            14912018                75.91 ns/op           72 B/op          2 allocs/op
-BenchmarkRouter/DynamicRoute-14                  3806342               280.4 ns/op           856 B/op          9 allocs/op
-BenchmarkRouter/WithMiddleware-14               12655340                90.29 ns/op           96 B/op          3 allocs/op
-BenchmarkRouter/RESTfulAPI-14                    3298516               372.5 ns/op           732 B/op          9 allocs/op
-BenchmarkRouter/LargeRouterMatch-14              4692392               251.2 ns/op           225 B/op          6 allocs/op
-BenchmarkRouter/WorstCaseMatch-14                5199814               231.1 ns/op           187 B/op          6 allocs/op
-BenchmarkRouter/NestedDynamicRoute-14            2939377               405.0 ns/op           952 B/op          9 allocs/op
-
-BenchmarkRouter/TaskHandler-14                    868502              1279 ns/op            2855 B/op         43 allocs/op
-BenchmarkNestedRouter/Simple_Nested_Match-14     2224820               537.0 ns/op           584 B/op         10 allocs/op
-BenchmarkNestedRouter/Nested_Tasks_Execution-14   281056              3776 ns/op            3168 B/op         50 allocs/op
-BenchmarkNestedRouter/Deep_Nesting-14             975391              1175 ns/op            1672 B/op         20 allocs/op
+BenchmarkRouter/SimpleStaticRoute-14            15359868                73.48 ns/op           72 B/op          2 allocs/op
+BenchmarkRouter/DynamicRoute-14                  4294524               298.8 ns/op           856 B/op          9 allocs/op
+BenchmarkRouter/WithMiddleware-14               13442804                89.05 ns/op           96 B/op          3 allocs/op
+BenchmarkRouter/RESTfulAPI-14                    3262324               357.7 ns/op           732 B/op          9 allocs/op
+BenchmarkRouter/LargeRouterMatch-14              4654927               255.9 ns/op           225 B/op          6 allocs/op
+BenchmarkRouter/WorstCaseMatch-14                5122256               230.1 ns/op           188 B/op          6 allocs/op
+BenchmarkRouter/NestedDynamicRoute-14            3070330               391.4 ns/op           952 B/op          9 allocs/op
+BenchmarkRouter/TaskHandler-14                    650565              1671 ns/op            2284 B/op         27 allocs/op
+BenchmarkNestedRouter/Simple_Nested_Match-14     2268211               548.0 ns/op           584 B/op         10 allocs/op
+BenchmarkNestedRouter/Nested_Tasks_Execution-14                   194047              5212 ns/op            2912 B/op         44 allocs/op
+BenchmarkNestedRouter/Deep_Nesting-14                             994718              1220 ns/op            1672 B/op         20 allocs/op

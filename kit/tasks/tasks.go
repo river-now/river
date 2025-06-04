@@ -2,319 +2,147 @@ package tasks
 
 import (
 	"context"
-	"net/http"
+	"fmt"
 	"sync"
 
-	"github.com/river-now/river/kit/genericsutil"
 	"golang.org/x/sync/errgroup"
 )
 
-/////////////////////////////////////////////////////////////////////
-/////// ARGS
-/////////////////////////////////////////////////////////////////////
+type None struct{}
 
-type Arg[I any] struct {
-	Input I
-	*TasksCtx
+type AnyTask interface {
+	Do(ctx *Context, input any) (any, error)
 }
 
-type ArgNoInput = Arg[genericsutil.None]
-
-/////////////////////////////////////////////////////////////////////
-/////// REGISTERED TASKS
-/////////////////////////////////////////////////////////////////////
-
-type AnyRegisteredTask interface {
-	getID() int
-	execute(c *TasksCtx, input any) (any, error)
+type Task[I, O any] struct {
+	fn func(ctx *Context, input I) (O, error)
 }
 
-type ioFunc[I any, O any] = func(c *Arg[I]) (O, error)
-
-type RegisteredTask[I any, O any] struct {
-	fn ioFunc[I, O]
-	id int
+func NewTask[I, O any](fn func(ctx *Context, input I) (O, error)) *Task[I, O] {
+	return &Task[I, O]{fn: fn}
 }
 
-func (task *RegisteredTask[I, O]) getID() int { return task.id }
-
-func (task *RegisteredTask[I, O]) execute(c *TasksCtx, input any) (any, error) {
-	return task.fn(&Arg[I]{
-		TasksCtx: c,
-		Input:    genericsutil.AssertOrZero[I](input),
-	})
-}
-
-func Register[I any, O any](tr *Registry, f ioFunc[I, O]) *RegisteredTask[I, O] {
-	tr.mu.Lock()
-	defer tr.mu.Unlock()
-	task := &RegisteredTask[I, O]{
-		fn: f,
-		id: tr.count,
+func (t *Task[I, O]) Do(ctx *Context, input any) (any, error) {
+	typedInput, ok := input.(I)
+	if !ok {
+		var zero I
+		return nil, fmt.Errorf("invalid input type for task: expected %T, got %T", zero, input)
 	}
-	tr.count++
-	return task
+	return Do(ctx, t, typedInput)
 }
-
-/////////////////////////////////////////////////////////////////////
-/////// TASKS REGISTRY
-/////////////////////////////////////////////////////////////////////
-
-type Registry struct {
-	key   string
-	count int
-	mu    sync.Mutex
-}
-
-func (tr *Registry) NewCtxFromNativeContext(parentContext context.Context) *TasksCtx {
-	return newTasksCtx(parentContext, tr)
-}
-
-func (tr *Registry) NewCtxFromRequest(r *http.Request) *TasksCtx {
-	return newTasksCtx(r.Context(), tr)
-}
-
-func NewRegistry(key string) *Registry {
-	return &Registry{key: key}
-}
-
-/////////////////////////////////////////////////////////////////////
-/////// CTX
-/////////////////////////////////////////////////////////////////////
 
 type result struct {
 	once sync.Once
-	data any
+	val  any
 	err  error
 }
 
-type TasksCtx struct {
-	mu       sync.Mutex
-	registry *Registry
-	results  map[AnyRegisteredTask]*result
-
-	context context.Context
-	cancel  context.CancelFunc
+type Context struct {
+	parent  context.Context
+	mu      sync.Mutex
+	results map[any]*result
 }
 
-type tasksCtxContextKeyType string
-
-var tasksCtxContextKey tasksCtxContextKeyType = "_tasks_ctx_"
-
-func (tr *Registry) toContextKey() tasksCtxContextKeyType {
-	return tasksCtxContextKey + tasksCtxContextKeyType(tr.key)
-}
-
-func (tr *Registry) GetCtxFromRequest(r *http.Request) *TasksCtx {
-	_tasks_ctx, ok := r.Context().Value(tr.toContextKey()).(*TasksCtx)
-	if !ok {
-		return nil
-	}
-	return _tasks_ctx
-}
-
-func (tr *Registry) MustGetCtxFromRequest(r *http.Request) *TasksCtx {
-	_tasks_ctx, ok := r.Context().Value(tr.toContextKey()).(*TasksCtx)
-	if !ok {
-		panic("tasks context not found in request")
-	}
-	return _tasks_ctx
-}
-
-func (tr *Registry) GetRequestWithCtxIfNeeded(r *http.Request) *http.Request {
-	if tr.GetCtxFromRequest(r) != nil {
-		return nil
-	}
-	tasksCtx := tr.NewCtxFromRequest(r)
-	contextWithValue := context.WithValue(r.Context(), tr.toContextKey(), tasksCtx)
-	return r.WithContext(contextWithValue)
-}
-
-func (tr *Registry) AddTasksCtxToRequestMw() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			newR := tr.GetRequestWithCtxIfNeeded(r)
-			if newR == nil {
-				next.ServeHTTP(w, r)
-				return
-			}
-			next.ServeHTTP(w, newR)
-		})
+func NewContext(parent context.Context) *Context {
+	return &Context{
+		parent:  parent,
+		results: make(map[any]*result),
 	}
 }
 
-func newTasksCtx(parentContext context.Context, tr *Registry) *TasksCtx {
-	contextWithCancel, cancel := context.WithCancel(parentContext)
-
-	return &TasksCtx{
-		registry: tr,
-		context:  contextWithCancel,
-		cancel:   cancel,
-		results:  make(map[AnyRegisteredTask]*result),
-	}
+func (c *Context) Parent() context.Context {
+	return c.parent
 }
 
-func (c *TasksCtx) NativeContext() context.Context {
-	return c.context
-}
-
-func (c *TasksCtx) CancelNativeContext() {
-	c.cancel()
-}
-
-func (c *TasksCtx) getResult(task AnyRegisteredTask) *result {
+func (c *Context) getOrCreateResult(taskPtr any) *result {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if r, ok := c.results[task]; ok {
+	if r, ok := c.results[taskPtr]; ok {
 		return r
 	}
 	r := &result{}
-	c.results[task] = r
+	c.results[taskPtr] = r
 	return r
 }
 
-/////////////////////////////////////////////////////////////////////
-/////// PREP & GET & PREPANY
-/////////////////////////////////////////////////////////////////////
-
-// runOnce is the heart of the execution logic. It takes a result holder and
-// a function to execute, and ensures it runs exactly once, respecting context cancellation.
-func runOnce(c *TasksCtx, r *result, execFn func() (any, error)) {
+func Do[I, O any](ctx *Context, task *Task[I, O], input I) (O, error) {
+	r := ctx.getOrCreateResult(task)
 	r.once.Do(func() {
-		if err := c.context.Err(); err != nil {
+		if err := ctx.parent.Err(); err != nil {
 			r.err = err
 			return
 		}
-
 		type taskOutput struct {
-			data any
-			err  error
+			val O
+			err error
 		}
 		resultChan := make(chan taskOutput, 1)
-
 		go func() {
-			data, err := execFn()
-			resultChan <- taskOutput{data: data, err: err}
+			val, err := task.fn(ctx, input)
+			resultChan <- taskOutput{val: val, err: err}
 		}()
-
 		select {
-		case <-c.context.Done():
-			r.err = c.context.Err()
+		case <-ctx.parent.Done():
+			r.err = ctx.parent.Err()
 		case res := <-resultChan:
-			r.data = res.data
+			r.val = res.val
 			r.err = res.err
 		}
 	})
-}
-
-// get contains the memoization logic for type-safe calls.
-func get[I, O any](c *TasksCtx, task *RegisteredTask[I, O], input any) (O, error) {
-	r := c.getResult(task)
-
-	// Use the shared runOnce helper to perform the execution.
-	runOnce(c, r, func() (any, error) {
-		return task.execute(c, input)
-	})
-
 	if r.err != nil {
 		var zero O
 		return zero, r.err
 	}
-	if r.data == nil {
-		var zero O
-		return zero, r.err
+	return r.val.(O), nil
+}
+
+type Callable interface {
+	Run(ctx *Context) error
+	IsCallable()
+}
+
+type BoundCall[O any] struct {
+	runner    func(ctx *Context) (O, error)
+	resultPtr *O
+}
+
+func Bind[I, O any](task *Task[I, O], input I) *BoundCall[O] {
+	return &BoundCall[O]{
+		runner: func(ctx *Context) (O, error) {
+			return Do(ctx, task, input)
+		},
 	}
-	return r.data.(O), r.err
 }
 
-func (task *RegisteredTask[I, O]) Prep(c *TasksCtx, input I) *PreparedTask[I, O] {
-	return &PreparedTask[I, O]{c: c, task: task, input: input}
+func (bc *BoundCall[O]) AssignTo(ptr *O) Callable {
+	bc.resultPtr = ptr
+	return bc
 }
 
-func (task *RegisteredTask[I, O]) PrepNoInput(c *TasksCtx) *PreparedTask[I, O] {
-	return &PreparedTask[I, O]{c: c, task: task, input: genericsutil.None{}}
-}
-
-func (task *RegisteredTask[I, O]) Get(c *TasksCtx, input I) (O, error) {
-	return get(c, task, input)
-}
-
-func (task *RegisteredTask[I, O]) GetNoInput(c *TasksCtx) (O, error) {
-	return get(c, task, genericsutil.None{})
-}
-
-type AnyPreparedTask interface {
-	getTask() AnyRegisteredTask
-	getInput() any
-	GetAny() (any, error)
-}
-
-type PreparedTask[I any, O any] struct {
-	c     *TasksCtx
-	task  *RegisteredTask[I, O]
-	input any
-}
-
-func (pt *PreparedTask[I, O]) getTask() AnyRegisteredTask { return pt.task }
-func (pt *PreparedTask[I, O]) getInput() any              { return pt.input }
-func (pt *PreparedTask[I, O]) GetAny() (any, error) {
-	return pt.Get()
-}
-
-func (pt *PreparedTask[I, O]) Get() (O, error) {
-	return get(pt.c, pt.task, pt.input)
-}
-
-// preparedTaskFromAny is the internal implementation for a task prepared via PrepAny.
-type preparedTaskFromAny struct {
-	c     *TasksCtx
-	task  AnyRegisteredTask
-	input any
-}
-
-func (p *preparedTaskFromAny) getTask() AnyRegisteredTask { return p.task }
-func (p *preparedTaskFromAny) getInput() any              { return p.input }
-func (p *preparedTaskFromAny) GetAny() (any, error) {
-	r := p.c.getResult(p.task)
-	// Use the shared runOnce helper to perform the execution.
-	runOnce(p.c, r, func() (any, error) {
-		// The `execute` method on the interface handles the erased types.
-		return p.task.execute(p.c, p.input)
-	})
-	return r.data, r.err
-}
-
-// PrepAny prepares a type-erased task for execution. It is designed for use
-// in generic routers or other dynamic scenarios where the concrete task
-// types are not known at compile time.
-func PrepAny(c *TasksCtx, task AnyRegisteredTask, input any) AnyPreparedTask {
-	return &preparedTaskFromAny{c: c, task: task, input: input}
-}
-
-/////////////////////////////////////////////////////////////////////
-/////// PARALLEL PRELOAD
-/////////////////////////////////////////////////////////////////////
-
-func (c *TasksCtx) ParallelPreload(preparedTasks ...AnyPreparedTask) bool {
-	if len(preparedTasks) == 0 {
-		return true
+func (bc *BoundCall[O]) Run(ctx *Context) error {
+	res, err := bc.runner(ctx)
+	if err != nil {
+		return err
 	}
-
-	// Optimization: Bypass errgroup for a single task.
-	if len(preparedTasks) == 1 {
-		_, err := preparedTasks[0].GetAny()
-		return err == nil
+	if bc.resultPtr != nil {
+		*bc.resultPtr = res
 	}
+	return nil
+}
 
-	g, _ := errgroup.WithContext(c.context)
+func (bc *BoundCall[O]) IsCallable() {}
 
-	for _, pt := range preparedTasks {
-		taskToRun := pt // Capture loop variable
+func Go(ctx *Context, calls ...Callable) error {
+	g, gCtx := errgroup.WithContext(ctx.parent)
+	groupCtx := &Context{
+		parent:  gCtx,
+		results: ctx.results,
+	}
+	for _, c := range calls {
+		call := c
 		g.Go(func() error {
-			_, err := taskToRun.GetAny()
-			return err
+			return call.Run(groupCtx)
 		})
 	}
-
-	return g.Wait() == nil
+	return g.Wait()
 }
