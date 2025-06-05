@@ -3,6 +3,7 @@ package mux
 import (
 	"net/http"
 	"path"
+	"reflect"
 	"strings"
 	"sync/atomic"
 
@@ -16,6 +17,8 @@ import (
 	"github.com/river-now/river/kit/tasks"
 	"github.com/river-now/river/kit/validate"
 )
+
+// __TODO test injectTasksCtx and TasksCtxRequirer
 
 var (
 	muxLog           = colorlog.New("mux")
@@ -88,6 +91,7 @@ type Router struct {
 	notFoundHandler    http.Handler
 	mountRoot          string
 	allRoutes          []AnyRoute
+	injectTasksCtx     bool
 }
 
 func (rt *Router) AllRoutes() []AnyRoute { return rt.allRoutes }
@@ -117,6 +121,18 @@ type methodMatcher struct {
 	reqDataGetters map[string]reqDataGetter
 }
 
+type TasksCtxRequirer interface {
+	http.Handler
+	NeedsTasksCtx()
+}
+
+var HandlerNeedsTasksCtxImplReflectType = reflectutil.ToInterfaceReflectType[TasksCtxRequirer]()
+
+type TasksCtxRequirerFunc func(http.ResponseWriter, *http.Request)
+
+func (h TasksCtxRequirerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) { h(w, r) }
+func (h TasksCtxRequirerFunc) NeedsTasksCtx()                                   {}
+
 type Options struct {
 	// Used for mounting a router at a specific path, e.g., "/api/". If set,
 	// the router will strip the provided mount root from the beginning of
@@ -130,6 +146,9 @@ type Options struct {
 	// and mutate the input ptr to the desired value (this is what will ultimately
 	// be returned by c.Input()).
 	MarshalInput func(r *http.Request, inputPtr any) error
+
+	// If true, automatically injects a TasksCtx into the request context.
+	InjectTasksCtx bool
 }
 
 func NewRouter(opts *Options) *Router {
@@ -163,6 +182,7 @@ func NewRouter(opts *Options) *Router {
 		mountRoot:          mountRootToUse,
 		httpMws:            emptyHTTPMws,
 		taskMws:            emptyTaskMws,
+		injectTasksCtx:     opts.InjectTasksCtx,
 	}
 }
 
@@ -252,7 +272,8 @@ type Route[I, O any] struct {
 	userHTTPHandler http.Handler
 	taskHandler     tasks.AnyTask
 
-	compiledHTTP atomic.Value
+	needsTasksCtx bool
+	compiledHTTP  atomic.Value
 }
 
 type AnyRoute interface {
@@ -263,6 +284,7 @@ type AnyRoute interface {
 	getTaskHandler() tasks.AnyTask
 	getHTTPMws() []httpMiddlewareWithOptions
 	getTaskMws() []taskMiddlewareWithOptions
+	getNeedsTasksCtx() bool
 	OriginalPattern() string
 	Method() string
 	HTTPChain(rt *Router, mm *methodMatcher) http.Handler
@@ -273,6 +295,7 @@ func (route *Route[I, O]) getHTTPHandler() http.Handler            { return rout
 func (route *Route[I, O]) getTaskHandler() tasks.AnyTask           { return route.taskHandler }
 func (route *Route[I, O]) getHTTPMws() []httpMiddlewareWithOptions { return route.httpMws }
 func (route *Route[I, O]) getTaskMws() []taskMiddlewareWithOptions { return route.taskMws }
+func (route *Route[I, O]) getNeedsTasksCtx() bool                  { return route.needsTasksCtx }
 func (route *Route[I, O]) OriginalPattern() string                 { return route.originalPattern }
 func (route *Route[I, O]) Method() string                          { return route.method }
 
@@ -308,6 +331,9 @@ func RegisterHandler(router *Router, method, pattern string, httpHandler http.Ha
 	route := newRouteStruct[any, any](router, method, pattern)
 	route.handlerType = "http"
 	route.userHTTPHandler = httpHandler
+	route.needsTasksCtx = reflectutil.ImplementsInterface(
+		reflect.TypeOf(httpHandler), HandlerNeedsTasksCtxImplReflectType,
+	)
 	mm := router.getOrCreateMethodMatcher(method)
 	mm.reqDataGetters[pattern] = createReqDataGetter(route)
 	router.registerRoute(route)
@@ -464,7 +490,10 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route := mm.routes[match.OriginalPattern()]
 
 	// Fast path for pure HTTP handlers without task middleware
-	if route.getHandlerType() == "http" && !rt.hasAnyTaskMiddleware(mm, route) {
+	if route.getHandlerType() == "http" &&
+		!rt.hasAnyTaskMiddleware(mm, route) &&
+		!rt.injectTasksCtx &&
+		!route.getNeedsTasksCtx() {
 		if len(match.Params) > 0 || len(match.SplatValues) > 0 {
 			rd := &rdTransport{
 				params:    match.Params,
@@ -731,27 +760,4 @@ func (rt *Router) getOrCreateMethodMatcher(method string) *methodMatcher {
 	}
 	rt.methodToMatcherMap[method] = mm
 	return mm
-}
-
-func GetRequestWithTasksCtxIfNeeded(r *http.Request) *http.Request {
-	existing := requestStore.GetValueFromContext(r.Context())
-	if existing != nil && existing.tasksCtx != nil {
-		return r
-	}
-
-	tasksCtx := tasks.NewTasksCtx(r.Context())
-	rd := &rdTransport{
-		tasksCtx: tasksCtx,
-		req:      r,
-	}
-	return requestStore.GetRequestWithContext(r, rd)
-}
-
-func AddTasksCtxToRequestMw() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r = GetRequestWithTasksCtxIfNeeded(r)
-			next.ServeHTTP(w, r)
-		})
-	}
 }
