@@ -1,8 +1,12 @@
 cpu: Apple M3 Max
-BenchmarkRouter/SimpleStaticRoute-14            12368881                81.66 ns/op          368 B/op          2 allocs/op
-BenchmarkRouter/DynamicRoute-14                  6190022               190.9 ns/op           736 B/op          5 allocs/op
-BenchmarkRouter/WithMiddleware-14               11278684               104.5 ns/op           392 B/op          3 allocs/op
-BenchmarkRouter/RESTfulAPI-14                    4418270               260.1 ns/op           423 B/op          5 allocs/op
-BenchmarkRouter/LargeRouterMatch-14              5015697               241.9 ns/op           197 B/op          5 allocs/op
-BenchmarkRouter/WorstCaseMatch-14                5758496               204.2 ns/op           158 B/op          5 allocs/op
-BenchmarkRouter/NestedDynamicRoute-14            3932948               296.6 ns/op           832 B/op          5 allocs/op
+BenchmarkRouter/SimpleStaticRoute-14            17756042                65.41 ns/op           72 B/op          2 allocs/op
+BenchmarkRouter/DynamicRoute-14                  4450057               287.1 ns/op           888 B/op          9 allocs/op
+BenchmarkRouter/WithMiddleware-14               17620056                67.33 ns/op           72 B/op          2 allocs/op
+BenchmarkRouter/RESTfulAPI-14                    3813862               317.3 ns/op           708 B/op          7 allocs/op
+BenchmarkRouter/LargeRouterMatch-14              4564567               258.6 ns/op           226 B/op          6 allocs/op
+BenchmarkRouter/WorstCaseMatch-14                5146869               228.5 ns/op           188 B/op          6 allocs/op
+BenchmarkRouter/NestedDynamicRoute-14            3173605               384.6 ns/op           984 B/op          9 allocs/op
+BenchmarkRouter/TaskHandler-14                    962961              1067 ns/op            3300 B/op         30 allocs/op
+BenchmarkNestedRouter/Simple_Nested_Match-14     2247847               542.6 ns/op           584 B/op         10 allocs/op
+BenchmarkNestedRouter/Nested_Tasks_Execution-14                   227048              4576 ns/op            2979 B/op         43 allocs/op
+BenchmarkNestedRouter/Deep_Nesting-14                             925336              1195 ns/op            1672 B/op         20 allocs/op

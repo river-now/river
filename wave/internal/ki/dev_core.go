@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/river-now/river/kit/port"
+	"github.com/river-now/river/kit/netutil"
 )
 
 type must_start_dev_opts struct {
@@ -28,7 +28,7 @@ func (c *Config) MustStartDev(_opts ...must_start_dev_opts) {
 
 	MustGetAppPort() // Warm port right away, in case default is unavailable. Also, env needs to be set in this scope.
 
-	refresh_server_port, err := port.GetFreePort(default_refresh_server_port)
+	refresh_server_port, err := netutil.GetFreePort(default_refresh_server_port)
 	if err != nil {
 		c.panic("failed to get free port", err)
 	}

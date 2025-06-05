@@ -2,6 +2,7 @@
 
 import { createBrowserHistory, type Update } from "history";
 import { debounce } from "river.now/kit/debounce";
+import { jsonDeepEquals } from "river.now/kit/json";
 import {
 	getAnchorDetailsFromEvent,
 	getHrefDetails,
@@ -231,6 +232,12 @@ async function __fetchRouteData(
 		}
 
 		if (redirectData?.status === "should") {
+			// For soft redirects, don't clear the status.
+			// Instead, let the redirect navigation handle it.
+			// For hard redirects, clear it (we're leaving the page anyway).
+			if (redirectData.shouldRedirectStrategy === "hard") {
+				setLoadingStatus({ type: props.navigationType, value: false });
+			}
 			return { redirectData, response };
 		}
 
@@ -669,20 +676,31 @@ export async function submit<T = any>(
 ): Promise<{ success: true; data: T } | { success: false; error: string }> {
 	const submitRes = await submitInner(url, requestInit);
 	const isGET = getIsGETRequest(requestInit);
+	const needsRevalidation = !submitRes.alreadyRevalidated && !isGET;
+
+	async function handleReval() {
+		if (needsRevalidation) {
+			// We want to set revalidation status to true before
+			// turning off submission status so there is no flicker
+			// of "all-off" loading state between submission and
+			// revalidation.
+			setLoadingStatus({ type: "revalidation", value: true });
+			setLoadingStatus({ type: "submission", value: false });
+			await revalidate();
+		} else {
+			setLoadingStatus({ type: "submission", value: false });
+		}
+	}
 
 	if (!submitRes.success) {
 		LogError(submitRes.error);
-		if (!submitRes.alreadyRevalidated && !isGET) {
-			await revalidate();
-		}
+		await handleReval();
 		return { success: false, error: submitRes.error };
 	}
 
 	try {
 		const json = await submitRes.response.json();
-		if (!submitRes.alreadyRevalidated && !isGET) {
-			await revalidate();
-		}
+		await handleReval();
 		return { success: true, data: json as T };
 	} catch (e) {
 		return {
@@ -731,9 +749,9 @@ async function submitInner(
 		const redirected = redirectData?.status === "did";
 
 		navigationState.submissions.delete(submissionKey);
+		setLoadingStatus({ type: "submission", value: false });
 
 		if (response && getIsErrorRes(response)) {
-			setLoadingStatus({ type: "submission", value: false });
 			return {
 				success: false,
 				error: String(response.status),
@@ -742,14 +760,10 @@ async function submitInner(
 		}
 
 		if (didAbort) {
-			if (!isGET) {
-				// resets status bool
-				await revalidate();
-			}
 			return {
 				success: false,
 				error: "Aborted",
-				alreadyRevalidated: true,
+				alreadyRevalidated: false,
 			} as const;
 		}
 
@@ -761,8 +775,6 @@ async function submitInner(
 				alreadyRevalidated: redirected,
 			} as const;
 		}
-
-		setLoadingStatus({ type: "submission", value: false });
 
 		return {
 			success: true,
@@ -780,7 +792,6 @@ async function submitInner(
 		}
 
 		LogError(error);
-		setLoadingStatus({ type: "submission", value: false });
 
 		return {
 			success: false,
@@ -832,18 +843,23 @@ export type StatusEvent = CustomEvent<StatusEventDetail>;
 
 let dispatchStatusEventDebounceTimer: number | undefined;
 
+let lastStatusEvent: StatusEventDetail | null = null;
+
 function dispatchStatusEvent() {
 	clearTimeout(dispatchStatusEventDebounceTimer);
 
 	dispatchStatusEventDebounceTimer = window.setTimeout(() => {
+		const newStatusEvent: StatusEventDetail = {
+			isNavigating,
+			isSubmitting,
+			isRevalidating,
+		};
+		if (jsonDeepEquals(lastStatusEvent, newStatusEvent)) {
+			return;
+		}
+		lastStatusEvent = newStatusEvent;
 		window.dispatchEvent(
-			new CustomEvent(STATUS_EVENT_KEY, {
-				detail: {
-					isRevalidating,
-					isSubmitting,
-					isNavigating,
-				} satisfies StatusEventDetail,
-			}),
+			new CustomEvent(STATUS_EVENT_KEY, { detail: newStatusEvent }),
 		);
 	}, 1);
 }

@@ -1,0 +1,14 @@
+cpu: Apple M3 Max
+BenchmarkSingleTask-14                           6247041               201.5 ns/op
+BenchmarkParallelIndependentTasks-14              477938              2436 ns/op
+BenchmarkHighContention-14                        204980              5742 ns/op
+BenchmarkTaskWithDependencies-14                 4142250               288.7 ns/op
+BenchmarkAllocations-14                          5192365               238.7 ns/op           504 B/op          9 allocs/op
+BenchmarkParallelScaling/tasks-1-14              4811410               237.7 ns/op
+BenchmarkParallelScaling/tasks-2-14               590058              1771 ns/op
+BenchmarkParallelScaling/tasks-5-14               341628              3426 ns/op
+BenchmarkParallelScaling/tasks-10-14              132543              8965 ns/op
+BenchmarkParallelScaling/tasks-20-14               55681             21636 ns/op
+BenchmarkParallelScaling/tasks-50-14               24434             49104 ns/op
+BenchmarkContextCancellation-14                      100          10945498 ns/op
+BenchmarkRepeatedTaskCalls-14                   72391099                16.59 ns/op            0 B/op          0 allocs/op

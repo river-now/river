@@ -15,9 +15,9 @@ const useClientLoaderData = addClientLoader("/", async (props) => {
 
 type RootCLD = ReturnType<typeof useClientLoaderData>;
 
-export function Home(props: RouteProps<"/_index">) {
-	const x = usePatternLoaderData("");
-	const y = usePatternClientLoaderData<RootCLD>("");
+export function Home(_props: RouteProps<"/_index">) {
+	const _x = usePatternLoaderData("");
+	const _y = usePatternClientLoaderData<RootCLD>("");
 	// console.log("x", x());
 	// console.log("y", y());
 

@@ -168,7 +168,7 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 		res.HTMLBytes(buf.Bytes())
 	})
 
-	handler = nestedRouter.TasksRegistry().AddTasksCtxToRequestMw()(handler).ServeHTTP
+	handler = mux.AddTasksCtxToRequestMw()(handler).ServeHTTP
 
 	return handler
 }

@@ -3,6 +3,7 @@ package mux
 import (
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/river-now/river/kit/genericsutil"
 	"github.com/river-now/river/kit/matcher"
@@ -11,49 +12,48 @@ import (
 	"github.com/river-now/river/kit/tasks"
 )
 
-type NestedReqData = ReqData[None]
+// Pre-allocated structures to reduce allocations
+var (
+	noneInstance = None{}
+)
 
-/////////////////////////////////////////////////////////////////////
-/////// CORE ROUTER STRUCTURE
-/////////////////////////////////////////////////////////////////////
+type NestedReqData = ReqData[None]
 
 // Always a GET / no input parsing / all tasks
 
+type compiledNestedRoute struct {
+	pattern     string
+	taskHandler tasks.AnyTask
+	hasHandler  bool
+}
+
 type NestedRouter struct {
-	_tasks_registry *tasks.Registry
-	_matcher        *matcher.Matcher
-	_routes         map[string]AnyNestedRoute
+	matcher        *matcher.Matcher
+	routes         map[string]AnyNestedRoute
+	compiledRoutes map[string]*compiledNestedRoute
+	mu             sync.RWMutex
 }
 
 func (nr *NestedRouter) AllRoutes() map[string]AnyNestedRoute {
-	return nr._routes
-}
-
-func (nr *NestedRouter) TasksRegistry() *tasks.Registry {
-	return nr._tasks_registry
+	return nr.routes
 }
 
 func (nr *NestedRouter) IsRegistered(originalPattern string) bool {
-	_, exists := nr._routes[originalPattern]
+	_, exists := nr.routes[originalPattern]
 	return exists
 }
 
 func (nr *NestedRouter) GetExplicitIndexSegment() string {
-	return nr._matcher.GetExplicitIndexSegment()
+	return nr.matcher.GetExplicitIndexSegment()
 }
 func (nr *NestedRouter) GetDynamicParamPrefixRune() rune {
-	return nr._matcher.GetDynamicParamPrefixRune()
+	return nr.matcher.GetDynamicParamPrefixRune()
 }
 func (nr *NestedRouter) GetSplatSegmentRune() rune {
-	return nr._matcher.GetSplatSegmentRune()
+	return nr.matcher.GetSplatSegmentRune()
 }
 
-/////////////////////////////////////////////////////////////////////
-/////// NEW ROUTER
-/////////////////////////////////////////////////////////////////////
-
 type NestedOptions struct {
-	TasksRegistry          *tasks.Registry
 	DynamicParamPrefixRune rune // Optional. Defaults to ':'.
 	SplatSegmentRune       rune // Optional. Defaults to '*'.
 
@@ -63,87 +63,92 @@ type NestedOptions struct {
 }
 
 func NewNestedRouter(opts *NestedOptions) *NestedRouter {
-	_matcher_opts := new(matcher.Options)
+	matcherOpts := new(matcher.Options)
 
 	if opts == nil {
 		opts = new(NestedOptions)
 	}
 
-	if opts.TasksRegistry == nil {
-		panic("tasks registry is required for nested router")
-	}
-
-	_matcher_opts.DynamicParamPrefixRune = opt.Resolve(opts, opts.DynamicParamPrefixRune, ':')
-	_matcher_opts.SplatSegmentRune = opt.Resolve(opts, opts.SplatSegmentRune, '*')
-	_matcher_opts.ExplicitIndexSegment = opt.Resolve(opts, opts.ExplicitIndexSegment, "")
+	matcherOpts.DynamicParamPrefixRune = opt.Resolve(opts, opts.DynamicParamPrefixRune, ':')
+	matcherOpts.SplatSegmentRune = opt.Resolve(opts, opts.SplatSegmentRune, '*')
+	matcherOpts.ExplicitIndexSegment = opt.Resolve(opts, opts.ExplicitIndexSegment, "")
 
 	return &NestedRouter{
-		_tasks_registry: opts.TasksRegistry,
-		_matcher:        matcher.New(_matcher_opts),
-		_routes:         make(map[string]AnyNestedRoute),
+		matcher:        matcher.New(matcherOpts),
+		routes:         make(map[string]AnyNestedRoute),
+		compiledRoutes: make(map[string]*compiledNestedRoute),
 	}
 }
-
-/////////////////////////////////////////////////////////////////////
-/////// REGISTERED PATTERNS (CORE)
-/////////////////////////////////////////////////////////////////////
 
 type NestedRoute[O any] struct {
 	genericsutil.ZeroHelper[None, O]
 
-	_router           *NestedRouter
-	_original_pattern string
-
-	_task_handler tasks.AnyRegisteredTask
+	router          *NestedRouter
+	originalPattern string
+	taskHandler     tasks.AnyTask
 }
-
-/////////////////////////////////////////////////////////////////////
-/////// REGISTERED PATTERNS (COBWEBS)
-/////////////////////////////////////////////////////////////////////
 
 type AnyNestedRoute interface {
 	genericsutil.AnyZeroHelper
-	_get_task_handler() tasks.AnyRegisteredTask
+	getTaskHandler() tasks.AnyTask
 	OriginalPattern() string
 }
 
-func (route *NestedRoute[O]) _get_task_handler() tasks.AnyRegisteredTask { return route._task_handler }
-func (route *NestedRoute[O]) OriginalPattern() string                    { return route._original_pattern }
-
-/////////////////////////////////////////////////////////////////////
-/////// CORE PATTERN REGISTRATION FUNCTIONS
-/////////////////////////////////////////////////////////////////////
+func (route *NestedRoute[O]) getTaskHandler() tasks.AnyTask { return route.taskHandler }
+func (route *NestedRoute[O]) OriginalPattern() string       { return route.originalPattern }
 
 func RegisterNestedTaskHandler[O any](
 	router *NestedRouter, pattern string, taskHandler *TaskHandler[None, O],
 ) *NestedRoute[O] {
-	_route := _new_nested_route_struct[O](router, pattern)
-	_route._task_handler = taskHandler
-	_must_register_nested_route(_route)
-	return _route
+	route := &NestedRoute[O]{
+		router:          router,
+		originalPattern: pattern,
+		taskHandler:     taskHandler,
+	}
+	mustRegisterNestedRoute(route)
+
+	// Pre-compile route
+	router.mu.Lock()
+	router.compiledRoutes[pattern] = &compiledNestedRoute{
+		pattern:     pattern,
+		taskHandler: taskHandler,
+		hasHandler:  true,
+	}
+	router.mu.Unlock()
+
+	return route
 }
 
 func RegisterNestedPatternWithoutHandler(router *NestedRouter, pattern string) {
-	_route := _new_nested_route_struct[None](router, pattern)
-	_must_register_nested_route(_route)
-}
+	route := &NestedRoute[None]{
+		router:          router,
+		originalPattern: pattern,
+		taskHandler:     nil,
+	}
+	mustRegisterNestedRoute(route)
 
-/////////////////////////////////////////////////////////////////////
-/////// RUN NESTED TASKS
-/////////////////////////////////////////////////////////////////////
+	// Pre-compile route
+	router.mu.Lock()
+	router.compiledRoutes[pattern] = &compiledNestedRoute{
+		pattern:     pattern,
+		taskHandler: nil,
+		hasHandler:  false,
+	}
+	router.mu.Unlock()
+}
 
 type NestedTasksResult struct {
-	_pattern  string
-	_data     any
-	_err      error
-	_ran_task bool
+	pattern string
+	data    any
+	err     error
+	ranTask bool
 }
 
-func (ntr *NestedTasksResult) Pattern() string { return ntr._pattern }
-func (ntr *NestedTasksResult) OK() bool        { return ntr._err == nil }
-func (ntr *NestedTasksResult) Data() any       { return ntr._data }
-func (ntr *NestedTasksResult) Err() error      { return ntr._err }
-func (ntr *NestedTasksResult) RanTask() bool   { return ntr._ran_task }
+func (ntr *NestedTasksResult) Pattern() string { return ntr.pattern }
+func (ntr *NestedTasksResult) OK() bool        { return ntr.err == nil }
+func (ntr *NestedTasksResult) Data() any       { return ntr.data }
+func (ntr *NestedTasksResult) Err() error      { return ntr.err }
+func (ntr *NestedTasksResult) RanTask() bool   { return ntr.ranTask }
 
 type NestedTasksResults struct {
 	Params          Params
@@ -151,122 +156,153 @@ type NestedTasksResults struct {
 	Map             map[string]*NestedTasksResult
 	Slice           []*NestedTasksResult
 	ResponseProxies []*response.Proxy
-	_task_indices   map[int]int // Maps match index to task index
 }
 
 func (ntr *NestedTasksResults) GetHasTaskHandler(i int) bool {
-	_, ok := ntr._task_indices[i]
-	return ok
+	if i < 0 || i >= len(ntr.Slice) {
+		return false
+	}
+	return ntr.Slice[i].ranTask
 }
 
-// Second return value (bool) indicates matches found
 func FindNestedMatches(nestedRouter *NestedRouter, r *http.Request) (*matcher.FindNestedMatchesResults, bool) {
-	return nestedRouter._matcher.FindNestedMatches(r.URL.Path)
+	return nestedRouter.matcher.FindNestedMatches(r.URL.Path)
 }
 
-// Second return value (bool) indicates matches found, not success of tasks run
-func FindNestedMatchesAndRunTasks(nestedRouter *NestedRouter, tasksCtx *tasks.TasksCtx, r *http.Request) (*NestedTasksResults, bool) {
-	_results, ok := FindNestedMatches(nestedRouter, r)
+func FindNestedMatchesAndRunTasks(nestedRouter *NestedRouter, r *http.Request) (*NestedTasksResults, bool) {
+	findResults, ok := FindNestedMatches(nestedRouter, r)
 	if !ok {
 		return nil, false
 	}
-
-	return RunNestedTasks(nestedRouter, tasksCtx, r, _results), true
+	return RunNestedTasks(nestedRouter, r, findResults), true
 }
+
+// Optimized task callable that embeds all needed data
+type nestedTaskCallable struct {
+	taskHandler tasks.AnyTask
+	reqData     *ReqData[None]
+	result      *NestedTasksResult
+}
+
+func (nc *nestedTaskCallable) Run(ctx *tasks.TasksCtx) error {
+	data, err := nc.taskHandler.Do(ctx, nc.reqData)
+	nc.result.data = data
+	nc.result.err = err
+	return err
+}
+
+func (nc *nestedTaskCallable) IsCallable() {}
 
 func RunNestedTasks(
 	nestedRouter *NestedRouter,
-	tasksCtx *tasks.TasksCtx,
 	r *http.Request,
 	findNestedMatchesResults *matcher.FindNestedMatchesResults,
 ) *NestedTasksResults {
-	matches := findNestedMatchesResults.Matches
+	tasksCtx := GetTasksCtx(r)
+	if tasksCtx == nil {
+		muxLog.Error("No TasksCtx found in request for RunNestedTasks")
+		return nil
+	}
 
+	matches := findNestedMatchesResults.Matches
 	if len(matches) == 0 {
 		return nil
 	}
 
-	_results := new(NestedTasksResults)
-	_results.Params = findNestedMatchesResults.Params
-	_results.SplatValues = findNestedMatchesResults.SplatValues
+	// Pre-allocate results structure
+	numMatches := len(matches)
+	results := &NestedTasksResults{
+		Params:          findNestedMatchesResults.Params,
+		SplatValues:     findNestedMatchesResults.SplatValues,
+		Map:             make(map[string]*NestedTasksResult, numMatches),
+		Slice:           make([]*NestedTasksResult, numMatches),
+		ResponseProxies: make([]*response.Proxy, numMatches),
+	}
 
-	// Initialize result containers up front
-	_results.Map = make(map[string]*NestedTasksResult, len(matches))
-	_results.Slice = make([]*NestedTasksResult, len(matches))
+	// First pass: create results and count tasks
+	taskCount := 0
+	nestedRouter.mu.RLock()
+	for i, match := range matches {
+		pattern := match.OriginalPattern()
 
-	// First, identify which matches have tasks that need to be run
-	_tasks_with_input := make([]tasks.AnyPreparedTask, 0, len(matches))
-	_results.ResponseProxies = make([]*response.Proxy, 0, len(matches))
-	_results._task_indices = make(map[int]int) // Maps match index to task index
+		// Create result for every match
+		result := &NestedTasksResult{pattern: pattern}
+		results.Map[pattern] = result
+		results.Slice[i] = result
 
-	for i, _match := range matches {
-		_response_proxy := response.NewProxy()
-		_results.ResponseProxies = append(_results.ResponseProxies, _response_proxy)
+		// Check if we have a compiled route with handler
+		if compiled, exists := nestedRouter.compiledRoutes[pattern]; exists && compiled.hasHandler {
+			result.ranTask = true
+			taskCount++
+		}
+	}
+	nestedRouter.mu.RUnlock()
 
-		_nested_route_marker, routeExists := nestedRouter._routes[_match.OriginalPattern()]
+	// If no tasks to run, create empty proxies and return
+	if taskCount == 0 {
+		for i := range results.ResponseProxies {
+			results.ResponseProxies[i] = response.NewProxy()
+		}
+		return results
+	}
 
-		// Create result object regardless of whether a task exists
-		_res := &NestedTasksResult{_pattern: _match.OriginalPattern()}
-		_results.Map[_match.OriginalPattern()] = _res
-		_results.Slice[i] = _res
+	// Pre-allocate callables
+	callables := make([]tasks.Callable, 0, taskCount)
 
-		// Skip task preparation if route doesn't exist or has no task handler
-		if !routeExists {
+	// Second pass: setup tasks
+	nestedRouter.mu.RLock()
+	for i, match := range matches {
+		pattern := match.OriginalPattern()
+		compiled, exists := nestedRouter.compiledRoutes[pattern]
+
+		if !exists || !compiled.hasHandler {
+			// Create empty proxy for non-task routes
+			results.ResponseProxies[i] = response.NewProxy()
 			continue
 		}
 
-		_task := _nested_route_marker._get_task_handler()
-		if _task == nil {
-			// This means a user registered a pattern but didn't provide a task handler.
-			// In this case, just continue.
-			continue
+		// Create response proxy
+		proxy := response.NewProxy()
+		results.ResponseProxies[i] = proxy
+
+		// Create ReqData directly with fields
+		reqData := &ReqData[None]{
+			params:        results.Params,
+			splatVals:     results.SplatValues,
+			tasksCtx:      tasksCtx,
+			input:         noneInstance,
+			req:           r,
+			responseProxy: proxy,
 		}
 
-		_res._ran_task = true
-
-		_rd := &ReqData[None]{
-			_params:         findNestedMatchesResults.Params,
-			_splat_vals:     findNestedMatchesResults.SplatValues,
-			_tasks_ctx:      tasksCtx,
-			_input:          None{},
-			_req:            r,
-			_response_proxy: _response_proxy,
+		// Create callable
+		callable := &nestedTaskCallable{
+			taskHandler: compiled.taskHandler,
+			reqData:     reqData,
+			result:      results.Slice[i],
 		}
 
-		_tasks_with_input = append(_tasks_with_input, tasks.PrepAny(tasksCtx, _task, _rd))
-		_results._task_indices[i] = len(_tasks_with_input) - 1 // Store the mapping between match index and task index
+		callables = append(callables, callable)
+	}
+	nestedRouter.mu.RUnlock()
+
+	// Execute all tasks in parallel
+	if err := tasks.Go(tasksCtx, callables...); err != nil {
+		muxLog.Error("tasks.Go reported an error during nested task execution", "error", err)
 	}
 
-	// Only run parallelPreload if we have tasks to run
-	if len(_tasks_with_input) > 0 {
-		tasksCtx.ParallelPreload(_tasks_with_input...)
-	}
-
-	// Process task results for matches that had tasks
-	for matchIdx, taskIdx := range _results._task_indices {
-		_res := _results.Slice[matchIdx]
-		_data, err := _tasks_with_input[taskIdx].GetAny()
-		_res._data = _data
-		_res._err = err
-	}
-
-	return _results
+	return results
 }
 
 /////////////////////////////////////////////////////////////////////
 /////// INTERNAL HELPERS
 /////////////////////////////////////////////////////////////////////
 
-func _new_nested_route_struct[O any](_router *NestedRouter, _original_pattern string) *NestedRoute[O] {
-	return &NestedRoute[O]{_router: _router, _original_pattern: _original_pattern}
-}
-
-func _must_register_nested_route[O any](_route *NestedRoute[O]) {
-	_matcher := _route._router._matcher
-	_matcher.RegisterPattern(_route._original_pattern)
-	_, _already_exists := _route._router._routes[_route._original_pattern]
-	if _already_exists {
-		panic(fmt.Sprintf("Pattern '%s' is already registered. Perhaps you're unintentionally registering it twice?", _route._original_pattern))
+func mustRegisterNestedRoute[O any](route *NestedRoute[O]) {
+	if route.router.IsRegistered(route.originalPattern) {
+		panic(fmt.Sprintf("Pattern '%s' is already registered in NestedRouter. Perhaps you're unintentionally registering it twice?", route.originalPattern))
 	}
-	_route._router._routes[_route._original_pattern] = _route
+
+	route.router.matcher.RegisterPattern(route.originalPattern)
+	route.router.routes[route.originalPattern] = route
 }
