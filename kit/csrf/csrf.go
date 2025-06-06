@@ -3,7 +3,9 @@
 // enhanced with defense-in-depth measures including Origin/Referer validation and session
 // binding. Unlike some CSRF prevention patterns, this middleware works regardless of whether
 // any user session exists, meaning it also protects pre-authentication POST-ish endpoints
-// such as login and registration endpoints.
+// such as login and registration endpoints. Consumers must ensure that they call either
+// CycleTokenProxy or CycleTokenWriter (as applicable) whenever sessions are created or
+// destroyed (e.g., on login and logout).
 package csrf
 
 import (
@@ -36,11 +38,18 @@ func (p payload) isValid() bool {
 }
 
 type ProtectorConfig struct {
-	GetKeyset      func() *keyset.Keyset
+	// REQUIRED: Function to get the keyset used for encryption/decryption of CSRF token payloads.
+	GetKeyset func() *keyset.Keyset
+	// REQUIRED: Gets the session ID for the current request. Return empty string if no session exists.
+	// This enables automatic session binding validation and smart token cycling.
+	GetSessionByID func(r *http.Request) string
 	AllowedOrigins []string
-	TokenTTL       time.Duration
-	CookieSuffix   string // Final cookie name will be "__Host-{CookieSuffix}". Defaults to "csrf_token".
-	HeaderName     string // Defaults to "X-CSRF-Token"
+	// Defaults to 4 hours, but this is too short for most apps. A good value is to set this to match
+	// the TTL of your authentication sessions. It's also a good idea to have your app make any GET
+	// request on window focus to refresh the CSRF token, to minimize failure cases for legitimate users.
+	TokenTTL     time.Duration
+	CookieSuffix string // Final cookie name will be "__Host-{CookieSuffix}". Defaults to "csrf_token".
+	HeaderName   string // Defaults to "X-CSRF-Token"
 	// Optional. If non-nil and returns true, the "__Host-" prefix will be omitted and the cookie will
 	// not be set as "Secure" or "Partitioned". This is useful for non-HTTPS development environments.
 	GetIsDev func() bool
@@ -55,6 +64,19 @@ type Protector struct {
 }
 
 func NewProtector(cfg ProtectorConfig) *Protector {
+	// Make sure the getter isn't nil, but don't actually call it yet.
+	// We want NewProtector to be callable at package init time, and
+	// sometimes (during builds or tests), environment variables that
+	// the keyset may rely on may not be set.
+	if cfg.GetKeyset == nil {
+		panic("csrf: GetKeyset is required")
+	}
+	if cfg.GetSessionByID == nil {
+		panic("csrf: GetSessionByID is required")
+	}
+	if cfg.TokenTTL < 0 {
+		panic("csrf: TokenTTL must be positive")
+	}
 	if cfg.TokenTTL == 0 {
 		cfg.TokenTTL = 4 * time.Hour
 	}
@@ -113,17 +135,25 @@ func (p *Protector) Middleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if err := p.applyCSRFProtection(r); err != nil {
-			http.Error(w, "Forbidden: CSRF validation failed", http.StatusForbidden)
+		err, shouldSelfHeal := p.applyCSRFProtection(r)
+		if err != nil {
+			rp := response.NewProxy()
+			if shouldSelfHeal {
+				if err := p.CycleTokenProxy(rp, p.cfg.GetSessionByID(r)); err != nil {
+					log.Printf("csrf.Protector.Middleware: self-heal failed: %v\n", err)
+				}
+			}
+			rp.SetStatus(http.StatusForbidden, "Forbidden: CSRF validation failed")
+			rp.ApplyToResponseWriter(w, r)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-// CycleToken generates a new CSRF token and sets it as a cookie.
+// CycleTokenProxy generates a new CSRF token and sets it as a cookie.
 // Must be called on login (with sessionID) and logout (with empty sessionID).
-func (p *Protector) CycleToken(rp *response.Proxy, sessionID string) error {
+func (p *Protector) CycleTokenProxy(rp *response.Proxy, sessionID string) error {
 	token, err := p.newEncryptedPayload(sessionID)
 	if err != nil {
 		return fmt.Errorf("csrf: failed to generate token: %w", err)
@@ -143,21 +173,15 @@ func (p *Protector) CycleToken(rp *response.Proxy, sessionID string) error {
 	return nil
 }
 
-// ValidateTokenForSession checks if the CSRF token is valid for the given session.
-// Must be called by authentication middleware or handlers for session-bound validation.
-func (p *Protector) ValidateTokenForSession(r *http.Request, sessionID string) bool {
-	cookie, err := r.Cookie(p.cookieName)
-	if err != nil {
-		return false
+// CycleTokenWriter generates a new CSRF token and sets it as a cookie.
+// Must be called on login (with sessionID) and logout (with empty sessionID).
+func (p *Protector) CycleTokenWriter(w http.ResponseWriter, r *http.Request, sessionID string) error {
+	rp := response.NewProxy()
+	if err := p.CycleTokenProxy(rp, sessionID); err != nil {
+		return err
 	}
-	payload, err := p.decodeEncryptedValue(cookie.Value)
-	if err != nil {
-		return false
-	}
-	if !payload.isValid() {
-		return false
-	}
-	return subtle.ConstantTimeCompare([]byte(payload.SessionID), []byte(sessionID)) == 1
+	rp.ApplyToResponseWriter(w, r)
+	return nil
 }
 
 func (p *Protector) issueCSRFTokenIfNeeded(rp *response.Proxy, r *http.Request) error {
@@ -168,32 +192,36 @@ func (p *Protector) issueCSRFTokenIfNeeded(rp *response.Proxy, r *http.Request) 
 			return nil
 		}
 	}
-	return p.CycleToken(rp, "")
+	return p.CycleTokenProxy(rp, p.cfg.GetSessionByID(r))
 }
 
-func (p *Protector) applyCSRFProtection(r *http.Request) error {
+func (p *Protector) applyCSRFProtection(r *http.Request) (err error, shouldSelfheal bool) {
 	if err := p.validateOrigin(r); err != nil {
-		return fmt.Errorf("origin validation failed: %w", err)
+		return fmt.Errorf("origin validation failed: %w", err), false
 	}
 	cookie, err := r.Cookie(p.cookieName)
 	if err != nil {
-		return errors.New("csrf token cookie missing")
+		return errors.New("csrf token cookie missing"), true
 	}
 	payload, err := p.decodeEncryptedValue(cookie.Value)
 	if err != nil {
-		return fmt.Errorf("invalid csrf token: %w", err)
+		return fmt.Errorf("invalid csrf token: %w", err), false
 	}
 	if !payload.isValid() {
-		return errors.New("csrf token invalid or expired")
+		return errors.New("csrf token invalid or expired"), true
 	}
 	submittedValue := r.Header.Get(p.cfg.HeaderName)
 	if submittedValue == "" {
-		return errors.New("csrf token missing from request")
+		return errors.New("csrf token missing from request"), false
 	}
 	if subtle.ConstantTimeCompare([]byte(submittedValue), []byte(cookie.Value)) != 1 {
-		return errors.New("csrf token mismatch")
+		return errors.New("csrf token mismatch"), false
 	}
-	return nil
+	currentSessionID := p.cfg.GetSessionByID(r)
+	if subtle.ConstantTimeCompare([]byte(payload.SessionID), []byte(currentSessionID)) != 1 {
+		return errors.New("csrf token session mismatch"), false
+	}
+	return nil, false
 }
 
 func (p *Protector) validateOrigin(r *http.Request) error {

@@ -692,17 +692,18 @@ export async function submit<T = any>(
 		}
 	}
 
+	await handleReval();
+
 	if (!submitRes.success) {
 		LogError(submitRes.error);
-		await handleReval();
 		return { success: false, error: submitRes.error };
 	}
 
 	try {
 		const json = await submitRes.response.json();
-		await handleReval();
 		return { success: true, data: json as T };
 	} catch (e) {
+		LogError(e);
 		return {
 			success: false,
 			error: e instanceof Error ? e.message : "Unknown error",
@@ -749,7 +750,6 @@ async function submitInner(
 		const redirected = redirectData?.status === "did";
 
 		navigationState.submissions.delete(submissionKey);
-		setLoadingStatus({ type: "submission", value: false });
 
 		if (response && getIsErrorRes(response)) {
 			return {
@@ -758,7 +758,6 @@ async function submitInner(
 				alreadyRevalidated: redirected,
 			} as const;
 		}
-
 		if (didAbort) {
 			return {
 				success: false,
@@ -766,7 +765,6 @@ async function submitInner(
 				alreadyRevalidated: false,
 			} as const;
 		}
-
 		if (!response?.ok) {
 			const msg = String(response?.status || "unknown");
 			return {
@@ -775,7 +773,6 @@ async function submitInner(
 				alreadyRevalidated: redirected,
 			} as const;
 		}
-
 		return {
 			success: true,
 			response,
@@ -790,9 +787,7 @@ async function submitInner(
 				alreadyRevalidated: false,
 			} as const;
 		}
-
 		LogError(error);
-
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",
@@ -842,12 +837,12 @@ type StatusEventDetail = {
 export type StatusEvent = CustomEvent<StatusEventDetail>;
 
 let dispatchStatusEventDebounceTimer: number | undefined;
-
 let lastStatusEvent: StatusEventDetail | null = null;
+
+const STATUS_EVENT_DEBOUNCE_MS = 5;
 
 function dispatchStatusEvent() {
 	clearTimeout(dispatchStatusEventDebounceTimer);
-
 	dispatchStatusEventDebounceTimer = window.setTimeout(() => {
 		const newStatusEvent: StatusEventDetail = {
 			isNavigating,
@@ -861,7 +856,7 @@ function dispatchStatusEvent() {
 		window.dispatchEvent(
 			new CustomEvent(STATUS_EVENT_KEY, { detail: newStatusEvent }),
 		);
-	}, 1);
+	}, STATUS_EVENT_DEBOUNCE_MS);
 }
 
 export function getStatus(): StatusEventDetail {
@@ -917,13 +912,11 @@ type RerenderAppProps = {
 
 async function __reRenderApp(props: RerenderAppProps) {
 	setLoadingStatus({ type: props.navigationType, value: false });
-
 	const shouldUseViewTransitions =
 		internal_RiverClientGlobal.get("useViewTransitions") &&
 		!!document.startViewTransition &&
 		props.navigationType !== "prefetch" &&
 		props.navigationType !== "revalidation";
-
 	if (shouldUseViewTransitions) {
 		const transition = document.startViewTransition(async () => {
 			await __reRenderAppInner(props);
@@ -931,7 +924,6 @@ async function __reRenderApp(props: RerenderAppProps) {
 		await transition.finished;
 		return;
 	}
-
 	await __reRenderAppInner(props);
 }
 
@@ -1066,7 +1058,6 @@ let devTimeSetupClientLoadersDebounced: () => Promise<void> = () => Promise.reso
 
 if (import.meta.env.DEV) {
 	(window as any).__waveRevalidate = revalidate;
-
 	devTimeSetupClientLoadersDebounced = debounce(async () => {
 		setLoadingStatus({ type: "revalidation", value: true });
 		await setupClientLoaders();

@@ -9,11 +9,12 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/river-now/river/kit/tasks"
 )
 
-// --- TestTaskMiddleware_Interactions ---
 func TestTaskMiddleware_Interactions(t *testing.T) {
-	t.Run("ErrorFromTaskMiddlewareSetsProxyAndHalts", func(t *testing.T) {
+	t.Run("ErrorFromTaskMiddlewareReturns500", func(t *testing.T) {
 		r := NewRouter(nil)
 		var taskMwRan bool
 		var mainHandlerRan bool
@@ -27,7 +28,7 @@ func TestTaskMiddleware_Interactions(t *testing.T) {
 
 		RegisterHandlerFunc(r, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
 			mainHandlerRan = true
-			t.Error("Main handler should not be called if task middleware errors and sets proxy")
+			t.Error("Main handler should not be called if task middleware errors")
 		})
 
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
@@ -40,11 +41,13 @@ func TestTaskMiddleware_Interactions(t *testing.T) {
 		if mainHandlerRan {
 			t.Error("Main handler ran but should have been short-circuited by task middleware error")
 		}
-		if w.Code != http.StatusForbidden {
-			t.Errorf("Expected status %d, got %d", http.StatusForbidden, w.Code)
+		// When middleware returns an error, we get 500 regardless of proxy status
+		if w.Code != http.StatusInternalServerError {
+			t.Errorf("Expected status 500 when middleware returns error, got %d", w.Code)
 		}
-		if !strings.Contains(w.Body.String(), "Forbidden by Task MW") {
-			t.Errorf("Expected body to contain 'Forbidden by Task MW', got %q", w.Body.String())
+		// The body should be the generic 500 error, not the custom message
+		if !strings.Contains(w.Body.String(), "Internal Server Error") {
+			t.Errorf("Expected body to contain 'Internal Server Error', got %q", w.Body.String())
 		}
 	})
 
@@ -66,7 +69,7 @@ func TestTaskMiddleware_Interactions(t *testing.T) {
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 
-		// CORRECTED ASSERTION: Main handler SHOULD NOT run if task middleware sets a 4xx status
+		// Main handler SHOULD NOT run if task middleware sets a 4xx status
 		if mainHandlerRan {
 			t.Error("Main handler ran but should have been short-circuited by task middleware 418 error status")
 		}
@@ -505,6 +508,427 @@ func TestMarshalInputEdgeCases(t *testing.T) {
 		}
 		if receivedInput.Field != "original_mutated" {
 			t.Errorf("Expected mutated input 'original_mutated', got %q", receivedInput.Field)
+		}
+	})
+}
+
+func TestInjectTasksCtx(t *testing.T) {
+	t.Run("InjectTasksCtx_Creates_TasksCtx_For_HTTP_Handlers", func(t *testing.T) {
+		router := NewRouter(&Options{
+			InjectTasksCtx: true,
+		})
+
+		var capturedTasksCtx *tasks.TasksCtx
+		RegisterHandlerFunc(router, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
+			capturedTasksCtx = GetTasksCtx(r)
+			w.WriteHeader(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if capturedTasksCtx == nil {
+			t.Error("TasksCtx should be injected when InjectTasksCtx is true")
+		}
+	})
+
+	t.Run("InjectTasksCtx_False_No_TasksCtx_Without_Middleware", func(t *testing.T) {
+		router := NewRouter(&Options{
+			InjectTasksCtx: false,
+		})
+
+		var capturedTasksCtx *tasks.TasksCtx
+		RegisterHandlerFunc(router, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
+			capturedTasksCtx = GetTasksCtx(r)
+			w.WriteHeader(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if capturedTasksCtx != nil {
+			t.Error("TasksCtx should not be injected when InjectTasksCtx is false and no task middleware")
+		}
+	})
+}
+
+func TestTasksCtxRequirer(t *testing.T) {
+	t.Run("TasksCtxRequirer_Gets_TasksCtx_Even_Without_Middleware", func(t *testing.T) {
+		router := NewRouter(&Options{
+			InjectTasksCtx: false, // Explicitly false
+		})
+
+		// Create a handler that implements TasksCtxRequirer
+		handler := TasksCtxRequirerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tasksCtx := GetTasksCtx(r)
+			if tasksCtx == nil {
+				t.Error("TasksCtx should be available for TasksCtxRequirer")
+				http.Error(w, "No TasksCtx", http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		})
+
+		RegisterHandler(router, http.MethodGet, "/test", handler)
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", rec.Code)
+		}
+	})
+
+	t.Run("TasksCtxRequirer_With_Custom_Type", func(t *testing.T) {
+		router := NewRouter(nil)
+
+		h := customHandler{t: t}
+		RegisterHandler(router, http.MethodGet, "/test", h)
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", rec.Code)
+		}
+	})
+
+	t.Run("Regular_Handler_Without_TasksCtxRequirer", func(t *testing.T) {
+		router := NewRouter(nil)
+
+		// Regular handler that doesn't implement TasksCtxRequirer
+		RegisterHandlerFunc(router, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
+			tasksCtx := GetTasksCtx(r)
+			if tasksCtx != nil {
+				t.Error("TasksCtx should not be available for regular handlers without middleware")
+			}
+			w.WriteHeader(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", rec.Code)
+		}
+	})
+}
+
+// Define the custom handler type outside the test function
+type customHandler struct {
+	t *testing.T
+}
+
+func (h customHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	tasksCtx := GetTasksCtx(r)
+	if tasksCtx == nil {
+		h.t.Error("TasksCtx should be available for custom TasksCtxRequirer")
+		http.Error(w, "No TasksCtx", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h customHandler) NeedsTasksCtx() {}
+
+func TestResponseProxy(t *testing.T) {
+	t.Run("Task_Middleware_Sets_Response", func(t *testing.T) {
+		router := NewRouter(nil)
+
+		taskMw := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			rd.ResponseProxy().SetStatus(http.StatusForbidden, "Forbidden by Task MW")
+			return None{}, nil
+		})
+
+		SetGlobalTaskMiddleware(router, taskMw)
+
+		RegisterHandlerFunc(router, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
+			// This should not be called
+			t.Error("Handler should not be called when response proxy has error")
+			w.WriteHeader(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("Expected status 403, got %d", rec.Code)
+		}
+	})
+}
+
+func TestTaskHandlerErrors(t *testing.T) {
+	t.Run("Task_Handler_Returns_Error", func(t *testing.T) {
+		router := NewRouter(nil)
+
+		handler := TaskHandlerFromFunc(func(rd *ReqData[None]) (None, error) {
+			return None{}, errors.New("handler error")
+		})
+
+		RegisterTaskHandler(router, http.MethodGet, "/test", handler)
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("Expected status 500, got %d", rec.Code)
+		}
+	})
+}
+
+func TestTaskMiddlewareErrors(t *testing.T) {
+	t.Run("Task_Middleware_Error_Returns_500", func(t *testing.T) {
+		router := NewRouter(nil)
+
+		// Task middleware that returns an actual error (unexpected failure)
+		taskMw := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			return None{}, errors.New("database connection failed")
+		})
+
+		SetGlobalTaskMiddleware(router, taskMw)
+
+		var handlerCalled bool
+		RegisterHandlerFunc(router, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
+			handlerCalled = true
+			w.WriteHeader(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		// Handler should NOT be called when middleware errors
+		if handlerCalled {
+			t.Error("Handler should not be called when task middleware returns error")
+		}
+
+		// Should return 500 Internal Server Error for unexpected errors
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("Expected status 500, got %d", rec.Code)
+		}
+	})
+
+	t.Run("Task_Middleware_Sets_Error_Status_Returns_Nil", func(t *testing.T) {
+		router := NewRouter(nil)
+
+		// Task middleware that handles an expected case (not authenticated)
+		taskMw := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			// Check auth header
+			if rd.Request().Header.Get("Authorization") == "" {
+				rd.ResponseProxy().SetStatus(401, "Authentication required")
+				return None{}, nil // No error - this is expected
+			}
+			return None{}, nil
+		})
+
+		SetGlobalTaskMiddleware(router, taskMw)
+
+		var handlerCalled bool
+		RegisterHandlerFunc(router, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
+			handlerCalled = true
+			w.WriteHeader(http.StatusOK)
+		})
+
+		// Request without auth header
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		// Handler should NOT be called when proxy has error status
+		if handlerCalled {
+			t.Error("Handler should not be called when task middleware sets error status")
+		}
+
+		// Should return the custom error status
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("Expected status 401, got %d", rec.Code)
+		}
+
+		// Should have the custom error message
+		if !strings.Contains(rec.Body.String(), "Authentication required") {
+			t.Errorf("Expected body to contain 'Authentication required', got %q", rec.Body.String())
+		}
+	})
+
+	t.Run("Task_Middleware_Sets_Redirect_Returns_Nil", func(t *testing.T) {
+		router := NewRouter(nil)
+
+		// Task middleware that redirects (expected case)
+		taskMw := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			// Redirect unauthenticated users to login
+			if rd.Request().Header.Get("Authorization") == "" {
+				rd.ResponseProxy().Redirect(rd.Request(), "/login", 302)
+				return None{}, nil // No error - this is expected behavior
+			}
+			return None{}, nil
+		})
+
+		SetGlobalTaskMiddleware(router, taskMw)
+
+		var handlerCalled bool
+		RegisterHandlerFunc(router, http.MethodGet, "/protected", func(w http.ResponseWriter, r *http.Request) {
+			handlerCalled = true
+			w.WriteHeader(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		// Handler should NOT be called when proxy has redirect
+		if handlerCalled {
+			t.Error("Handler should not be called when task middleware sets redirect")
+		}
+
+		// Should return redirect status
+		if rec.Code != http.StatusFound {
+			t.Errorf("Expected status 302, got %d", rec.Code)
+		}
+
+		// Should have Location header
+		if loc := rec.Header().Get("Location"); loc != "/login" {
+			t.Errorf("Expected Location header '/login', got %q", loc)
+		}
+	})
+
+	t.Run("Multiple_Task_Middlewares_Any_Error_Returns_500", func(t *testing.T) {
+		router := NewRouter(nil)
+
+		// Mix of success and error middlewares
+		taskMw1 := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			return None{}, nil // success
+		})
+
+		taskMw2 := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			return None{}, errors.New("service unavailable") // unexpected error
+		})
+
+		taskMw3 := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			return None{}, nil // success
+		})
+
+		SetGlobalTaskMiddleware(router, taskMw1)
+		SetGlobalTaskMiddleware(router, taskMw2)
+		SetGlobalTaskMiddleware(router, taskMw3)
+
+		var handlerCalled bool
+		RegisterHandlerFunc(router, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
+			handlerCalled = true
+			w.WriteHeader(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		// Handler should not run when any middleware errors
+		if handlerCalled {
+			t.Error("Handler should not be called when any task middleware returns error")
+		}
+
+		// Unexpected errors always result in 500
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("Expected status 500, got %d", rec.Code)
+		}
+	})
+
+	t.Run("Multiple_Task_Middlewares_First_Error_Status_Wins", func(t *testing.T) {
+		router := NewRouter(nil)
+
+		// Multiple middlewares that set error statuses
+		// According to MergeProxyResponses: "FIRST ERROR ... will win"
+		taskMw1 := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			// This runs but doesn't set error
+			return None{}, nil
+		})
+
+		taskMw2 := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			// This sets a 403 (first error)
+			rd.ResponseProxy().SetStatus(403, "Forbidden")
+			return None{}, nil // No Go error
+		})
+
+		taskMw3 := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			// This tries to set 401 but 403 should win (first error)
+			rd.ResponseProxy().SetStatus(401, "Unauthorized")
+			return None{}, nil // No Go error
+		})
+
+		SetGlobalTaskMiddleware(router, taskMw1)
+		SetGlobalTaskMiddleware(router, taskMw2)
+		SetGlobalTaskMiddleware(router, taskMw3)
+
+		var handlerCalled bool
+		RegisterHandlerFunc(router, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
+			handlerCalled = true
+			w.WriteHeader(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		// Handler should not run when proxy has error
+		if handlerCalled {
+			t.Error("Handler should not be called when any middleware sets error status")
+		}
+
+		// Should get the first error set
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("Expected status 403 (first error), got %d", rec.Code)
+		}
+
+		if !strings.Contains(rec.Body.String(), "Forbidden") {
+			t.Errorf("Expected body to contain 'Forbidden', got %q", rec.Body.String())
+		}
+	})
+
+	t.Run("Task_Middleware_Success_Allows_Handler", func(t *testing.T) {
+		router := NewRouter(nil)
+
+		// All middlewares succeed with no errors or proxy responses
+		taskMw1 := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			// Do some setup work
+			return None{}, nil
+		})
+
+		taskMw2 := TaskMiddlewareFromFunc(func(rd *ReqData[None]) (None, error) {
+			// Do some validation that passes
+			return None{}, nil
+		})
+
+		SetGlobalTaskMiddleware(router, taskMw1)
+		SetGlobalTaskMiddleware(router, taskMw2)
+
+		var handlerCalled bool
+		RegisterHandlerFunc(router, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
+			handlerCalled = true
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Success"))
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		// Handler SHOULD run when all middlewares succeed
+		if !handlerCalled {
+			t.Error("Handler should be called when all task middlewares succeed")
+		}
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", rec.Code)
+		}
+
+		if rec.Body.String() != "Success" {
+			t.Errorf("Expected body 'Success', got %q", rec.Body.String())
 		}
 	})
 }
