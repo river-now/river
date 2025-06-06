@@ -25,16 +25,17 @@ import (
 	"github.com/river-now/river/kit/securestring"
 )
 
-const nonceSize = 24 // Size, in bytes, of the random nonce used in the CSRF token payload.
+const nonceSize = 16 // Size, in bytes, of the random nonce used in the CSRF token payload.
 
 type payload struct {
-	Nonce     []byte    `json:"n"`
-	ExpiresAt time.Time `json:"e"`
-	SessionID string    `json:"s,omitempty"`
+	Nonce         []byte `json:"n"`
+	ExpiresAtUnix int64  `json:"e"`
+	SessionID     string `json:"s,omitempty"`
 }
 
 func (p payload) isValid() bool {
-	return len(p.Nonce) > 0 && !p.ExpiresAt.IsZero() && time.Now().Before(p.ExpiresAt)
+	timestamp := time.Unix(p.ExpiresAtUnix, 0)
+	return len(p.Nonce) > 0 && !timestamp.IsZero() && time.Now().Before(timestamp)
 }
 
 type ProtectorConfig struct {
@@ -189,6 +190,13 @@ func (p *Protector) issueCSRFTokenIfNeeded(rp *response.Proxy, r *http.Request) 
 	if err == nil {
 		payload, err := p.decodeEncryptedValue(cookie.Value)
 		if err == nil && payload.isValid() {
+			if payload.SessionID != "" {
+				currentSessionID := p.cfg.GetSessionByID(r)
+				if subtle.ConstantTimeCompare([]byte(payload.SessionID), []byte(currentSessionID)) == 1 {
+					return nil
+				}
+				return p.CycleTokenProxy(rp, currentSessionID)
+			}
 			return nil
 		}
 	}
@@ -203,9 +211,12 @@ func (p *Protector) applyCSRFProtection(r *http.Request) (err error, shouldSelfh
 	if err != nil {
 		return errors.New("csrf token cookie missing"), true
 	}
+	if cookie.Value == "" {
+		return errors.New("csrf token cookie empty"), false
+	}
 	payload, err := p.decodeEncryptedValue(cookie.Value)
 	if err != nil {
-		return fmt.Errorf("invalid csrf token: %w", err), false
+		return fmt.Errorf("invalid csrf token: %w", err), true
 	}
 	if !payload.isValid() {
 		return errors.New("csrf token invalid or expired"), true
@@ -219,7 +230,7 @@ func (p *Protector) applyCSRFProtection(r *http.Request) (err error, shouldSelfh
 	}
 	currentSessionID := p.cfg.GetSessionByID(r)
 	if subtle.ConstantTimeCompare([]byte(payload.SessionID), []byte(currentSessionID)) != 1 {
-		return errors.New("csrf token session mismatch"), false
+		return errors.New("csrf token session mismatch"), true
 	}
 	return nil, false
 }
@@ -255,9 +266,9 @@ func (p *Protector) newEncryptedPayload(sessionID string) (securestring.SecureSt
 		return "", fmt.Errorf("failed to generate secure random bytes: %w", err)
 	}
 	payload := payload{
-		Nonce:     nonce,
-		ExpiresAt: time.Now().Add(p.cfg.TokenTTL),
-		SessionID: sessionID,
+		Nonce:         nonce,
+		ExpiresAtUnix: time.Now().Add(p.cfg.TokenTTL).Unix(),
+		SessionID:     sessionID,
 	}
 	return securestring.Serialize(p.cfg.GetKeyset(), payload)
 }

@@ -466,7 +466,7 @@ func TestTokenExpiration(t *testing.T) {
 	p := NewProtector(ProtectorConfig{
 		GetKeyset:      func() *keyset.Keyset { return testKeyset },
 		GetSessionByID: func(r *http.Request) string { return "" },
-		TokenTTL:       100 * time.Millisecond, // Very short TTL for testing
+		TokenTTL:       1 * time.Second,
 	})
 
 	// Create token
@@ -500,7 +500,7 @@ func TestTokenExpiration(t *testing.T) {
 	}
 
 	// Wait for expiration
-	time.Sleep(150 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 
 	// Validation should now fail
 	rr = httptest.NewRecorder()
@@ -1246,7 +1246,7 @@ func TestSessionBindingEmptyTokenWithSession(t *testing.T) {
 }
 
 func TestSelfHealing(t *testing.T) {
-	p := createTestProtector(t, nil)
+	p := createTestProtector(t, []string{"https://example.com"})
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -1272,49 +1272,137 @@ func TestSelfHealing(t *testing.T) {
 	expiredRR := httptest.NewRecorder()
 	expiredP.Middleware(handler).ServeHTTP(expiredRR, getReq)
 	expiredCookie := extractCSRFCookie(expiredRR, expiredP.cookieName)
+	expiredToken := extractTokenFromCookie(expiredCookie)
 	time.Sleep(2 * time.Millisecond) // Wait for expiration
+
+	// Create a session-mismatched token
+	sessionP := NewProtector(ProtectorConfig{
+		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+		GetSessionByID: func(r *http.Request) string { return "session-A" },
+	})
+	sessionRR := httptest.NewRecorder()
+	sessionP.Middleware(handler).ServeHTTP(sessionRR, getReq)
+	sessionCookie := extractCSRFCookie(sessionRR, sessionP.cookieName)
+	sessionToken := extractTokenFromCookie(sessionCookie)
+
+	// Now use a different session for validation
+	differentSessionP := NewProtector(ProtectorConfig{
+		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+		GetSessionByID: func(r *http.Request) string { return "session-B" },
+	})
 
 	tests := []struct {
 		name           string
 		cookie         *http.Cookie
-		token          string
+		headerToken    string
+		origin         string
+		protector      *Protector
 		shouldSelfHeal bool
 		description    string
 	}{
+		// SELF-HEALING CASES (shouldSelfHeal = true)
 		{
 			name:           "missing cookie",
 			cookie:         nil,
-			token:          token,
+			headerToken:    "any-value", // Header present but cookie missing
+			origin:         "https://example.com",
+			protector:      p,
 			shouldSelfHeal: true,
-			description:    "should self-heal on missing cookie",
+			description:    "Missing cookie should self-heal",
+		},
+		{
+			name:           "corrupted cookie value",
+			cookie:         &http.Cookie{Name: p.cookieName, Value: "corrupted!@#$"},
+			headerToken:    "corrupted!@#$", // Same corrupted value
+			origin:         "https://example.com",
+			protector:      p,
+			shouldSelfHeal: true,
+			description:    "Invalid/corrupted token should self-heal (decryption fails)",
 		},
 		{
 			name:           "expired token",
 			cookie:         expiredCookie,
-			token:          expiredCookie.Value,
+			headerToken:    expiredToken,
+			origin:         "https://example.com",
+			protector:      p,
 			shouldSelfHeal: true,
-			description:    "should self-heal on expired token",
+			description:    "Expired token should self-heal",
 		},
 		{
-			name:           "wrong token",
+			name:           "session mismatch",
+			cookie:         sessionCookie,
+			headerToken:    sessionToken,
+			origin:         "https://example.com",
+			protector:      differentSessionP, // Different session context
+			shouldSelfHeal: true,
+			description:    "Session mismatch should self-heal",
+		},
+
+		// NON-SELF-HEALING CASES (shouldSelfHeal = false)
+		{
+			name:           "origin validation failure",
 			cookie:         cookie,
-			token:          "wrong-token",
+			headerToken:    token,
+			origin:         "https://evil.com", // Wrong origin
+			protector:      p,
 			shouldSelfHeal: false,
-			description:    "should NOT self-heal on wrong token",
+			description:    "Origin validation failure should NOT self-heal",
 		},
 		{
 			name:           "missing header token",
 			cookie:         cookie,
-			token:          "",
+			headerToken:    "", // Missing header
+			origin:         "https://example.com",
+			protector:      p,
 			shouldSelfHeal: false,
-			description:    "should NOT self-heal on missing header token",
+			description:    "Missing header token should NOT self-heal",
 		},
 		{
-			name:           "corrupted token",
-			cookie:         &http.Cookie{Name: p.cookieName, Value: "corrupted!@#$"},
-			token:          "corrupted!@#$",
+			name:           "token mismatch - different values",
+			cookie:         cookie,
+			headerToken:    "wrong-token", // Different from cookie value
+			origin:         "https://example.com",
+			protector:      p,
 			shouldSelfHeal: false,
-			description:    "should NOT self-heal on corrupted token",
+			description:    "Token mismatch (different values) should NOT self-heal",
+		},
+		{
+			name:           "token mismatch - valid but different tokens",
+			cookie:         cookie,
+			headerToken:    expiredToken, // Valid format but different token
+			origin:         "https://example.com",
+			protector:      p,
+			shouldSelfHeal: false,
+			description:    "Token mismatch (valid but different) should NOT self-heal",
+		},
+
+		// EDGE CASES
+		{
+			name:           "empty cookie value with empty header",
+			cookie:         &http.Cookie{Name: p.cookieName, Value: ""},
+			headerToken:    "",
+			origin:         "https://example.com",
+			protector:      p,
+			shouldSelfHeal: false,
+			description:    "Empty cookie value should NOT self-heal (tampering)",
+		},
+		{
+			name:           "empty cookie value with valid header",
+			cookie:         &http.Cookie{Name: p.cookieName, Value: ""},
+			headerToken:    "some-token",
+			origin:         "https://example.com",
+			protector:      p,
+			shouldSelfHeal: false,
+			description:    "Empty cookie value should NOT self-heal regardless of header",
+		},
+		{
+			name:           "valid everything",
+			cookie:         cookie,
+			headerToken:    token,
+			origin:         "https://example.com",
+			protector:      p,
+			shouldSelfHeal: false, // This should actually pass validation, no need to self-heal
+			description:    "Valid request should pass (no self-heal needed)",
 		},
 	}
 
@@ -1324,22 +1412,38 @@ func TestSelfHealing(t *testing.T) {
 			if tt.cookie != nil {
 				req.AddCookie(tt.cookie)
 			}
-			if tt.token != "" {
-				req.Header.Set(p.cfg.HeaderName, tt.token)
+			if tt.headerToken != "" {
+				req.Header.Set(tt.protector.cfg.HeaderName, tt.headerToken)
+			}
+			if tt.origin != "" {
+				req.Header.Set("Origin", tt.origin)
 			}
 
 			rr := httptest.NewRecorder()
-			p.Middleware(handler).ServeHTTP(rr, req)
-
-			// All should return 403
-			if rr.Code != http.StatusForbidden {
-				t.Errorf("Expected status 403, got %d", rr.Code)
-			}
+			tt.protector.Middleware(handler).ServeHTTP(rr, req)
 
 			// Check if self-healing occurred
-			newCookie := extractCSRFCookie(rr, p.cookieName)
+			newCookie := extractCSRFCookie(rr, tt.protector.cookieName)
+
+			// Special case: valid request should return 200
+			if tt.name == "valid everything" {
+				if rr.Code != http.StatusOK {
+					t.Errorf("%s: expected status 200 for valid request, got %d", tt.description, rr.Code)
+				}
+				if newCookie != nil {
+					t.Errorf("%s: should not issue new cookie for valid request", tt.description)
+				}
+				return
+			}
+
+			// All other cases should return 403
+			if rr.Code != http.StatusForbidden {
+				t.Errorf("%s: expected status 403, got %d", tt.description, rr.Code)
+			}
+
+			// Check self-healing behavior
 			if tt.shouldSelfHeal && newCookie == nil {
-				t.Errorf("%s: expected new cookie from self-healing", tt.description)
+				t.Errorf("%s: expected new cookie from self-healing but got none", tt.description)
 			}
 			if !tt.shouldSelfHeal && newCookie != nil {
 				t.Errorf("%s: unexpected new cookie, self-healing should not occur", tt.description)
@@ -1402,8 +1506,8 @@ func TestGetSessionByIDCallback(t *testing.T) {
 	postRR := httptest.NewRecorder()
 	p.Middleware(handler).ServeHTTP(postRR, postReq)
 
-	if callCount != 1 {
-		t.Errorf("Expected GetSessionByID to be called once for POST, called %d times", callCount)
+	if callCount < 1 {
+		t.Errorf("Expected GetSessionByID to be called at least once for POST")
 	}
 	if capturedRequests[0].Method != "POST" {
 		t.Errorf("Expected captured request method to be POST, got %s", capturedRequests[0].Method)

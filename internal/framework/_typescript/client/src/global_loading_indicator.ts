@@ -9,10 +9,10 @@ type GlobalLoadingIndicatorIncludesOption =
 	| "revalidations";
 
 type GlobalLoadingIndicatorConfig = {
-	include: "all" | Array<GlobalLoadingIndicatorIncludesOption>;
 	start: () => void;
 	stop: () => void;
 	isRunning: () => boolean;
+	include?: "all" | Array<GlobalLoadingIndicatorIncludesOption>;
 	startDelayMS?: number;
 	stopDelayMS?: number;
 };
@@ -31,18 +31,18 @@ function resolveIncludes(
 	includesOption: GlobalLoadingIndicatorIncludesOption,
 ) {
 	const isArray = Array.isArray(config.include);
-	return isArray && config.include.includes(includesOption);
+	return isArray && config.include?.includes(includesOption);
 }
 
 export function setupGlobalLoadingIndicator(config: GlobalLoadingIndicatorConfig) {
 	let gliDebounceStartTimer: number | null = null;
 	let gliDebounceStopTimer: number | null = null;
-	const includesAll = config.include === "all";
+	const includesAll = !config.include || config.include === "all";
 	const pc: ParsedGlobalLoadingIndicatorConfig = {
 		includesAll,
-		includesNavigations: includesAll || resolveIncludes(config, "navigations"),
-		includesSubmissions: includesAll || resolveIncludes(config, "submissions"),
-		includesRevalidations: includesAll || resolveIncludes(config, "revalidations"),
+		includesNavigations: resolveIncludes(config, "navigations") || includesAll,
+		includesSubmissions: resolveIncludes(config, "submissions") || includesAll,
+		includesRevalidations: resolveIncludes(config, "revalidations") || includesAll,
 		startDelayMS: config.startDelayMS ?? DEFAULT_START_DELAY_MS,
 		stopDelayMS: config.stopDelayMS ?? DEFAULT_STOP_DELAY_MS,
 	};
