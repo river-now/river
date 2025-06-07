@@ -19,10 +19,9 @@ import (
 	"time"
 
 	"github.com/river-now/river/kit/bytesutil"
-	"github.com/river-now/river/kit/keyset"
+	"github.com/river-now/river/kit/cookies"
 	"github.com/river-now/river/kit/netutil"
 	"github.com/river-now/river/kit/response"
-	"github.com/river-now/river/kit/securestring"
 )
 
 const nonceSize = 16 // Size, in bytes, of the random nonce used in the CSRF token payload.
@@ -39,8 +38,8 @@ func (p payload) isValid() bool {
 }
 
 type ProtectorConfig struct {
-	// REQUIRED: Function to get the keyset used for encryption/decryption of CSRF token payloads.
-	GetKeyset func() *keyset.Keyset
+	// REQUIRED: A configured cookie manager.
+	CookieManager *cookies.Manager
 	// REQUIRED: Gets the session ID for the current request. Return empty string if no session exists.
 	// This enables automatic session binding validation and smart token cycling.
 	GetSessionByID func(r *http.Request) string
@@ -51,26 +50,19 @@ type ProtectorConfig struct {
 	TokenTTL     time.Duration
 	CookieSuffix string // Final cookie name will be "__Host-{CookieSuffix}". Defaults to "csrf_token".
 	HeaderName   string // Defaults to "X-CSRF-Token"
-	// Optional. If non-nil and returns true, the "__Host-" prefix will be omitted and the cookie will
-	// not be set as "Secure" or "Partitioned". This is useful for non-HTTPS development environments.
-	GetIsDev func() bool
 }
 
 type Protector struct {
 	cfg                   ProtectorConfig
 	isDev                 bool
-	cookieName            string
+	cookie                *cookies.SecureCookie[payload]
 	allowedOrigins        map[string]bool
 	hasOriginRestrictions bool
 }
 
 func NewProtector(cfg ProtectorConfig) *Protector {
-	// Make sure the getter isn't nil, but don't actually call it yet.
-	// We want NewProtector to be callable at package init time, and
-	// sometimes (during builds or tests), environment variables that
-	// the keyset may rely on may not be set.
-	if cfg.GetKeyset == nil {
-		panic("csrf: GetKeyset is required")
+	if cfg.CookieManager == nil {
+		panic("csrf: CookieManager is required")
 	}
 	if cfg.GetSessionByID == nil {
 		panic("csrf: GetSessionByID is required")
@@ -87,15 +79,16 @@ func NewProtector(cfg ProtectorConfig) *Protector {
 	if cfg.HeaderName == "" {
 		cfg.HeaderName = "X-CSRF-Token"
 	}
-	var isDev bool
-	if cfg.GetIsDev != nil {
-		isDev = cfg.GetIsDev()
-	}
-	cookieNamePrefix := "__Host-"
-	if isDev {
-		cookieNamePrefix = "__Dev-"
-	}
-	cookieName := cookieNamePrefix + cfg.CookieSuffix
+	isDev := cfg.CookieManager.GetIsDev()
+
+	cookie := cookies.NewSecureCookie[payload](cfg.CookieManager,
+		cookies.SecureCookieConfig{
+			Name:     cfg.CookieSuffix,
+			TTL:      cfg.TokenTTL,
+			SameSite: cookies.SameSiteLaxMode,
+			HttpOnly: cookies.HttpOnlyFalse,
+		},
+	)
 
 	normalized := make(map[string]bool, len(cfg.AllowedOrigins))
 	for _, origin := range cfg.AllowedOrigins {
@@ -113,7 +106,7 @@ func NewProtector(cfg ProtectorConfig) *Protector {
 	return &Protector{
 		cfg:                   cfg,
 		isDev:                 isDev,
-		cookieName:            cookieName,
+		cookie:                cookie,
 		allowedOrigins:        normalized,
 		hasOriginRestrictions: len(normalized) > 0,
 	}
@@ -155,22 +148,11 @@ func (p *Protector) Middleware(next http.Handler) http.Handler {
 // CycleTokenProxy generates a new CSRF token and sets it as a cookie.
 // Must be called on login (with sessionID) and logout (with empty sessionID).
 func (p *Protector) CycleTokenProxy(rp *response.Proxy, sessionID string) error {
-	token, err := p.newEncryptedPayload(sessionID)
+	cookie, err := p.newCSRFCookie(sessionID)
 	if err != nil {
 		return fmt.Errorf("csrf: failed to generate token: %w", err)
 	}
-	rp.SetCookie(&http.Cookie{
-		Name:        p.cookieName,
-		Value:       string(token),
-		Secure:      !p.isDev, // Secure if not in dev mode
-		SameSite:    http.SameSiteLaxMode,
-		Path:        "/",
-		MaxAge:      int(p.cfg.TokenTTL.Seconds()),
-		Expires:     time.Now().Add(p.cfg.TokenTTL),
-		Partitioned: !p.isDev, // Partitioned if not in dev mode
-		HttpOnly:    false,    // Must be readable by JavaScript
-		Domain:      "",       // Intentionally empty so we can use the __Host- prefix
-	})
+	rp.SetCookie(cookie)
 	return nil
 }
 
@@ -186,17 +168,10 @@ func (p *Protector) CycleTokenWriter(w http.ResponseWriter, r *http.Request, ses
 }
 
 func (p *Protector) issueCSRFTokenIfNeeded(rp *response.Proxy, r *http.Request) error {
-	cookie, err := r.Cookie(p.cookieName)
-	if err == nil {
-		payload, err := p.decodeEncryptedValue(cookie.Value)
-		if err == nil && payload.isValid() {
-			if payload.SessionID != "" {
-				currentSessionID := p.cfg.GetSessionByID(r)
-				if subtle.ConstantTimeCompare([]byte(payload.SessionID), []byte(currentSessionID)) == 1 {
-					return nil
-				}
-				return p.CycleTokenProxy(rp, currentSessionID)
-			}
+	payload, err := p.cookie.Get(r)
+	if err == nil && payload.isValid() {
+		currentSessionID := p.cfg.GetSessionByID(r)
+		if subtle.ConstantTimeCompare([]byte(payload.SessionID), []byte(currentSessionID)) == 1 {
 			return nil
 		}
 	}
@@ -207,14 +182,14 @@ func (p *Protector) applyCSRFProtection(r *http.Request) (err error, shouldSelfh
 	if err := p.validateOrigin(r); err != nil {
 		return fmt.Errorf("origin validation failed: %w", err), false
 	}
-	cookie, err := r.Cookie(p.cookieName)
+	cookie, err := r.Cookie(p.cookie.Name())
 	if err != nil {
 		return errors.New("csrf token cookie missing"), true
 	}
 	if cookie.Value == "" {
 		return errors.New("csrf token cookie empty"), false
 	}
-	payload, err := p.decodeEncryptedValue(cookie.Value)
+	payload, err := p.cookie.Get(r)
 	if err != nil {
 		return fmt.Errorf("invalid csrf token: %w", err), true
 	}
@@ -260,17 +235,17 @@ func (p *Protector) validateOriginHeader(hdr, label string) error {
 	return fmt.Errorf("%s not allowed: %s", label, origin)
 }
 
-func (p *Protector) newEncryptedPayload(sessionID string) (securestring.SecureString, error) {
+func (p *Protector) newCSRFCookie(sessionID string) (*http.Cookie, error) {
 	nonce, err := bytesutil.Random(nonceSize)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate secure random bytes: %w", err)
+		return nil, fmt.Errorf("failed to generate secure random bytes: %w", err)
 	}
 	payload := payload{
 		Nonce:         nonce,
 		ExpiresAtUnix: time.Now().Add(p.cfg.TokenTTL).Unix(),
 		SessionID:     sessionID,
 	}
-	return securestring.Serialize(p.cfg.GetKeyset(), payload)
+	return p.cookie.New(payload)
 }
 
 func (p *Protector) isGETLike(method string) bool {
@@ -280,8 +255,4 @@ func (p *Protector) isGETLike(method string) bool {
 	default:
 		return false
 	}
-}
-
-func (p *Protector) decodeEncryptedValue(v string) (payload, error) {
-	return securestring.Deserialize[payload](p.cfg.GetKeyset(), securestring.SecureString(v))
 }

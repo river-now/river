@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/river-now/river/kit/cookies"
 	"github.com/river-now/river/kit/keyset"
 	"github.com/river-now/river/kit/response"
 )
@@ -28,10 +29,16 @@ func createTestKeyset(t *testing.T) *keyset.Keyset {
 	return ks
 }
 
-func createTestProtector(t *testing.T, origins []string) *Protector {
+func createTestCookieManager(t *testing.T) *cookies.Manager {
 	testKeyset := createTestKeyset(t)
+	return cookies.NewManager(&cookies.ManagerConfig{
+		GetKeyset: func() *keyset.Keyset { return testKeyset },
+	})
+}
+
+func createTestProtector(t *testing.T, origins []string) *Protector {
 	cfg := ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+		CookieManager:  createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string { return "" },
 		AllowedOrigins: origins,
 		TokenTTL:       1 * time.Hour,
@@ -54,7 +61,7 @@ func extractTokenFromCookie(cookie *http.Cookie) string {
 
 // Tests
 func TestNewProtector(t *testing.T) {
-	testKeyset := createTestKeyset(t)
+	cookieManager := createTestCookieManager(t)
 
 	tests := []struct {
 		name  string
@@ -64,7 +71,7 @@ func TestNewProtector(t *testing.T) {
 		{
 			name: "valid config with defaults",
 			cfg: ProtectorConfig{
-				GetKeyset:      func() *keyset.Keyset { return testKeyset },
+				CookieManager:  cookieManager,
 				GetSessionByID: func(r *http.Request) string { return "" },
 			},
 			check: func(t *testing.T, p *Protector) {
@@ -77,15 +84,15 @@ func TestNewProtector(t *testing.T) {
 				if p.cfg.HeaderName != "X-CSRF-Token" {
 					t.Errorf("Expected default header name 'X-CSRF-Token', got %s", p.cfg.HeaderName)
 				}
-				if p.cookieName != "__Host-csrf_token" {
-					t.Errorf("Expected cookie name '__Host-csrf_token', got %s", p.cookieName)
+				if p.cookie.Name() != "__Host-csrf_token" {
+					t.Errorf("Expected cookie name '__Host-csrf_token', got %s", p.cookie.Name())
 				}
 			},
 		},
 		{
 			name: "custom values",
 			cfg: ProtectorConfig{
-				GetKeyset:      func() *keyset.Keyset { return testKeyset },
+				CookieManager:  cookieManager,
 				GetSessionByID: func(r *http.Request) string { return "" },
 				AllowedOrigins: []string{"https://example.com", "HTTPS://EXAMPLE.ORG"},
 				TokenTTL:       2 * time.Hour,
@@ -96,8 +103,8 @@ func TestNewProtector(t *testing.T) {
 				if p.cfg.TokenTTL != 2*time.Hour {
 					t.Errorf("Expected TTL of 2h, got %v", p.cfg.TokenTTL)
 				}
-				if p.cookieName != "__Host-custom" {
-					t.Errorf("Expected cookie name '__Host-custom', got %s", p.cookieName)
+				if p.cookie.Name() != "__Host-custom" {
+					t.Errorf("Expected cookie name '__Host-custom', got %s", p.cookie.Name())
 				}
 				if !p.allowedOrigins["https://example.com"] {
 					t.Error("Expected normalized origin 'https://example.com' to be allowed")
@@ -177,7 +184,7 @@ func TestMiddleware_GETRequest(t *testing.T) {
 				t.Errorf("Expected status %d, got %d", tt.wantStatus, rr.Code)
 			}
 
-			cookie := extractCSRFCookie(rr, p.cookieName)
+			cookie := extractCSRFCookie(rr, p.cookie.Name())
 			if tt.wantCookie && cookie == nil {
 				t.Error("Expected CSRF cookie to be set")
 			}
@@ -216,7 +223,7 @@ func TestMiddleware_POSTRequest(t *testing.T) {
 	getRR := httptest.NewRecorder()
 	p.Middleware(handler).ServeHTTP(getRR, getReq)
 
-	cookie := extractCSRFCookie(getRR, p.cookieName)
+	cookie := extractCSRFCookie(getRR, p.cookie.Name())
 	if cookie == nil {
 		t.Fatal("Failed to get CSRF cookie from GET request")
 	}
@@ -351,7 +358,7 @@ func TestMiddleware_NoOriginRestrictions(t *testing.T) {
 	getRR := httptest.NewRecorder()
 	p.Middleware(handler).ServeHTTP(getRR, getReq)
 
-	cookie := extractCSRFCookie(getRR, p.cookieName)
+	cookie := extractCSRFCookie(getRR, p.cookie.Name())
 	token := extractTokenFromCookie(cookie)
 
 	// POST should succeed without origin validation
@@ -399,13 +406,14 @@ func TestCycleTokenProxy(t *testing.T) {
 			req := httptest.NewRequest("GET", "/", nil)
 			rp.ApplyToResponseWriter(rr, req)
 
-			cookie := extractCSRFCookie(rr, p.cookieName)
+			cookie := extractCSRFCookie(rr, p.cookie.Name())
 			if cookie == nil {
 				t.Fatal("No cookie set after CycleTokenProxy")
 			}
 
 			// Decode and verify session ID
-			payload, err := p.decodeEncryptedValue(cookie.Value)
+			req.AddCookie(cookie)
+			payload, err := p.cookie.Get(req)
 			if err != nil {
 				t.Fatalf("Failed to decode cycled token: %v", err)
 			}
@@ -443,13 +451,14 @@ func TestCycleTokenWriter(t *testing.T) {
 				t.Fatalf("CycleTokenWriter failed: %v", err)
 			}
 
-			cookie := extractCSRFCookie(rr, p.cookieName)
+			cookie := extractCSRFCookie(rr, p.cookie.Name())
 			if cookie == nil {
 				t.Fatal("No cookie set after CycleTokenWriter")
 			}
 
 			// Decode and verify session ID
-			payload, err := p.decodeEncryptedValue(cookie.Value)
+			req.AddCookie(cookie)
+			payload, err := p.cookie.Get(req)
 			if err != nil {
 				t.Fatalf("Failed to decode cycled token: %v", err)
 			}
@@ -462,12 +471,12 @@ func TestCycleTokenWriter(t *testing.T) {
 }
 
 func TestTokenExpiration(t *testing.T) {
-	testKeyset := createTestKeyset(t)
-	p := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+	cfg := ProtectorConfig{
+		CookieManager:  createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string { return "" },
 		TokenTTL:       1 * time.Second,
-	})
+	}
+	p := NewProtector(cfg)
 
 	// Create token
 	rp := response.NewProxy()
@@ -481,7 +490,7 @@ func TestTokenExpiration(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	rp.ApplyToResponseWriter(rr, req)
 
-	cookie := extractCSRFCookie(rr, p.cookieName)
+	cookie := extractCSRFCookie(rr, p.cookie.Name())
 	token := extractTokenFromCookie(cookie)
 
 	// Immediate validation should succeed
@@ -510,7 +519,7 @@ func TestTokenExpiration(t *testing.T) {
 	}
 
 	// Verify self-healing occurred for expired token
-	newCookie := extractCSRFCookie(rr, p.cookieName)
+	newCookie := extractCSRFCookie(rr, p.cookie.Name())
 	if newCookie == nil {
 		t.Error("Expected self-healing to provide new cookie for expired token")
 	}
@@ -527,7 +536,7 @@ func TestGETRequestWithExistingValidToken(t *testing.T) {
 	})
 	p.Middleware(handler).ServeHTTP(rr1, req1)
 
-	cookie := extractCSRFCookie(rr1, p.cookieName)
+	cookie := extractCSRFCookie(rr1, p.cookie.Name())
 	if cookie == nil {
 		t.Fatal("No cookie from first GET")
 	}
@@ -539,7 +548,7 @@ func TestGETRequestWithExistingValidToken(t *testing.T) {
 	p.Middleware(handler).ServeHTTP(rr2, req2)
 
 	// Should not issue new cookie
-	newCookie := extractCSRFCookie(rr2, p.cookieName)
+	newCookie := extractCSRFCookie(rr2, p.cookie.Name())
 	if newCookie != nil {
 		t.Error("Should not issue new cookie when valid one exists")
 	}
@@ -556,7 +565,7 @@ func TestOriginValidationWithMalformedReferer(t *testing.T) {
 	})
 	p.Middleware(handler).ServeHTTP(getRR, getReq)
 
-	cookie := extractCSRFCookie(getRR, p.cookieName)
+	cookie := extractCSRFCookie(getRR, p.cookie.Name())
 	token := extractTokenFromCookie(cookie)
 
 	// POST with malformed referer
@@ -587,7 +596,7 @@ func TestCookieAttributes(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	rp.ApplyToResponseWriter(rr, req)
 
-	cookie := extractCSRFCookie(rr, p.cookieName)
+	cookie := extractCSRFCookie(rr, p.cookie.Name())
 	if cookie == nil {
 		t.Fatal("No cookie set")
 	}
@@ -618,8 +627,6 @@ func TestCookieAttributes(t *testing.T) {
 
 // TestDevMode tests the development mode functionality
 func TestDevMode(t *testing.T) {
-	testKeyset := createTestKeyset(t)
-
 	tests := []struct {
 		name        string
 		host        string
@@ -664,10 +671,14 @@ func TestDevMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			cookieManager := cookies.NewManager(&cookies.ManagerConfig{
+				GetKeyset: func() *keyset.Keyset { return createTestKeyset(t) },
+				GetIsDev:  func() bool { return true }, // Enable dev mode
+			})
+
 			p := NewProtector(ProtectorConfig{
-				GetKeyset:      func() *keyset.Keyset { return testKeyset },
+				CookieManager:  cookieManager,
 				GetSessionByID: func(r *http.Request) string { return "" },
-				GetIsDev:       func() bool { return true }, // Enable dev mode
 			})
 
 			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -690,7 +701,7 @@ func TestDevMode(t *testing.T) {
 
 			if !tt.shouldPanic {
 				// Verify dev mode cookie attributes
-				cookie := extractCSRFCookie(rr, p.cookieName)
+				cookie := extractCSRFCookie(rr, p.cookie.Name())
 				if cookie == nil {
 					t.Fatal("Expected cookie to be set")
 				}
@@ -716,20 +727,22 @@ func TestDevMode(t *testing.T) {
 
 // TestDevModeVsProductionMode compares behavior between modes
 func TestDevModeVsProductionMode(t *testing.T) {
-	testKeyset := createTestKeyset(t)
-
 	// Test production mode (default)
+	prodCookieManager := createTestCookieManager(t)
 	prodProtector := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+		CookieManager:  prodCookieManager,
 		GetSessionByID: func(r *http.Request) string { return "" },
 		// GetIsDev is nil, so production mode
 	})
 
 	// Test dev mode
+	devCookieManager := cookies.NewManager(&cookies.ManagerConfig{
+		GetKeyset: func() *keyset.Keyset { return createTestKeyset(t) },
+		GetIsDev:  func() bool { return true },
+	})
 	devProtector := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+		CookieManager:  devCookieManager,
 		GetSessionByID: func(r *http.Request) string { return "" },
-		GetIsDev:       func() bool { return true },
 	})
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -742,7 +755,7 @@ func TestDevModeVsProductionMode(t *testing.T) {
 		rr := httptest.NewRecorder()
 		prodProtector.Middleware(handler).ServeHTTP(rr, req)
 
-		cookie := extractCSRFCookie(rr, prodProtector.cookieName)
+		cookie := extractCSRFCookie(rr, prodProtector.cookie.Name())
 		if cookie.Name != "__Host-csrf_token" {
 			t.Errorf("Expected __Host- prefix in production, got %s", cookie.Name)
 		}
@@ -761,7 +774,7 @@ func TestDevModeVsProductionMode(t *testing.T) {
 		rr := httptest.NewRecorder()
 		devProtector.Middleware(handler).ServeHTTP(rr, req)
 
-		cookie := extractCSRFCookie(rr, devProtector.cookieName)
+		cookie := extractCSRFCookie(rr, devProtector.cookie.Name())
 		if cookie.Name != "__Dev-csrf_token" {
 			t.Errorf("Expected __Dev- prefix in dev mode, got %s", cookie.Name)
 		}
@@ -786,7 +799,7 @@ func TestOriginValidationEdgeCases(t *testing.T) {
 	})
 	p.Middleware(handler).ServeHTTP(getRR, getReq)
 
-	cookie := extractCSRFCookie(getRR, p.cookieName)
+	cookie := extractCSRFCookie(getRR, p.cookie.Name())
 	token := extractTokenFromCookie(cookie)
 
 	tests := []struct {
@@ -852,11 +865,10 @@ func TestOriginValidationEdgeCases(t *testing.T) {
 
 // TestCustomHeaderName tests using a custom header name
 func TestCustomHeaderName(t *testing.T) {
-	testKeyset := createTestKeyset(t)
 	customHeaderName := "X-Custom-CSRF-Token"
 
 	p := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+		CookieManager:  createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string { return "" },
 		HeaderName:     customHeaderName,
 	})
@@ -870,7 +882,7 @@ func TestCustomHeaderName(t *testing.T) {
 	getRR := httptest.NewRecorder()
 	p.Middleware(handler).ServeHTTP(getRR, getReq)
 
-	cookie := extractCSRFCookie(getRR, p.cookieName)
+	cookie := extractCSRFCookie(getRR, p.cookie.Name())
 	token := extractTokenFromCookie(cookie)
 
 	// POST with custom header
@@ -937,7 +949,7 @@ func TestInvalidTokenPayload(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest("POST", "/", nil)
 			req.AddCookie(&http.Cookie{
-				Name:  p.cookieName,
+				Name:  p.cookie.Name(),
 				Value: tt.tokenValue,
 			})
 			req.Header.Set(p.cfg.HeaderName, tt.tokenValue)
@@ -965,7 +977,7 @@ func TestConcurrentRequests(t *testing.T) {
 	getRR := httptest.NewRecorder()
 	p.Middleware(handler).ServeHTTP(getRR, getReq)
 
-	cookie := extractCSRFCookie(getRR, p.cookieName)
+	cookie := extractCSRFCookie(getRR, p.cookie.Name())
 	token := extractTokenFromCookie(cookie)
 
 	// Run concurrent POST requests
@@ -992,46 +1004,6 @@ func TestConcurrentRequests(t *testing.T) {
 	}
 }
 
-// TestKeysetErrors tests error cases with invalid keysets
-func TestKeysetErrors(t *testing.T) {
-	// Test with nil keyset
-	p1 := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return nil },
-		GetSessionByID: func(r *http.Request) string { return "" },
-		TokenTTL:       1 * time.Hour,
-	})
-
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	// GET request with nil keyset
-	req := httptest.NewRequest("GET", "/", nil)
-	rr := httptest.NewRecorder()
-	p1.Middleware(handler).ServeHTTP(rr, req)
-
-	// Should handle error and still return 200
-	if rr.Code != http.StatusOK {
-		t.Errorf("Expected status 200 with nil keyset, got %d", rr.Code)
-	}
-
-	// Test with empty keyset
-	emptyKeyset := &keyset.Keyset{}
-	p2 := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return emptyKeyset },
-		GetSessionByID: func(r *http.Request) string { return "" },
-		TokenTTL:       1 * time.Hour,
-	})
-
-	req2 := httptest.NewRequest("GET", "/", nil)
-	rr2 := httptest.NewRecorder()
-	p2.Middleware(handler).ServeHTTP(rr2, req2)
-
-	if rr2.Code != http.StatusOK {
-		t.Errorf("Expected status 200 with empty keyset, got %d", rr2.Code)
-	}
-}
-
 // TestResponseProxyIntegration verifies response proxy usage
 func TestResponseProxyIntegration(t *testing.T) {
 	p := createTestProtector(t, nil)
@@ -1050,7 +1022,7 @@ func TestResponseProxyIntegration(t *testing.T) {
 	p.Middleware(handler).ServeHTTP(rr, req)
 
 	// Verify cookie was set despite handler writing response
-	cookie := extractCSRFCookie(rr, p.cookieName)
+	cookie := extractCSRFCookie(rr, p.cookie.Name())
 	if cookie == nil {
 		t.Error("Cookie should be set even when handler writes response")
 	}
@@ -1067,14 +1039,12 @@ func TestResponseProxyIntegration(t *testing.T) {
 }
 
 func TestNewProtectorPanics(t *testing.T) {
-	testKeyset := createTestKeyset(t)
-
 	tests := []struct {
 		name string
 		cfg  ProtectorConfig
 	}{
 		{
-			name: "missing GetKeyset",
+			name: "missing CookieManager",
 			cfg: ProtectorConfig{
 				GetSessionByID: func(r *http.Request) string { return "" },
 			},
@@ -1082,13 +1052,13 @@ func TestNewProtectorPanics(t *testing.T) {
 		{
 			name: "missing GetSessionByID",
 			cfg: ProtectorConfig{
-				GetKeyset: func() *keyset.Keyset { return testKeyset },
+				CookieManager: createTestCookieManager(t),
 			},
 		},
 		{
 			name: "negative TokenTTL",
 			cfg: ProtectorConfig{
-				GetKeyset:      func() *keyset.Keyset { return testKeyset },
+				CookieManager:  createTestCookieManager(t),
 				GetSessionByID: func(r *http.Request) string { return "" },
 				TokenTTL:       -1 * time.Hour,
 			},
@@ -1096,7 +1066,7 @@ func TestNewProtectorPanics(t *testing.T) {
 		{
 			name: "invalid origin without scheme",
 			cfg: ProtectorConfig{
-				GetKeyset:      func() *keyset.Keyset { return testKeyset },
+				CookieManager:  createTestCookieManager(t),
 				GetSessionByID: func(r *http.Request) string { return "" },
 				AllowedOrigins: []string{"example.com"},
 			},
@@ -1104,7 +1074,7 @@ func TestNewProtectorPanics(t *testing.T) {
 		{
 			name: "invalid origin malformed",
 			cfg: ProtectorConfig{
-				GetKeyset:      func() *keyset.Keyset { return testKeyset },
+				CookieManager:  createTestCookieManager(t),
 				GetSessionByID: func(r *http.Request) string { return "" },
 				AllowedOrigins: []string{"not a valid url"},
 			},
@@ -1126,12 +1096,11 @@ func TestNewProtectorPanics(t *testing.T) {
 }
 
 func TestSessionBinding(t *testing.T) {
-	testKeyset := createTestKeyset(t)
 	sessionID := "test-session-123"
 
 	// Create protector that returns a specific session ID
 	p := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+		CookieManager:  createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string { return sessionID },
 		TokenTTL:       1 * time.Hour,
 	})
@@ -1145,11 +1114,13 @@ func TestSessionBinding(t *testing.T) {
 	getRR := httptest.NewRecorder()
 	p.Middleware(handler).ServeHTTP(getRR, getReq)
 
-	cookie := extractCSRFCookie(getRR, p.cookieName)
+	cookie := extractCSRFCookie(getRR, p.cookie.Name())
 	token := extractTokenFromCookie(cookie)
 
 	// Verify token contains session ID
-	payload, err := p.decodeEncryptedValue(cookie.Value)
+	req := httptest.NewRequest("GET", "/", nil)
+	req.AddCookie(cookie)
+	payload, err := p.cookie.Get(req)
 	if err != nil {
 		t.Fatalf("Failed to decode token: %v", err)
 	}
@@ -1183,7 +1154,7 @@ func TestSessionBinding(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create new protector with different session callback
 			p2 := NewProtector(ProtectorConfig{
-				GetKeyset:      func() *keyset.Keyset { return testKeyset },
+				CookieManager:  createTestCookieManager(t),
 				GetSessionByID: func(r *http.Request) string { return tt.currentSessionID },
 				TokenTTL:       1 * time.Hour,
 			})
@@ -1203,11 +1174,9 @@ func TestSessionBinding(t *testing.T) {
 }
 
 func TestSessionBindingEmptyTokenWithSession(t *testing.T) {
-	testKeyset := createTestKeyset(t)
-
 	// Create protector that returns empty session
 	p1 := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+		CookieManager:  createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string { return "" }, // No session
 		TokenTTL:       1 * time.Hour,
 	})
@@ -1221,12 +1190,12 @@ func TestSessionBindingEmptyTokenWithSession(t *testing.T) {
 	getRR := httptest.NewRecorder()
 	p1.Middleware(handler).ServeHTTP(getRR, getReq)
 
-	cookie := extractCSRFCookie(getRR, p1.cookieName)
+	cookie := extractCSRFCookie(getRR, p1.cookie.Name())
 	token := extractTokenFromCookie(cookie)
 
 	// Now create protector that has a session
 	p2 := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+		CookieManager:  createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string { return "user-123" }, // Has session
 		TokenTTL:       1 * time.Hour,
 	})
@@ -1257,38 +1226,41 @@ func TestSelfHealing(t *testing.T) {
 	getRR := httptest.NewRecorder()
 	p.Middleware(handler).ServeHTTP(getRR, getReq)
 
-	cookie := extractCSRFCookie(getRR, p.cookieName)
+	cookie := extractCSRFCookie(getRR, p.cookie.Name())
 	token := extractTokenFromCookie(cookie)
 
 	// Create an expired token
-	testKeyset := createTestKeyset(t)
-	expiredP := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+	expiredCfg := ProtectorConfig{
+		CookieManager:  createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string { return "" },
+		AllowedOrigins: []string{"https://example.com"},
 		TokenTTL:       1 * time.Millisecond, // Very short TTL
-	})
+	}
+	expiredP := NewProtector(expiredCfg)
 
 	// Get expired token
 	expiredRR := httptest.NewRecorder()
 	expiredP.Middleware(handler).ServeHTTP(expiredRR, getReq)
-	expiredCookie := extractCSRFCookie(expiredRR, expiredP.cookieName)
+	expiredCookie := extractCSRFCookie(expiredRR, expiredP.cookie.Name())
 	expiredToken := extractTokenFromCookie(expiredCookie)
 	time.Sleep(2 * time.Millisecond) // Wait for expiration
 
 	// Create a session-mismatched token
 	sessionP := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+		CookieManager:  createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string { return "session-A" },
+		AllowedOrigins: []string{"https://example.com"},
 	})
 	sessionRR := httptest.NewRecorder()
 	sessionP.Middleware(handler).ServeHTTP(sessionRR, getReq)
-	sessionCookie := extractCSRFCookie(sessionRR, sessionP.cookieName)
+	sessionCookie := extractCSRFCookie(sessionRR, sessionP.cookie.Name())
 	sessionToken := extractTokenFromCookie(sessionCookie)
 
 	// Now use a different session for validation
 	differentSessionP := NewProtector(ProtectorConfig{
-		GetKeyset:      func() *keyset.Keyset { return testKeyset },
+		CookieManager:  createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string { return "session-B" },
+		AllowedOrigins: []string{"https://example.com"},
 	})
 
 	tests := []struct {
@@ -1312,7 +1284,7 @@ func TestSelfHealing(t *testing.T) {
 		},
 		{
 			name:           "corrupted cookie value",
-			cookie:         &http.Cookie{Name: p.cookieName, Value: "corrupted!@#$"},
+			cookie:         &http.Cookie{Name: p.cookie.Name(), Value: "corrupted!@#$"},
 			headerToken:    "corrupted!@#$", // Same corrupted value
 			origin:         "https://example.com",
 			protector:      p,
@@ -1379,7 +1351,7 @@ func TestSelfHealing(t *testing.T) {
 		// EDGE CASES
 		{
 			name:           "empty cookie value with empty header",
-			cookie:         &http.Cookie{Name: p.cookieName, Value: ""},
+			cookie:         &http.Cookie{Name: p.cookie.Name(), Value: ""},
 			headerToken:    "",
 			origin:         "https://example.com",
 			protector:      p,
@@ -1388,7 +1360,7 @@ func TestSelfHealing(t *testing.T) {
 		},
 		{
 			name:           "empty cookie value with valid header",
-			cookie:         &http.Cookie{Name: p.cookieName, Value: ""},
+			cookie:         &http.Cookie{Name: p.cookie.Name(), Value: ""},
 			headerToken:    "some-token",
 			origin:         "https://example.com",
 			protector:      p,
@@ -1423,7 +1395,7 @@ func TestSelfHealing(t *testing.T) {
 			tt.protector.Middleware(handler).ServeHTTP(rr, req)
 
 			// Check if self-healing occurred
-			newCookie := extractCSRFCookie(rr, tt.protector.cookieName)
+			newCookie := extractCSRFCookie(rr, tt.protector.cookie.Name())
 
 			// Special case: valid request should return 200
 			if tt.name == "valid everything" {
@@ -1453,12 +1425,11 @@ func TestSelfHealing(t *testing.T) {
 }
 
 func TestGetSessionByIDCallback(t *testing.T) {
-	testKeyset := createTestKeyset(t)
 	callCount := 0
 	var capturedRequests []*http.Request
 
 	p := NewProtector(ProtectorConfig{
-		GetKeyset: func() *keyset.Keyset { return testKeyset },
+		CookieManager: createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string {
 			callCount++
 			capturedRequests = append(capturedRequests, r)
@@ -1486,11 +1457,13 @@ func TestGetSessionByIDCallback(t *testing.T) {
 		t.Errorf("Expected captured request method to be GET, got %s", capturedRequests[0].Method)
 	}
 
-	cookie := extractCSRFCookie(getRR, p.cookieName)
+	cookie := extractCSRFCookie(getRR, p.cookie.Name())
 	token := extractTokenFromCookie(cookie)
 
 	// Verify token has session from GET
-	payload, _ := p.decodeEncryptedValue(cookie.Value)
+	req := httptest.NewRequest("GET", "/", nil)
+	req.AddCookie(cookie)
+	payload, _ := p.cookie.Get(req)
 	if payload.SessionID != "session-GET" {
 		t.Errorf("Expected session ID 'session-GET', got %q", payload.SessionID)
 	}
@@ -1523,7 +1496,7 @@ func TestGetSessionByIDCallback(t *testing.T) {
 func TestLoginFlow(t *testing.T) {
 	sessionID := ""
 	protector := NewProtector(ProtectorConfig{
-		GetKeyset: func() *keyset.Keyset { return createTestKeyset(t) },
+		CookieManager: createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string {
 			return sessionID // Session ID is controlled by the test
 		},
@@ -1535,7 +1508,7 @@ func TestLoginFlow(t *testing.T) {
 	rr := httptest.NewRecorder()
 	protector.Middleware(handler).ServeHTTP(rr, req)
 
-	anonymousCookie := extractCSRFCookie(rr, protector.cookieName)
+	anonymousCookie := extractCSRFCookie(rr, protector.cookie.Name())
 	if anonymousCookie == nil {
 		t.Fatal("Failed to get anonymous token")
 	}
@@ -1567,7 +1540,7 @@ func TestLoginFlow(t *testing.T) {
 	}
 
 	// 3. Get the new session-bound cookie from the login response.
-	sessionCookie := extractCSRFCookie(loginRR, protector.cookieName)
+	sessionCookie := extractCSRFCookie(loginRR, protector.cookie.Name())
 	if sessionCookie == nil {
 		t.Fatal("Did not get new session-bound token after login")
 	}
@@ -1603,7 +1576,7 @@ func TestLoginFlow(t *testing.T) {
 func TestLogoutFlow(t *testing.T) {
 	sessionID := "user-123" // Start as logged in
 	protector := NewProtector(ProtectorConfig{
-		GetKeyset: func() *keyset.Keyset { return createTestKeyset(t) },
+		CookieManager: createTestCookieManager(t),
 		GetSessionByID: func(r *http.Request) string {
 			return sessionID // Session ID is controlled by the test
 		},
@@ -1614,7 +1587,7 @@ func TestLogoutFlow(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	rr := httptest.NewRecorder()
 	protector.Middleware(handler).ServeHTTP(rr, req)
-	sessionCookie := extractCSRFCookie(rr, protector.cookieName)
+	sessionCookie := extractCSRFCookie(rr, protector.cookie.Name())
 
 	// 2. Call the logout handler, which cycles the token with an empty session.
 	logoutReq := httptest.NewRequest("POST", "/logout", nil)
@@ -1637,7 +1610,7 @@ func TestLogoutFlow(t *testing.T) {
 	}
 
 	// 3. Get the new anonymous cookie from the logout response.
-	newAnonymousCookie := extractCSRFCookie(logoutRR, protector.cookieName)
+	newAnonymousCookie := extractCSRFCookie(logoutRR, protector.cookie.Name())
 	if newAnonymousCookie == nil {
 		t.Fatal("Did not get new anonymous token after logout")
 	}
@@ -1646,7 +1619,9 @@ func TestLogoutFlow(t *testing.T) {
 	}
 
 	// 4. Verify the new token is anonymous.
-	payload, err := protector.decodeEncryptedValue(newAnonymousCookie.Value)
+	req2 := httptest.NewRequest("GET", "/", nil)
+	req2.AddCookie(newAnonymousCookie)
+	payload, err := protector.cookie.Get(req2)
 	if err != nil {
 		t.Fatal("Could not decode new token")
 	}
