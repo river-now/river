@@ -70,7 +70,8 @@
 				"useImportExtensions": "error" // require ".ts", etc. in import statements
 			},
 			"suspicious": {
-				"noExplicitAny": "off" // permit explicit any
+				"noExplicitAny": "off", // permit explicit any
+				"noDocumentCookie": "off"
 			},
 			"a11y": {
 				"noStaticElementInteractions": "off"

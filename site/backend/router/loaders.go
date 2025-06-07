@@ -12,12 +12,11 @@ import (
 )
 
 var LoadersRouter = mux.NewNestedRouter(&mux.NestedOptions{
-	TasksRegistry:        sharedTasksRegistry,
 	ExplicitIndexSegment: "_index",
 })
 
 func newLoader[O any](pattern string, f mux.TaskHandlerFunc[mux.None, O]) *mux.TaskHandler[mux.None, O] {
-	loaderTask := mux.TaskHandlerFromFunc(LoadersRouter.TasksRegistry(), f)
+	loaderTask := mux.TaskHandlerFromFunc(f)
 	mux.RegisterNestedTaskHandler(LoadersRouter, pattern, loaderTask)
 	return loaderTask
 }

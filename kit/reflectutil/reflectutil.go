@@ -14,7 +14,7 @@ func ImplementsInterface(t reflect.Type, iface reflect.Type) bool {
 		return false
 	}
 	if iface.Kind() != reflect.Interface {
-		panic("tsgencore error: expected interface type")
+		panic("reflectutil error: expected interface type")
 	}
 	if t.Implements(iface) {
 		return true

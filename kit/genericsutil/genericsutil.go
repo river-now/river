@@ -1,4 +1,4 @@
-// Package datafn provides helpers for implementing type erasure patterns
+// Package genericsutil provides helpers for implementing type erasure patterns
 package genericsutil
 
 import "errors"

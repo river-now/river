@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/river-now/river/kit/keyset"
 )
 
 const (
@@ -18,27 +20,27 @@ const (
 func TestNewManager(t *testing.T) {
 	tests := []struct {
 		name        string
-		secrets     Secrets
+		secrets     keyset.RootSecrets
 		expectError bool
 	}{
 		{
 			name:        "Valid secrets",
-			secrets:     Secrets{aSecret, bSecret},
+			secrets:     keyset.RootSecrets{aSecret, bSecret},
 			expectError: false,
 		},
 		{
 			name:        "Empty secrets",
-			secrets:     Secrets{},
+			secrets:     keyset.RootSecrets{},
 			expectError: true,
 		},
 		{
 			name:        "Invalid base64",
-			secrets:     Secrets{"invalid-base64"},
+			secrets:     keyset.RootSecrets{"invalid-base64"},
 			expectError: true,
 		},
 		{
 			name:        "Wrong secret size",
-			secrets:     Secrets{"AAAAAA=="},
+			secrets:     keyset.RootSecrets{"AAAAAA=="},
 			expectError: true,
 		},
 	}
@@ -63,7 +65,7 @@ func TestNewManager(t *testing.T) {
 }
 
 func TestManagerSignAndRead(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, err := NewManager(secrets)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
@@ -114,7 +116,7 @@ func TestManagerSignAndRead(t *testing.T) {
 }
 
 func TestManagerGet(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	testValue := "test-value"
@@ -147,7 +149,7 @@ func TestManagerGet(t *testing.T) {
 }
 
 func TestManagerNewDeletionCookie(t *testing.T) {
-	manager, _ := NewManager(Secrets{aSecret})
+	manager, _ := NewManager(keyset.RootSecrets{aSecret})
 
 	cookie := http.Cookie{
 		Name:     "test-cookie",
@@ -185,7 +187,7 @@ func TestManagerNewDeletionCookie(t *testing.T) {
 }
 
 func TestSignedCookie(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	type TestStruct struct {
@@ -331,7 +333,7 @@ func TestNewSecureCookieWithoutValue(t *testing.T) {
 }
 
 func TestManagerSignCookie(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	cookie := &http.Cookie{
@@ -375,7 +377,7 @@ func TestManagerSignCookie(t *testing.T) {
 }
 
 func TestManagerReadInvalidSignature(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	invalidSignedValue := base64.StdEncoding.EncodeToString([]byte("invalid-signature"))
@@ -394,7 +396,7 @@ func TestManagerReadInvalidSignature(t *testing.T) {
 }
 
 func TestManagerMultipleSecrets(t *testing.T) {
-	secrets := Secrets{
+	secrets := keyset.RootSecrets{
 		aSecret,
 		bSecret,
 	}
@@ -415,7 +417,7 @@ func TestManagerMultipleSecrets(t *testing.T) {
 	}
 
 	// Create a new manager with rotated secrets
-	rotatedSecrets := Secrets{
+	rotatedSecrets := keyset.RootSecrets{
 		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=",
 		aSecret,
 	}
@@ -452,7 +454,7 @@ func TestManagerMultipleSecrets(t *testing.T) {
 }
 
 func TestSignedCookieEdgeCases(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	type LargeStruct struct {
@@ -505,7 +507,7 @@ func TestSignedCookieEdgeCases(t *testing.T) {
 }
 
 func TestManagerConcurrency(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	concurrency := 100
@@ -538,7 +540,7 @@ func TestManagerConcurrency(t *testing.T) {
 }
 
 func TestManagerErrorCases(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	t.Run("SignValueWithLongInput", func(t *testing.T) {
@@ -578,14 +580,14 @@ func TestManagerErrorCases(t *testing.T) {
 
 func TestManagerWithInvalidSecrets(t *testing.T) {
 	t.Run("TooShortSecret", func(t *testing.T) {
-		_, err := NewManager(Secrets{"too-short-secret"})
+		_, err := NewManager(keyset.RootSecrets{"too-short-secret"})
 		if err == nil {
 			t.Errorf("Expected error when creating manager with too short secret, but got nil")
 		}
 	})
 
 	t.Run("InvalidBase64Secret", func(t *testing.T) {
-		_, err := NewManager(Secrets{"this-is-not-valid-base64!@#$%^&*()"})
+		_, err := NewManager(keyset.RootSecrets{"this-is-not-valid-base64!@#$%^&*()"})
 		if err == nil {
 			t.Errorf("Expected error when creating manager with invalid base64 secret, but got nil")
 		}
@@ -593,7 +595,7 @@ func TestManagerWithInvalidSecrets(t *testing.T) {
 }
 
 func TestSignedCookieWithComplexTypes(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	type ComplexStruct struct {
@@ -642,7 +644,7 @@ func TestSignedCookieWithComplexTypes(t *testing.T) {
 }
 
 func TestManagerSignAndReadWithEncryption(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, err := NewManager(secrets)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
@@ -693,7 +695,7 @@ func TestManagerSignAndReadWithEncryption(t *testing.T) {
 }
 
 func TestSignedCookieWithEncryption(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	type TestStruct struct {
@@ -756,7 +758,7 @@ func TestSignedCookieWithEncryption(t *testing.T) {
 }
 
 func TestManagerSignCookieWithEncryption(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	cookie := &http.Cookie{
@@ -789,7 +791,7 @@ func TestManagerSignCookieWithEncryption(t *testing.T) {
 }
 
 func TestManagerMultipleSecretsWithEncryption(t *testing.T) {
-	secrets := Secrets{
+	secrets := keyset.RootSecrets{
 		aSecret,
 		bSecret,
 	}
@@ -810,7 +812,7 @@ func TestManagerMultipleSecretsWithEncryption(t *testing.T) {
 	}
 
 	// Create a new manager with rotated secrets
-	rotatedSecrets := Secrets{
+	rotatedSecrets := keyset.RootSecrets{
 		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=",
 		aSecret,
 	}
@@ -847,7 +849,7 @@ func TestManagerMultipleSecretsWithEncryption(t *testing.T) {
 }
 
 func TestSignedCookieEncryptionComparison(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	type TestStruct struct {
@@ -906,7 +908,7 @@ func TestSignedCookieEncryptionComparison(t *testing.T) {
 }
 
 func TestManagerErrorCasesWithEncryption(t *testing.T) {
-	secrets := Secrets{aSecret}
+	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
 	t.Run("SignValueWithLongInputEncrypted", func(t *testing.T) {

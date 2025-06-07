@@ -19,10 +19,10 @@ const buildIDHeader = "X-River-Build-Id"
 
 var headElsInstance = headels.NewInstance("river")
 
-func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
+func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) mux.TasksCtxRequirerFunc {
 	h.validateAndDecorateNestedRouter(nestedRouter)
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := mux.TasksCtxRequirerFunc(func(w http.ResponseWriter, r *http.Request) {
 		res := response.New(w)
 		res.SetHeader(buildIDHeader, h._buildID)
 
@@ -168,8 +168,6 @@ func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) http.Handler {
 		res.HTMLBytes(buf.Bytes())
 	})
 
-	handler = nestedRouter.TasksRegistry().AddTasksCtxToRequestMw()(handler).ServeHTTP
-
 	return handler
 }
 
@@ -184,8 +182,8 @@ func (h *River) IsCurrentBuildJSONRequest(r *http.Request) bool {
 	return r.URL.Query().Get("river_json") == h._buildID
 }
 
-func (h *River) GetActionsHandler(router *mux.Router) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (h *River) GetActionsHandler(router *mux.Router) mux.TasksCtxRequirerFunc {
+	return mux.TasksCtxRequirerFunc(func(w http.ResponseWriter, r *http.Request) {
 		res := response.New(w)
 		res.SetHeader(buildIDHeader, h._buildID)
 		router.ServeHTTP(w, r)

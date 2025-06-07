@@ -19,6 +19,7 @@ export {
 	type StatusEvent,
 	submit,
 } from "./src/client.ts";
+export { setupGlobalLoadingIndicator } from "./src/global_loading_indicator.ts";
 export {
 	makeFinalLinkProps,
 	type RiverLinkPropsBase,

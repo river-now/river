@@ -3,7 +3,6 @@ package router
 import "github.com/river-now/river/kit/mux"
 
 var LoadersRouter = mux.NewNestedRouter(&mux.NestedOptions{
-	TasksRegistry:        SharedTasksRegistry,
 	ExplicitIndexSegment: "_index", // Optional, but recommended
 })
 
@@ -19,7 +18,7 @@ func NewLoader[O any](pattern string, f func(c *LoaderCtx) (O, error)) *mux.Task
 			// Anything else you want available on the LoaderCtx
 		})
 	}
-	loaderTask := mux.TaskHandlerFromFunc(LoadersRouter.TasksRegistry(), wrappedF)
+	loaderTask := mux.TaskHandlerFromFunc(wrappedF)
 	mux.RegisterNestedTaskHandler(LoadersRouter, pattern, loaderTask)
 	return loaderTask
 }

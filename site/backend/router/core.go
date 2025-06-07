@@ -11,10 +11,7 @@ import (
 	"github.com/river-now/river/kit/middleware/robotstxt"
 	"github.com/river-now/river/kit/middleware/secureheaders"
 	"github.com/river-now/river/kit/mux"
-	"github.com/river-now/river/kit/tasks"
 )
-
-var sharedTasksRegistry = tasks.NewRegistry("site")
 
 func Core() *mux.Router {
 	r := mux.NewRouter(nil)

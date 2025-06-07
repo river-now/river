@@ -52,13 +52,13 @@ describe("__getRiverClientGlobal", () => {
 });
 
 describe("beginNavigation", () => {
-	let mockSetStatus: any;
+	let _mockSetStatus: any;
 
 	beforeEach(() => {
 		// Reset navigation state and mock any necessary functions
 		navigationState.navigations.clear();
 		navigationState.activeUserNavigation = null;
-		mockSetStatus = vi.fn();
+		_mockSetStatus = vi.fn();
 		setup();
 	});
 

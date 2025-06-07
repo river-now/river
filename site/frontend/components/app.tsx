@@ -1,12 +1,17 @@
+import nProgress from "nprogress";
+import { setupGlobalLoadingIndicator } from "river.now/client";
 import { setTheme, THEMES } from "river.now/kit/theme";
 import { RiverRootOutlet } from "river.now/solid";
 import "../css/tailwind-output.css";
 import { Link } from "./app_link.tsx";
 import { theme, useRouterData } from "./app_utils.ts";
 
-// lazy load the nprogress module because it's not that important,
-// but we still want it on every page
-import("./global_loader.ts");
+setupGlobalLoadingIndicator({
+	include: "all",
+	start: nProgress.start,
+	stop: nProgress.done,
+	isRunning: nProgress.isStarted,
+});
 
 const theme_to_label_map = {
 	[THEMES.Light]: hashedURL("sun.svg"),

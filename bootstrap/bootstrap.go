@@ -79,8 +79,6 @@ var (
 	backend_static_entry_go_html_str_txt string
 	//go:embed tmpls/backend_router_actions_go_tmpl.txt
 	backend_router_actions_go_tmpl_txt string
-	//go:embed tmpls/backend_router_tasks_registry_go_tmpl.txt
-	backend_router_tasks_registry_go_tmpl_txt string
 	//go:embed tmpls/backend_router_core_go_tmpl.txt
 	backend_router_core_go_tmpl_txt string
 	//go:embed tmpls/backend_router_loaders_go_tmpl.txt
@@ -138,7 +136,6 @@ func Init(o Options) {
 	do.tmplWriteMust("__dist/static/.keep", dist_static_keep_tmpl_txt)
 	strWriteMust("backend/__static/entry.go.html", backend_static_entry_go_html_str_txt)
 	do.tmplWriteMust("backend/router/actions.go", backend_router_actions_go_tmpl_txt)
-	do.tmplWriteMust("backend/router/tasks_registry.go", backend_router_tasks_registry_go_tmpl_txt)
 	do.tmplWriteMust("backend/router/core.go", backend_router_core_go_tmpl_txt)
 	do.tmplWriteMust("backend/router/loaders.go", backend_router_loaders_go_tmpl_txt)
 	do.tmplWriteMust("backend/server/server.go", backend_server_server_go_tmpl_txt)

@@ -9,8 +9,7 @@ import (
 )
 
 var ActionsRouter = mux.NewRouter(&mux.Options{
-	TasksRegistry: sharedTasksRegistry,
-	MountRoot:     "/api/",
+	MountRoot: "/api/",
 	MarshalInput: func(r *http.Request, iPtr any) error {
 		if r.Method == http.MethodGet {
 			return validate.URLSearchParamsInto(r, iPtr)
@@ -34,7 +33,7 @@ func NewAction[I any, O any](method, pattern string, f func(c *ActionCtx[I]) (O,
 			// Anything else you want available on the ActionCtx
 		})
 	}
-	actionTask := mux.TaskHandlerFromFunc(ActionsRouter.TasksRegistry(), wrappedF)
+	actionTask := mux.TaskHandlerFromFunc(wrappedF)
 	mux.RegisterTaskHandler(ActionsRouter, method, pattern, actionTask)
 	return actionTask
 }

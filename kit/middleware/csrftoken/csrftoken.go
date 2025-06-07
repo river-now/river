@@ -1,3 +1,5 @@
+// Deprecated: Please upgrade to the newer, more robust, and stateless csrf
+// package available at github.com/river-now/river/kit/csrf.
 package csrftoken
 
 import (
@@ -14,6 +16,8 @@ type (
 	GetSubmittedCSRFToken = func(r *http.Request) string
 )
 
+// Deprecated: Please upgrade to the newer, more robust, and stateless csrf
+// package available at github.com/river-now/river/kit/csrf.
 type Opts struct {
 	GetExpectedCSRFToken  GetExpectedCSRFToken
 	GetSubmittedCSRFToken GetSubmittedCSRFToken
@@ -21,6 +25,8 @@ type Opts struct {
 	PermittedHosts        []string                   // If len == 0, all hosts are permitted
 }
 
+// Deprecated: Please upgrade to the newer, more robust, and stateless csrf
+// package available at github.com/river-now/river/kit/csrf.
 func NewMiddleware(opts Opts) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
