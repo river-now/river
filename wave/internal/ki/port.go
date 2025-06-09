@@ -3,7 +3,7 @@ package ki
 import (
 	"log"
 
-	"github.com/river-now/river/kit/port"
+	"github.com/river-now/river/kit/netutil"
 )
 
 const (
@@ -19,7 +19,7 @@ func MustGetAppPort() int {
 		return defaultPort
 	}
 
-	port, err := port.GetFreePort(defaultPort)
+	port, err := netutil.GetFreePort(defaultPort)
 	if err != nil {
 		log.Panicf("error: failed to get free port: %v", err)
 	}

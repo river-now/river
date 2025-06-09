@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"testing"
 
@@ -666,7 +668,7 @@ func TestEmptyInputs(t *testing.T) {
 	// Test nil/empty inputs for encryption
 	for _, f := range []struct {
 		name    string
-		encrypt func([]byte, *[32]byte) ([]byte, error)
+		encrypt func([]byte, Key32) ([]byte, error)
 	}{
 		{"XChaCha20Poly1305", EncryptSymmetricXChaCha20Poly1305},
 		{"AESGCM", EncryptSymmetricAESGCM},
@@ -949,4 +951,603 @@ func TestInputValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSha256Hash(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []byte
+		expected string // hex encoded expected hash
+	}{
+		{
+			name:     "empty input",
+			input:    []byte{},
+			expected: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		},
+		{
+			name:     "hello world",
+			input:    []byte("hello world"),
+			expected: "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+		},
+		{
+			name:     "single byte",
+			input:    []byte{0x00},
+			expected: "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+		},
+		{
+			name:     "long message",
+			input:    []byte("The quick brown fox jumps over the lazy dog"),
+			expected: "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
+		},
+		{
+			name:     "binary data",
+			input:    []byte{0xFF, 0x00, 0xFF, 0x00, 0xFF},
+			expected: "2f42a71a80110f9f3382ddf5af06d1aad32abfc64ceaafde005fc45443df1b42",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Sha256Hash(tt.input)
+			resultHex := hex.EncodeToString(result)
+			if resultHex != tt.expected {
+				t.Errorf("expected %s, got %s", tt.expected, resultHex)
+			}
+			// Verify length is always 32 bytes
+			if len(result) != sha256.Size {
+				t.Errorf("expected hash length %d, got %d", sha256.Size, len(result))
+			}
+		})
+	}
+}
+
+func TestHmacSha256(t *testing.T) {
+	tests := []struct {
+		name        string
+		message     []byte
+		key         []byte
+		expectError bool
+	}{
+		{
+			name:    "standard test",
+			message: []byte("test message"),
+			key:     []byte("secret key"),
+		},
+		{
+			name:    "empty message",
+			message: []byte{},
+			key:     []byte("secret key"),
+		},
+		{
+			name:    "empty key",
+			message: []byte("test message"),
+			key:     []byte{},
+		},
+		{
+			name:    "long key",
+			message: []byte("test"),
+			key:     make([]byte, 100), // key longer than block size
+		},
+		{
+			name:        "nil key",
+			message:     []byte("test"),
+			key:         nil,
+			expectError: true,
+		},
+		{
+			name:    "nil message",
+			message: nil,
+			key:     []byte("key"),
+		},
+		{
+			name:    "32 byte key",
+			message: []byte("test message"),
+			key:     make([]byte, 32),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := HmacSha256(tt.message, tt.key)
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			// HMAC-SHA256 should always be 32 bytes
+			if len(result) != sha256.Size {
+				t.Errorf("expected HMAC length %d, got %d", sha256.Size, len(result))
+			}
+
+			// Verify that the same input produces the same output
+			result2, err := HmacSha256(tt.message, tt.key)
+			if err != nil {
+				t.Fatalf("unexpected error on second call: %v", err)
+			}
+			if !bytes.Equal(result, result2) {
+				t.Error("HMAC should be deterministic")
+			}
+
+			// Verify that different keys produce different outputs
+			if len(tt.key) > 0 {
+				differentKey := make([]byte, len(tt.key))
+				copy(differentKey, tt.key)
+				differentKey[0] ^= 0xFF
+				result3, _ := HmacSha256(tt.message, differentKey)
+				if bytes.Equal(result, result3) {
+					t.Error("different keys should produce different HMACs")
+				}
+			}
+		})
+	}
+}
+
+func TestValidateHmacSha256(t *testing.T) {
+	message := []byte("test message")
+	correctKey := []byte("correct key")
+	wrongKey := []byte("wrong key")
+
+	// Generate correct HMAC
+	correctMAC, _ := HmacSha256(message, correctKey)
+
+	tests := []struct {
+		name        string
+		message     []byte
+		key         []byte
+		knownMAC    []byte
+		expectValid bool
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "valid HMAC",
+			message:     message,
+			key:         correctKey,
+			knownMAC:    correctMAC,
+			expectValid: true,
+		},
+		{
+			name:        "invalid HMAC - wrong key",
+			message:     message,
+			key:         wrongKey,
+			knownMAC:    correctMAC,
+			expectValid: false,
+		},
+		{
+			name:        "invalid HMAC - tampered MAC",
+			message:     message,
+			key:         correctKey,
+			knownMAC:    append([]byte{0xFF}, correctMAC[1:]...),
+			expectValid: false,
+		},
+		{
+			name:        "invalid HMAC - different message",
+			message:     []byte("different message"),
+			key:         correctKey,
+			knownMAC:    correctMAC,
+			expectValid: false,
+		},
+		{
+			name:        "nil key",
+			message:     message,
+			key:         nil,
+			knownMAC:    correctMAC,
+			expectError: true,
+			errorMsg:    "attemptedKey is nil",
+		},
+		{
+			name:        "wrong MAC length",
+			message:     message,
+			key:         correctKey,
+			knownMAC:    []byte("too short"),
+			expectError: true,
+			errorMsg:    "knownGoodMAC must be 32 bytes",
+		},
+		{
+			name:        "empty message",
+			message:     []byte{},
+			key:         correctKey,
+			knownMAC:    mustHmacSha256([]byte{}, correctKey),
+			expectValid: true,
+		},
+		{
+			name:        "nil message",
+			message:     nil,
+			key:         correctKey,
+			knownMAC:    mustHmacSha256(nil, correctKey),
+			expectValid: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			valid, err := ValidateHmacSha256(tt.message, tt.key, tt.knownMAC)
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error, got nil")
+				} else if tt.errorMsg != "" && err.Error() != tt.errorMsg {
+					t.Errorf("expected error %q, got %q", tt.errorMsg, err.Error())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if valid != tt.expectValid {
+				t.Errorf("expected valid=%v, got %v", tt.expectValid, valid)
+			}
+		})
+	}
+}
+
+func TestHkdfSha256(t *testing.T) {
+	secretKey := new32()
+
+	tests := []struct {
+		name        string
+		secretKey   Key32
+		salt        []byte
+		info        string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:      "basic derivation",
+			secretKey: secretKey,
+			salt:      []byte("salt"),
+			info:      "info",
+		},
+		{
+			name:      "nil salt",
+			secretKey: secretKey,
+			salt:      nil,
+			info:      "info",
+		},
+		{
+			name:      "empty salt",
+			secretKey: secretKey,
+			salt:      []byte{},
+			info:      "info",
+		},
+		{
+			name:      "empty info",
+			secretKey: secretKey,
+			salt:      []byte("salt"),
+			info:      "",
+		},
+		{
+			name:      "nil salt and empty info",
+			secretKey: secretKey,
+			salt:      nil,
+			info:      "",
+		},
+		{
+			name:      "long salt",
+			secretKey: secretKey,
+			salt:      make([]byte, 100),
+			info:      "info",
+		},
+		{
+			name:      "long info",
+			secretKey: secretKey,
+			salt:      []byte("salt"),
+			info:      "very long info string that contains a lot of context information",
+		},
+		{
+			name:        "nil secret key",
+			secretKey:   nil,
+			salt:        []byte("salt"),
+			info:        "info",
+			expectError: true,
+			errorMsg:    ErrSecretKeyIsNil.Error(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			derivedKey, err := HkdfSha256(tt.secretKey, tt.salt, tt.info)
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error, got nil")
+				} else if tt.errorMsg != "" && err.Error() != tt.errorMsg {
+					t.Errorf("expected error %q, got %q", tt.errorMsg, err.Error())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if derivedKey == nil {
+				t.Fatal("expected non-nil derived key")
+			}
+			// Verify key is 32 bytes
+			if len(*derivedKey) != KeySize {
+				t.Errorf("expected key size %d, got %d", KeySize, len(*derivedKey))
+			}
+
+			// Verify deterministic - same inputs produce same output
+			derivedKey2, err := HkdfSha256(tt.secretKey, tt.salt, tt.info)
+			if err != nil {
+				t.Fatalf("unexpected error on second derivation: %v", err)
+			}
+			if !bytes.Equal((*derivedKey)[:], (*derivedKey2)[:]) {
+				t.Error("HKDF is not deterministic")
+			}
+
+			// Verify different inputs produce different outputs
+			if len(tt.salt) > 0 {
+				differentSalt := make([]byte, len(tt.salt))
+				copy(differentSalt, tt.salt)
+				differentSalt[0] ^= 0xFF
+				derivedKey3, _ := HkdfSha256(tt.secretKey, differentSalt, tt.info)
+				if bytes.Equal((*derivedKey)[:], (*derivedKey3)[:]) {
+					t.Error("different salt should produce different key")
+				}
+			}
+
+			if tt.info != "" {
+				derivedKey4, _ := HkdfSha256(tt.secretKey, tt.salt, tt.info+"different")
+				if bytes.Equal((*derivedKey)[:], (*derivedKey4)[:]) {
+					t.Error("different info should produce different key")
+				}
+			}
+		})
+	}
+}
+
+func TestToKey32(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       []byte
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:  "valid 32 byte slice",
+			input: make([]byte, 32),
+		},
+		{
+			name:  "32 bytes with data",
+			input: bytes.Repeat([]byte{0xAB}, 32),
+		},
+		{
+			name:        "too short",
+			input:       make([]byte, 31),
+			expectError: true,
+			errorMsg:    "byte slice must be exactly 32 bytes",
+		},
+		{
+			name:        "too long",
+			input:       make([]byte, 33),
+			expectError: true,
+			errorMsg:    "byte slice must be exactly 32 bytes",
+		},
+		{
+			name:        "empty slice",
+			input:       []byte{},
+			expectError: true,
+			errorMsg:    "byte slice must be exactly 32 bytes",
+		},
+		{
+			name:        "nil slice",
+			input:       nil,
+			expectError: true,
+			errorMsg:    "byte slice must be exactly 32 bytes",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			key, err := ToKey32(tt.input)
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error, got nil")
+				} else if tt.errorMsg != "" && err.Error() != tt.errorMsg {
+					t.Errorf("expected error %q, got %q", tt.errorMsg, err.Error())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if key == nil {
+				t.Fatal("expected non-nil key")
+			}
+			// Verify the content matches
+			if !bytes.Equal((*key)[:], tt.input) {
+				t.Error("key content doesn't match input")
+			}
+			// Verify it's a proper array (not sharing underlying memory)
+			if len(tt.input) > 0 {
+				original := tt.input[0]
+				tt.input[0] = ^tt.input[0]
+				if (*key)[0] != original {
+					t.Error("key should not share underlying array with input")
+				}
+				tt.input[0] = original // restore
+			}
+		})
+	}
+}
+
+func TestFromKey32(t *testing.T) {
+	validKey := new32()
+	validKey[0] = 0xFF
+	validKey[31] = 0xAA
+
+	tests := []struct {
+		name        string
+		key         Key32
+		expected    []byte
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:     "valid key",
+			key:      validKey,
+			expected: (*validKey)[:],
+		},
+		{
+			name:     "new32 key",
+			key:      new32(),
+			expected: (*new32())[:],
+		},
+		{
+			name:        "nil key",
+			key:         nil,
+			expectError: true,
+			errorMsg:    "key is nil",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := FromKey32(tt.key)
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error, got nil")
+				} else if tt.errorMsg != "" && err.Error() != tt.errorMsg {
+					t.Errorf("expected error %q, got %q", tt.errorMsg, err.Error())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !bytes.Equal(result, tt.expected) {
+				t.Error("result doesn't match expected")
+			}
+			// Verify length
+			if len(result) != KeySize {
+				t.Errorf("expected length %d, got %d", KeySize, len(result))
+			}
+		})
+	}
+}
+
+func TestKey32RoundTrip(t *testing.T) {
+	// Test that ToKey32 and FromKey32 are inverse operations
+	testData := [][]byte{
+		make([]byte, 32),
+		bytes.Repeat([]byte{0xFF}, 32),
+		bytes.Repeat([]byte{0x55, 0xAA}, 16),
+		{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+	}
+
+	for i, data := range testData {
+		t.Run(fmt.Sprintf("test-%d", i), func(t *testing.T) {
+			// Convert to Key32
+			key, err := ToKey32(data)
+			if err != nil {
+				t.Fatalf("ToKey32 failed: %v", err)
+			}
+
+			// Convert back to []byte
+			result, err := FromKey32(key)
+			if err != nil {
+				t.Fatalf("FromKey32 failed: %v", err)
+			}
+
+			// Verify round trip
+			if !bytes.Equal(result, data) {
+				t.Error("round trip failed - data doesn't match")
+			}
+		})
+	}
+}
+
+func TestHmacAndHkdfIntegration(t *testing.T) {
+	// Test using HKDF-derived keys with HMAC
+	masterKey := new32()
+	salt := []byte("application salt")
+
+	// Derive keys for different purposes
+	authKey, err := HkdfSha256(masterKey, salt, "authentication")
+	if err != nil {
+		t.Fatalf("failed to derive auth key: %v", err)
+	}
+
+	encKey, err := HkdfSha256(masterKey, salt, "encryption")
+	if err != nil {
+		t.Fatalf("failed to derive enc key: %v", err)
+	}
+
+	// Verify derived keys are different
+	if bytes.Equal((*authKey)[:], (*encKey)[:]) {
+		t.Error("different info strings should produce different keys")
+	}
+
+	// Use derived key for HMAC
+	message := []byte("important message")
+	authKeyBytes, _ := FromKey32(authKey)
+	mac, err := HmacSha256(message, authKeyBytes)
+	if err != nil {
+		t.Fatalf("failed to compute HMAC: %v", err)
+	}
+
+	// Validate HMAC with derived key
+	valid, err := ValidateHmacSha256(message, authKeyBytes, mac)
+	if err != nil {
+		t.Fatalf("failed to validate HMAC: %v", err)
+	}
+	if !valid {
+		t.Error("HMAC validation should succeed")
+	}
+
+	// Verify wrong key fails
+	encKeyBytes, _ := FromKey32(encKey)
+	valid, err = ValidateHmacSha256(message, encKeyBytes, mac)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if valid {
+		t.Error("HMAC validation should fail with wrong key")
+	}
+}
+
+func TestHashAndHmacConsistency(t *testing.T) {
+	// Test that our implementations are consistent with expected behavior
+	message := []byte("consistency test message")
+
+	// SHA256 should produce same hash for same input
+	hash1 := Sha256Hash(message)
+	hash2 := Sha256Hash(message)
+	if !bytes.Equal(hash1, hash2) {
+		t.Error("SHA256 should be deterministic")
+	}
+
+	// HMAC with same key should produce same MAC
+	key := []byte("test key")
+	mac1, _ := HmacSha256(message, key)
+	mac2, _ := HmacSha256(message, key)
+	if !bytes.Equal(mac1, mac2) {
+		t.Error("HMAC should be deterministic")
+	}
+
+	// Different messages should produce different hashes
+	differentMessage := append(message, byte('X'))
+	hash3 := Sha256Hash(differentMessage)
+	if bytes.Equal(hash1, hash3) {
+		t.Error("different messages should produce different hashes")
+	}
+
+	// Different messages should produce different MACs
+	mac3, _ := HmacSha256(differentMessage, key)
+	if bytes.Equal(mac1, mac3) {
+		t.Error("different messages should produce different MACs")
+	}
+}
+
+// Helper function for tests
+func mustHmacSha256(msg, key []byte) []byte {
+	mac, err := HmacSha256(msg, key)
+	if err != nil {
+		panic(err)
+	}
+	return mac
 }

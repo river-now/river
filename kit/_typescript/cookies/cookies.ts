@@ -3,7 +3,7 @@
  * found, otherwise undefined. Does not do any encoding or decoding.
  */
 export function getClientCookie(name: string) {
-	const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
+	const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]*)`));
 	return match ? match[2] : undefined;
 }
 

@@ -11,7 +11,6 @@ import (
 	"github.com/river-now/river/kit/mux"
 	"github.com/river-now/river/kit/reflectutil"
 	"github.com/river-now/river/kit/response"
-	"github.com/river-now/river/kit/tasks"
 	"github.com/river-now/river/kit/typed"
 	"golang.org/x/sync/errgroup"
 )
@@ -79,7 +78,9 @@ type final_ui_data struct {
 }
 
 func (h *River) get_ui_data_stage_1(
-	w http.ResponseWriter, r *http.Request, nestedRouter *mux.NestedRouter, tasksCtx *tasks.TasksCtx,
+	w http.ResponseWriter,
+	r *http.Request,
+	nestedRouter *mux.NestedRouter,
 ) *ui_data_all {
 	realPath := matcher.StripTrailingSlash(r.URL.Path)
 	if realPath == "" {
@@ -134,7 +135,7 @@ func (h *River) get_ui_data_stage_1(
 		_cachedItemSubset, _ = gmpdCache.LoadOrStore(cacheKey, _cachedItemSubset)
 	}
 
-	_tasks_results := mux.RunNestedTasks(nestedRouter, tasksCtx, r, _match_results)
+	_tasks_results := mux.RunNestedTasks(nestedRouter, r, _match_results)
 
 	var hasRootData bool
 	if len(_match_results.Matches) > 0 &&
@@ -268,18 +269,17 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 ) *ui_data_all {
 	res := response.New(w)
 
-	tasksCtx := nestedRouter.TasksRegistry().MustGetCtxFromRequest(r)
-
 	eg := errgroup.Group{}
 
 	var defaultHeadEls []*htmlutil.Element
-	var err error
+	var egErr error
 
 	eg.Go(func() error {
+		var headErr error
 		if h.GetDefaultHeadEls != nil {
-			defaultHeadEls, err = h.GetDefaultHeadEls(r)
-			if err != nil {
-				return fmt.Errorf("GetDefaultHeadEls error: %w", err)
+			defaultHeadEls, headErr = h.GetDefaultHeadEls(r)
+			if headErr != nil {
+				return fmt.Errorf("GetDefaultHeadEls error: %w", headErr)
 			}
 		} else {
 			defaultHeadEls = []*htmlutil.Element{}
@@ -287,17 +287,18 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 		return nil
 	})
 
-	uiRoutesData := h.get_ui_data_stage_1(w, r, nestedRouter, tasksCtx)
+	uiRoutesData := h.get_ui_data_stage_1(w, r, nestedRouter)
+
+	egErr = eg.Wait()
+
+	if egErr != nil {
+		Log.Error("Error from errgroup in getUIRouteData", "error", egErr.Error())
+		res.InternalServerError()
+		return &ui_data_all{didErr: true}
+	}
 
 	if uiRoutesData.notFound || uiRoutesData.didRedirect || uiRoutesData.didErr {
 		return uiRoutesData
-	}
-
-	err = eg.Wait()
-	if err != nil {
-		Log.Error(err.Error())
-		res.InternalServerError()
-		return &ui_data_all{didErr: true}
 	}
 
 	var hb []*htmlutil.Element

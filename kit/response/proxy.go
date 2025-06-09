@@ -252,12 +252,14 @@ func MergeProxyResponses(proxies ...*Proxy) *Proxy {
 		}
 	}
 
-	// Redirect -- FIRST REDIRECT WINS
-	for _, p := range proxies {
-		if p.IsRedirect() {
-			merged._status = p._status
-			merged._location = p._location
-			break
+	// Redirect -- Assuming no error, FIRST REDIRECT WINS
+	if !isError(merged._status) {
+		for _, p := range proxies {
+			if p.IsRedirect() {
+				merged._status = p._status
+				merged._location = p._location
+				break
+			}
 		}
 	}
 

@@ -5,19 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func TestTasks(t *testing.T) {
 	t.Run("BasicTaskExecution", func(t *testing.T) {
-		registry := NewRegistry("test")
-		task := Register(registry, func(c *Arg[string]) (string, error) {
-			return "Hello, " + c.Input, nil
+		task := NewTask(func(c *TasksCtx, input string) (string, error) {
+			return "Hello, " + input, nil
 		})
 
-		ctx := registry.NewCtxFromNativeContext(context.Background())
-		result, err := task.Prep(ctx, "World").Get()
+		ctx := NewTasksCtx(context.Background())
+		result, err := Do(ctx, task, "World")
 
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
@@ -28,36 +28,28 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("ParallelExecution", func(t *testing.T) {
-		registry := NewRegistry("test")
-
-		task1 := Register(registry, func(c *Arg[int]) (int, error) {
+		task1 := NewTask(func(c *TasksCtx, input int) (int, error) {
 			time.Sleep(100 * time.Millisecond)
-			return c.Input * 2, nil
+			return input * 2, nil
 		})
 
-		task2 := Register(registry, func(c *Arg[int]) (int, error) {
+		task2 := NewTask(func(c *TasksCtx, input int) (int, error) {
 			time.Sleep(100 * time.Millisecond)
-			return c.Input * 3, nil
+			return input * 3, nil
 		})
 
-		ctx := registry.NewCtxFromNativeContext(context.Background())
+		ctx := NewTasksCtx(context.Background())
 		start := time.Now()
 
-		twi1 := task1.Prep(ctx, 5)
-		twi2 := task2.Prep(ctx, 5)
-		ok := ctx.ParallelPreload(twi1, twi2)
-
-		if !ok {
-			t.Error("ParallelPreload failed")
-		}
-
-		result1, err1 := twi1.Get()
-		result2, err2 := twi2.Get()
-
+		var result1, result2 int
+		err := Go(ctx,
+			Bind(task1, 5).AssignTo(&result1),
+			Bind(task2, 5).AssignTo(&result2),
+		)
 		duration := time.Since(start)
 
-		if err1 != nil || err2 != nil {
-			t.Errorf("Expected no errors, got %v, %v", err1, err2)
+		if err != nil {
+			t.Errorf("Expected no errors, got %v", err)
 		}
 		if result1 != 10 || result2 != 15 {
 			t.Errorf("Expected 10 and 15, got %d and %d", result1, result2)
@@ -68,22 +60,20 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("TaskDependencies", func(t *testing.T) {
-		registry := NewRegistry("test")
-
-		authTask := Register(registry, func(c *Arg[string]) (string, error) {
-			return "token-" + c.Input, nil
+		authTask := NewTask(func(c *TasksCtx, input string) (string, error) {
+			return "token-" + input, nil
 		})
 
-		userTask := Register(registry, func(c *Arg[string]) (string, error) {
-			token, err := authTask.Prep(c.TasksCtx, c.Input).Get()
+		userTask := NewTask(func(c *TasksCtx, input string) (string, error) {
+			token, err := Do(c, authTask, input)
 			if err != nil {
 				return "", err
 			}
 			return "user-" + token, nil
 		})
 
-		ctx := registry.NewCtxFromNativeContext(context.Background())
-		result, err := userTask.Prep(ctx, "123").Get()
+		ctx := NewTasksCtx(context.Background())
+		result, err := Do(ctx, userTask, "123")
 
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
@@ -94,20 +84,20 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("ContextCancellation", func(t *testing.T) {
-		registry := NewRegistry("test")
-
-		task := Register(registry, func(c *Arg[string]) (string, error) {
+		task := NewTask(func(c *TasksCtx, _ string) (string, error) {
 			time.Sleep(200 * time.Millisecond)
 			return "done", nil
 		})
 
-		ctx := registry.NewCtxFromNativeContext(context.Background())
+		parentCtx, cancel := context.WithCancel(context.Background())
+		ctx := NewTasksCtx(parentCtx)
+
 		go func() {
 			time.Sleep(50 * time.Millisecond)
-			ctx.CancelNativeContext()
+			cancel()
 		}()
 
-		_, err := task.Prep(ctx, "test").Get()
+		_, err := Do(ctx, task, "test")
 		if err == nil {
 			t.Error("Expected context cancellation error, got nil")
 		}
@@ -117,14 +107,12 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("ErrorHandling", func(t *testing.T) {
-		registry := NewRegistry("test")
-
-		task := Register(registry, func(c *Arg[string]) (string, error) {
+		task := NewTask(func(c *TasksCtx, _ string) (string, error) {
 			return "", errors.New("task failed")
 		})
 
-		ctx := registry.NewCtxFromNativeContext(context.Background())
-		result, err := task.Prep(ctx, "test").Get()
+		ctx := NewTasksCtx(context.Background())
+		result, err := Do(ctx, task, "test")
 
 		if err == nil {
 			t.Error("Expected error, got nil")
@@ -138,34 +126,26 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("OnceExecution", func(t *testing.T) {
-		registry := NewRegistry("test")
-
-		var counter int
-		var mu sync.Mutex
-		task := Register(registry, func(c *Arg[string]) (string, error) {
-			mu.Lock()
-			counter++
-			mu.Unlock()
+		var counter int32
+		task := NewTask(func(c *TasksCtx, _ string) (string, error) {
+			atomic.AddInt32(&counter, 1)
 			time.Sleep(50 * time.Millisecond)
 			return "done", nil
 		})
 
-		ctx := registry.NewCtxFromNativeContext(context.Background())
-		twi := task.Prep(ctx, "test")
-
+		ctx := NewTasksCtx(context.Background())
 		var wg sync.WaitGroup
 		wg.Add(3)
 
 		for range 3 {
 			go func() {
 				defer wg.Done()
-				_, err := twi.Get()
+				_, err := Do(ctx, task, "test")
 				if err != nil {
 					t.Errorf("Unexpected error: %v", err)
 				}
 			}()
 		}
-
 		wg.Wait()
 
 		if counter != 1 {
@@ -174,79 +154,46 @@ func TestTasks(t *testing.T) {
 	})
 }
 
-func TestTasksWithSharedDependencies_Simple(t *testing.T) {
+func TestTasksWithSharedDependencies(t *testing.T) {
 	t.Run("ParallelTasksWithSharedDependencies", func(t *testing.T) {
-		registry := NewRegistry("test")
-
-		// This simulates the Auth task
-		var authCounter int
-		var authMu sync.Mutex
-		authTask := Register(registry, func(c *ArgNoInput) (int, error) {
-			authMu.Lock()
-			authCounter++
-			authMu.Unlock()
-
-			// Simulate work
+		var authCounter int32
+		authTask := NewTask(func(c *TasksCtx, _ struct{}) (int, error) {
+			atomic.AddInt32(&authCounter, 1)
 			time.Sleep(100 * time.Millisecond)
-
 			return 123, nil
 		})
 
-		// This simulates the User task
-		userTask := Register(registry, func(c *Arg[string]) (string, error) {
-			// Critical: Get auth token first
-			token, err := authTask.PrepNoInput(c.TasksCtx).Get()
+		userTask := NewTask(func(c *TasksCtx, _ string) (string, error) {
+			token, err := Do(c, authTask, struct{}{})
 			if err != nil {
 				return "", err
 			}
-
-			// Simulate additional work
 			time.Sleep(50 * time.Millisecond)
-
 			return fmt.Sprintf("user-%d", token), nil
 		})
 
-		// This simulates the User2 task
-		user2Task := Register(registry, func(c *Arg[string]) (string, error) {
-			// Critical: Get auth token first
-			token, err := authTask.PrepNoInput(c.TasksCtx).Get()
+		user2Task := NewTask(func(c *TasksCtx, _ string) (string, error) {
+			token, err := Do(c, authTask, struct{}{})
 			if err != nil {
 				return "", err
 			}
-
-			// Simulate additional work
 			time.Sleep(50 * time.Millisecond)
-
 			return fmt.Sprintf("user2-%d", token), nil
 		})
 
-		// This simulates the Profile task
-		ctx := registry.NewCtxFromNativeContext(context.Background())
-		userPrep := userTask.Prep(ctx, "test")
-		user2Prep := user2Task.Prep(ctx, "test")
+		ctx := NewTasksCtx(context.Background())
+		var userData, user2Data string
+		err := Go(ctx,
+			Bind(userTask, "test").AssignTo(&userData),
+			Bind(user2Task, "test").AssignTo(&user2Data),
+		)
 
-		// Execute both tasks in parallel
-		ok := ctx.ParallelPreload(userPrep, user2Prep)
-		if !ok {
-			t.Fatal("ParallelPreload failed")
+		if err != nil {
+			t.Fatal("Go failed with an unexpected error:", err)
 		}
 
-		// Get results from both tasks
-		userData, userErr := userPrep.Get()
-		user2Data, user2Err := user2Prep.Get()
-
-		// Verify no errors
-		if userErr != nil {
-			t.Errorf("Expected no error from userTask, got %v", userErr)
-		}
-		if user2Err != nil {
-			t.Errorf("Expected no error from user2Task, got %v", user2Err)
-		}
-
-		// Verify both tasks got the same correct token value
 		expectedUserData := "user-123"
 		expectedUser2Data := "user2-123"
-
 		if userData != expectedUserData {
 			t.Errorf("Expected userTask to return '%s', got '%s'", expectedUserData, userData)
 		}
@@ -254,302 +201,345 @@ func TestTasksWithSharedDependencies_Simple(t *testing.T) {
 			t.Errorf("Expected user2Task to return '%s', got '%s'", expectedUser2Data, user2Data)
 		}
 
-		// Verify authTask was executed exactly once
 		if authCounter != 1 {
 			t.Errorf("Expected authTask to run exactly once, ran %d times", authCounter)
 		}
 	})
 }
 
-func TestTasksWithSharedDependencies_MoreThorough(t *testing.T) {
-	t.Run("ComprehensiveParallelTasksWithSharedDependencies", func(t *testing.T) {
-		registry := NewRegistry("test")
+func TestComprehensiveSharedDependencies(t *testing.T) {
+	// State tracking variables for the test
+	var executionOrder []string
+	var executionMu sync.Mutex
+	recordExecution := func(name string) {
+		executionMu.Lock()
+		executionOrder = append(executionOrder, name)
+		executionMu.Unlock()
+	}
 
-		// Track execution order and timing
-		var executionOrder []string
-		var executionMu sync.Mutex
-		recordExecution := func(name string) {
-			executionMu.Lock()
-			executionOrder = append(executionOrder, name)
-			executionMu.Unlock()
+	var authCounter, userCounter, user2Counter, profileCounter int32
+	var userInputs, user2Inputs []string
+	var userTokens, user2Tokens []int
+	var stateMu sync.Mutex // A single mutex to protect all test state slices/maps
+
+	// Define Tasks using the new API
+	authTask := NewTask(func(c *TasksCtx, _ struct{}) (int, error) {
+		recordExecution("auth-start")
+		atomic.AddInt32(&authCounter, 1)
+		time.Sleep(50 * time.Millisecond)
+		recordExecution("auth-end")
+		return 123, nil
+	})
+
+	userTask := NewTask(func(c *TasksCtx, input string) (string, error) {
+		recordExecution("user-start")
+		atomic.AddInt32(&userCounter, 1)
+		if input == "" {
+			t.Error("Expected non-empty input in userTask")
 		}
 
-		// Track Auth execution details
-		var authCounter int
-		var authMu sync.Mutex
+		token, err := Do(c, authTask, struct{}{})
+		if err != nil {
+			return "", err
+		}
 
-		// This simulates the Auth task
-		authTask := Register(registry, func(c *ArgNoInput) (int, error) {
-			recordExecution("auth-start")
-			authMu.Lock()
-			authCounter++
-			authMu.Unlock()
+		stateMu.Lock()
+		userInputs = append(userInputs, input)
+		userTokens = append(userTokens, token)
+		stateMu.Unlock()
 
-			// Validate context is properly passed
-			if c.TasksCtx == nil {
-				t.Error("TasksCtx is nil in authTask")
+		time.Sleep(25 * time.Millisecond)
+		recordExecution("user-end")
+		return fmt.Sprintf("user-%s-%d", input, token), nil
+	})
+
+	user2Task := NewTask(func(c *TasksCtx, input string) (string, error) {
+		recordExecution("user2-start")
+		atomic.AddInt32(&user2Counter, 1)
+		if input == "" {
+			t.Error("Expected non-empty input in user2Task")
+		}
+
+		token, err := Do(c, authTask, struct{}{})
+		if err != nil {
+			return "", err
+		}
+
+		stateMu.Lock()
+		user2Inputs = append(user2Inputs, input)
+		user2Tokens = append(user2Tokens, token)
+		stateMu.Unlock()
+
+		time.Sleep(25 * time.Millisecond)
+		recordExecution("user2-end")
+		return fmt.Sprintf("user2-%s-%d", input, token), nil
+	})
+
+	profileTask := NewTask(func(c *TasksCtx, input string) (map[string]string, error) {
+		recordExecution("profile-start")
+		atomic.AddInt32(&profileCounter, 1)
+
+		var userData, user2Data string
+		err := Go(c,
+			Bind(userTask, input).AssignTo(&userData),
+			Bind(user2Task, input+"_alt").AssignTo(&user2Data),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		time.Sleep(25 * time.Millisecond)
+		recordExecution("profile-end")
+
+		return map[string]string{
+			"user":   userData,
+			"user2":  user2Data,
+			"status": "complete",
+		}, nil
+	})
+
+	// --- Execute Test Cases ---
+	const testInput1 = "test_input_1"
+	const testInput2 = "test_input_2"
+
+	// Execution for first context
+	ctx1 := NewTasksCtx(context.Background())
+	profileResult1, profileErr1 := Do(ctx1, profileTask, testInput1)
+
+	// Execution for second context
+	ctx2 := NewTasksCtx(context.Background())
+	profileResult2, profileErr2 := Do(ctx2, profileTask, testInput2)
+
+	// --- VERIFICATIONS ---
+	if profileErr1 != nil {
+		t.Errorf("Expected no error from first profile, got %v", profileErr1)
+	}
+	if profileErr2 != nil {
+		t.Errorf("Expected no error from second profile, got %v", profileErr2)
+	}
+
+	expectedUserData1 := "user-test_input_1-123"
+	expectedUser2Data1 := "user2-test_input_1_alt-123"
+	if profileResult1["user"] != expectedUserData1 {
+		t.Errorf("Expected profile1.user to be '%s', got '%s'", expectedUserData1, profileResult1["user"])
+	}
+	if profileResult1["user2"] != expectedUser2Data1 {
+		t.Errorf("Expected profile1.user2 to be '%s', got '%s'", expectedUser2Data1, profileResult1["user2"])
+	}
+
+	expectedUserData2 := "user-test_input_2-123"
+	expectedUser2Data2 := "user2-test_input_2_alt-123"
+	if profileResult2["user"] != expectedUserData2 {
+		t.Errorf("Expected profile2.user to be '%s', got '%s'", expectedUserData2, profileResult2["user"])
+	}
+	if profileResult2["user2"] != expectedUser2Data2 {
+		t.Errorf("Expected profile2.user2 to be '%s', got '%s'", expectedUser2Data2, profileResult2["user2"])
+	}
+
+	if atomic.LoadInt32(&authCounter) != 2 {
+		t.Errorf("Expected authTask to run twice (once per context), ran %d times", authCounter)
+	}
+	if atomic.LoadInt32(&userCounter) != 2 {
+		t.Errorf("Expected userTask to run twice, ran %d times", userCounter)
+	}
+	if atomic.LoadInt32(&user2Counter) != 2 {
+		t.Errorf("Expected user2Task to run twice, ran %d times", user2Counter)
+	}
+	if atomic.LoadInt32(&profileCounter) != 2 {
+		t.Errorf("Expected profileTask to run twice, ran %d times", profileCounter)
+	}
+
+	// Verify execution order for key events
+	verifyExecutionOrder := func(events [2]string, message string) {
+		executionMu.Lock()
+		defer executionMu.Unlock()
+		firstIndex := -1
+		// Find the first event
+		for i, event := range executionOrder {
+			if event == events[0] {
+				firstIndex = i
+				break
 			}
+		}
+		if firstIndex == -1 {
+			t.Errorf("Execution order event not found: %s. Order: %v", events[0], executionOrder)
+			return
+		}
+		// Search for the second event *after* the first one
+		for i := firstIndex + 1; i < len(executionOrder); i++ {
+			if executionOrder[i] == events[1] {
+				return // Found in correct order
+			}
+		}
+		t.Errorf("Expected '%s' to appear after '%s', but it didn't. Order: %v. Message: %s", events[1], events[0], executionOrder, message)
+	}
 
-			// Simulate work
+	// Check that auth completes before its dependents can finish
+	verifyExecutionOrder([2]string{"auth-end", "user-end"}, "userTask should finish after authTask")
+	verifyExecutionOrder([2]string{"auth-end", "user2-end"}, "user2Task should finish after authTask")
+
+	// Check that the top-level profile task finishes after its own dependents
+	verifyExecutionOrder([2]string{"user-end", "profile-end"}, "profileTask should finish after userTask")
+	verifyExecutionOrder([2]string{"user2-end", "profile-end"}, "profileTask should finish after user2Task")
+
+	// Log for diagnostics if needed
+	t.Logf("Execution order: %v", executionOrder)
+}
+
+func TestTasksWithDifferentInputs(t *testing.T) {
+	t.Run("Same_Input_Uses_Cache", func(t *testing.T) {
+		var execCount int32
+		task := NewTask(func(ctx *TasksCtx, input string) (string, error) {
+			atomic.AddInt32(&execCount, 1)
+			return "result-" + input, nil
+		})
+
+		ctx := NewTasksCtx(context.Background())
+
+		// Call 3 times with same input
+		r1, _ := Do(ctx, task, "foo")
+		r2, _ := Do(ctx, task, "foo")
+		r3, _ := Do(ctx, task, "foo")
+
+		if r1 != "result-foo" || r2 != "result-foo" || r3 != "result-foo" {
+			t.Error("Expected same result for same input")
+		}
+
+		if execCount != 1 {
+			t.Errorf("Expected task to execute once, executed %d times", execCount)
+		}
+	})
+
+	t.Run("Different_Inputs_Execute_Separately", func(t *testing.T) {
+		var execCount int32
+		execInputs := make([]string, 0)
+		var mu sync.Mutex
+
+		task := NewTask(func(ctx *TasksCtx, input string) (string, error) {
+			atomic.AddInt32(&execCount, 1)
+			mu.Lock()
+			execInputs = append(execInputs, input)
+			mu.Unlock()
+			return "result-" + input, nil
+		})
+
+		ctx := NewTasksCtx(context.Background())
+
+		// Call with different inputs
+		r1, _ := Do(ctx, task, "foo")
+		r2, _ := Do(ctx, task, "bar")
+		r3, _ := Do(ctx, task, "baz")
+
+		// Call again with same inputs (should use cache)
+		r1b, _ := Do(ctx, task, "foo")
+		r2b, _ := Do(ctx, task, "bar")
+
+		// Verify results
+		if r1 != "result-foo" || r1b != "result-foo" {
+			t.Error("Expected consistent results for 'foo'")
+		}
+		if r2 != "result-bar" || r2b != "result-bar" {
+			t.Error("Expected consistent results for 'bar'")
+		}
+		if r3 != "result-baz" {
+			t.Error("Expected correct result for 'baz'")
+		}
+
+		// Should execute exactly 3 times (once per unique input)
+		if execCount != 3 {
+			t.Errorf("Expected 3 executions, got %d", execCount)
+		}
+
+		// Verify it saw all 3 inputs
+		if len(execInputs) != 3 {
+			t.Errorf("Expected 3 inputs recorded, got %d", len(execInputs))
+		}
+	})
+
+	t.Run("Different_Input_Types", func(t *testing.T) {
+		// Test with int inputs
+		intTask := NewTask(func(ctx *TasksCtx, input int) (int, error) {
+			return input * 2, nil
+		})
+
+		ctx := NewTasksCtx(context.Background())
+
+		r1, _ := Do(ctx, intTask, 5)
+		r2, _ := Do(ctx, intTask, 10)
+		r3, _ := Do(ctx, intTask, 5) // Same as r1
+
+		if r1 != 10 || r3 != 10 {
+			t.Error("Expected same result for same int input")
+		}
+		if r2 != 20 {
+			t.Error("Expected different result for different int input")
+		}
+	})
+
+	t.Run("Struct_Inputs", func(t *testing.T) {
+		type Person struct {
+			Name string
+			Age  int
+		}
+
+		var execCount int32
+		task := NewTask(func(ctx *TasksCtx, p Person) (string, error) {
+			atomic.AddInt32(&execCount, 1)
+			return fmt.Sprintf("%s is %d", p.Name, p.Age), nil
+		})
+
+		ctx := NewTasksCtx(context.Background())
+
+		p1 := Person{Name: "Alice", Age: 30}
+		p2 := Person{Name: "Bob", Age: 25}
+
+		r1, _ := Do(ctx, task, p1)
+		r2, _ := Do(ctx, task, p2)
+		r3, _ := Do(ctx, task, p1) // Same as first
+
+		if r1 != "Alice is 30" || r3 != "Alice is 30" {
+			t.Error("Expected same result for same struct")
+		}
+		if r2 != "Bob is 25" {
+			t.Error("Expected different result for different struct")
+		}
+
+		if execCount != 2 {
+			t.Errorf("Expected 2 executions, got %d", execCount)
+		}
+	})
+
+	t.Run("Parallel_Different_Inputs", func(t *testing.T) {
+		var execCount int32
+		task := NewTask(func(ctx *TasksCtx, input string) (string, error) {
+			atomic.AddInt32(&execCount, 1)
 			time.Sleep(50 * time.Millisecond)
-
-			recordExecution("auth-end")
-			return 123, nil
+			return "result-" + input, nil
 		})
 
-		// Track User execution details
-		var userCounter int
-		var userInputs []string
-		var userTokens []int
-		var userMu sync.Mutex
+		ctx := NewTasksCtx(context.Background())
 
-		// This simulates the User task
-		userTask := Register(registry, func(c *Arg[string]) (string, error) {
-			recordExecution("user-start")
-			userMu.Lock()
-			userCounter++
-			userInputs = append(userInputs, c.Input)
-			userMu.Unlock()
+		var result1, result2, result3 string
+		err := Go(ctx,
+			Bind(task, "alpha").AssignTo(&result1),
+			Bind(task, "beta").AssignTo(&result2),
+			Bind(task, "alpha").AssignTo(&result3), // Duplicate
+		)
 
-			// Validate input is properly passed
-			if c.Input == "" {
-				t.Error("Expected non-empty input in userTask")
-			}
-
-			// Validate context is properly passed
-			if c.TasksCtx == nil {
-				t.Error("TasksCtx is nil in userTask")
-			}
-
-			// Critical: Get auth token first
-			token, err := authTask.PrepNoInput(c.TasksCtx).Get()
-			if err != nil {
-				return "", err
-			}
-
-			userMu.Lock()
-			userTokens = append(userTokens, token)
-			userMu.Unlock()
-
-			// Simulate additional work
-			time.Sleep(25 * time.Millisecond)
-
-			recordExecution("user-end")
-			return fmt.Sprintf("user-%s-%d", c.Input, token), nil
-		})
-
-		// Track User2 execution details
-		var user2Counter int
-		var user2Inputs []string
-		var user2Tokens []int
-		var user2Mu sync.Mutex
-
-		// This simulates the User2 task
-		user2Task := Register(registry, func(c *Arg[string]) (string, error) {
-			recordExecution("user2-start")
-			user2Mu.Lock()
-			user2Counter++
-			user2Inputs = append(user2Inputs, c.Input)
-			user2Mu.Unlock()
-
-			// Validate input is properly passed
-			if c.Input == "" {
-				t.Error("Expected non-empty input in user2Task")
-			}
-
-			// Validate context is properly passed
-			if c.TasksCtx == nil {
-				t.Error("TasksCtx is nil in user2Task")
-			}
-
-			// Critical: Get auth token first
-			token, err := authTask.PrepNoInput(c.TasksCtx).Get()
-			if err != nil {
-				return "", err
-			}
-
-			user2Mu.Lock()
-			user2Tokens = append(user2Tokens, token)
-			user2Mu.Unlock()
-
-			// Simulate additional work
-			time.Sleep(25 * time.Millisecond)
-
-			recordExecution("user2-end")
-			return fmt.Sprintf("user2-%s-%d", c.Input, token), nil
-		})
-
-		// Track Profile execution
-		var profileCounter int
-		var profileMu sync.Mutex
-
-		// This simulates the Profile task that uses both User and User2
-		profileTask := Register(registry, func(c *Arg[string]) (map[string]string, error) {
-			recordExecution("profile-start")
-			profileMu.Lock()
-			profileCounter++
-			profileMu.Unlock()
-
-			// Validate input is properly passed
-			if c.Input == "" {
-				t.Error("Expected non-empty input in profileTask")
-			}
-
-			userPrep := userTask.Prep(c.TasksCtx, c.Input)
-			user2Prep := user2Task.Prep(c.TasksCtx, c.Input+"_alt") // Different input to verify it's passed correctly
-
-			// Execute both tasks in parallel
-			ok := c.TasksCtx.ParallelPreload(userPrep, user2Prep)
-			if !ok {
-				return nil, fmt.Errorf("ParallelPreload failed")
-			}
-
-			// Get results from both tasks
-			userData, userErr := userPrep.Get()
-			user2Data, user2Err := user2Prep.Get()
-
-			if userErr != nil || user2Err != nil {
-				return nil, fmt.Errorf("task errors: %v, %v", userErr, user2Err)
-			}
-
-			// Simulate additional work
-			time.Sleep(25 * time.Millisecond)
-
-			recordExecution("profile-end")
-
-			results := map[string]string{
-				"user":   userData,
-				"user2":  user2Data,
-				"status": "complete",
-			}
-
-			return results, nil
-		})
-
-		// Different test inputs
-		const testInput1 = "test_input_1"
-		const testInput2 = "test_input_2"
-
-		// This tests sequential execution
-		ctx1 := registry.NewCtxFromNativeContext(context.Background())
-		profileResult1, profileErr1 := profileTask.Prep(ctx1, testInput1).Get()
-
-		// This tests concurrent execution of multiple profiles
-		ctx2 := registry.NewCtxFromNativeContext(context.Background())
-		profilePrep2 := profileTask.Prep(ctx2, testInput2)
-
-		profileResult2, profileErr2 := profilePrep2.Get()
-
-		// VERIFICATIONS
-
-		// 1. Verify no errors
-		if profileErr1 != nil {
-			t.Errorf("Expected no error from first profile, got %v", profileErr1)
-		}
-		if profileErr2 != nil {
-			t.Errorf("Expected no error from second profile, got %v", profileErr2)
+		if err != nil {
+			t.Fatal(err)
 		}
 
-		// 2. Verify correct profile results
-		expectedUserData1 := fmt.Sprintf("user-%s-%d", testInput1, 123)
-		expectedUser2Data1 := fmt.Sprintf("user2-%s_alt-%d", testInput1, 123)
-
-		if profileResult1["user"] != expectedUserData1 {
-			t.Errorf("Expected profile1.user to be '%s', got '%s'",
-				expectedUserData1, profileResult1["user"])
+		if result1 != "result-alpha" || result3 != "result-alpha" {
+			t.Error("Expected same result for 'alpha'")
 		}
-		if profileResult1["user2"] != expectedUser2Data1 {
-			t.Errorf("Expected profile1.user2 to be '%s', got '%s'",
-				expectedUser2Data1, profileResult1["user2"])
+		if result2 != "result-beta" {
+			t.Error("Expected different result for 'beta'")
 		}
 
-		expectedUserData2 := fmt.Sprintf("user-%s-%d", testInput2, 123)
-		expectedUser2Data2 := fmt.Sprintf("user2-%s_alt-%d", testInput2, 123)
-
-		if profileResult2["user"] != expectedUserData2 {
-			t.Errorf("Expected profile2.user to be '%s', got '%s'",
-				expectedUserData2, profileResult2["user"])
+		// Should only execute twice (alpha and beta)
+		if execCount != 2 {
+			t.Errorf("Expected 2 executions, got %d", execCount)
 		}
-		if profileResult2["user2"] != expectedUser2Data2 {
-			t.Errorf("Expected profile2.user2 to be '%s', got '%s'",
-				expectedUser2Data2, profileResult2["user2"])
-		}
-
-		// 3. Verify task counters
-		if authCounter != 2 {
-			t.Errorf("Expected authTask to run exactly twice (once per context), ran %d times", authCounter)
-		}
-		if userCounter != 2 {
-			t.Errorf("Expected userTask to run exactly twice, ran %d times", userCounter)
-		}
-		if user2Counter != 2 {
-			t.Errorf("Expected user2Task to run exactly twice, ran %d times", user2Counter)
-		}
-		if profileCounter != 2 {
-			t.Errorf("Expected profileTask to run exactly twice, ran %d times", profileCounter)
-		}
-
-		// 4. Verify input propagation to tasks
-		expectedUserInputs := []string{testInput1, testInput2}
-		for i, input := range userInputs {
-			if i < len(expectedUserInputs) && input != expectedUserInputs[i] {
-				t.Errorf("Expected userTask input %d to be '%s', got '%s'",
-					i, expectedUserInputs[i], input)
-			}
-		}
-
-		expectedUser2Inputs := []string{testInput1 + "_alt", testInput2 + "_alt"}
-		for i, input := range user2Inputs {
-			if i < len(expectedUser2Inputs) && input != expectedUser2Inputs[i] {
-				t.Errorf("Expected user2Task input %d to be '%s', got '%s'",
-					i, expectedUser2Inputs[i], input)
-			}
-		}
-
-		// 5. Verify token values
-		for i, token := range userTokens {
-			if token != 123 {
-				t.Errorf("Expected userTask token %d to be 123, got %d", i, token)
-			}
-		}
-
-		for i, token := range user2Tokens {
-			if token != 123 {
-				t.Errorf("Expected user2Task token %d to be 123, got %d", i, token)
-			}
-		}
-
-		// 6. Verify execution order for key events
-		// While we can't fully predict the exact interleaving due to parallel execution,
-		// we can verify certain ordering constraints
-
-		verifyExecutionOrder := func(events []string, message string) bool {
-			for i := range len(executionOrder) {
-				if executionOrder[i] == events[0] {
-					match := true
-					for j := 1; j < len(events); j++ {
-						if i+j >= len(executionOrder) || executionOrder[i+j] != events[j] {
-							match = false
-							break
-						}
-					}
-					if match {
-						return true
-					}
-				}
-			}
-			t.Errorf("Expected execution order sequence not found: %s. Actual order: %v", message, executionOrder)
-			return false
-		}
-
-		// Verify auth completes before dependent tasks finish
-		verifyExecutionOrder([]string{"auth-start", "auth-end"}, "Auth task should complete")
-
-		// Additional diagnostic info if the test fails
-		t.Logf("Execution order: %v", executionOrder)
-		t.Logf("User inputs: %v", userInputs)
-		t.Logf("User2 inputs: %v", user2Inputs)
-		t.Logf("User tokens: %v", userTokens)
-		t.Logf("User2 tokens: %v", user2Tokens)
 	})
 }

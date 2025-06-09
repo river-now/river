@@ -1,8 +1,9 @@
-package port
+package netutil
 
 import (
 	"fmt"
 	"net"
+	"strings"
 )
 
 // GetFreePort returns a free port number. If the default port
@@ -70,4 +71,22 @@ func GetRandomFreePort() (port int, err error) {
 		}
 	}
 	return
+}
+
+func IsLocalhost(host string) bool {
+	splitHost, _, err := net.SplitHostPort(host)
+	if err != nil {
+		splitHost = host
+		if strings.HasPrefix(splitHost, "[") && strings.HasSuffix(splitHost, "]") {
+			splitHost = splitHost[1 : len(splitHost)-1]
+		}
+	}
+	if strings.EqualFold(splitHost, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(splitHost)
+	if ip == nil {
+		return false
+	}
+	return ip.IsLoopback()
 }
