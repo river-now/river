@@ -36,7 +36,7 @@ describe("debounce", () => {
 		const debounced = debounce(spy, 100);
 
 		// first call
-		const p1 = debounced(5);
+		const _p1 = debounced(5);
 		// before it fires, call again
 		vi.advanceTimersByTime(50);
 		const p2 = debounced(6);

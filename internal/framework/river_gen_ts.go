@@ -93,8 +93,6 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 		seen[path.OriginalPattern] = struct{}{}
 	}
 
-	hasQueries, hasMutations := false, false
-
 	for _, action := range allActions {
 		method, pattern := action.Method(), action.OriginalPattern()
 		_, isQuery := queryMethods[method]
@@ -102,8 +100,6 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 		if !isQuery && !isMutation {
 			continue
 		}
-		hasQueries = hasQueries || isQuery
-		hasMutations = hasMutations || isMutation
 		categoryPropertyName := "query"
 		if isMutation {
 			categoryPropertyName = "mutation"
@@ -113,6 +109,9 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 				base.DiscriminatorStr:     pattern,
 				base.CategoryPropertyName: categoryPropertyName,
 			},
+		}
+		if isMutation && method != http.MethodPost {
+			item.ArbitraryProperties["method"] = method
 		}
 		params := extractDynamicParamsFromPattern(pattern, actionsDynamicRune)
 		item.ArbitraryProperties["params"] = params
@@ -125,45 +124,59 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 		collection = append(collection, item)
 	}
 
-	hasLoaders := len(allLoaders) > 0
-
 	categories := []rpc.CategorySpecificOptions{}
-	if hasLoaders {
-		categories = append(categories, rpc.CategorySpecificOptions{
-			BaseOptions:          base,
-			CategoryValue:        "loader",
-			ItemTypeNameSingular: "RiverLoader",
-			ItemTypeNamePlural:   "RiverLoaders",
-			KeyUnionTypeName:     "RiverLoaderPattern",
-			InputUnionTypeName:   "",
-			OutputUnionTypeName:  "RiverLoaderOutput",
-			SkipInput:            true,
-		})
-	}
-	if hasQueries {
-		categories = append(categories, rpc.CategorySpecificOptions{
-			BaseOptions:          base,
-			CategoryValue:        "query",
-			ItemTypeNameSingular: "RiverQuery",
-			ItemTypeNamePlural:   "RiverQueries",
-			KeyUnionTypeName:     "RiverQueryPattern",
-			InputUnionTypeName:   "RiverQueryInput",
-			OutputUnionTypeName:  "RiverQueryOutput",
-		})
-	}
-	if hasMutations {
-		categories = append(categories, rpc.CategorySpecificOptions{
-			BaseOptions:          base,
-			CategoryValue:        "mutation",
-			ItemTypeNameSingular: "RiverMutation",
-			ItemTypeNamePlural:   "RiverMutations",
-			KeyUnionTypeName:     "RiverMutationPattern",
-			InputUnionTypeName:   "RiverMutationInput",
-			OutputUnionTypeName:  "RiverMutationOutput",
-		})
-	}
+	categories = append(categories, rpc.CategorySpecificOptions{
+		BaseOptions:          base,
+		CategoryValue:        "loader",
+		ItemTypeNameSingular: "RiverLoader",
+		ItemTypeNamePlural:   "RiverLoaders",
+		KeyUnionTypeName:     "RiverLoaderPattern",
+		InputUnionTypeName:   "",
+		OutputUnionTypeName:  "RiverLoaderOutput",
+		SkipInput:            true,
+	})
+	categories = append(categories, rpc.CategorySpecificOptions{
+		BaseOptions:          base,
+		CategoryValue:        "query",
+		ItemTypeNameSingular: "RiverQuery",
+		ItemTypeNamePlural:   "RiverQueries",
+		KeyUnionTypeName:     "RiverQueryPattern",
+		InputUnionTypeName:   "RiverQueryInput",
+		OutputUnionTypeName:  "RiverQueryOutput",
+	})
+	categories = append(categories, rpc.CategorySpecificOptions{
+		BaseOptions:          base,
+		CategoryValue:        "mutation",
+		ItemTypeNameSingular: "RiverMutation",
+		ItemTypeNamePlural:   "RiverMutations",
+		KeyUnionTypeName:     "RiverMutationPattern",
+		InputUnionTypeName:   "RiverMutationInput",
+		OutputUnionTypeName:  "RiverMutationOutput",
+	})
 
 	extraTSToUse := rpc.BuildFromCategories(categories)
+
+	extraTSToUse += `export type RiverMutationMethod<T extends RiverMutationPattern> = Extract<
+	RiverMutation,
+	{ pattern: T }
+> extends { method: infer M }
+	? M extends string
+		? M
+		: "POST"
+	: "POST";
+
+import type { SharedBase } from "river.now/client";
+
+export type BaseQueryPropsWithInput<P extends RiverQueryPattern> = SharedBase<P> & {
+	input: RiverQueryInput<P>;
+};
+export type BaseMutationPropsWithInput<P extends RiverMutationPattern> = SharedBase<P> &
+	(RiverMutationMethod<P> extends "POST"
+		? { method?: "POST" }
+		: { method: RiverMutationMethod<P> }) & {
+		input: RiverMutationInput<P>;
+	};
+`
 
 	if foundRootData {
 		extraTSToUse += "\nexport type RiverRootData = Extract<(typeof routes)[number], { isRootData: true }>[\"phantomOutputType\"];\n"
@@ -171,25 +184,11 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 		extraTSToUse += "export type RiverRootData = null;\n"
 	}
 
-	if hasLoaders || hasQueries || hasMutations {
-		fTypeIn := []string{}
-		pTypeIn := []string{}
-		if hasLoaders {
-			fTypeIn = append(fTypeIn, "RiverLoader")
-			pTypeIn = append(pTypeIn, "RiverLoaderPattern")
-		}
-		if hasQueries {
-			fTypeIn = append(fTypeIn, "RiverQuery")
-			pTypeIn = append(pTypeIn, "RiverQueryPattern")
-		}
-		if hasMutations {
-			fTypeIn = append(fTypeIn, "RiverMutation")
-			pTypeIn = append(pTypeIn, "RiverMutationPattern")
-		}
-		extraTSToUse += "type RiverFunction = " + tsgen.TypeUnion(fTypeIn) + ";\n"
-		extraTSToUse += "type RiverPattern = " + tsgen.TypeUnion(pTypeIn) + ";\n"
-		extraTSToUse += `export type RiverRouteParams<T extends RiverPattern> = (Extract<RiverFunction, { pattern: T }>["params"])[number];` + "\n"
-	}
+	fTypeIn := []string{"RiverLoader", "RiverQuery", "RiverMutation"}
+	pTypeIn := []string{"RiverLoaderPattern", "RiverQueryPattern", "RiverMutationPattern"}
+	extraTSToUse += "type RiverFunction = " + tsgen.TypeUnion(fTypeIn) + ";\n"
+	extraTSToUse += "type RiverPattern = " + tsgen.TypeUnion(pTypeIn) + ";\n"
+	extraTSToUse += `export type RiverRouteParams<T extends RiverPattern> = (Extract<RiverFunction, { pattern: T }>["params"])[number];` + "\n"
 
 	if opts.ExtraTSCode != "" {
 		extraTSToUse += "\n" + opts.ExtraTSCode

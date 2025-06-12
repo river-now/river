@@ -79,8 +79,6 @@ var (
 	backend_static_entry_go_html_str_txt string
 	//go:embed tmpls/backend_router_actions_go_tmpl.txt
 	backend_router_actions_go_tmpl_txt string
-	//go:embed tmpls/backend_router_tasks_registry_go_tmpl.txt
-	backend_router_tasks_registry_go_tmpl_txt string
 	//go:embed tmpls/backend_router_core_go_tmpl.txt
 	backend_router_core_go_tmpl_txt string
 	//go:embed tmpls/backend_router_loaders_go_tmpl.txt
@@ -115,6 +113,8 @@ var (
 	frontend_home_tsx_tmpl_txt string
 	//go:embed tmpls/frontend_app_utils_ts_tmpl.txt
 	frontend_app_tsx_utils_tmpl_txt string
+	//go:embed tmpls/frontend_api_client_ts_str.txt
+	frontend_api_client_ts_str_txt string
 	//go:embed tmpls/ts_config_json_tmpl.txt
 	tsconfig_json_tmpl_txt string
 )
@@ -138,7 +138,6 @@ func Init(o Options) {
 	do.tmplWriteMust("__dist/static/.keep", dist_static_keep_tmpl_txt)
 	strWriteMust("backend/__static/entry.go.html", backend_static_entry_go_html_str_txt)
 	do.tmplWriteMust("backend/router/actions.go", backend_router_actions_go_tmpl_txt)
-	do.tmplWriteMust("backend/router/tasks_registry.go", backend_router_tasks_registry_go_tmpl_txt)
 	do.tmplWriteMust("backend/router/core.go", backend_router_core_go_tmpl_txt)
 	do.tmplWriteMust("backend/router/loaders.go", backend_router_loaders_go_tmpl_txt)
 	do.tmplWriteMust("backend/server/server.go", backend_server_server_go_tmpl_txt)
@@ -153,6 +152,7 @@ func Init(o Options) {
 	do.tmplWriteMust("frontend/app.tsx", frontend_app_tsx_tmpl_txt)
 	do.tmplWriteMust("frontend/home.tsx", frontend_home_tsx_tmpl_txt)
 	do.tmplWriteMust("frontend/app_utils.ts", frontend_app_tsx_utils_tmpl_txt)
+	strWriteMust("frontend/api_client.ts", frontend_api_client_ts_str_txt)
 
 	// last
 	do.tmplWriteMust("tsconfig.json", tsconfig_json_tmpl_txt)

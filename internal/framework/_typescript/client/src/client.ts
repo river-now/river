@@ -2,6 +2,7 @@
 
 import { createBrowserHistory, type Update } from "history";
 import { debounce } from "river.now/kit/debounce";
+import { jsonDeepEquals } from "river.now/kit/json";
 import {
 	getAnchorDetailsFromEvent,
 	getHrefDetails,
@@ -669,22 +670,34 @@ export async function submit<T = any>(
 ): Promise<{ success: true; data: T } | { success: false; error: string }> {
 	const submitRes = await submitInner(url, requestInit);
 	const isGET = getIsGETRequest(requestInit);
+	const needsRevalidation = !submitRes.alreadyRevalidated && !isGET;
+
+	async function handleReval() {
+		if (needsRevalidation) {
+			// We want to set revalidation status to true before
+			// turning off submission status so there is no flicker
+			// of "all-off" loading state between submission and
+			// revalidation.
+			setLoadingStatus({ type: "revalidation", value: true });
+			setLoadingStatus({ type: "submission", value: false });
+			await revalidate();
+		} else {
+			setLoadingStatus({ type: "submission", value: false });
+		}
+	}
+
+	await handleReval();
 
 	if (!submitRes.success) {
 		LogError(submitRes.error);
-		if (!submitRes.alreadyRevalidated && !isGET) {
-			await revalidate();
-		}
 		return { success: false, error: submitRes.error };
 	}
 
 	try {
 		const json = await submitRes.response.json();
-		if (!submitRes.alreadyRevalidated && !isGET) {
-			await revalidate();
-		}
 		return { success: true, data: json as T };
 	} catch (e) {
+		LogError(e);
 		return {
 			success: false,
 			error: e instanceof Error ? e.message : "Unknown error",
@@ -733,26 +746,19 @@ async function submitInner(
 		navigationState.submissions.delete(submissionKey);
 
 		if (response && getIsErrorRes(response)) {
-			setLoadingStatus({ type: "submission", value: false });
 			return {
 				success: false,
 				error: String(response.status),
 				alreadyRevalidated: redirected,
 			} as const;
 		}
-
 		if (didAbort) {
-			if (!isGET) {
-				// resets status bool
-				await revalidate();
-			}
 			return {
 				success: false,
 				error: "Aborted",
-				alreadyRevalidated: true,
+				alreadyRevalidated: false,
 			} as const;
 		}
-
 		if (!response?.ok) {
 			const msg = String(response?.status || "unknown");
 			return {
@@ -761,9 +767,6 @@ async function submitInner(
 				alreadyRevalidated: redirected,
 			} as const;
 		}
-
-		setLoadingStatus({ type: "submission", value: false });
-
 		return {
 			success: true,
 			response,
@@ -778,10 +781,7 @@ async function submitInner(
 				alreadyRevalidated: false,
 			} as const;
 		}
-
 		LogError(error);
-		setLoadingStatus({ type: "submission", value: false });
-
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",
@@ -831,21 +831,26 @@ type StatusEventDetail = {
 export type StatusEvent = CustomEvent<StatusEventDetail>;
 
 let dispatchStatusEventDebounceTimer: number | undefined;
+let lastStatusEvent: StatusEventDetail | null = null;
+
+const STATUS_EVENT_DEBOUNCE_MS = 5;
 
 function dispatchStatusEvent() {
 	clearTimeout(dispatchStatusEventDebounceTimer);
-
 	dispatchStatusEventDebounceTimer = window.setTimeout(() => {
+		const newStatusEvent: StatusEventDetail = {
+			isNavigating,
+			isSubmitting,
+			isRevalidating,
+		};
+		if (jsonDeepEquals(lastStatusEvent, newStatusEvent)) {
+			return;
+		}
+		lastStatusEvent = newStatusEvent;
 		window.dispatchEvent(
-			new CustomEvent(STATUS_EVENT_KEY, {
-				detail: {
-					isRevalidating,
-					isSubmitting,
-					isNavigating,
-				} satisfies StatusEventDetail,
-			}),
+			new CustomEvent(STATUS_EVENT_KEY, { detail: newStatusEvent }),
 		);
-	}, 1);
+	}, STATUS_EVENT_DEBOUNCE_MS);
 }
 
 export function getStatus(): StatusEventDetail {
@@ -901,13 +906,11 @@ type RerenderAppProps = {
 
 async function __reRenderApp(props: RerenderAppProps) {
 	setLoadingStatus({ type: props.navigationType, value: false });
-
 	const shouldUseViewTransitions =
 		internal_RiverClientGlobal.get("useViewTransitions") &&
 		!!document.startViewTransition &&
 		props.navigationType !== "prefetch" &&
 		props.navigationType !== "revalidation";
-
 	if (shouldUseViewTransitions) {
 		const transition = document.startViewTransition(async () => {
 			await __reRenderAppInner(props);
@@ -915,7 +918,6 @@ async function __reRenderApp(props: RerenderAppProps) {
 		await transition.finished;
 		return;
 	}
-
 	await __reRenderAppInner(props);
 }
 
@@ -1050,7 +1052,6 @@ let devTimeSetupClientLoadersDebounced: () => Promise<void> = () => Promise.reso
 
 if (import.meta.env.DEV) {
 	(window as any).__waveRevalidate = revalidate;
-
 	devTimeSetupClientLoadersDebounced = debounce(async () => {
 		setLoadingStatus({ type: "revalidation", value: true });
 		await setupClientLoaders();

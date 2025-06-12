@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/river-now/river/kit/htmlutil"
-	"github.com/river-now/river/kit/port"
+	"github.com/river-now/river/kit/netutil"
 	"github.com/river-now/river/kit/stringsutil"
 )
 
@@ -161,7 +161,7 @@ func stripPrecedingSlash(s string) string {
 const PortEnvName = "__VITE_PORT"
 
 func InitPort(defaultPort int) (int, error) {
-	vitePort, err := port.GetFreePort(5199)
+	vitePort, err := netutil.GetFreePort(5199)
 	if err != nil {
 		return 0, err
 	}
