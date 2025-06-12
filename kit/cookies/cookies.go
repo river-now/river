@@ -64,7 +64,8 @@ func (mgr *Manager) GetIsDev() bool {
 }
 
 type SecureCookieConfig struct {
-	// Do not prefix the name with "__Host-". Prefixing is handled internally.
+	Manager *Manager // Required.
+	// Required. Do not prefix the name with "__Host-". Prefixing is handled internally.
 	Name      string
 	TTL       time.Duration
 	SameSite  SameSite
@@ -73,6 +74,7 @@ type SecureCookieConfig struct {
 }
 
 type SecureCookieNonHostOnlyConfig struct {
+	Manager   *Manager // Required.
 	Name      string
 	TTL       time.Duration
 	SameSite  SameSite
@@ -83,7 +85,8 @@ type SecureCookieNonHostOnlyConfig struct {
 }
 
 type ClientReadableCookieConfig struct {
-	// Do not prefix the name with "__Host-". Prefixing is handled internally.
+	Manager *Manager // Required.
+	// Required. Do not prefix the name with "__Host-". Prefixing is handled internally.
 	Name      string
 	TTL       time.Duration
 	SameSite  SameSite
@@ -91,6 +94,7 @@ type ClientReadableCookieConfig struct {
 }
 
 type ClientReadableCookieNonHostOnlyConfig struct {
+	Manager   *Manager // Required.
 	Name      string
 	TTL       time.Duration
 	SameSite  SameSite
@@ -217,7 +221,7 @@ func (c *secureCookie[T]) NewDeletion() *http.Cookie {
 	return cookie
 }
 
-func (c *secureCookie[T]) SetProxy(rp *response.Proxy, value T) error {
+func (c *secureCookie[T]) SetWithProxy(rp *response.Proxy, value T) error {
 	cookie, err := c.New(value)
 	if err != nil {
 		return fmt.Errorf("failed to create secure cookie: %w", err)
@@ -225,7 +229,7 @@ func (c *secureCookie[T]) SetProxy(rp *response.Proxy, value T) error {
 	rp.SetCookie(cookie)
 	return nil
 }
-func (c *secureCookie[T]) SetWriter(w http.ResponseWriter, value T) error {
+func (c *secureCookie[T]) SetWithWriter(w http.ResponseWriter, value T) error {
 	cookie, err := c.New(value)
 	if err != nil {
 		return fmt.Errorf("failed to create secure cookie: %w", err)
@@ -233,11 +237,11 @@ func (c *secureCookie[T]) SetWriter(w http.ResponseWriter, value T) error {
 	http.SetCookie(w, cookie)
 	return nil
 }
-func (c *secureCookie[T]) DeleteProxy(rp *response.Proxy) {
+func (c *secureCookie[T]) ClearWithProxy(rp *response.Proxy) {
 	cookie := c.NewDeletion()
 	rp.SetCookie(cookie)
 }
-func (c *secureCookie[T]) DeleteWriter(w http.ResponseWriter) {
+func (c *secureCookie[T]) ClearWithWriter(w http.ResponseWriter) {
 	cookie := c.NewDeletion()
 	http.SetCookie(w, cookie)
 }
@@ -281,19 +285,19 @@ func (c *clientReadableCookie[T]) NewDeletion() *http.Cookie {
 	return cookie
 }
 
-func (c *clientReadableCookie[T]) SetProxy(rp *response.Proxy, value T) {
+func (c *clientReadableCookie[T]) SetWithProxy(rp *response.Proxy, value T) {
 	cookie := c.New(value)
 	rp.SetCookie(cookie)
 }
-func (c *clientReadableCookie[T]) SetWriter(w http.ResponseWriter, value T) {
+func (c *clientReadableCookie[T]) SetWithWriter(w http.ResponseWriter, value T) {
 	cookie := c.New(value)
 	http.SetCookie(w, cookie)
 }
-func (c *clientReadableCookie[T]) DeleteProxy(rp *response.Proxy) {
+func (c *clientReadableCookie[T]) ClearWithProxy(rp *response.Proxy) {
 	cookie := c.NewDeletion()
 	rp.SetCookie(cookie)
 }
-func (c *clientReadableCookie[T]) DeleteWriter(w http.ResponseWriter) {
+func (c *clientReadableCookie[T]) ClearWithWriter(w http.ResponseWriter) {
 	cookie := c.NewDeletion()
 	http.SetCookie(w, cookie)
 }
@@ -309,70 +313,98 @@ type SecureCookie[T any] struct {
 	secureCookie[T]
 }
 
-func NewSecureCookie[T any](mgr *Manager, cfg SecureCookieConfig) *SecureCookie[T] {
+// Panics if you fail to provide a Manager or Name via config struct.
+func NewSecureCookie[T any](cfg SecureCookieConfig) *SecureCookie[T] {
+	if cfg.Manager == nil {
+		panic("NewSecureCookie: Manager is required.")
+	}
+	if cfg.Name == "" {
+		panic("NewSecureCookie: Name is required.")
+	}
 	spec := cookieSpec{
 		name:          cfg.Name,
 		path:          "/",
 		domain:        "",
 		ttl:           cfg.TTL,
-		sameSite:      mgr.resolveSameSite(cfg.SameSite),
-		httpOnly:      mgr.resolveHttpOnly(cfg.HttpOnly),
+		sameSite:      cfg.Manager.resolveSameSite(cfg.SameSite),
+		httpOnly:      cfg.Manager.resolveHttpOnly(cfg.HttpOnly),
 		useHostPrefix: true,
-		partitioned:   mgr.resolvePartition(cfg.Partition),
+		partitioned:   cfg.Manager.resolvePartition(cfg.Partition),
 	}
-	return &SecureCookie[T]{secureCookie[T]{mgr: mgr, spec: spec}}
+	return &SecureCookie[T]{secureCookie[T]{mgr: cfg.Manager, spec: spec}}
 }
 
 type SecureCookieNonHostOnly[T any] struct {
 	secureCookie[T]
 }
 
-func NewSecureCookieNonHostOnly[T any](mgr *Manager, cfg SecureCookieNonHostOnlyConfig) *SecureCookieNonHostOnly[T] {
+// Panics if you fail to provide a Manager or Name via config struct.
+func NewSecureCookieNonHostOnly[T any](cfg SecureCookieNonHostOnlyConfig) *SecureCookieNonHostOnly[T] {
+	if cfg.Manager == nil {
+		panic("NewSecureCookieNonHostOnly: Manager is required.")
+	}
+	if cfg.Name == "" {
+		panic("NewSecureCookie: Name is required.")
+	}
 	spec := cookieSpec{
 		name:          cfg.Name,
 		path:          resolvePath(cfg.Path),
 		domain:        cfg.Domain,
 		ttl:           cfg.TTL,
-		sameSite:      mgr.resolveSameSite(cfg.SameSite),
-		httpOnly:      mgr.resolveHttpOnly(cfg.HttpOnly),
+		sameSite:      cfg.Manager.resolveSameSite(cfg.SameSite),
+		httpOnly:      cfg.Manager.resolveHttpOnly(cfg.HttpOnly),
 		useHostPrefix: false,
-		partitioned:   mgr.resolvePartition(cfg.Partition),
+		partitioned:   cfg.Manager.resolvePartition(cfg.Partition),
 	}
-	return &SecureCookieNonHostOnly[T]{secureCookie[T]{mgr: mgr, spec: spec}}
+	return &SecureCookieNonHostOnly[T]{secureCookie[T]{mgr: cfg.Manager, spec: spec}}
 }
 
 type ClientReadableCookie[T ~string] struct {
 	clientReadableCookie[T]
 }
 
-func NewClientReadableCookie[T ~string](mgr *Manager, cfg ClientReadableCookieConfig) *ClientReadableCookie[T] {
+// Panics if you fail to provide a Manager or Name via config struct.
+func NewClientReadableCookie[T ~string](cfg ClientReadableCookieConfig) *ClientReadableCookie[T] {
+	if cfg.Manager == nil {
+		panic("NewClientReadableCookie: Manager is required.")
+	}
+	if cfg.Name == "" {
+		panic("NewSecureCookie: Name is required.")
+	}
 	spec := cookieSpec{
 		name:          cfg.Name,
 		path:          "/",
 		domain:        "",
 		ttl:           cfg.TTL,
-		sameSite:      mgr.resolveSameSite(cfg.SameSite),
+		sameSite:      cfg.Manager.resolveSameSite(cfg.SameSite),
 		httpOnly:      false, // Always false for client-readable cookies
 		useHostPrefix: true,
-		partitioned:   mgr.resolvePartition(cfg.Partition),
+		partitioned:   cfg.Manager.resolvePartition(cfg.Partition),
 	}
-	return &ClientReadableCookie[T]{clientReadableCookie[T]{mgr: mgr, spec: spec}}
+	return &ClientReadableCookie[T]{clientReadableCookie[T]{mgr: cfg.Manager, spec: spec}}
 }
 
 type ClientReadableCookieNonHostOnly[T ~string] struct {
 	clientReadableCookie[T]
 }
 
-func NewClientReadableCookieNonHostOnly[T ~string](mgr *Manager, cfg ClientReadableCookieNonHostOnlyConfig) *ClientReadableCookieNonHostOnly[T] {
+// Panics if you fail to provide a Manager or Name via config struct.
+func NewClientReadableCookieNonHostOnly[T ~string](cfg ClientReadableCookieNonHostOnlyConfig) *ClientReadableCookieNonHostOnly[T] {
+	if cfg.Manager == nil {
+		panic("NewClientReadableCookieNonHostOnly: Manager is required.")
+	}
+	if cfg.Name == "" {
+		panic("NewSecureCookie: Name is required.")
+	}
 	spec := cookieSpec{
 		name:          cfg.Name,
 		path:          resolvePath(cfg.Path),
 		domain:        cfg.Domain,
 		ttl:           cfg.TTL,
-		sameSite:      mgr.resolveSameSite(cfg.SameSite),
+		sameSite:      cfg.Manager.resolveSameSite(cfg.SameSite),
 		httpOnly:      false, // Always false for client-readable cookies
 		useHostPrefix: false,
-		partitioned:   mgr.resolvePartition(cfg.Partition),
+		partitioned:   cfg.Manager.resolvePartition(cfg.Partition),
 	}
-	return &ClientReadableCookieNonHostOnly[T]{clientReadableCookie[T]{mgr: mgr, spec: spec}}
+	return &ClientReadableCookieNonHostOnly[T]{clientReadableCookie[T]{mgr: cfg.Manager, spec: spec}}
 }

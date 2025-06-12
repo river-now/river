@@ -1,4 +1,8 @@
 export {
+	apiHelper,
+	type SharedBase,
+} from "./src/api_client_helpers.ts";
+export {
 	addBuildIDListener,
 	addLocationListener,
 	addRouteChangeListener,

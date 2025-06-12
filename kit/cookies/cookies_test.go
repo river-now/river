@@ -329,9 +329,10 @@ func TestSecureCookie(t *testing.T) {
 	mgr := newTestManager(false)
 
 	t.Run("creates and retrieves encrypted string value with system defaults", func(t *testing.T) {
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{
-			Name: "secure",
-			TTL:  time.Hour,
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "secure",
+			TTL:     time.Hour,
 		})
 
 		// Create encrypted cookie
@@ -367,9 +368,10 @@ func TestSecureCookie(t *testing.T) {
 	})
 
 	t.Run("creates and retrieves encrypted struct value", func(t *testing.T) {
-		cookie := NewSecureCookie[testSessionData](mgr, SecureCookieConfig{
-			Name: "session",
-			TTL:  24 * time.Hour,
+		cookie := NewSecureCookie[testSessionData](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "session",
+			TTL:     24 * time.Hour,
 		})
 
 		sessionData := testSessionData{
@@ -401,9 +403,10 @@ func TestSecureCookie(t *testing.T) {
 	})
 
 	t.Run("returns error for missing cookie", func(t *testing.T) {
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{
-			Name: "secure",
-			TTL:  time.Hour,
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "secure",
+			TTL:     time.Hour,
 		})
 
 		req := httptest.NewRequest("GET", "/", nil)
@@ -414,9 +417,10 @@ func TestSecureCookie(t *testing.T) {
 	})
 
 	t.Run("returns error for empty cookie value", func(t *testing.T) {
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{
-			Name: "secure",
-			TTL:  time.Hour,
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "secure",
+			TTL:     time.Hour,
 		})
 
 		req := httptest.NewRequest("GET", "/", nil)
@@ -435,9 +439,10 @@ func TestSecureCookie(t *testing.T) {
 	})
 
 	t.Run("returns error for invalid encrypted data", func(t *testing.T) {
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{
-			Name: "secure",
-			TTL:  time.Hour,
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "secure",
+			TTL:     time.Hour,
 		})
 
 		req := httptest.NewRequest("GET", "/", nil)
@@ -453,9 +458,10 @@ func TestSecureCookie(t *testing.T) {
 	})
 
 	t.Run("creates deletion cookie", func(t *testing.T) {
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{
-			Name: "secure",
-			TTL:  time.Hour,
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "secure",
+			TTL:     time.Hour,
 		})
 
 		deletion := cookie.NewDeletion()
@@ -471,7 +477,8 @@ func TestSecureCookie(t *testing.T) {
 	})
 
 	t.Run("respects explicit cookie overrides", func(t *testing.T) {
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager:   mgr,
 			Name:      "secure",
 			TTL:       time.Hour,
 			SameSite:  SameSiteStrictMode,
@@ -497,11 +504,12 @@ func TestSecureCookieNonHostOnly(t *testing.T) {
 	mgr := newTestManager(false)
 
 	t.Run("creates and retrieves with custom path and domain", func(t *testing.T) {
-		cookie := NewSecureCookieNonHostOnly[string](mgr, SecureCookieNonHostOnlyConfig{
-			Name:   "api-token",
-			Path:   "/api",
-			Domain: ".example.com",
-			TTL:    24 * time.Hour,
+		cookie := NewSecureCookieNonHostOnly[string](SecureCookieNonHostOnlyConfig{
+			Manager: mgr,
+			Name:    "api-token",
+			Path:    "/api",
+			Domain:  ".example.com",
+			TTL:     24 * time.Hour,
 		})
 
 		httpCookie, err := cookie.New("api-secret-token")
@@ -535,10 +543,11 @@ func TestSecureCookieNonHostOnly(t *testing.T) {
 	})
 
 	t.Run("defaults path to / when empty", func(t *testing.T) {
-		cookie := NewSecureCookieNonHostOnly[string](mgr, SecureCookieNonHostOnlyConfig{
-			Name: "session",
-			Path: "",
-			TTL:  time.Hour,
+		cookie := NewSecureCookieNonHostOnly[string](SecureCookieNonHostOnlyConfig{
+			Manager: mgr,
+			Name:    "session",
+			Path:    "",
+			TTL:     time.Hour,
 		})
 
 		if cookie.spec.path != "/" {
@@ -547,11 +556,12 @@ func TestSecureCookieNonHostOnly(t *testing.T) {
 	})
 
 	t.Run("creates deletion cookie", func(t *testing.T) {
-		cookie := NewSecureCookieNonHostOnly[string](mgr, SecureCookieNonHostOnlyConfig{
-			Name:   "session",
-			Path:   "/app",
-			Domain: ".example.com",
-			TTL:    time.Hour,
+		cookie := NewSecureCookieNonHostOnly[string](SecureCookieNonHostOnlyConfig{
+			Manager: mgr,
+			Name:    "session",
+			Path:    "/app",
+			Domain:  ".example.com",
+			TTL:     time.Hour,
 		})
 
 		deletion := cookie.NewDeletion()
@@ -575,9 +585,10 @@ func TestClientReadableCookie(t *testing.T) {
 	mgr := newTestManager(false)
 
 	t.Run("creates plaintext cookie", func(t *testing.T) {
-		cookie := NewClientReadableCookie[string](mgr, ClientReadableCookieConfig{
-			Name: "theme",
-			TTL:  30 * 24 * time.Hour,
+		cookie := NewClientReadableCookie[string](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "theme",
+			TTL:     30 * 24 * time.Hour,
 		})
 
 		httpCookie := cookie.New("dark-mode")
@@ -600,9 +611,10 @@ func TestClientReadableCookie(t *testing.T) {
 	})
 
 	t.Run("retrieves plaintext value", func(t *testing.T) {
-		cookie := NewClientReadableCookie[string](mgr, ClientReadableCookieConfig{
-			Name: "theme",
-			TTL:  30 * 24 * time.Hour,
+		cookie := NewClientReadableCookie[string](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "theme",
+			TTL:     30 * 24 * time.Hour,
 		})
 
 		req := httptest.NewRequest("GET", "/", nil)
@@ -621,9 +633,10 @@ func TestClientReadableCookie(t *testing.T) {
 	})
 
 	t.Run("returns error for missing cookie", func(t *testing.T) {
-		cookie := NewClientReadableCookie[string](mgr, ClientReadableCookieConfig{
-			Name: "theme",
-			TTL:  30 * 24 * time.Hour,
+		cookie := NewClientReadableCookie[string](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "theme",
+			TTL:     30 * 24 * time.Hour,
 		})
 
 		req := httptest.NewRequest("GET", "/", nil)
@@ -635,9 +648,10 @@ func TestClientReadableCookie(t *testing.T) {
 
 	t.Run("works with custom string types", func(t *testing.T) {
 		type Theme string
-		cookie := NewClientReadableCookie[Theme](mgr, ClientReadableCookieConfig{
-			Name: "theme",
-			TTL:  30 * 24 * time.Hour,
+		cookie := NewClientReadableCookie[Theme](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "theme",
+			TTL:     30 * 24 * time.Hour,
 		})
 
 		httpCookie := cookie.New(Theme("custom-theme"))
@@ -663,7 +677,8 @@ func TestClientReadableCookieNonHostOnly(t *testing.T) {
 	mgr := newTestManager(false)
 
 	t.Run("creates cookie with custom settings", func(t *testing.T) {
-		cookie := NewClientReadableCookieNonHostOnly[string](mgr, ClientReadableCookieNonHostOnlyConfig{
+		cookie := NewClientReadableCookieNonHostOnly[string](ClientReadableCookieNonHostOnlyConfig{
+			Manager:   mgr,
 			Name:      "locale",
 			Path:      "/app",
 			Domain:    ".example.com",
@@ -699,9 +714,10 @@ func TestClientReadableCookieNonHostOnly(t *testing.T) {
 
 	t.Run("retrieves value with custom type", func(t *testing.T) {
 		type Locale string
-		cookie := NewClientReadableCookieNonHostOnly[Locale](mgr, ClientReadableCookieNonHostOnlyConfig{
-			Name: "locale",
-			TTL:  365 * 24 * time.Hour,
+		cookie := NewClientReadableCookieNonHostOnly[Locale](ClientReadableCookieNonHostOnlyConfig{
+			Manager: mgr,
+			Name:    "locale",
+			TTL:     365 * 24 * time.Hour,
 		})
 
 		httpCookie := cookie.New(Locale("fr-FR"))
@@ -751,9 +767,10 @@ func TestDevelopmentMode(t *testing.T) {
 
 	t.Run("allows custom path/domain for host cookies in dev", func(t *testing.T) {
 		mgr := newTestManager(true)
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{
-			Name: "test",
-			TTL:  time.Hour,
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "test",
+			TTL:     time.Hour,
 		})
 
 		spec := cookie.spec
@@ -774,9 +791,10 @@ func TestDevelopmentMode(t *testing.T) {
 func TestSecurityProperties(t *testing.T) {
 	t.Run("host-only cookies enforce constraints in production", func(t *testing.T) {
 		mgr := newTestManager(false)
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{
-			Name: "test",
-			TTL:  time.Hour,
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "test",
+			TTL:     time.Hour,
 		})
 		httpCookie, _ := cookie.New("value")
 		if httpCookie.Path != "/" || httpCookie.Domain != "" || !httpCookie.Secure {
@@ -786,7 +804,8 @@ func TestSecurityProperties(t *testing.T) {
 
 	t.Run("partitioned is disabled in dev mode regardless of config", func(t *testing.T) {
 		mgr := newTestManager(true)
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager:   mgr,
 			Name:      "test",
 			TTL:       time.Hour,
 			Partition: PartitionTrue,
@@ -799,9 +818,10 @@ func TestSecurityProperties(t *testing.T) {
 
 	t.Run("empty TTL results in session cookie", func(t *testing.T) {
 		mgr := newTestManager(false)
-		cookie := NewClientReadableCookie[string](mgr, ClientReadableCookieConfig{
-			Name: "session",
-			TTL:  0,
+		cookie := NewClientReadableCookie[string](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "session",
+			TTL:     0,
 		})
 		httpCookie := cookie.New("value")
 		if httpCookie.MaxAge != 0 {
@@ -811,9 +831,10 @@ func TestSecurityProperties(t *testing.T) {
 
 	t.Run("negative TTL creates expired cookie", func(t *testing.T) {
 		mgr := newTestManager(false)
-		cookie := NewClientReadableCookie[string](mgr, ClientReadableCookieConfig{
-			Name: "expired",
-			TTL:  -time.Hour,
+		cookie := NewClientReadableCookie[string](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "expired",
+			TTL:     -time.Hour,
 		})
 		httpCookie := cookie.New("value")
 		if httpCookie.MaxAge >= 0 {
@@ -829,7 +850,10 @@ func TestManagerDefaults(t *testing.T) {
 
 	t.Run("secure cookies inherit manager defaults", func(t *testing.T) {
 		// Create a secure cookie with no overrides set (it will use ...Default).
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{Name: "test"})
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "test",
+		})
 		spec := cookie.spec
 
 		if spec.sameSite != http.SameSiteStrictMode {
@@ -844,7 +868,10 @@ func TestManagerDefaults(t *testing.T) {
 	})
 
 	t.Run("client-readable cookies inherit manager defaults", func(t *testing.T) {
-		cookie := NewClientReadableCookie[string](mgr, ClientReadableCookieConfig{Name: "test"})
+		cookie := NewClientReadableCookie[string](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "test",
+		})
 		spec := cookie.spec
 
 		if spec.sameSite != http.SameSiteStrictMode {
@@ -863,8 +890,14 @@ func TestManagerDefaults(t *testing.T) {
 func TestCrossCookieCompatibility(t *testing.T) {
 	t.Run("cookies work independently", func(t *testing.T) {
 		mgr := newTestManager(false)
-		secureCookie := NewSecureCookie[string](mgr, SecureCookieConfig{Name: "secure-data"})
-		clientCookie := NewClientReadableCookie[string](mgr, ClientReadableCookieConfig{Name: "client-data"})
+		secureCookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "secure-data",
+		})
+		clientCookie := NewClientReadableCookie[string](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "client-data",
+		})
 		secureHttp, _ := secureCookie.New("secure-value")
 		clientHttp := clientCookie.New("client-value")
 		if secureHttp.Name == clientHttp.Name {
@@ -892,7 +925,10 @@ func TestTypeSafety(t *testing.T) {
 			UserID    string
 			ExpiresAt time.Time
 		}
-		cookie := NewSecureCookie[SessionData](mgr, SecureCookieConfig{Name: "session"})
+		cookie := NewSecureCookie[SessionData](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "session",
+		})
 		sessionData := SessionData{UserID: "user123", ExpiresAt: time.Now()}
 		httpCookie, err := cookie.New(sessionData)
 		if err != nil {
@@ -915,8 +951,14 @@ func TestTypeSafety(t *testing.T) {
 	t.Run("client cookies constrained to string types", func(t *testing.T) {
 		type Theme string
 		type Locale string
-		themeCookie := NewClientReadableCookie[Theme](mgr, ClientReadableCookieConfig{Name: "theme"})
-		localeCookie := NewClientReadableCookie[Locale](mgr, ClientReadableCookieConfig{Name: "locale"})
+		themeCookie := NewClientReadableCookie[Theme](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "theme",
+		})
+		localeCookie := NewClientReadableCookie[Locale](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "locale",
+		})
 		themeHttp := themeCookie.New(Theme("dark"))
 		if themeHttp.Value != "dark" {
 			t.Errorf("expected dark, got %s", themeHttp.Value)
@@ -991,7 +1033,10 @@ func TestCookieAttributeCombinations(t *testing.T) {
 func TestSecureStringErrors(t *testing.T) {
 	mgr := newTestManager(false)
 	t.Run("handles serialization errors gracefully", func(t *testing.T) {
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{Name: "test"})
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "test",
+		})
 		_, err := cookie.New("normal-data")
 		if err != nil {
 			t.Errorf("unexpected error with normal data: %v", err)
@@ -1003,7 +1048,8 @@ func TestSecureStringErrors(t *testing.T) {
 func TestCompleteWorkflow(t *testing.T) {
 	mgr := newTestManager(false)
 	t.Run("complete session workflow", func(t *testing.T) {
-		sessionCookie := NewSecureCookie[testSessionData](mgr, SecureCookieConfig{
+		sessionCookie := NewSecureCookie[testSessionData](SecureCookieConfig{
+			Manager:  mgr,
 			Name:     "session",
 			TTL:      24 * time.Hour,
 			SameSite: SameSiteStrictMode,
@@ -1036,7 +1082,8 @@ func TestCompleteWorkflow(t *testing.T) {
 
 	t.Run("complete preference workflow", func(t *testing.T) {
 		type UserPrefs string
-		prefCookie := NewClientReadableCookieNonHostOnly[UserPrefs](mgr, ClientReadableCookieNonHostOnlyConfig{
+		prefCookie := NewClientReadableCookieNonHostOnly[UserPrefs](ClientReadableCookieNonHostOnlyConfig{
+			Manager:   mgr,
 			Name:      "prefs",
 			Path:      "/app",
 			Domain:    ".example.com",
@@ -1109,7 +1156,10 @@ func TestNameMethod(t *testing.T) {
 			if !tt.useHostPrefix {
 				t.Skip("Skipping non-host prefix test for host-only cookie")
 			}
-			cookie := NewSecureCookie[string](mgr, SecureCookieConfig{Name: tt.cookieName})
+			cookie := NewSecureCookie[string](SecureCookieConfig{
+				Manager: mgr,
+				Name:    tt.cookieName,
+			})
 			if name := cookie.Name(); name != tt.expectedName {
 				t.Errorf("Expected name %q, got %q", tt.expectedName, name)
 			}
@@ -1120,7 +1170,10 @@ func TestNameMethod(t *testing.T) {
 			if tt.useHostPrefix {
 				t.Skip("Skipping host prefix test for non-host-only cookie")
 			}
-			cookie := NewSecureCookieNonHostOnly[string](mgr, SecureCookieNonHostOnlyConfig{Name: tt.cookieName})
+			cookie := NewSecureCookieNonHostOnly[string](SecureCookieNonHostOnlyConfig{
+				Manager: mgr,
+				Name:    tt.cookieName,
+			})
 			if name := cookie.Name(); name != tt.expectedName {
 				t.Errorf("Expected name %q, got %q", tt.expectedName, name)
 			}
@@ -1131,7 +1184,10 @@ func TestNameMethod(t *testing.T) {
 			if !tt.useHostPrefix {
 				t.Skip("Skipping non-host prefix test for host-only cookie")
 			}
-			cookie := NewClientReadableCookie[string](mgr, ClientReadableCookieConfig{Name: tt.cookieName})
+			cookie := NewClientReadableCookie[string](ClientReadableCookieConfig{
+				Manager: mgr,
+				Name:    tt.cookieName,
+			})
 			if name := cookie.Name(); name != tt.expectedName {
 				t.Errorf("Expected name %q, got %q", tt.expectedName, name)
 			}
@@ -1142,7 +1198,10 @@ func TestNameMethod(t *testing.T) {
 			if tt.useHostPrefix {
 				t.Skip("Skipping host prefix test for non-host-only cookie")
 			}
-			cookie := NewClientReadableCookieNonHostOnly[string](mgr, ClientReadableCookieNonHostOnlyConfig{Name: tt.cookieName})
+			cookie := NewClientReadableCookieNonHostOnly[string](ClientReadableCookieNonHostOnlyConfig{
+				Manager: mgr,
+				Name:    tt.cookieName,
+			})
 			if name := cookie.Name(); name != tt.expectedName {
 				t.Errorf("Expected name %q, got %q", tt.expectedName, name)
 			}
@@ -1150,14 +1209,15 @@ func TestNameMethod(t *testing.T) {
 	}
 }
 
-// Test SetProxy, SetWriter, DeleteProxy, and DeleteWriter methods
+// Test SetWithProxy, SetWithWriter, ClearWithProxy, and ClearWithWriter methods
 func TestSetAndDeleteMethods(t *testing.T) {
 	mgr := newTestManager(false)
 
-	t.Run("SecureCookie SetProxy and DeleteProxy", func(t *testing.T) {
-		cookie := NewSecureCookie[testSessionData](mgr, SecureCookieConfig{
-			Name: "session",
-			TTL:  time.Hour,
+	t.Run("SecureCookie SetWithProxy and ClearWithProxy", func(t *testing.T) {
+		cookie := NewSecureCookie[testSessionData](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "session",
+			TTL:     time.Hour,
 		})
 
 		sessionData := testSessionData{
@@ -1166,11 +1226,11 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			ExpiresAt: time.Now().Add(time.Hour),
 		}
 
-		// Test SetProxy
+		// Test SetWithProxy
 		proxy := response.NewProxy()
-		err := cookie.SetProxy(proxy, sessionData)
+		err := cookie.SetWithProxy(proxy, sessionData)
 		if err != nil {
-			t.Fatalf("unexpected error in SetProxy: %v", err)
+			t.Fatalf("unexpected error in SetWithProxy: %v", err)
 		}
 
 		cookies := proxy.GetCookies()
@@ -1191,9 +1251,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("cookie value should be encrypted, got %s", setCookie.Value)
 		}
 
-		// Test DeleteProxy
+		// Test ClearWithProxy
 		proxy2 := response.NewProxy()
-		cookie.DeleteProxy(proxy2)
+		cookie.ClearWithProxy(proxy2)
 
 		deleteCookies := proxy2.GetCookies()
 		if len(deleteCookies) != 1 {
@@ -1212,17 +1272,18 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("SecureCookie SetWriter and DeleteWriter", func(t *testing.T) {
-		cookie := NewSecureCookie[string](mgr, SecureCookieConfig{
-			Name: "token",
-			TTL:  2 * time.Hour,
+	t.Run("SecureCookie SetWithWriter and ClearWithWriter", func(t *testing.T) {
+		cookie := NewSecureCookie[string](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "token",
+			TTL:     2 * time.Hour,
 		})
 
-		// Test SetWriter
+		// Test SetWithWriter
 		w := httptest.NewRecorder()
-		err := cookie.SetWriter(w, "secret-token-value")
+		err := cookie.SetWithWriter(w, "secret-token-value")
 		if err != nil {
-			t.Fatalf("unexpected error in SetWriter: %v", err)
+			t.Fatalf("unexpected error in SetWithWriter: %v", err)
 		}
 
 		cookies := w.Result().Cookies()
@@ -1238,9 +1299,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("expected MaxAge 7200, got %d", setCookie.MaxAge)
 		}
 
-		// Test DeleteWriter
+		// Test ClearWithWriter
 		w2 := httptest.NewRecorder()
-		cookie.DeleteWriter(w2)
+		cookie.ClearWithWriter(w2)
 
 		deleteCookies := w2.Result().Cookies()
 		if len(deleteCookies) != 1 {
@@ -1256,19 +1317,20 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("SecureCookieNonHostOnly SetProxy and DeleteProxy", func(t *testing.T) {
-		cookie := NewSecureCookieNonHostOnly[string](mgr, SecureCookieNonHostOnlyConfig{
-			Name:   "api-token",
-			Path:   "/api",
-			Domain: ".example.com",
-			TTL:    24 * time.Hour,
+	t.Run("SecureCookieNonHostOnly SetWithProxy and ClearWithProxy", func(t *testing.T) {
+		cookie := NewSecureCookieNonHostOnly[string](SecureCookieNonHostOnlyConfig{
+			Manager: mgr,
+			Name:    "api-token",
+			Path:    "/api",
+			Domain:  ".example.com",
+			TTL:     24 * time.Hour,
 		})
 
-		// Test SetProxy
+		// Test SetWithProxy
 		proxy := response.NewProxy()
-		err := cookie.SetProxy(proxy, "api-secret-value")
+		err := cookie.SetWithProxy(proxy, "api-secret-value")
 		if err != nil {
-			t.Fatalf("unexpected error in SetProxy: %v", err)
+			t.Fatalf("unexpected error in SetWithProxy: %v", err)
 		}
 
 		cookies := proxy.GetCookies()
@@ -1287,9 +1349,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("expected domain .example.com, got %s", setCookie.Domain)
 		}
 
-		// Test DeleteProxy
+		// Test ClearWithProxy
 		proxy2 := response.NewProxy()
-		cookie.DeleteProxy(proxy2)
+		cookie.ClearWithProxy(proxy2)
 
 		deleteCookies := proxy2.GetCookies()
 		if len(deleteCookies) != 1 {
@@ -1308,15 +1370,16 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("ClientReadableCookie SetProxy and DeleteProxy", func(t *testing.T) {
-		cookie := NewClientReadableCookie[string](mgr, ClientReadableCookieConfig{
-			Name: "theme",
-			TTL:  30 * 24 * time.Hour,
+	t.Run("ClientReadableCookie SetWithProxy and ClearWithProxy", func(t *testing.T) {
+		cookie := NewClientReadableCookie[string](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "theme",
+			TTL:     30 * 24 * time.Hour,
 		})
 
-		// Test SetProxy
+		// Test SetWithProxy
 		proxy := response.NewProxy()
-		cookie.SetProxy(proxy, "dark-mode")
+		cookie.SetWithProxy(proxy, "dark-mode")
 
 		cookies := proxy.GetCookies()
 		if len(cookies) != 1 {
@@ -1334,9 +1397,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("expected HttpOnly to be false for client-readable cookie")
 		}
 
-		// Test DeleteProxy
+		// Test ClearWithProxy
 		proxy2 := response.NewProxy()
-		cookie.DeleteProxy(proxy2)
+		cookie.ClearWithProxy(proxy2)
 
 		deleteCookies := proxy2.GetCookies()
 		if len(deleteCookies) != 1 {
@@ -1355,16 +1418,17 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("ClientReadableCookie SetWriter and DeleteWriter", func(t *testing.T) {
+	t.Run("ClientReadableCookie SetWithWriter and ClearWithWriter", func(t *testing.T) {
 		type Locale string
-		cookie := NewClientReadableCookie[Locale](mgr, ClientReadableCookieConfig{
-			Name: "locale",
-			TTL:  365 * 24 * time.Hour,
+		cookie := NewClientReadableCookie[Locale](ClientReadableCookieConfig{
+			Manager: mgr,
+			Name:    "locale",
+			TTL:     365 * 24 * time.Hour,
 		})
 
-		// Test SetWriter
+		// Test SetWithWriter
 		w := httptest.NewRecorder()
-		cookie.SetWriter(w, Locale("en-US"))
+		cookie.SetWithWriter(w, Locale("en-US"))
 
 		cookies := w.Result().Cookies()
 		if len(cookies) != 1 {
@@ -1379,9 +1443,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("expected value en-US, got %s", setCookie.Value)
 		}
 
-		// Test DeleteWriter
+		// Test ClearWithWriter
 		w2 := httptest.NewRecorder()
-		cookie.DeleteWriter(w2)
+		cookie.ClearWithWriter(w2)
 
 		deleteCookies := w2.Result().Cookies()
 		if len(deleteCookies) != 1 {
@@ -1394,17 +1458,18 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("ClientReadableCookieNonHostOnly SetProxy and DeleteProxy", func(t *testing.T) {
-		cookie := NewClientReadableCookieNonHostOnly[string](mgr, ClientReadableCookieNonHostOnlyConfig{
-			Name:   "preferences",
-			Path:   "/app",
-			Domain: ".example.com",
-			TTL:    90 * 24 * time.Hour,
+	t.Run("ClientReadableCookieNonHostOnly SetWithProxy and ClearWithProxy", func(t *testing.T) {
+		cookie := NewClientReadableCookieNonHostOnly[string](ClientReadableCookieNonHostOnlyConfig{
+			Manager: mgr,
+			Name:    "preferences",
+			Path:    "/app",
+			Domain:  ".example.com",
+			TTL:     90 * 24 * time.Hour,
 		})
 
-		// Test SetProxy
+		// Test SetWithProxy
 		proxy := response.NewProxy()
-		cookie.SetProxy(proxy, "lang=en;tz=UTC")
+		cookie.SetWithProxy(proxy, "lang=en;tz=UTC")
 
 		cookies := proxy.GetCookies()
 		if len(cookies) != 1 {
@@ -1425,9 +1490,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("expected domain .example.com, got %s", setCookie.Domain)
 		}
 
-		// Test DeleteProxy
+		// Test ClearWithProxy
 		proxy2 := response.NewProxy()
-		cookie.DeleteProxy(proxy2)
+		cookie.ClearWithProxy(proxy2)
 
 		deleteCookies := proxy2.GetCookies()
 		if len(deleteCookies) != 1 {
@@ -1443,20 +1508,21 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("Error handling in SetProxy", func(t *testing.T) {
+	t.Run("Error handling in SetWithProxy", func(t *testing.T) {
 		// Create a cookie that will have serialization issues
 		// Using a channel as it cannot be serialized
 		type BadData struct {
 			Ch chan int
 		}
 
-		cookie := NewSecureCookie[BadData](mgr, SecureCookieConfig{
-			Name: "bad",
-			TTL:  time.Hour,
+		cookie := NewSecureCookie[BadData](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "bad",
+			TTL:     time.Hour,
 		})
 
 		proxy := response.NewProxy()
-		err := cookie.SetProxy(proxy, BadData{Ch: make(chan int)})
+		err := cookie.SetWithProxy(proxy, BadData{Ch: make(chan int)})
 		if err == nil {
 			t.Errorf("expected error when serializing channel, got nil")
 		}
@@ -1470,18 +1536,19 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("Error handling in SetWriter", func(t *testing.T) {
+	t.Run("Error handling in SetWithWriter", func(t *testing.T) {
 		type BadData struct {
 			Ch chan int
 		}
 
-		cookie := NewSecureCookie[BadData](mgr, SecureCookieConfig{
-			Name: "bad",
-			TTL:  time.Hour,
+		cookie := NewSecureCookie[BadData](SecureCookieConfig{
+			Manager: mgr,
+			Name:    "bad",
+			TTL:     time.Hour,
 		})
 
 		w := httptest.NewRecorder()
-		err := cookie.SetWriter(w, BadData{Ch: make(chan int)})
+		err := cookie.SetWithWriter(w, BadData{Ch: make(chan int)})
 		if err == nil {
 			t.Errorf("expected error when serializing channel, got nil")
 		}
