@@ -66,6 +66,7 @@ func (mgr *Manager) GetIsDev() bool {
 type SecureCookieConfig struct {
 	Manager *Manager // Required.
 	// Required. Do not prefix the name with "__Host-". Prefixing is handled internally.
+	// Final cookie name will be "__{Host|Dev}-{Name}".
 	Name      string
 	TTL       time.Duration
 	SameSite  SameSite
@@ -87,6 +88,7 @@ type SecureCookieNonHostOnlyConfig struct {
 type ClientReadableCookieConfig struct {
 	Manager *Manager // Required.
 	// Required. Do not prefix the name with "__Host-". Prefixing is handled internally.
+	// Final cookie name will be "__{Host|Dev}-{Name}".
 	Name      string
 	TTL       time.Duration
 	SameSite  SameSite
@@ -237,11 +239,11 @@ func (c *secureCookie[T]) SetWithWriter(w http.ResponseWriter, value T) error {
 	http.SetCookie(w, cookie)
 	return nil
 }
-func (c *secureCookie[T]) ClearWithProxy(rp *response.Proxy) {
+func (c *secureCookie[T]) DeleteWithProxy(rp *response.Proxy) {
 	cookie := c.NewDeletion()
 	rp.SetCookie(cookie)
 }
-func (c *secureCookie[T]) ClearWithWriter(w http.ResponseWriter) {
+func (c *secureCookie[T]) DeleteWithWriter(w http.ResponseWriter) {
 	cookie := c.NewDeletion()
 	http.SetCookie(w, cookie)
 }
@@ -293,11 +295,11 @@ func (c *clientReadableCookie[T]) SetWithWriter(w http.ResponseWriter, value T) 
 	cookie := c.New(value)
 	http.SetCookie(w, cookie)
 }
-func (c *clientReadableCookie[T]) ClearWithProxy(rp *response.Proxy) {
+func (c *clientReadableCookie[T]) DeleteWithProxy(rp *response.Proxy) {
 	cookie := c.NewDeletion()
 	rp.SetCookie(cookie)
 }
-func (c *clientReadableCookie[T]) ClearWithWriter(w http.ResponseWriter) {
+func (c *clientReadableCookie[T]) DeleteWithWriter(w http.ResponseWriter) {
 	cookie := c.NewDeletion()
 	http.SetCookie(w, cookie)
 }

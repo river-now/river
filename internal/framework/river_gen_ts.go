@@ -167,15 +167,17 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 
 import type { SharedBase } from "river.now/client";
 
-export type BaseQueryPropsWithInput<P extends RiverQueryPattern> = SharedBase<P> & {
-	input: RiverQueryInput<P>;
-};
-export type BaseMutationPropsWithInput<P extends RiverMutationPattern> = SharedBase<P> &
+export type BaseQueryProps<P extends RiverQueryPattern> = SharedBase<P>;
+export type BaseMutationProps<P extends RiverMutationPattern> = SharedBase<P> &
 	(RiverMutationMethod<P> extends "POST"
 		? { method?: "POST" }
-		: { method: RiverMutationMethod<P> }) & {
-		input: RiverMutationInput<P>;
-	};
+		: { method: RiverMutationMethod<P> });
+export type BaseQueryPropsWithInput<P extends RiverQueryPattern> = BaseQueryProps<P> & {
+	input: RiverQueryInput<P>;
+};
+export type BaseMutationPropsWithInput<P extends RiverMutationPattern> = BaseMutationProps<P> & {
+	input: RiverMutationInput<P>;
+};
 `
 
 	if foundRootData {

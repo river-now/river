@@ -78,8 +78,8 @@ func TestNewProtector(t *testing.T) {
 				if p.cfg.TokenTTL != 4*time.Hour {
 					t.Errorf("Expected default TTL of 4h, got %v", p.cfg.TokenTTL)
 				}
-				if p.cfg.CookieSuffix != "csrf_token" {
-					t.Errorf("Expected default cookie suffix 'csrf_token', got %s", p.cfg.CookieSuffix)
+				if p.cfg.CookieName != "csrf_token" {
+					t.Errorf("Expected default cookie suffix 'csrf_token', got %s", p.cfg.CookieName)
 				}
 				if p.cfg.HeaderName != "X-CSRF-Token" {
 					t.Errorf("Expected default header name 'X-CSRF-Token', got %s", p.cfg.HeaderName)
@@ -96,7 +96,7 @@ func TestNewProtector(t *testing.T) {
 				GetSessionID:   func(r *http.Request) string { return "" },
 				AllowedOrigins: []string{"https://example.com", "HTTPS://EXAMPLE.ORG"},
 				TokenTTL:       2 * time.Hour,
-				CookieSuffix:   "custom",
+				CookieName:     "custom",
 				HeaderName:     "X-Custom-CSRF",
 			},
 			check: func(t *testing.T, p *Protector) {

@@ -47,9 +47,12 @@ type ProtectorConfig struct {
 	// Defaults to 4 hours, but this is too short for most apps. A good value is to set this to match
 	// the TTL of your authentication sessions. It's also a good idea to have your app make any GET
 	// request on window focus to refresh the CSRF token, to minimize failure cases for legitimate users.
-	TokenTTL     time.Duration
-	CookieSuffix string // Final cookie name will be "__Host-{CookieSuffix}". Defaults to "csrf_token".
-	HeaderName   string // Defaults to "X-CSRF-Token"
+	TokenTTL time.Duration
+	// Do not prefix the name with "__Host-". Prefixing is handled internally.
+	// Final cookie name will be "__{Host|Dev}-{CookieName}".
+	// Defaults to "csrf_token".
+	CookieName string
+	HeaderName string // Defaults to "X-CSRF-Token"
 }
 
 type Protector struct {
@@ -73,8 +76,8 @@ func NewProtector(cfg ProtectorConfig) *Protector {
 	if cfg.TokenTTL == 0 {
 		cfg.TokenTTL = 4 * time.Hour
 	}
-	if cfg.CookieSuffix == "" {
-		cfg.CookieSuffix = "csrf_token"
+	if cfg.CookieName == "" {
+		cfg.CookieName = "csrf_token"
 	}
 	if cfg.HeaderName == "" {
 		cfg.HeaderName = "X-CSRF-Token"
@@ -83,7 +86,7 @@ func NewProtector(cfg ProtectorConfig) *Protector {
 
 	cookie := cookies.NewSecureCookie[payload](cookies.SecureCookieConfig{
 		Manager:  cfg.CookieManager,
-		Name:     cfg.CookieSuffix,
+		Name:     cfg.CookieName,
 		TTL:      cfg.TokenTTL,
 		SameSite: cookies.SameSiteLaxMode,
 		HttpOnly: cookies.HttpOnlyFalse,

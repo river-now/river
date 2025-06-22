@@ -167,6 +167,7 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 			<Show when={currentCompMemo()}>
 				{currentCompMemo()({
 					idx: idx,
+					// biome-ignore lint: _
 					Outlet: (localProps: Record<string, any> | undefined) => {
 						return <RiverRootOutlet {...localProps} {...props} idx={idx + 1} />;
 					},

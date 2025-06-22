@@ -5,6 +5,7 @@ export const apiHelper = {
 	toMutationOpts,
 	buildURL,
 	resolveMethod,
+	resolvePath,
 };
 
 type Props = SharedBase<string> & { input?: any; method?: string };
@@ -64,10 +65,7 @@ export type SharedBase<P extends string> = {
 } & (PatternIsDynamic<P> extends true ? { path: string } : { path?: string });
 
 function resolvePath(props: SharedBase<string>) {
-	if ("path" in props && props.path) {
-		return props.path;
-	}
-	return props.pattern;
+	return props.path || props.pattern;
 }
 function getCurrentOrigin() {
 	return new URL(window.location.href).origin;

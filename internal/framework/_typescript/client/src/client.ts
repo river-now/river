@@ -1,3 +1,4 @@
+// ./src/client.ts
 /// <reference types="vite/client" />
 
 import { createBrowserHistory, type Update } from "history";
@@ -42,14 +43,17 @@ export type RouteChangeEvent = CustomEvent<RouteChangeEventDetail>;
 /////////////////////////////////////////////////////////////////////
 
 type NavigationResult =
-	| {
+	| ({
 			response: Response;
-			json: GetRouteDataOutput;
 			props: NavigateProps;
-			cssBundlePromises: Array<Promise<any>>;
-			waitFnPromise: Promise<any> | undefined;
-	  }
-	| { response: Response; redirectData: RedirectData }
+	  } & (
+			| {
+					json: GetRouteDataOutput;
+					cssBundlePromises: Array<Promise<any>>;
+					waitFnPromise: Promise<any> | undefined;
+			  }
+			| { redirectData: RedirectData }
+	  ))
 	| undefined;
 
 export type NavigationControl = {
@@ -69,6 +73,7 @@ export type NavigateProps = {
 	navigationType: NavigationType;
 	scrollStateToRestore?: ScrollState;
 	replace?: boolean;
+	redirectCount?: number;
 };
 
 export const navigationState = {
@@ -174,7 +179,7 @@ async function __completeNavigation(x: NavigationResult) {
 		return;
 	}
 	if ("redirectData" in x) {
-		await effectuateRedirectDataResult(x.redirectData);
+		await effectuateRedirectDataResult(x.redirectData, x.props.redirectCount || 0);
 		return;
 	}
 	const oldID = internal_RiverClientGlobal.get("buildID");
@@ -232,7 +237,7 @@ async function __fetchRouteData(
 		}
 
 		if (redirectData?.status === "should") {
-			return { redirectData, response };
+			return { response, redirectData, props };
 		}
 
 		const json = (await response.json()) as GetRouteDataOutput | undefined;
@@ -266,7 +271,7 @@ async function __fetchRouteData(
 		const waitFnPromise = runWaitFns(json, buildID);
 
 		// Create an array to store promises for CSS bundle preloads
-		const cssBundlePromises = [];
+		const cssBundlePromises: Array<Promise<any>> = [];
 
 		// Add missing css bundle preload links
 		for (const x of json.cssBundles ?? []) {
@@ -275,7 +280,7 @@ async function __fetchRouteData(
 				continue;
 			}
 			newLink.rel = "preload";
-			newLink.as = "style";
+			newLink.setAttribute("as", "style");
 			document.head.appendChild(newLink);
 
 			// Create a promise for this CSS bundle preload
@@ -368,7 +373,7 @@ export function getPrefetchHandlers<E extends Event>(
 	// by default, wait 100ms before prefetching
 	const delayMsToUse = input.delayMs ?? 100;
 
-	async function finalize(e: E) {
+	async function finalize(e: E): Promise<void> {
 		try {
 			if (!prerenderResult && currentNav) {
 				prerenderResult = await currentNav.promise;
@@ -377,27 +382,30 @@ export function getPrefetchHandlers<E extends Event>(
 				await input.beforeRender?.(e);
 
 				if ("redirectData" in prerenderResult) {
-					await effectuateRedirectDataResult(prerenderResult.redirectData);
+					await effectuateRedirectDataResult(
+						prerenderResult.redirectData,
+						prerenderResult.props.redirectCount || 0,
+					);
 					return;
 				}
 
 				if (!("json" in prerenderResult)) {
-					throw new Error("No JSON response");
+					throw new Error("Invalid navigation result: no JSON response.");
 				}
 
 				await __completeNavigation({
-					response: prerenderResult.response,
-					json: prerenderResult.json,
-					props: { ...prerenderResult.props, navigationType: "userNavigation" },
-					cssBundlePromises: prerenderResult.cssBundlePromises,
-					waitFnPromise: prerenderResult.waitFnPromise,
+					...prerenderResult,
+					props: {
+						...prerenderResult.props,
+						navigationType: "userNavigation" as const,
+					},
 				});
 
 				await input.afterRender?.(e);
 			}
 		} catch (e) {
 			if (!isAbortError(e)) {
-				LogError("Error finalizing prefetch", e);
+				LogError("Error finalizing prefetch:", e);
 			}
 		} finally {
 			prerenderResult = null;
@@ -405,23 +413,24 @@ export function getPrefetchHandlers<E extends Event>(
 		}
 	}
 
-	async function prefetch(e: E) {
+	async function prefetch(e: E): Promise<void> {
 		if (currentNav || !hrefDetails.isHTTP) {
 			return;
 		}
 
 		// We don't really want to prefetch if the user is already on the page.
 		// In those cases, wait for an actual click.
-		const a = hrefDetails.url;
-		const b = new URL(window.location.href);
-		a.hash = "";
-		b.hash = "";
-		const alreadyThere = a.href === b.href;
-		if (alreadyThere) {
+		const currentUrl = new URL(window.location.href);
+		const targetUrl = hrefDetails.url;
+		currentUrl.hash = "";
+		targetUrl.hash = "";
+		if (currentUrl.href === targetUrl.href) {
 			return;
 		}
 
-		await input.beforeBegin?.(e);
+		if (input.beforeBegin) {
+			await input.beforeBegin(e);
+		}
 
 		currentNav = beginNavigation({
 			href: hrefDetails.relativeURL,
@@ -434,20 +443,22 @@ export function getPrefetchHandlers<E extends Event>(
 			})
 			.catch((error) => {
 				if (!isAbortError(error)) {
-					LogError("Prefetch failed", error);
+					LogError("Prefetch failed:", error);
 				}
 			});
 	}
 
-	function start(e: E) {
+	function start(e: E): void {
 		if (currentNav) {
 			return;
 		}
 		timer = window.setTimeout(() => prefetch(e), delayMsToUse);
 	}
 
-	function stop() {
-		clearTimeout(timer);
+	function stop(): void {
+		if (timer) {
+			clearTimeout(timer);
+		}
 
 		if (!hrefDetails.isHTTP) {
 			return;
@@ -464,7 +475,7 @@ export function getPrefetchHandlers<E extends Event>(
 		prerenderResult = null;
 	}
 
-	async function onClick(e: E) {
+	async function onClick(e: E): Promise<void> {
 		if (e.defaultPrevented || !hrefDetails.isHTTP) {
 			return;
 		}
@@ -493,21 +504,26 @@ export function getPrefetchHandlers<E extends Event>(
 			return;
 		}
 
-		await input.beforeBegin?.(e);
+		if (timer) {
+			clearTimeout(timer);
+		}
 
-		const nav = beginNavigation({
+		if (input.beforeBegin) {
+			await input.beforeBegin(e);
+		}
+
+		currentNav = beginNavigation({
 			href: hrefDetails.relativeURL,
 			navigationType: "userNavigation",
 		});
 
-		currentNav = nav;
 		prerenderResult = null;
 
 		try {
 			await finalize(e);
 		} catch (error) {
 			if (!isAbortError(error)) {
-				LogError("Error during navigation", error);
+				LogError("Error during click navigation:", error);
 			}
 		}
 	}
@@ -535,6 +551,7 @@ const RIVER_HARD_RELOAD_QUERY_PARAM = "river_reload";
 
 async function effectuateRedirectDataResult(
 	redirectData: RedirectData,
+	redirectCount: number,
 ): Promise<RedirectData | null> {
 	if (redirectData.status === "should") {
 		if (redirectData.shouldRedirectStrategy === "hard") {
@@ -559,7 +576,11 @@ async function effectuateRedirectDataResult(
 			};
 		}
 		if (redirectData.shouldRedirectStrategy === "soft") {
-			await __navigate({ href: redirectData.href, navigationType: "redirect" });
+			await __navigate({
+				href: redirectData.href,
+				navigationType: "redirect",
+				redirectCount: redirectCount + 1,
+			});
 			return {
 				hrefDetails: redirectData.hrefDetails,
 				status: "did",
@@ -575,10 +596,19 @@ export async function handleRedirects(props: {
 	url: URL;
 	requestInit?: RequestInit;
 	isPrefetch?: boolean;
+	redirectCount?: number;
 }): Promise<{
 	redirectData: RedirectData | null;
 	response?: Response;
 }> {
+	const MAX_REDIRECTS = 10;
+	const redirectCount = props.redirectCount || 0;
+
+	if (redirectCount >= MAX_REDIRECTS) {
+		LogError("Too many redirects");
+		return { redirectData: null, response: undefined };
+	}
+
 	let res: Response | undefined;
 	const bodyParentObj: RequestInit = {};
 
@@ -618,7 +648,7 @@ export async function handleRedirects(props: {
 			return { redirectData, response: res };
 		}
 
-		redirectData = await effectuateRedirectDataResult(redirectData);
+		redirectData = await effectuateRedirectDataResult(redirectData, redirectCount);
 	} catch (error) {
 		// If this was an attempted redirect, potentially a CORS error here.
 		// Recommend returning a client redirect instruction instead.
@@ -1124,7 +1154,7 @@ export function getHistoryInstance(): historyInstance {
 	return __customHistory;
 }
 
-function initCustomHistory() {
+export function initCustomHistory() {
 	lastKnownCustomLocation = getHistoryInstance().location;
 	getHistoryInstance().listen(customHistoryListener as unknown as historyListener);
 	setNativeScrollRestorationToManual();

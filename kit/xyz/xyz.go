@@ -2,8 +2,6 @@
 package xyz
 
 import (
-	"fmt"
-	"net/http"
 	"strings"
 )
 
@@ -16,8 +14,4 @@ func MakeEmojiDataURL(emojiStr string) string {
 	sb.WriteString("</text>")
 	sb.WriteString("</svg>")
 	return sb.String()
-}
-
-func GetRootURL(r *http.Request) string {
-	return fmt.Sprintf("https://%s", r.Host)
 }

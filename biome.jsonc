@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.0.0-beta.5/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.0.4/schema.json",
 	"vcs": {
 		"enabled": false,
 		"clientKind": "git",
@@ -13,7 +13,10 @@
 			"!npm_dist/**/*",
 			"!**/__dist",
 			"!**/frontend/river.gen.ts",
-			"!**/frontend/css/tailwind-output.css"
+			"!**/frontend/css/tailwind-output.css",
+
+			// __TEMP
+			"!internal/framework/_typescript/client/src/original-navigation.test.ts"
 		]
 	},
 	"formatter": {
@@ -39,7 +42,6 @@
 			"style": {
 				"useTemplate": "off", // permit string concatenation
 				"useLiteralEnumMembers": "error",
-				"noCommaOperator": "error",
 				"useNodejsImportProtocol": "error",
 				"useAsConstAssertion": "error",
 				"useEnumInitializers": "error",
@@ -53,7 +55,6 @@
 				"noParameterAssign": "error",
 				"noNonNullAssertion": "error",
 				"useDefaultParameterLast": "error",
-				"noArguments": "error",
 				"useImportType": "error",
 				"useExportType": "error",
 				"noUselessElse": "error",
