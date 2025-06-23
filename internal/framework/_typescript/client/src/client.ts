@@ -1047,7 +1047,14 @@ export function makeLinkOnClickFn<E extends Event>(
 			if (!control.promise) return;
 
 			const res = await control.promise;
-			if (!res) return;
+
+			if (!res) {
+				// __TODO add test for this
+				// If not here, loading indicator can get stuck on
+				// following redirects
+				navigationStateManager.removeNavigation(anchor.href);
+				return;
+			}
 
 			await callbacks.beforeRender?.(e);
 			await navigationStateManager.processNavigationResult(res, control, {
@@ -1177,6 +1184,14 @@ export function getPrefetchHandlers<E extends Event>(
 		try {
 			if (!prerenderResult && currentNav) {
 				prerenderResult = await currentNav.promise;
+			}
+
+			if (!prerenderResult) {
+				// __TODO add test for this
+				// If not here, loading indicator can get stuck on
+				// following redirects
+				navigationStateManager.removeNavigation(relativeURL);
+				return;
 			}
 
 			if (prerenderResult) {
