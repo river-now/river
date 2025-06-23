@@ -26,21 +26,50 @@ import {
 import { isAbortError, LogError, LogInfo, Panic } from "./utils.ts";
 
 /////////////////////////////////////////////////////////////////////
-// COMMON
+// TYPES
 /////////////////////////////////////////////////////////////////////
 
 export const RIVER_ROUTE_CHANGE_EVENT_KEY = "river:route-change";
+export const STATUS_EVENT_KEY = "river:status";
+const LOCATION_EVENT_KEY = "river:location";
+const BUILD_ID_EVENT_KEY = "river:build-id";
+const RIVER_HARD_RELOAD_QUERY_PARAM = "river_reload";
 
 export type ScrollState = { x: number; y: number } | { hash: string };
+export type RouteChangeEvent = CustomEvent<RouteChangeEventDetail>;
+export type StatusEvent = CustomEvent<StatusEventDetail>;
+
 type RouteChangeEventDetail = {
 	scrollState?: ScrollState;
 	index?: number;
 };
-export type RouteChangeEvent = CustomEvent<RouteChangeEventDetail>;
 
-/////////////////////////////////////////////////////////////////////
-// NAVIGATION TYPES AND GLOBAL STATE
-/////////////////////////////////////////////////////////////////////
+type StatusEventDetail = {
+	isNavigating: boolean;
+	isSubmitting: boolean;
+	isRevalidating: boolean;
+};
+
+type BuildIDEvent = {
+	oldID: string;
+	newID: string;
+	fromGETAction: boolean;
+};
+
+type NavigationType =
+	| "browserHistory"
+	| "userNavigation"
+	| "revalidation"
+	| "redirect"
+	| "prefetch";
+
+export type NavigateProps = {
+	href: string;
+	navigationType: NavigationType;
+	scrollStateToRestore?: ScrollState;
+	replace?: boolean;
+	redirectCount?: number;
+};
 
 type NavigationResult =
 	| ({
@@ -61,93 +90,30 @@ export type NavigationControl = {
 	promise: Promise<NavigationResult>;
 };
 
-type NavigationType =
-	| "browserHistory"
-	| "userNavigation"
-	| "revalidation"
-	| "redirect"
-	| "prefetch";
+type NavigationEntry = {
+	control: NavigationControl;
+	type: NavigationType;
+};
 
-export type NavigateProps = {
+type SubmissionEntry = {
+	controller: AbortController;
+	type: "submission";
+};
+
+type LinkOnClickCallback<E extends Event> = (event: E) => void | Promise<void>;
+
+type LinkOnClickCallbacksBase<E extends Event> = {
+	beforeBegin?: LinkOnClickCallback<E>;
+	beforeRender?: LinkOnClickCallback<E>;
+	afterRender?: LinkOnClickCallback<E>;
+};
+
+type LinkOnClickCallbacks<E extends Event> = LinkOnClickCallbacksBase<E>;
+
+type GetPrefetchHandlersInput<E extends Event> = LinkOnClickCallbacksBase<E> & {
 	href: string;
-	navigationType: NavigationType;
-	scrollStateToRestore?: ScrollState;
-	replace?: boolean;
-	redirectCount?: number;
+	delayMs?: number;
 };
-
-export const navigationState = {
-	navigations: new Map<
-		string,
-		{
-			control: NavigationControl;
-			type: NavigationType;
-		}
-	>(),
-	activeUserNavigation: null as string | null,
-	submissions: new Map<
-		string,
-		{
-			controller: AbortController;
-			type: "submission";
-		}
-	>(),
-};
-
-/////////////////////////////////////////////////////////////////////
-// NAVIGATION UTILS
-/////////////////////////////////////////////////////////////////////
-
-export async function __navigate(props: NavigateProps) {
-	const x = beginNavigation(props);
-	if (!x.promise) {
-		return;
-	}
-	const res = await x.promise;
-	if (!res) {
-		return;
-	}
-	await __completeNavigation(res);
-}
-
-export function beginNavigation(props: NavigateProps): NavigationControl {
-	setLoadingStatus({ type: props.navigationType, value: true });
-
-	// If this is a user navigation, abort any existing user navigation
-	if (props.navigationType === "userNavigation") {
-		// Abort all other navigations
-		abortAllNavigationsExcept(props.href);
-		navigationState.activeUserNavigation = props.href;
-
-		// Check if we have an existing prefetch we can upgrade
-		const existing = navigationState.navigations.get(props.href);
-		if (existing && existing.type === "prefetch") {
-			existing.type = "userNavigation";
-			return existing.control;
-		}
-	}
-
-	// For prefetches, check if one already exists
-	if (props.navigationType === "prefetch") {
-		const existing = navigationState.navigations.get(props.href);
-		if (existing) {
-			return existing.control;
-		}
-	}
-
-	const controller = new AbortController();
-	const control: NavigationControl = {
-		abortController: controller,
-		promise: __fetchRouteData(controller, props),
-	};
-
-	navigationState.navigations.set(props.href, {
-		control,
-		type: props.navigationType,
-	});
-
-	return control;
-}
 
 type PartialWaitFnJSON = Pick<
 	GetRouteDataOutput,
@@ -159,60 +125,468 @@ type PartialWaitFnJSON = Pick<
 	| "importURLs"
 >;
 
-function resolveWaitFnPropsFromJSON(
-	json: PartialWaitFnJSON,
-	buildID: string,
-	idx: number,
-) {
-	return {
-		buildID: buildID,
-		matchedPatterns: json.matchedPatterns || [],
-		splatValues: json.splatValues || [],
-		params: json.params || {},
-		rootData: json.hasRootData ? json.loadersData[0] : null,
-		loaderData: json.loadersData[idx],
+type RerenderAppProps = {
+	json: GetRouteDataOutput;
+	navigationType: NavigationType;
+	runHistoryOptions?: {
+		href: string;
+		scrollStateToRestore?: ScrollState;
+		replace?: boolean;
 	};
-}
+	cssBundlePromises: Array<any>;
+};
 
-async function __completeNavigation(x: NavigationResult) {
-	if (!x) {
-		return;
+/////////////////////////////////////////////////////////////////////
+// NAVIGATION STATE MANAGER
+/////////////////////////////////////////////////////////////////////
+
+class NavigationStateManager {
+	private navigations = new Map<string, NavigationEntry>();
+	private activeUserNavigation: string | null = null;
+	private submissions = new Map<string, SubmissionEntry>();
+	private nonDedupedSubmissions = new Set<AbortController>();
+	private lastDispatchedStatus: StatusEventDetail | null = null;
+	private dispatchStatusEventDebounced: () => void;
+
+	constructor() {
+		this.dispatchStatusEventDebounced = debounce(() => {
+			this.dispatchStatusEvent();
+		}, 5);
 	}
-	if ("redirectData" in x) {
-		await effectuateRedirectDataResult(
-			x.redirectData,
-			x.props.redirectCount || 0,
+
+	// Navigation management
+	addNavigation(href: string, entry: NavigationEntry): void {
+		this.navigations.set(href, entry);
+		this.scheduleStatusUpdate();
+	}
+
+	removeNavigation(href: string): void {
+		this.navigations.delete(href);
+		if (this.activeUserNavigation === href) {
+			this.activeUserNavigation = null;
+		}
+		this.scheduleStatusUpdate();
+	}
+
+	getNavigation(href: string): NavigationEntry | undefined {
+		return this.navigations.get(href);
+	}
+
+	hasNavigation(href: string): boolean {
+		return this.navigations.has(href);
+	}
+
+	getNavigationsSize(): number {
+		return this.navigations.size;
+	}
+
+	setActiveUserNavigation(href: string | null): void {
+		this.activeUserNavigation = href;
+	}
+
+	getActiveUserNavigation(): string | null {
+		return this.activeUserNavigation;
+	}
+
+	abortAllNavigationsExcept(excludeHref?: string): void {
+		for (const [href, nav] of this.navigations.entries()) {
+			if (href !== excludeHref) {
+				nav.control.abortController?.abort();
+				this.navigations.delete(href);
+			}
+		}
+		this.scheduleStatusUpdate();
+	}
+
+	// Submission management
+	addSubmission(key: string, entry: SubmissionEntry): void {
+		this.submissions.set(key, entry);
+		this.scheduleStatusUpdate();
+	}
+
+	removeSubmission(key: string): void {
+		this.submissions.delete(key);
+		this.scheduleStatusUpdate();
+	}
+
+	getSubmission(key: string): SubmissionEntry | undefined {
+		return this.submissions.get(key);
+	}
+
+	addNonDedupedSubmission(controller: AbortController): void {
+		this.nonDedupedSubmissions.add(controller);
+		this.scheduleStatusUpdate();
+	}
+
+	removeNonDedupedSubmission(controller: AbortController): void {
+		this.nonDedupedSubmissions.delete(controller);
+		this.scheduleStatusUpdate();
+	}
+
+	// Status management
+	getStatus(): StatusEventDetail {
+		const navigations = Array.from(this.navigations.values());
+		const hasActiveSubmissions =
+			this.submissions.size > 0 || this.nonDedupedSubmissions.size > 0;
+
+		return {
+			isNavigating: navigations.some(
+				(nav) => nav.type !== "prefetch" && nav.type !== "revalidation",
+			),
+			isSubmitting: hasActiveSubmissions,
+			isRevalidating: navigations.some(
+				(nav) => nav.type === "revalidation",
+			),
+		};
+	}
+
+	private scheduleStatusUpdate(): void {
+		this.dispatchStatusEventDebounced();
+	}
+
+	private dispatchStatusEvent(): void {
+		const newStatus = this.getStatus();
+
+		if (jsonDeepEquals(this.lastDispatchedStatus, newStatus)) {
+			return;
+		}
+
+		this.lastDispatchedStatus = newStatus;
+		window.dispatchEvent(
+			new CustomEvent(STATUS_EVENT_KEY, { detail: newStatus }),
 		);
-		return;
 	}
-	const oldID = internal_RiverClientGlobal.get("buildID");
-	const newID = getBuildIDFromResponse(x.response);
-	if (newID && newID !== oldID) {
-		dispatchBuildIDEvent({ newID, oldID, fromGETAction: false });
+
+	// Getters for backwards compatibility
+	getNavigations(): Map<string, NavigationEntry> {
+		return this.navigations;
 	}
-	const clientLoadersData = await x.waitFnPromise;
-	internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
-	try {
-		await __reRenderApp({
-			json: x.json,
-			navigationType: x.props.navigationType,
-			runHistoryOptions: x.props,
-			cssBundlePromises: x.cssBundlePromises,
-		});
-	} catch (error) {
-		handleNavError(error, x.props);
+
+	getSubmissions(): Map<string, SubmissionEntry> {
+		return this.submissions;
+	}
+
+	clearAll(): void {
+		this.navigations.clear();
+		this.submissions.clear();
+		this.nonDedupedSubmissions.clear();
+		this.activeUserNavigation = null;
+		this.scheduleStatusUpdate();
 	}
 }
 
-function getMaybeNewPreloadLink(x: string) {
-	const href = resolvePublicHref(x);
-	const existing = document.querySelector(`link[href="${CSS.escape(href)}"]`);
-	if (existing) {
-		return;
+// Global instance
+export const navigationStateManager = new NavigationStateManager();
+
+// Export for backwards compatibility
+export const navigationState = {
+	get navigations() {
+		return navigationStateManager.getNavigations();
+	},
+	get submissions() {
+		return navigationStateManager.getSubmissions();
+	},
+	get activeUserNavigation() {
+		return navigationStateManager.getActiveUserNavigation();
+	},
+	set activeUserNavigation(value: string | null) {
+		navigationStateManager.setActiveUserNavigation(value);
+	},
+};
+
+/////////////////////////////////////////////////////////////////////
+// SCROLL STATE MANAGER
+/////////////////////////////////////////////////////////////////////
+
+class ScrollStateManager {
+	private readonly STORAGE_KEY = "__river__scrollStateMap";
+	private readonly PAGE_REFRESH_KEY = "__river__pageRefreshScrollState";
+	private readonly MAX_ENTRIES = 50;
+
+	saveState(key: string, state: ScrollState): void {
+		const map = this.getMap();
+		map.set(key, state);
+
+		// Enforce size limit
+		if (map.size > this.MAX_ENTRIES) {
+			const firstKey = map.keys().next().value;
+			if (firstKey) map.delete(firstKey);
+		}
+
+		this.saveMap(map);
 	}
-	const newLink = document.createElement("link");
-	newLink.href = href;
-	return newLink;
+
+	getState(key: string): ScrollState | undefined {
+		return this.getMap().get(key);
+	}
+
+	savePageRefreshState(): void {
+		const state = {
+			x: window.scrollX,
+			y: window.scrollY,
+			unix: Date.now(),
+			href: window.location.href,
+		};
+		sessionStorage.setItem(this.PAGE_REFRESH_KEY, JSON.stringify(state));
+	}
+
+	restorePageRefreshState(): void {
+		const stored = sessionStorage.getItem(this.PAGE_REFRESH_KEY);
+		if (!stored) return;
+
+		try {
+			const state = JSON.parse(stored);
+			if (
+				state.href === window.location.href &&
+				Date.now() - state.unix < 5000
+			) {
+				sessionStorage.removeItem(this.PAGE_REFRESH_KEY);
+				window.requestAnimationFrame(() => {
+					applyScrollState({ x: state.x, y: state.y });
+				});
+			}
+		} catch {}
+	}
+
+	private getMap(): Map<string, ScrollState> {
+		const stored = sessionStorage.getItem(this.STORAGE_KEY);
+		if (!stored) return new Map();
+
+		try {
+			return new Map(JSON.parse(stored));
+		} catch {
+			return new Map();
+		}
+	}
+
+	private saveMap(map: Map<string, ScrollState>): void {
+		sessionStorage.setItem(
+			this.STORAGE_KEY,
+			JSON.stringify(Array.from(map.entries())),
+		);
+	}
+}
+
+const scrollStateManager = new ScrollStateManager();
+
+/////////////////////////////////////////////////////////////////////
+// HISTORY MANAGER
+/////////////////////////////////////////////////////////////////////
+
+class HistoryManager {
+	private static instance: historyInstance;
+	private static lastKnownLocation: typeof HistoryManager.instance.location;
+
+	static getInstance(): historyInstance {
+		if (!this.instance) {
+			this.instance =
+				createBrowserHistory() as unknown as historyInstance;
+			this.lastKnownLocation = this.instance.location;
+		}
+		return this.instance;
+	}
+
+	static getLastKnownLocation() {
+		return this.lastKnownLocation;
+	}
+
+	static updateLastKnownLocation(
+		location: typeof HistoryManager.instance.location,
+	) {
+		this.lastKnownLocation = location;
+	}
+
+	static init(): void {
+		const instance = this.getInstance();
+		instance.listen(customHistoryListener as unknown as historyListener);
+		this.setManualScrollRestoration();
+	}
+
+	private static setManualScrollRestoration(): void {
+		if (
+			history.scrollRestoration &&
+			history.scrollRestoration !== "manual"
+		) {
+			history.scrollRestoration = "manual";
+		}
+	}
+}
+
+/////////////////////////////////////////////////////////////////////
+// ASSET MANAGER
+/////////////////////////////////////////////////////////////////////
+
+class AssetManager {
+	static preloadModule(url: string): void {
+		const href = resolvePublicHref(url);
+		if (document.querySelector(`link[href="${CSS.escape(href)}"]`)) {
+			return;
+		}
+
+		const link = document.createElement("link");
+		link.rel = "modulepreload";
+		link.href = href;
+		document.head.appendChild(link);
+	}
+
+	static preloadCSS(url: string): Promise<void> {
+		const href = resolvePublicHref(url);
+
+		const link = document.createElement("link");
+		link.rel = "preload";
+		link.setAttribute("as", "style");
+		link.href = href;
+
+		document.head.appendChild(link);
+
+		return new Promise((resolve, reject) => {
+			link.onload = () => resolve();
+			link.onerror = reject;
+		});
+	}
+
+	static applyCSS(bundles: string[]): void {
+		window.requestAnimationFrame(() => {
+			const prefix = internal_RiverClientGlobal.get("publicPathPrefix");
+
+			for (const bundle of bundles) {
+				// Check using the data attribute without escaping
+				if (
+					document.querySelector(
+						`link[data-river-css-bundle="${bundle}"]`,
+					)
+				) {
+					continue;
+				}
+
+				const link = document.createElement("link");
+				link.rel = "stylesheet";
+				link.href = prefix + bundle;
+				link.setAttribute("data-river-css-bundle", bundle);
+				document.head.appendChild(link);
+			}
+		});
+	}
+}
+
+/////////////////////////////////////////////////////////////////////
+// COMPONENT LOADER
+/////////////////////////////////////////////////////////////////////
+
+class ComponentLoader {
+	static async loadComponents(
+		importURLs: string[],
+	): Promise<Map<string, any>> {
+		const dedupedURLs = [...new Set(importURLs)];
+		const modules = await Promise.all(
+			dedupedURLs.map(async (url) => {
+				if (!url) return undefined;
+				return import(/* @vite-ignore */ resolvePublicHref(url));
+			}),
+		);
+
+		return new Map(dedupedURLs.map((url, i) => [url, modules[i]]));
+	}
+
+	static async handleComponents(importURLs: string[]): Promise<void> {
+		const modulesMap = await this.loadComponents(importURLs);
+		const originalImportURLs = internal_RiverClientGlobal.get("importURLs");
+		const exportKeys = internal_RiverClientGlobal.get("exportKeys") ?? [];
+
+		// Set active components
+		const activeComponents = originalImportURLs.map((url, i) => {
+			const module = modulesMap.get(url);
+			const key = exportKeys[i] ?? "default";
+			return module?.[key] ?? null;
+		});
+		internal_RiverClientGlobal.set("activeComponents", activeComponents);
+
+		// Handle error boundary
+		const errorIdx = internal_RiverClientGlobal.get("outermostErrorIdx");
+		if (errorIdx != null) {
+			const errorModuleURL = originalImportURLs[errorIdx];
+			let errorComponent;
+
+			if (errorModuleURL) {
+				const errorModule = modulesMap.get(errorModuleURL);
+				const errorKey =
+					internal_RiverClientGlobal.get("errorExportKey");
+				if (errorKey && errorModule) {
+					errorComponent = errorModule[errorKey];
+				}
+			}
+
+			internal_RiverClientGlobal.set(
+				"activeErrorBoundary",
+				errorComponent ??
+					internal_RiverClientGlobal.get("defaultErrorBoundary"),
+			);
+		}
+	}
+}
+
+/////////////////////////////////////////////////////////////////////
+// NAVIGATION CORE
+/////////////////////////////////////////////////////////////////////
+
+export async function __navigate(props: NavigateProps): Promise<void> {
+	const control = beginNavigation(props);
+	if (!control.promise) return;
+
+	const result = await control.promise;
+	if (!result) return;
+
+	await __completeNavigation(result);
+}
+
+export function beginNavigation(props: NavigateProps): NavigationControl {
+	// Handle user navigation specifics
+	if (props.navigationType === "userNavigation") {
+		navigationStateManager.abortAllNavigationsExcept(props.href);
+		navigationStateManager.setActiveUserNavigation(props.href);
+
+		// Check for existing prefetch to upgrade
+		const existing = navigationStateManager.getNavigation(props.href);
+		if (existing && existing.type === "prefetch") {
+			existing.type = "userNavigation";
+			// Update the navigation props to reflect the upgrade
+			const originalPromise = existing.control.promise;
+			existing.control.promise = originalPromise.then((result) => {
+				if (result && !("redirectData" in result)) {
+					// Update the navigation type in the result props
+					return {
+						...result,
+						props: {
+							...result.props,
+							navigationType: "userNavigation" as NavigationType,
+						},
+					};
+				}
+				return result;
+			});
+			return existing.control;
+		}
+	}
+
+	// Handle prefetch deduplication
+	if (props.navigationType === "prefetch") {
+		const existing = navigationStateManager.getNavigation(props.href);
+		if (existing) return existing.control;
+	}
+
+	// Create new navigation
+	const controller = new AbortController();
+	const control: NavigationControl = {
+		abortController: controller,
+		promise: __fetchRouteData(controller, props),
+	};
+
+	navigationStateManager.addNavigation(props.href, {
+		control,
+		type: props.navigationType,
+	});
+
+	return control;
 }
 
 async function __fetchRouteData(
@@ -235,8 +609,8 @@ async function __fetchRouteData(
 
 		const redirected = redirectData?.status === "did";
 		const responseNotOK = !response?.ok && response?.status !== 304;
+
 		if (redirected || !response || responseNotOK) {
-			setLoadingStatus({ type: props.navigationType, value: false });
 			return;
 		}
 
@@ -249,50 +623,21 @@ async function __fetchRouteData(
 			throw new Error("No JSON response");
 		}
 
-		// deps are only present in prod because they stem from the rollup metafile
-		// (same for CSS bundles -- vite handles them in dev)
-		// so in dev, to get similar behavior, we use the importURLs
-		// (which is a subset of what the deps would be in prod)
+		// Preload assets
 		const depsToPreload = import.meta.env.DEV
 			? [...new Set(json.importURLs)]
 			: json.deps;
 
-		// Add missing deps modulepreload links
-		for (const x of depsToPreload ?? []) {
-			if (x === "") {
-				continue;
-			}
-			const newLink = getMaybeNewPreloadLink(x);
-			if (!newLink) {
-				continue;
-			}
-			newLink.rel = "modulepreload";
-			document.head.appendChild(newLink);
+		for (const dep of depsToPreload ?? []) {
+			if (dep) AssetManager.preloadModule(dep);
 		}
 
 		const buildID = getBuildIDFromResponse(response);
-
 		const waitFnPromise = runWaitFns(json, buildID);
-
-		// Create an array to store promises for CSS bundle preloads
 		const cssBundlePromises: Array<Promise<any>> = [];
 
-		// Add missing css bundle preload links
-		for (const x of json.cssBundles ?? []) {
-			const newLink = getMaybeNewPreloadLink(x);
-			if (!newLink) {
-				continue;
-			}
-			newLink.rel = "preload";
-			newLink.setAttribute("as", "style");
-			document.head.appendChild(newLink);
-
-			// Create a promise for this CSS bundle preload
-			const preloadPromise = new Promise((resolve, reject) => {
-				newLink.onload = resolve;
-				newLink.onerror = reject;
-			});
-			cssBundlePromises.push(preloadPromise);
+		for (const bundle of json.cssBundles ?? []) {
+			cssBundlePromises.push(AssetManager.preloadCSS(bundle));
 		}
 
 		return { response, json, props, cssBundlePromises, waitFnPromise };
@@ -300,67 +645,433 @@ async function __fetchRouteData(
 		if (!isAbortError(error)) {
 			LogError("Navigation failed", error);
 		}
-		setLoadingStatus({ type: props.navigationType, value: false });
 	} finally {
-		navigationState.navigations.delete(props.href);
-		if (navigationState.activeUserNavigation === props.href) {
-			navigationState.activeUserNavigation = null;
+		navigationStateManager.removeNavigation(props.href);
+	}
+}
+
+async function __completeNavigation(result: NavigationResult): Promise<void> {
+	if (!result) return;
+
+	if ("redirectData" in result) {
+		await effectuateRedirectDataResult(
+			result.redirectData,
+			result.props.redirectCount || 0,
+		);
+		return;
+	}
+
+	// Handle build ID change
+	const oldID = internal_RiverClientGlobal.get("buildID");
+	const newID = getBuildIDFromResponse(result.response);
+	if (newID && newID !== oldID) {
+		dispatchBuildIDEvent({ newID, oldID, fromGETAction: false });
+	}
+
+	// Wait for client loaders
+	const clientLoadersData = await result.waitFnPromise;
+	internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
+
+	// For revalidation, check if we're still on the page we're revalidating
+	if (result.props.navigationType === "revalidation") {
+		const revalidatingUrl = new URL(
+			result.props.href,
+			window.location.href,
+		);
+		const currentUrl = new URL(window.location.href);
+
+		if (
+			revalidatingUrl.pathname !== currentUrl.pathname ||
+			revalidatingUrl.search !== currentUrl.search
+		) {
+			// We've navigated away, skip rendering
+			return;
 		}
 	}
-}
 
-function abortNavigation(href: string) {
-	const nav = navigationState.navigations.get(href);
-	if (nav) {
-		nav.control.abortController?.abort();
-		navigationState.navigations.delete(href);
+	try {
+		await __reRenderApp({
+			json: result.json,
+			navigationType: result.props.navigationType,
+			runHistoryOptions: result.props,
+			cssBundlePromises: result.cssBundlePromises,
+		});
+	} catch (error) {
+		handleNavError(error, result.props);
 	}
 }
 
-function abortAllNavigationsExcept(excludeHref?: string) {
-	for (const [href, nav] of navigationState.navigations.entries()) {
-		if (href !== excludeHref) {
-			nav.control.abortController?.abort();
-			navigationState.navigations.delete(href);
+async function __reRenderApp(props: RerenderAppProps): Promise<void> {
+	const shouldUseViewTransitions =
+		internal_RiverClientGlobal.get("useViewTransitions") &&
+		!!document.startViewTransition &&
+		props.navigationType !== "prefetch" &&
+		props.navigationType !== "revalidation";
+
+	if (shouldUseViewTransitions) {
+		const transition = document.startViewTransition(async () => {
+			await __reRenderAppInner(props);
+		});
+		await transition.finished;
+	} else {
+		await __reRenderAppInner(props);
+	}
+}
+
+async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
+	const { json, navigationType, runHistoryOptions, cssBundlePromises } =
+		props;
+
+	// Update global state
+	const stateKeys = [
+		"outermostError",
+		"outermostErrorIdx",
+		"errorExportKey",
+		"matchedPatterns",
+		"loadersData",
+		"importURLs",
+		"exportKeys",
+		"hasRootData",
+		"params",
+		"splatValues",
+	] as const;
+
+	for (const key of stateKeys) {
+		internal_RiverClientGlobal.set(key, json[key]);
+	}
+
+	// Load components
+	await ComponentLoader.handleComponents(json.importURLs);
+
+	// Handle history and scroll
+	let scrollStateToDispatch: ScrollState | undefined;
+
+	if (runHistoryOptions) {
+		const { href, scrollStateToRestore, replace } = runHistoryOptions;
+		const hash = href.split("#")[1];
+		const history = HistoryManager.getInstance();
+
+		if (
+			navigationType === "userNavigation" ||
+			navigationType === "redirect"
+		) {
+			const target = new URL(href, window.location.href).href;
+			const current = new URL(window.location.href).href;
+
+			if (target !== current && !replace) {
+				history.push(href);
+			} else {
+				history.replace(href);
+			}
+
+			scrollStateToDispatch = hash ? { hash } : { x: 0, y: 0 };
+		}
+
+		if (navigationType === "browserHistory") {
+			scrollStateToDispatch =
+				scrollStateToRestore ?? (hash ? { hash } : undefined);
 		}
 	}
-}
 
-function handleNavError(error: unknown, props: NavigateProps) {
-	if (!isAbortError(error)) {
-		LogError(error);
-		setLoadingStatus({ type: props.navigationType, value: false });
+	// Update title
+	if (json.title?.dangerousInnerHTML) {
+		const temp = document.createElement("textarea");
+		temp.innerHTML = json.title.dangerousInnerHTML;
+		if (document.title !== temp.value) {
+			document.title = temp.value;
+		}
 	}
-}
 
-function isJustAHashChange(
-	anchorDetails: ReturnType<typeof getAnchorDetailsFromEvent>,
-): boolean {
-	if (!anchorDetails) {
-		return false;
+	// Wait for CSS
+	if (cssBundlePromises.length > 0) {
+		try {
+			LogInfo("Waiting for CSS bundle preloads to complete...");
+			await Promise.all(cssBundlePromises);
+			LogInfo("CSS bundle preloads completed.");
+		} catch (error) {
+			LogError("Error preloading CSS bundles:", error);
+		}
 	}
-	const { pathname, search, hash } = new URL(
-		anchorDetails.anchor.href,
-		window.location.href,
+
+	// Apply CSS
+	if (json.cssBundles) {
+		AssetManager.applyCSS(json.cssBundles);
+	}
+
+	// Dispatch route change event
+	window.dispatchEvent(
+		new CustomEvent(RIVER_ROUTE_CHANGE_EVENT_KEY, {
+			detail: { scrollState: scrollStateToDispatch },
+		}),
 	);
-	if (
-		hash &&
-		pathname === window.location.pathname &&
-		search === window.location.search
-	) {
-		return true;
+
+	// Update head elements
+	updateHeadEls("meta", json.metaHeadEls ?? []);
+	updateHeadEls("rest", json.restHeadEls ?? []);
+}
+
+/////////////////////////////////////////////////////////////////////
+// REDIRECTS
+/////////////////////////////////////////////////////////////////////
+
+async function effectuateRedirectDataResult(
+	redirectData: RedirectData,
+	redirectCount: number,
+): Promise<RedirectData | null> {
+	if (redirectData.status !== "should") return null;
+
+	if (redirectData.shouldRedirectStrategy === "hard") {
+		if (!redirectData.hrefDetails.isHTTP) return null;
+
+		if (redirectData.hrefDetails.isExternal) {
+			window.location.href = redirectData.href;
+		} else {
+			const url = new URL(redirectData.href, window.location.href);
+			url.searchParams.set(
+				RIVER_HARD_RELOAD_QUERY_PARAM,
+				redirectData.latestBuildID,
+			);
+			window.location.href = url.href;
+		}
+
+		return {
+			hrefDetails: redirectData.hrefDetails,
+			status: "did",
+			href: redirectData.href,
+		};
 	}
-	return false;
+
+	if (redirectData.shouldRedirectStrategy === "soft") {
+		await __navigate({
+			href: redirectData.href,
+			navigationType: "redirect",
+			redirectCount: redirectCount + 1,
+		});
+
+		return {
+			hrefDetails: redirectData.hrefDetails,
+			status: "did",
+			href: redirectData.href,
+		};
+	}
+
+	return null;
+}
+
+export async function handleRedirects(props: {
+	abortController: AbortController;
+	url: URL;
+	requestInit?: RequestInit;
+	isPrefetch?: boolean;
+	redirectCount?: number;
+}): Promise<{ redirectData: RedirectData | null; response?: Response }> {
+	const MAX_REDIRECTS = 10;
+	const redirectCount = props.redirectCount || 0;
+
+	if (redirectCount >= MAX_REDIRECTS) {
+		LogError("Too many redirects");
+		return { redirectData: null, response: undefined };
+	}
+
+	// Prepare request
+	const bodyParentObj: RequestInit = {};
+	const isGET = getIsGETRequest(props.requestInit);
+
+	if (props.requestInit && (props.requestInit.body !== undefined || !isGET)) {
+		if (
+			props.requestInit.body instanceof FormData ||
+			typeof props.requestInit.body === "string"
+		) {
+			bodyParentObj.body = props.requestInit.body;
+		} else {
+			bodyParentObj.body = JSON.stringify(props.requestInit.body);
+		}
+	}
+
+	const headers = new Headers(props.requestInit?.headers);
+	headers.set("X-Accepts-Client-Redirect", "1");
+	bodyParentObj.headers = headers;
+
+	const finalRequestInit = {
+		signal: props.abortController.signal,
+		...props.requestInit,
+		...bodyParentObj,
+	};
+
+	// Execute request
+	const res = await fetch(props.url, finalRequestInit);
+	let redirectData = parseFetchResponseForRedirectData(finalRequestInit, res);
+
+	if (props.isPrefetch || !redirectData || redirectData.status === "did") {
+		return { redirectData, response: res };
+	}
+
+	redirectData = await effectuateRedirectDataResult(
+		redirectData,
+		redirectCount,
+	);
+	return { redirectData, response: res };
+}
+
+/////////////////////////////////////////////////////////////////////
+// SUBMISSIONS
+/////////////////////////////////////////////////////////////////////
+
+export async function submit<T = any>(
+	url: string | URL,
+	requestInit?: RequestInit,
+	options?: { dedupeKey?: string },
+): Promise<{ success: true; data: T } | { success: false; error: string }> {
+	const submitRes = await submitInner(url, requestInit, options);
+	const isGET = getIsGETRequest(requestInit);
+	const needsRevalidation = !submitRes.alreadyRevalidated && !isGET;
+
+	if (needsRevalidation) {
+		await revalidate();
+	}
+
+	if (!submitRes.success) {
+		LogError(submitRes.error);
+		return { success: false, error: submitRes.error };
+	}
+
+	try {
+		const json = await submitRes.response.json();
+		return { success: true, data: json as T };
+	} catch (e) {
+		LogError(e);
+		return {
+			success: false,
+			error: e instanceof Error ? e.message : "Unknown error",
+		};
+	}
+}
+
+async function submitInner(
+	url: string | URL,
+	_requestInit?: RequestInit,
+	options?: { dedupeKey?: string },
+): Promise<
+	(
+		| { success: true; response: Response }
+		| { success: false; error: string }
+	) & {
+		alreadyRevalidated: boolean;
+	}
+> {
+	const requestInit = _requestInit || {};
+	let abortController: AbortController;
+	let submissionKey: string | undefined;
+	let didAbort = false;
+
+	// Handle deduplication
+	if (options?.dedupeKey) {
+		const urlStr = typeof url === "string" ? url : url.href;
+		submissionKey = `${urlStr}${requestInit?.method || ""}${options.dedupeKey}`;
+
+		const existing = navigationStateManager.getSubmission(submissionKey);
+		if (existing) {
+			existing.controller.abort();
+			navigationStateManager.removeSubmission(submissionKey);
+			didAbort = true;
+		}
+
+		abortController = new AbortController();
+		navigationStateManager.addSubmission(submissionKey, {
+			controller: abortController,
+			type: "submission",
+		});
+	} else {
+		abortController = new AbortController();
+		navigationStateManager.addNonDedupedSubmission(abortController);
+	}
+
+	const urlToUse = new URL(url, window.location.href);
+	const headers = new Headers(requestInit.headers);
+	requestInit.headers = headers;
+	const isGET = getIsGETRequest(requestInit);
+
+	try {
+		const { redirectData, response } = await handleRedirects({
+			abortController,
+			url: urlToUse,
+			requestInit,
+		});
+
+		// Handle build ID
+		const oldID = internal_RiverClientGlobal.get("buildID");
+		const newID = getBuildIDFromResponse(response);
+		if (newID && newID !== oldID) {
+			dispatchBuildIDEvent({ newID, oldID, fromGETAction: isGET });
+		}
+
+		const redirected = redirectData?.status === "did";
+
+		// Clean up
+		if (submissionKey !== undefined) {
+			navigationStateManager.removeSubmission(submissionKey);
+		} else {
+			navigationStateManager.removeNonDedupedSubmission(abortController);
+		}
+
+		// Handle response
+		if (response && getIsErrorRes(response)) {
+			return {
+				success: false,
+				error: String(response.status),
+				alreadyRevalidated: redirected,
+			};
+		}
+
+		if (didAbort) {
+			return {
+				success: false,
+				error: "Aborted",
+				alreadyRevalidated: false,
+			};
+		}
+
+		if (!response?.ok) {
+			return {
+				success: false,
+				error: String(response?.status || "unknown"),
+				alreadyRevalidated: redirected,
+			};
+		}
+
+		return {
+			success: true,
+			response,
+			alreadyRevalidated: redirected,
+		};
+	} catch (error) {
+		// Clean up
+		if (submissionKey !== undefined) {
+			navigationStateManager.removeSubmission(submissionKey);
+		} else {
+			navigationStateManager.removeNonDedupedSubmission(abortController);
+		}
+
+		if (isAbortError(error)) {
+			return {
+				success: false,
+				error: "Aborted",
+				alreadyRevalidated: false,
+			};
+		}
+
+		LogError(error);
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unknown error",
+			alreadyRevalidated: false,
+		};
+	}
 }
 
 /////////////////////////////////////////////////////////////////////
 // PREFETCH
 /////////////////////////////////////////////////////////////////////
-
-type GetPrefetchHandlersInput<E extends Event> = LinkOnClickCallbacksBase<E> & {
-	href: string;
-	delayMs?: number;
-};
 
 export function getPrefetchHandlers<E extends Event>(
 	input: GetPrefetchHandlersInput<E>,
@@ -377,15 +1088,113 @@ export function getPrefetchHandlers<E extends Event>(
 	let timer: number | undefined;
 	let currentNav: NavigationControl | null = null;
 	let prerenderResult: NavigationResult | null = null;
+	const delayMs = input.delayMs ?? 100;
 
-	// by default, wait 100ms before prefetching
-	const delayMsToUse = input.delayMs ?? 100;
+	async function prefetch(e: E): Promise<void> {
+		if (currentNav || !hrefDetails.isHTTP) return;
+
+		// Don't prefetch current page
+		const currentUrl = new URL(window.location.href);
+		const targetUrl = hrefDetails.url;
+		currentUrl.hash = "";
+		targetUrl.hash = "";
+		if (currentUrl.href === targetUrl.href) return;
+
+		if (input.beforeBegin) {
+			await input.beforeBegin(e);
+		}
+
+		currentNav = beginNavigation({
+			href: hrefDetails.relativeURL,
+			navigationType: "prefetch",
+		});
+
+		currentNav.promise
+			.then((result) => {
+				prerenderResult = result;
+			})
+			.catch((error) => {
+				if (!isAbortError(error)) {
+					LogError("Prefetch failed:", error);
+				}
+			});
+	}
+
+	function start(e: E): void {
+		if (currentNav) return;
+		timer = window.setTimeout(() => prefetch(e), delayMs);
+	}
+
+	function stop(): void {
+		if (timer) {
+			clearTimeout(timer);
+		}
+
+		if (!hrefDetails.isHTTP) return;
+
+		const nav = navigationStateManager.getNavigation(
+			hrefDetails.relativeURL,
+		);
+		if (nav?.type === "prefetch") {
+			nav.control.abortController?.abort();
+			navigationStateManager.removeNavigation(hrefDetails.relativeURL);
+		}
+
+		currentNav = null;
+		prerenderResult = null;
+	}
+
+	async function onClick(e: E): Promise<void> {
+		if (e.defaultPrevented || !hrefDetails.isHTTP) return;
+
+		const anchorDetails = getAnchorDetailsFromEvent(
+			e as unknown as MouseEvent,
+		);
+		if (!anchorDetails) return;
+
+		const { isEligibleForDefaultPrevention, isInternal } = anchorDetails;
+		if (!isEligibleForDefaultPrevention || !isInternal) return;
+
+		if (isJustAHashChange(anchorDetails)) {
+			saveScrollState();
+			return;
+		}
+
+		e.preventDefault();
+
+		if (prerenderResult) {
+			await finalize(e);
+			return;
+		}
+
+		if (timer) clearTimeout(timer);
+
+		if (input.beforeBegin) {
+			await input.beforeBegin(e);
+		}
+
+		currentNav = beginNavigation({
+			href: hrefDetails.relativeURL,
+			navigationType: "userNavigation",
+		});
+
+		prerenderResult = null;
+
+		try {
+			await finalize(e);
+		} catch (error) {
+			if (!isAbortError(error)) {
+				LogError("Error during click navigation:", error);
+			}
+		}
+	}
 
 	async function finalize(e: E): Promise<void> {
 		try {
 			if (!prerenderResult && currentNav) {
 				prerenderResult = await currentNav.promise;
 			}
+
 			if (prerenderResult) {
 				await input.beforeRender?.(e);
 
@@ -423,123 +1232,6 @@ export function getPrefetchHandlers<E extends Event>(
 		}
 	}
 
-	async function prefetch(e: E): Promise<void> {
-		if (currentNav || !hrefDetails.isHTTP) {
-			return;
-		}
-
-		// We don't really want to prefetch if the user is already on the page.
-		// In those cases, wait for an actual click.
-		const currentUrl = new URL(window.location.href);
-		const targetUrl = hrefDetails.url;
-		currentUrl.hash = "";
-		targetUrl.hash = "";
-		if (currentUrl.href === targetUrl.href) {
-			return;
-		}
-
-		if (input.beforeBegin) {
-			await input.beforeBegin(e);
-		}
-
-		currentNav = beginNavigation({
-			href: hrefDetails.relativeURL,
-			navigationType: "prefetch",
-		});
-
-		currentNav.promise
-			.then((result) => {
-				prerenderResult = result;
-			})
-			.catch((error) => {
-				if (!isAbortError(error)) {
-					LogError("Prefetch failed:", error);
-				}
-			});
-	}
-
-	function start(e: E): void {
-		if (currentNav) {
-			return;
-		}
-		timer = window.setTimeout(() => prefetch(e), delayMsToUse);
-	}
-
-	function stop(): void {
-		if (timer) {
-			clearTimeout(timer);
-		}
-
-		if (!hrefDetails.isHTTP) {
-			return;
-		}
-
-		// Only abort if it's a prefetch, not a user navigation
-		const nav = navigationState.navigations.get(hrefDetails.relativeURL);
-		if (nav?.type === "prefetch") {
-			abortNavigation(hrefDetails.relativeURL);
-		}
-
-		// Ensure future prefetches can occur
-		currentNav = null;
-		prerenderResult = null;
-	}
-
-	async function onClick(e: E): Promise<void> {
-		if (e.defaultPrevented || !hrefDetails.isHTTP) {
-			return;
-		}
-
-		const anchorDetails = getAnchorDetailsFromEvent(
-			e as unknown as MouseEvent,
-		);
-		if (!anchorDetails) {
-			return;
-		}
-
-		const { isEligibleForDefaultPrevention, isInternal } = anchorDetails;
-
-		if (!isEligibleForDefaultPrevention || !isInternal) {
-			return;
-		}
-
-		if (isJustAHashChange(anchorDetails)) {
-			saveScrollState();
-			return;
-		}
-
-		e.preventDefault();
-		setLoadingStatus({ type: "userNavigation", value: true });
-
-		if (prerenderResult) {
-			await finalize(e); // Use the preloaded result directly
-			return;
-		}
-
-		if (timer) {
-			clearTimeout(timer);
-		}
-
-		if (input.beforeBegin) {
-			await input.beforeBegin(e);
-		}
-
-		currentNav = beginNavigation({
-			href: hrefDetails.relativeURL,
-			navigationType: "userNavigation",
-		});
-
-		prerenderResult = null;
-
-		try {
-			await finalize(e);
-		} catch (error) {
-			if (!isAbortError(error)) {
-				LogError("Error during click navigation:", error);
-			}
-		}
-	}
-
 	return {
 		...hrefDetails,
 		start,
@@ -548,534 +1240,14 @@ export function getPrefetchHandlers<E extends Event>(
 	};
 }
 
-function saveScrollState() {
-	scrollStateMapSubKey.set(lastKnownCustomLocation.key, {
-		x: window.scrollX,
-		y: window.scrollY,
-	});
-}
-
 /////////////////////////////////////////////////////////////////////
-// REDIRECTS
+// PUBLIC API
 /////////////////////////////////////////////////////////////////////
 
-const RIVER_HARD_RELOAD_QUERY_PARAM = "river_reload";
-
-async function effectuateRedirectDataResult(
-	redirectData: RedirectData,
-	redirectCount: number,
-): Promise<RedirectData | null> {
-	if (redirectData.status === "should") {
-		if (redirectData.shouldRedirectStrategy === "hard") {
-			if (!redirectData.hrefDetails.isHTTP) {
-				return null;
-			}
-			if (redirectData.hrefDetails.isExternal) {
-				window.location.href = redirectData.href;
-			}
-			if (redirectData.hrefDetails.isInternal) {
-				const url = new URL(redirectData.href, window.location.href);
-				url.searchParams.set(
-					RIVER_HARD_RELOAD_QUERY_PARAM,
-					redirectData.latestBuildID,
-				);
-				window.location.href = url.href;
-			}
-			return {
-				hrefDetails: redirectData.hrefDetails,
-				status: "did",
-				href: redirectData.href,
-			};
-		}
-		if (redirectData.shouldRedirectStrategy === "soft") {
-			await __navigate({
-				href: redirectData.href,
-				navigationType: "redirect",
-				redirectCount: redirectCount + 1,
-			});
-			return {
-				hrefDetails: redirectData.hrefDetails,
-				status: "did",
-				href: redirectData.href,
-			};
-		}
-	}
-	return null;
-}
-
-export async function handleRedirects(props: {
-	abortController: AbortController;
-	url: URL;
-	requestInit?: RequestInit;
-	isPrefetch?: boolean;
-	redirectCount?: number;
-}): Promise<{
-	redirectData: RedirectData | null;
-	response?: Response;
-}> {
-	const MAX_REDIRECTS = 10;
-	const redirectCount = props.redirectCount || 0;
-
-	if (redirectCount >= MAX_REDIRECTS) {
-		LogError("Too many redirects");
-		return { redirectData: null, response: undefined };
-	}
-
-	const bodyParentObj: RequestInit = {};
-
-	const isGET = getIsGETRequest(props.requestInit);
-
-	if (props.requestInit && (props.requestInit.body !== undefined || !isGET)) {
-		if (
-			props.requestInit.body instanceof FormData ||
-			typeof props.requestInit.body === "string"
-		) {
-			bodyParentObj.body = props.requestInit.body;
-		} else {
-			bodyParentObj.body = JSON.stringify(props.requestInit.body);
-		}
-	}
-
-	const headers = new Headers(props.requestInit?.headers);
-	// To temporarily test traditional server redirect behavior,
-	// you can set this to "0" instead of "1"
-	headers.set("X-Accepts-Client-Redirect", "1");
-	bodyParentObj.headers = headers;
-
-	const finalRequestInit = {
-		signal: props.abortController.signal,
-		...props.requestInit,
-		...bodyParentObj,
-	};
-
-	const res = await fetch(props.url, finalRequestInit);
-
-	let redirectData = parseFetchResponseForRedirectData(finalRequestInit, res);
-
-	if (props.isPrefetch || !redirectData || redirectData.status === "did") {
-		return { redirectData, response: res };
-	}
-
-	redirectData = await effectuateRedirectDataResult(
-		redirectData,
-		redirectCount,
-	);
-
-	return { redirectData, response: res };
-}
-
-/////////////////////////////////////////////////////////////////////
-// SUBMISSIONS / MUTATIONS
-/////////////////////////////////////////////////////////////////////
-
-function handleSubmissionController(key: string) {
-	// Abort existing submission if it exists
-	const existing = navigationState.submissions.get(key);
-	if (existing) {
-		existing.controller.abort();
-		navigationState.submissions.delete(key);
-	}
-
-	const controller = new AbortController();
-	navigationState.submissions.set(key, {
-		controller,
-		type: "submission",
-	});
-
-	return { abortController: controller, didAbort: !!existing };
-}
-
-export async function submit<T = any>(
-	url: string | URL,
-	requestInit?: RequestInit,
-	options?: { dedupeKey?: string },
-): Promise<{ success: true; data: T } | { success: false; error: string }> {
-	const submitRes = await submitInner(url, requestInit, options);
-	const isGET = getIsGETRequest(requestInit);
-	const needsRevalidation = !submitRes.alreadyRevalidated && !isGET;
-
-	async function handleReval() {
-		if (needsRevalidation) {
-			// We want to set revalidation status to true before
-			// turning off submission status so there is no flicker
-			// of "all-off" loading state between submission and
-			// revalidation.
-			setLoadingStatus({ type: "revalidation", value: true });
-			setLoadingStatus({ type: "submission", value: false });
-			await revalidate();
-		} else {
-			setLoadingStatus({ type: "submission", value: false });
-		}
-	}
-
-	await handleReval();
-
-	if (!submitRes.success) {
-		LogError(submitRes.error);
-		return { success: false, error: submitRes.error };
-	}
-
-	try {
-		const json = await submitRes.response.json();
-		return { success: true, data: json as T };
-	} catch (e) {
-		LogError(e);
-		return {
-			success: false,
-			error: e instanceof Error ? e.message : "Unknown error",
-		};
-	}
-}
-
-async function submitInner(
-	url: string | URL,
-	_requestInit_?: RequestInit,
-	options?: { dedupeKey?: string },
-): Promise<
-	(
-		| { success: true; response: Response }
-		| { success: false; error: string }
-	) & {
-		alreadyRevalidated: boolean;
-	}
-> {
-	const requestInit = _requestInit_ || {};
-
-	setLoadingStatus({ type: "submission", value: true });
-
-	let abortController: AbortController;
-	let submissionKey: string | undefined;
-	let didAbort = false;
-
-	if (options?.dedupeKey) {
-		const urlStr = typeof url === "string" ? url : url.href;
-		submissionKey = `${urlStr}${requestInit?.method || ""}${options.dedupeKey}`;
-		const result = handleSubmissionController(submissionKey);
-		abortController = result.abortController;
-		didAbort = result.didAbort;
-	} else {
-		abortController = new AbortController();
-	}
-
-	const urlToUse = new URL(url, window.location.href);
-
-	const headers = new Headers(requestInit.headers);
-	requestInit.headers = headers;
-
-	const isGET = getIsGETRequest(requestInit);
-
-	try {
-		const { redirectData, response } = await handleRedirects({
-			abortController,
-			url: urlToUse,
-			requestInit,
-		});
-
-		const oldID = internal_RiverClientGlobal.get("buildID");
-		const newID = getBuildIDFromResponse(response);
-		if (newID && newID !== oldID) {
-			dispatchBuildIDEvent({ newID, oldID, fromGETAction: isGET });
-		}
-
-		const redirected = redirectData?.status === "did";
-
-		if (submissionKey !== undefined) {
-			navigationState.submissions.delete(submissionKey);
-		}
-
-		if (response && getIsErrorRes(response)) {
-			return {
-				success: false,
-				error: String(response.status),
-				alreadyRevalidated: redirected,
-			} as const;
-		}
-		if (didAbort) {
-			return {
-				success: false,
-				error: "Aborted",
-				alreadyRevalidated: false,
-			} as const;
-		}
-		if (!response?.ok) {
-			const msg = String(response?.status || "unknown");
-			return {
-				success: false,
-				error: msg,
-				alreadyRevalidated: redirected,
-			} as const;
-		}
-		return {
-			success: true,
-			response,
-			alreadyRevalidated: redirected,
-		} as const;
-	} catch (error) {
-		if (isAbortError(error)) {
-			// eat
-			return {
-				success: false,
-				error: "Aborted",
-				alreadyRevalidated: false,
-			} as const;
-		}
-		LogError(error);
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : "Unknown error",
-			alreadyRevalidated: false,
-		} as const;
-	}
-}
-
-/////////////////////////////////////////////////////////////////////
-// STATUS
-/////////////////////////////////////////////////////////////////////
-
-const STATUS_EVENT_KEY = "river:status";
-
-let isNavigating = false;
-let isSubmitting = false;
-let isRevalidating = false;
-
-export function setLoadingStatus({
-	type,
-	value,
-}: {
-	type: NavigationType | "submission";
-	value: boolean;
-}) {
-	if (type === "prefetch") {
-		return;
-	}
-
-	if (type === "revalidation") {
-		isRevalidating = value;
-	} else if (type === "submission") {
-		isSubmitting = value;
-	} else {
-		isNavigating = value;
-	}
-
-	dispatchStatusEvent();
-}
-
-type StatusEventDetail = {
-	isNavigating: boolean;
-	isSubmitting: boolean;
-	isRevalidating: boolean;
-};
-
-export type StatusEvent = CustomEvent<StatusEventDetail>;
-
-let dispatchStatusEventDebounceTimer: number | undefined;
-let lastStatusEvent: StatusEventDetail | null = null;
-
-const STATUS_EVENT_DEBOUNCE_MS = 5;
-
-function dispatchStatusEvent() {
-	clearTimeout(dispatchStatusEventDebounceTimer);
-	dispatchStatusEventDebounceTimer = window.setTimeout(() => {
-		const newStatusEvent: StatusEventDetail = {
-			isNavigating,
-			isSubmitting,
-			isRevalidating,
-		};
-		if (jsonDeepEquals(lastStatusEvent, newStatusEvent)) {
-			return;
-		}
-		lastStatusEvent = newStatusEvent;
-		window.dispatchEvent(
-			new CustomEvent(STATUS_EVENT_KEY, { detail: newStatusEvent }),
-		);
-	}, STATUS_EVENT_DEBOUNCE_MS);
-}
-
-export function getStatus(): StatusEventDetail {
-	return {
-		isNavigating,
-		isSubmitting,
-		isRevalidating,
-	};
-}
-
-export const addStatusListener =
-	makeListenerAdder<StatusEventDetail>(STATUS_EVENT_KEY);
-
-/////////////////////////////////////////////////////////////////////
-// ROUTE CHANGE LISTENER
-/////////////////////////////////////////////////////////////////////
-
-export const addRouteChangeListener = makeListenerAdder<RouteChangeEventDetail>(
-	RIVER_ROUTE_CHANGE_EVENT_KEY,
-);
-
-/////////////////////////////////////////////////////////////////////
-// RE-RENDER APP
-/////////////////////////////////////////////////////////////////////
-
-export function resolvePublicHref(relativeHref: string): string {
-	let baseURL = internal_RiverClientGlobal.get("viteDevURL");
-	if (!baseURL) {
-		baseURL = internal_RiverClientGlobal.get("publicPathPrefix");
-	}
-	if (baseURL.endsWith("/")) {
-		baseURL = baseURL.slice(0, -1);
-	}
-	let final = relativeHref.startsWith("/")
-		? baseURL + relativeHref
-		: baseURL + "/" + relativeHref;
-	if (import.meta.env.DEV) {
-		final += "?river_dev=1";
-	}
-	return final;
-}
-
-type RerenderAppProps = {
-	json: GetRouteDataOutput;
-	navigationType: NavigationType;
-	runHistoryOptions?: {
-		href: string;
-		scrollStateToRestore?: ScrollState;
-		replace?: boolean;
-	};
-	cssBundlePromises: Array<any>;
-};
-
-async function __reRenderApp(props: RerenderAppProps) {
-	setLoadingStatus({ type: props.navigationType, value: false });
-	const shouldUseViewTransitions =
-		internal_RiverClientGlobal.get("useViewTransitions") &&
-		!!document.startViewTransition &&
-		props.navigationType !== "prefetch" &&
-		props.navigationType !== "revalidation";
-	if (shouldUseViewTransitions) {
-		const transition = document.startViewTransition(async () => {
-			await __reRenderAppInner(props);
-		});
-		await transition.finished;
-		return;
-	}
-	await __reRenderAppInner(props);
-}
-
-async function __reRenderAppInner({
-	json,
-	navigationType,
-	runHistoryOptions,
-	cssBundlePromises,
-}: RerenderAppProps) {
-	// NOW ACTUALLY SET EVERYTHING
-	const identicalKeysToSet = [
-		"outermostError",
-		"outermostErrorIdx",
-		"errorExportKey",
-
-		"matchedPatterns",
-		"loadersData",
-		"importURLs",
-		"exportKeys",
-		"hasRootData",
-
-		"params",
-		"splatValues",
-	] as const satisfies ReadonlyArray<keyof RiverClientGlobal>;
-
-	for (const key of identicalKeysToSet) {
-		internal_RiverClientGlobal.set(key, json[key]);
-	}
-
-	await handleComponents(json.importURLs);
-
-	let scrollStateToDispatch: ScrollState | undefined;
-
-	if (runHistoryOptions) {
-		const { href, scrollStateToRestore, replace } = runHistoryOptions;
-
-		const hash = href.split("#")[1];
-
-		if (
-			navigationType === "userNavigation" ||
-			navigationType === "redirect"
-		) {
-			const target = new URL(href, window.location.href).href;
-			const current = new URL(window.location.href).href;
-			if (target !== current && !replace) {
-				getHistoryInstance().push(href);
-			} else {
-				getHistoryInstance().replace(href);
-			}
-
-			scrollStateToDispatch = hash ? { hash } : { x: 0, y: 0 };
-		}
-
-		if (navigationType === "browserHistory") {
-			if (scrollStateToRestore) {
-				scrollStateToDispatch = scrollStateToRestore;
-			} else if (hash) {
-				scrollStateToDispatch = { hash };
-			}
-		}
-
-		// if revalidation, do nothing
-	}
-
-	// Changing the title instantly makes it feel faster
-	// The temp textarea trick is to decode any HTML entities in the title.
-	// This should come after pushing to history though, so that the title is
-	// correct in the history entry.
-	const tempTxt = document.createElement("textarea");
-	tempTxt.innerHTML = json.title?.dangerousInnerHTML ?? "";
-	if (document.title !== tempTxt.value) {
-		document.title = tempTxt.value;
-	}
-
-	// dispatch event
-	const detail: RouteChangeEventDetail = {
-		scrollState: scrollStateToDispatch,
-	} as const;
-
-	// Wait for all CSS bundle preloads to complete
-	if (cssBundlePromises.length > 0) {
-		try {
-			LogInfo("Waiting for CSS bundle preloads to complete...");
-			await Promise.all(cssBundlePromises);
-			LogInfo("CSS bundle preloads completed.");
-		} catch (error) {
-			LogError("Error preloading CSS bundles:", error);
-		}
-	}
-
-	// Now that CSS is preloaded, update the DOM with any unseen CSS bundles
-	window.requestAnimationFrame(() => {
-		for (const x of json.cssBundles ?? []) {
-			if (document.querySelector(`link[${cssBundleDataAttr}="${x}"]`)) {
-				return;
-			}
-			const newLink = document.createElement("link");
-			newLink.rel = "stylesheet";
-			newLink.href =
-				internal_RiverClientGlobal.get("publicPathPrefix") + x;
-			newLink.setAttribute(cssBundleDataAttr, x);
-			document.head.appendChild(newLink);
-		}
-	});
-
-	window.dispatchEvent(
-		new CustomEvent(RIVER_ROUTE_CHANGE_EVENT_KEY, { detail }),
-	);
-
-	updateHeadEls("meta", json.metaHeadEls ?? []);
-	updateHeadEls("rest", json.restHeadEls ?? []);
-}
-
-const cssBundleDataAttr = "data-river-css-bundle";
-
-/////////////////////////////////////////////////////////////////////
-// SIMPLE WRAPPERS
-/////////////////////////////////////////////////////////////////////
-
-export async function navigate(href: string, options?: { replace?: boolean }) {
+export async function navigate(
+	href: string,
+	options?: { replace?: boolean },
+): Promise<void> {
 	await __navigate({
 		href,
 		navigationType: "userNavigation",
@@ -1083,197 +1255,122 @@ export async function navigate(href: string, options?: { replace?: boolean }) {
 	});
 }
 
-async function revalidateNonDebounced() {
+export const revalidate = debounce(async () => {
 	await __navigate({
 		href: window.location.href,
 		navigationType: "revalidation",
 	});
-}
-
-export const revalidate = debounce(revalidateNonDebounced, 10);
-
-/////////////////////////////////////////////////////////////////////
-// SCROLL RESTORATION
-/////////////////////////////////////////////////////////////////////
-
-const scrollStateMapKey = "__river__scrollStateMap";
-type ScrollStateMap = Map<string, ScrollState>;
-
-function getScrollStateMapFromSessionStorage() {
-	const scrollStateMapString = sessionStorage.getItem(scrollStateMapKey);
-	let scrollStateMap: ScrollStateMap;
-	if (scrollStateMapString) {
-		scrollStateMap = new Map(JSON.parse(scrollStateMapString));
-	} else {
-		scrollStateMap = new Map();
-	}
-	return scrollStateMap;
-}
-
-function setScrollStateMapToSessionStorage(newScrollStateMap: ScrollStateMap) {
-	sessionStorage.setItem(
-		scrollStateMapKey,
-		JSON.stringify(Array.from(newScrollStateMap.entries())),
-	);
-}
-
-function setScrollStateMapSubKey(key: string, value: ScrollState) {
-	const scrollStateMap = getScrollStateMapFromSessionStorage();
-	scrollStateMap.set(key, value);
-
-	// if new item would brought it over 50 entries, delete the oldest one
-	if (scrollStateMap.size > 50) {
-		const oldestKey = Array.from(scrollStateMap.keys())[0];
-		scrollStateMap.delete(oldestKey ?? Panic());
-	}
-
-	setScrollStateMapToSessionStorage(scrollStateMap);
-}
-
-function readScrollStateMapSubKey(key: string) {
-	const scrollStateMap = getScrollStateMapFromSessionStorage();
-	return scrollStateMap.get(key);
-}
-
-const scrollStateMapSubKey = {
-	read: readScrollStateMapSubKey,
-	set: setScrollStateMapSubKey,
-};
-
-/////////////////////////////////////////////////////////////////////
-// CUSTOM HISTORY
-/////////////////////////////////////////////////////////////////////
-
-let __customHistory: historyInstance;
-let lastKnownCustomLocation: (typeof __customHistory)["location"];
+}, 10);
 
 export function getHistoryInstance(): historyInstance {
-	if (!__customHistory) {
-		__customHistory = createBrowserHistory() as unknown as historyInstance;
-	}
-	return __customHistory;
+	return HistoryManager.getInstance();
 }
 
-export function initCustomHistory() {
-	lastKnownCustomLocation = getHistoryInstance().location;
-	getHistoryInstance().listen(
-		customHistoryListener as unknown as historyListener,
-	);
-	setNativeScrollRestorationToManual();
+export function getStatus(): StatusEventDetail {
+	return navigationStateManager.getStatus();
 }
 
-function setNativeScrollRestorationToManual() {
-	if (history.scrollRestoration && history.scrollRestoration !== "manual") {
-		history.scrollRestoration = "manual";
-	}
+export function getLocation() {
+	return {
+		pathname: window.location.pathname,
+		search: window.location.search,
+		hash: window.location.hash,
+	};
 }
 
-export async function customHistoryListener({ action, location }: Update) {
-	if (location.key !== lastKnownCustomLocation.key) {
-		dispatchLocationEvent();
-	}
-
-	const popWithinSameDoc =
-		action === "POP" &&
-		location.pathname === lastKnownCustomLocation.pathname &&
-		location.search === lastKnownCustomLocation.search;
-
-	const removingHash =
-		popWithinSameDoc && lastKnownCustomLocation.hash && !location.hash;
-	const addingHash =
-		popWithinSameDoc && !lastKnownCustomLocation.hash && location.hash;
-	const updatingHash = popWithinSameDoc && location.hash;
-
-	if (!popWithinSameDoc) {
-		saveScrollState();
-	}
-
-	if (action === "POP") {
-		const newHash = location.hash.slice(1);
-
-		if (addingHash || updatingHash) {
-			applyScrollState({ hash: newHash });
-		}
-
-		if (removingHash) {
-			const stored = scrollStateMapSubKey.read(location.key);
-			applyScrollState(stored ?? { x: 0, y: 0 });
-		}
-
-		if (!popWithinSameDoc) {
-			await __navigate({
-				href: window.location.href,
-				navigationType: "browserHistory",
-				scrollStateToRestore: scrollStateMapSubKey.read(location.key),
-			});
-		}
-	}
-
-	lastKnownCustomLocation = location;
+export function getBuildID(): string {
+	return internal_RiverClientGlobal.get("buildID");
 }
 
-/////////////////////////////////////////////////////////////////////
-// INIT CLIENT
-/////////////////////////////////////////////////////////////////////
-
-export function getRootEl() {
+export function getRootEl(): HTMLDivElement {
 	return document.getElementById("river-root") as HTMLDivElement;
 }
 
-export async function setupClientLoaders() {
-	const clientLoadersData = await runWaitFns(
-		{
-			hasRootData: internal_RiverClientGlobal.get("hasRootData"),
-			importURLs: internal_RiverClientGlobal.get("importURLs"),
-			loadersData: internal_RiverClientGlobal.get("loadersData"),
-			matchedPatterns: internal_RiverClientGlobal.get("matchedPatterns"),
-			params: internal_RiverClientGlobal.get("params"),
-			splatValues: internal_RiverClientGlobal.get("splatValues"),
-		},
-		internal_RiverClientGlobal.get("buildID"),
-	);
-
-	internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
-}
-
-const pageRefreshScrollStateKey = "__river__pageRefreshScrollState";
-
-type pageRefreshScrollState = {
-	x: number;
-	y: number;
-	unix: number;
-	href: string;
-};
-
-window.addEventListener("beforeunload", () => {
-	const scrollState: pageRefreshScrollState = {
-		x: window.scrollX,
-		y: window.scrollY,
-		unix: Date.now(),
-		href: window.location.href,
-	};
-	sessionStorage.setItem(
-		pageRefreshScrollStateKey,
-		JSON.stringify(scrollState),
-	);
-});
-
-function checkIfShouldScrollPostRefresh() {
-	const scrollStateString = sessionStorage.getItem(pageRefreshScrollStateKey);
-	if (scrollStateString) {
-		const scrollState: pageRefreshScrollState =
-			JSON.parse(scrollStateString);
-		if (
-			scrollState.href === window.location.href &&
-			Date.now() - scrollState.unix < 5_000
-		) {
-			sessionStorage.removeItem(pageRefreshScrollStateKey);
-			window.requestAnimationFrame(() => {
-				applyScrollState(scrollState);
-			});
+export function applyScrollState(state?: ScrollState): void {
+	if (!state) {
+		const id = window.location.hash.slice(1);
+		if (id) {
+			document.getElementById(id)?.scrollIntoView();
 		}
+		return;
+	}
+
+	if ("hash" in state) {
+		if (state.hash) {
+			document.getElementById(state.hash)?.scrollIntoView();
+		}
+	} else {
+		window.scrollTo(state.x, state.y);
 	}
 }
+
+export function makeLinkOnClickFn<E extends Event>(
+	callbacks: LinkOnClickCallbacks<E>,
+) {
+	return async (e: E) => {
+		if (e.defaultPrevented) return;
+
+		const anchorDetails = getAnchorDetailsFromEvent(
+			e as unknown as MouseEvent,
+		);
+		if (!anchorDetails) return;
+
+		const { anchor, isEligibleForDefaultPrevention, isInternal } =
+			anchorDetails;
+		if (!anchor) return;
+
+		if (isJustAHashChange(anchorDetails)) {
+			saveScrollState();
+			return;
+		}
+
+		if (isEligibleForDefaultPrevention && isInternal) {
+			e.preventDefault();
+
+			await callbacks.beforeBegin?.(e);
+
+			const control = beginNavigation({
+				href: anchor.href,
+				navigationType: "userNavigation",
+			});
+
+			if (!control.promise) return;
+
+			const res = await control.promise;
+			if (!res) return;
+
+			await callbacks.beforeRender?.(e);
+			await __completeNavigation(res);
+			await callbacks.afterRender?.(e);
+		}
+	};
+}
+
+/////////////////////////////////////////////////////////////////////
+// EVENT LISTENERS
+/////////////////////////////////////////////////////////////////////
+
+export const addStatusListener =
+	makeListenerAdder<StatusEventDetail>(STATUS_EVENT_KEY);
+export const addRouteChangeListener = makeListenerAdder<RouteChangeEventDetail>(
+	RIVER_ROUTE_CHANGE_EVENT_KEY,
+);
+export const addLocationListener = makeListenerAdder<void>(LOCATION_EVENT_KEY);
+export const addBuildIDListener =
+	makeListenerAdder<BuildIDEvent>(BUILD_ID_EVENT_KEY);
+
+function makeListenerAdder<T>(key: string) {
+	return function addListener(
+		listener: (event: CustomEvent<T>) => void,
+	): () => void {
+		window.addEventListener(key, listener as any);
+		return () => window.removeEventListener(key, listener as any);
+	};
+}
+
+/////////////////////////////////////////////////////////////////////
+// INITIALIZATION
+/////////////////////////////////////////////////////////////////////
 
 export async function initClient(
 	renderFn: () => void,
@@ -1281,7 +1378,8 @@ export async function initClient(
 		defaultErrorBoundary?: RouteErrorComponent;
 		useViewTransitions?: boolean;
 	},
-) {
+): Promise<void> {
+	// Set options
 	if (options?.defaultErrorBoundary) {
 		internal_RiverClientGlobal.set(
 			"defaultErrorBoundary",
@@ -1298,26 +1396,31 @@ export async function initClient(
 		internal_RiverClientGlobal.set("useViewTransitions", true);
 	}
 
-	// HANDLE HISTORY STUFF
-	initCustomHistory();
+	// Initialize history
+	HistoryManager.init();
 
+	// Clean URL
 	const url = new URL(window.location.href);
 	if (url.searchParams.has(RIVER_HARD_RELOAD_QUERY_PARAM)) {
 		url.searchParams.delete(RIVER_HARD_RELOAD_QUERY_PARAM);
-		__customHistory.replace(url.href);
+		HistoryManager.getInstance().replace(url.href);
 	}
 
-	// HANDLE COMPONENTS
-	await handleComponents(internal_RiverClientGlobal.get("importURLs"));
+	// Load initial components
+	await ComponentLoader.handleComponents(
+		internal_RiverClientGlobal.get("importURLs"),
+	);
 
-	// SETUP CLIENT LOADERS
+	// Setup client loaders
 	await setupClientLoaders();
 
-	// RUN THE RENDER FUNCTION
+	// Render
 	renderFn();
 
-	checkIfShouldScrollPostRefresh();
+	// Restore scroll
+	scrollStateManager.restorePageRefreshState();
 
+	// Touch detection
 	window.addEventListener(
 		"touchstart",
 		() => {
@@ -1328,71 +1431,101 @@ export async function initClient(
 	);
 }
 
-async function importNewComponentsAndGetModulesMap(
-	importURLs: Array<string>,
-): Promise<Map<string, any>> {
-	const dedupedImportURLs = [...new Set(importURLs ?? [])];
-	const dedupedModules = await Promise.all(
-		dedupedImportURLs.map(async (x) => {
-			if (x === "") {
-				return;
-			}
-			return await import(/* @vite-ignore */ resolvePublicHref(x));
-		}),
-	);
-	return new Map(
-		dedupedImportURLs.map((url, index) => [url, dedupedModules[index]]),
-	);
+export function initCustomHistory(): void {
+	HistoryManager.init();
 }
 
-async function handleComponents(importURLs: Array<string>) {
-	const modulesMap = await importNewComponentsAndGetModulesMap(importURLs);
-	const originalImportURLs = internal_RiverClientGlobal.get("importURLs");
-	const exportKeys = internal_RiverClientGlobal.get("exportKeys") ?? [];
+export async function customHistoryListener({
+	action,
+	location,
+}: Update): Promise<void> {
+	const lastKnownLocation = HistoryManager.getLastKnownLocation();
 
-	internal_RiverClientGlobal.set(
-		"activeComponents",
-		originalImportURLs.map(
-			(x, i) => modulesMap.get(x)?.[exportKeys[i] ?? "default"] ?? null,
-		),
-	);
+	if (location.key !== lastKnownLocation.key) {
+		dispatchLocationEvent();
+	}
 
-	const outermostErrorIdx =
-		internal_RiverClientGlobal.get("outermostErrorIdx");
+	const popWithinSameDoc =
+		action === "POP" &&
+		location.pathname === lastKnownLocation.pathname &&
+		location.search === lastKnownLocation.search;
 
-	if (outermostErrorIdx != null) {
-		let errorComp: any;
+	const removingHash =
+		popWithinSameDoc && lastKnownLocation.hash && !location.hash;
+	const addingHash =
+		popWithinSameDoc && !lastKnownLocation.hash && location.hash;
+	const updatingHash = popWithinSameDoc && location.hash;
 
-		const errorModuleImportURL = originalImportURLs[outermostErrorIdx];
+	if (!popWithinSameDoc) {
+		saveScrollState();
+	}
 
-		if (errorModuleImportURL) {
-			const errorModule = modulesMap.get(errorModuleImportURL);
+	if (action === "POP") {
+		const newHash = location.hash.slice(1);
 
-			const errorExportKey =
-				internal_RiverClientGlobal.get("errorExportKey");
-			if (errorExportKey) {
-				errorComp = errorModule[errorExportKey];
-			}
+		if (addingHash || updatingHash) {
+			applyScrollState({ hash: newHash });
 		}
 
-		internal_RiverClientGlobal.set(
-			"activeErrorBoundary",
-			errorComp ?? internal_RiverClientGlobal.get("defaultErrorBoundary"),
-		);
+		if (removingHash) {
+			const stored = scrollStateManager.getState(location.key);
+			applyScrollState(stored ?? { x: 0, y: 0 });
+		}
+
+		if (!popWithinSameDoc) {
+			await __navigate({
+				href: window.location.href,
+				navigationType: "browserHistory",
+				scrollStateToRestore: scrollStateManager.getState(location.key),
+			});
+		}
 	}
+
+	HistoryManager.updateLastKnownLocation(location);
 }
 
-const defaultErrorBoundary: RouteErrorComponent = (props: {
-	error: string;
-}) => {
-	return "Route Error: " + props.error;
-};
+/////////////////////////////////////////////////////////////////////
+// HELPER FUNCTIONS
+/////////////////////////////////////////////////////////////////////
+
+function resolvePublicHref(relativeHref: string): string {
+	let baseURL = internal_RiverClientGlobal.get("viteDevURL");
+	if (!baseURL) {
+		baseURL = internal_RiverClientGlobal.get("publicPathPrefix");
+	}
+	if (baseURL.endsWith("/")) {
+		baseURL = baseURL.slice(0, -1);
+	}
+	let final = relativeHref.startsWith("/")
+		? baseURL + relativeHref
+		: baseURL + "/" + relativeHref;
+	if (import.meta.env.DEV) {
+		final += "?river_dev=1";
+	}
+	return final;
+}
+
+export async function setupClientLoaders(): Promise<void> {
+	const clientLoadersData = await runWaitFns(
+		{
+			hasRootData: internal_RiverClientGlobal.get("hasRootData"),
+			importURLs: internal_RiverClientGlobal.get("importURLs"),
+			loadersData: internal_RiverClientGlobal.get("loadersData"),
+			matchedPatterns: internal_RiverClientGlobal.get("matchedPatterns"),
+			params: internal_RiverClientGlobal.get("params"),
+			splatValues: internal_RiverClientGlobal.get("splatValues"),
+		},
+		internal_RiverClientGlobal.get("buildID"),
+	);
+
+	internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
+}
 
 async function runWaitFns(
 	json: PartialWaitFnJSON,
 	buildID: string,
 ): Promise<Array<any>> {
-	await importNewComponentsAndGetModulesMap(json.importURLs);
+	await ComponentLoader.loadComponents(json.importURLs);
 
 	const matchedPatterns = json.matchedPatterns ?? [];
 	const patternToWaitFnMap =
@@ -1416,149 +1549,80 @@ async function runWaitFns(
 	return Promise.all(waitFnPromises);
 }
 
-/////////////////////////////////////////////////////////////////////
-// LOCATION EVENTS
-/////////////////////////////////////////////////////////////////////
-
-const LOCATION_EVENT_KEY = "river:location";
-
-function dispatchLocationEvent() {
-	window.dispatchEvent(new CustomEvent(LOCATION_EVENT_KEY));
-}
-
-export const addLocationListener =
-	makeListenerAdder<BuildIDEvent>(LOCATION_EVENT_KEY);
-
-export function getLocation() {
+function resolveWaitFnPropsFromJSON(
+	json: PartialWaitFnJSON,
+	buildID: string,
+	idx: number,
+) {
 	return {
-		pathname: window.location.pathname,
-		search: window.location.search,
-		hash: window.location.hash,
+		buildID: buildID,
+		matchedPatterns: json.matchedPatterns || [],
+		splatValues: json.splatValues || [],
+		params: json.params || {},
+		rootData: json.hasRootData ? json.loadersData[0] : null,
+		loaderData: json.loadersData[idx],
 	};
 }
 
-/////////////////////////////////////////////////////////////////////
-// BUILD ID
-/////////////////////////////////////////////////////////////////////
+function isJustAHashChange(
+	anchorDetails: ReturnType<typeof getAnchorDetailsFromEvent>,
+): boolean {
+	if (!anchorDetails) return false;
 
-const BUILD_ID_EVENT_KEY = "river:build-id";
+	const { pathname, search, hash } = new URL(
+		anchorDetails.anchor.href,
+		window.location.href,
+	);
 
-type BuildIDEvent = { oldID: string; newID: string; fromGETAction: boolean };
+	return !!(
+		hash &&
+		pathname === window.location.pathname &&
+		search === window.location.search
+	);
+}
 
-function dispatchBuildIDEvent(detail: BuildIDEvent) {
+function saveScrollState(): void {
+	const lastKnownLocation = HistoryManager.getLastKnownLocation();
+	scrollStateManager.saveState(lastKnownLocation.key, {
+		x: window.scrollX,
+		y: window.scrollY,
+	});
+}
+
+function handleNavError(error: unknown, props: NavigateProps): void {
+	if (!isAbortError(error)) {
+		LogError(error);
+	}
+}
+
+function dispatchLocationEvent(): void {
+	window.dispatchEvent(new CustomEvent(LOCATION_EVENT_KEY));
+}
+
+function dispatchBuildIDEvent(detail: BuildIDEvent): void {
 	internal_RiverClientGlobal.set("buildID", detail.newID);
 	window.dispatchEvent(new CustomEvent(BUILD_ID_EVENT_KEY, { detail }));
 }
 
-export const addBuildIDListener =
-	makeListenerAdder<BuildIDEvent>(BUILD_ID_EVENT_KEY);
-
-export function getBuildID() {
-	return internal_RiverClientGlobal.get("buildID");
-}
-
-/////////////////////////////////////////////////////////////////////
-// LISTENER UTILS
-/////////////////////////////////////////////////////////////////////
-
-type CleanupFunction = () => void;
-
-function makeListenerAdder<T>(key: string) {
-	return function addListener(
-		listener: (event: CustomEvent<T>) => void,
-	): CleanupFunction {
-		window.addEventListener(key, listener as any);
-		return () => {
-			window.removeEventListener(key, listener as any);
-		};
-	};
-}
-
-/////////////////////////////////////////////////////////////////////
-// LINK ONCLICK HANDLERS
-/////////////////////////////////////////////////////////////////////
-
-type LinkOnClickCallback<E extends Event> = (event: E) => void | Promise<void>;
-
-type LinkOnClickCallbacksBase<E extends Event> = {
-	beforeBegin?: LinkOnClickCallback<E>;
-	beforeRender?: LinkOnClickCallback<E>;
-	afterRender?: LinkOnClickCallback<E>;
+const defaultErrorBoundary: RouteErrorComponent = (props: {
+	error: string;
+}) => {
+	return "Route Error: " + props.error;
 };
 
-type LinkOnClickCallbacks<E extends Event> = LinkOnClickCallbacksBase<E>;
-
-export function makeLinkOnClickFn<E extends Event>(
-	callbacks: LinkOnClickCallbacks<E>,
-) {
-	return async (e: E) => {
-		if (e.defaultPrevented) {
-			return;
-		}
-
-		const anchorDetails = getAnchorDetailsFromEvent(
-			e as unknown as MouseEvent,
-		);
-		if (!anchorDetails) {
-			return;
-		}
-
-		const { anchor, isEligibleForDefaultPrevention, isInternal } =
-			anchorDetails;
-
-		if (!anchor) {
-			return;
-		}
-
-		if (isJustAHashChange(anchorDetails)) {
-			saveScrollState();
-			return;
-		}
-
-		if (isEligibleForDefaultPrevention && isInternal) {
-			e.preventDefault();
-
-			await callbacks.beforeBegin?.(e);
-
-			const x = beginNavigation({
-				href: anchor.href,
-				navigationType: "userNavigation",
-			});
-			if (!x.promise) {
-				return;
-			}
-
-			const res = await x.promise;
-			if (!res) {
-				return;
-			}
-
-			await callbacks.beforeRender?.(e);
-
-			await __completeNavigation(res);
-
-			await callbacks.afterRender?.(e);
-		}
-	};
+// Legacy function for backwards compatibility
+export function setLoadingStatus({
+	type,
+	value,
+}: {
+	type: NavigationType | "submission";
+	value: boolean;
+}) {
+	// This function is no longer used internally
+	// Status is now derived from navigationStateManager
 }
 
-/////////////////////////////////////////////////////////////////////
-/////// SCROLL STATE
-/////////////////////////////////////////////////////////////////////
-
-export function applyScrollState(state?: ScrollState) {
-	if (!state) {
-		const id = window.location.hash.slice(1);
-		if (id) {
-			window.document.getElementById(id)?.scrollIntoView();
-		}
-		return;
-	}
-	if ("hash" in state) {
-		if (state.hash) {
-			document.getElementById(state.hash)?.scrollIntoView();
-		}
-	} else {
-		window.scrollTo(state.x, state.y);
-	}
-}
+// Setup beforeunload handler for scroll restoration
+window.addEventListener("beforeunload", () => {
+	scrollStateManager.savePageRefreshState();
+});

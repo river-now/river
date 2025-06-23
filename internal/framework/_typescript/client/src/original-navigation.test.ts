@@ -20,6 +20,7 @@ import {
 	makeLinkOnClickFn,
 	navigate,
 	navigationState,
+	navigationStateManager,
 	revalidate,
 	type ScrollState,
 	setLoadingStatus,
@@ -210,9 +211,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		// Clear all state
 		mockSessionStorage.clear();
 		vi.clearAllMocks();
-		navigationState.navigations.clear();
-		navigationState.submissions.clear();
-		navigationState.activeUserNavigation = null;
+		navigationStateManager.clearAll();
 		document.title = "Initial Page";
 		(window as any).scrollX = 0;
 		(window as any).scrollY = 0;
@@ -4321,5 +4320,80 @@ describe("Comprehensive Navigation Test Suite", () => {
 				expect.any(Function),
 			);
 		});
+	});
+
+	it("should not allow completed prefetch to be overridden by revalidation", async () => {
+		// Setup: Start on the home page
+		window.history.replaceState({}, "", "/");
+
+		// Create a delayed response for revalidation to control timing
+		let resolveRevalidation: (value: any) => void;
+		const revalidationPromise = new Promise((resolve) => {
+			resolveRevalidation = resolve;
+		});
+
+		// Mock fetch differently for prefetch vs revalidation
+		vi.mocked(fetch).mockImplementation(((url: any) => {
+			const urlStr = url.toString();
+			// Prefetch to /about - immediate response
+			if (urlStr.includes("/about")) {
+				return Promise.resolve(
+					createMockResponse({
+						title: { dangerousInnerHTML: "About Page" },
+						importURLs: [],
+						cssBundles: [],
+					}),
+				);
+			}
+			// Revalidation of current page - delayed response
+			return revalidationPromise;
+		}) as any);
+
+		// Step 1: Prefetch /about
+		const handlers = getPrefetchHandlers({ href: "/about" });
+		handlers?.start({} as Event);
+		await vi.advanceTimersByTimeAsync(100);
+		await vi.runAllTimersAsync();
+
+		// Step 2: Start revalidation (but don't let it complete yet)
+		revalidate();
+		await vi.advanceTimersByTimeAsync(10); // Let debounce fire
+
+		// Step 3: Navigate to /about using the prefetch
+		const anchor = document.createElement("a");
+		anchor.href = "/about";
+		document.body.appendChild(anchor);
+
+		const clickEvent = new MouseEvent("click", {
+			bubbles: true,
+			cancelable: true,
+		});
+		Object.defineProperty(clickEvent, "target", { value: anchor });
+
+		await handlers?.onClick(clickEvent);
+		await vi.runAllTimersAsync();
+
+		// We should be on About page
+		expect(document.title).toBe("About Page");
+		expect(window.location.pathname).toBe("/about");
+
+		// Step 4: Now complete the revalidation AFTER we've navigated
+		resolveRevalidation!(
+			createMockResponse({
+				title: { dangerousInnerHTML: "Home Page" },
+				importURLs: [],
+				cssBundles: [],
+			}),
+		);
+
+		// Let the revalidation try to complete
+		await vi.runAllTimersAsync();
+
+		// Should still be on About page - revalidation should have been skipped
+		expect(document.title).toBe("About Page");
+		expect(window.location.pathname).toBe("/about");
+
+		// Clean up
+		document.body.removeChild(anchor);
 	});
 });
