@@ -143,6 +143,7 @@ type RerenderAppProps = {
 class NavigationStateManager {
 	private navigations = new Map<string, NavigationEntry>();
 	private activeUserNavigation: string | null = null;
+	private activeRevalidation: NavigationControl | null = null;
 	private submissions = new Map<string, SubmissionEntry>();
 	private nonDedupedSubmissions = new Set<AbortController>();
 	private lastDispatchedStatus: StatusEventDetail | null = null;
@@ -188,12 +189,25 @@ class NavigationStateManager {
 		return this.activeUserNavigation;
 	}
 
+	setActiveRevalidation(control: NavigationControl | null): void {
+		this.activeRevalidation = control;
+		this.scheduleStatusUpdate();
+	}
+
+	getActiveRevalidation(): NavigationControl | null {
+		return this.activeRevalidation;
+	}
+
 	abortAllNavigationsExcept(excludeHref?: string): void {
 		for (const [href, nav] of this.navigations.entries()) {
 			if (href !== excludeHref) {
 				nav.control.abortController?.abort();
 				this.navigations.delete(href);
 			}
+		}
+		if (this.activeRevalidation) {
+			this.activeRevalidation.abortController?.abort();
+			this.activeRevalidation = null;
 		}
 		this.scheduleStatusUpdate();
 	}
@@ -234,9 +248,9 @@ class NavigationStateManager {
 				(nav) => nav.type !== "prefetch" && nav.type !== "revalidation",
 			),
 			isSubmitting: hasActiveSubmissions,
-			isRevalidating: navigations.some(
-				(nav) => nav.type === "revalidation",
-			),
+			isRevalidating:
+				navigations.some((nav) => nav.type === "revalidation") ||
+				!!this.activeRevalidation,
 		};
 	}
 
@@ -271,6 +285,7 @@ class NavigationStateManager {
 		this.submissions.clear();
 		this.nonDedupedSubmissions.clear();
 		this.activeUserNavigation = null;
+		this.activeRevalidation = null;
 		this.scheduleStatusUpdate();
 	}
 }
@@ -536,39 +551,66 @@ export async function __navigate(props: NavigateProps): Promise<void> {
 	const result = await control.promise;
 	if (!result) return;
 
-	await __completeNavigation(result);
+	await processNavigationResult(result, control, props);
+}
+
+async function processNavigationResult(
+	result: NavigationResult,
+	control: NavigationControl,
+	originalProps: NavigateProps,
+): Promise<void> {
+	try {
+		if (!result) {
+			return;
+		}
+
+		if ("redirectData" in result) {
+			await effectuateRedirectDataResult(
+				result.redirectData,
+				result.props.redirectCount || 0,
+			);
+		} else {
+			await __completeNavigation(result);
+		}
+	} finally {
+		navigationStateManager.removeNavigation(originalProps.href);
+
+		if (
+			navigationStateManager.getActiveUserNavigation() ===
+			originalProps.href
+		) {
+			navigationStateManager.setActiveUserNavigation(null);
+		}
+
+		if (navigationStateManager.getActiveRevalidation() === control) {
+			navigationStateManager.setActiveRevalidation(null);
+		}
+	}
 }
 
 export function beginNavigation(props: NavigateProps): NavigationControl {
-	// Handle user navigation specifics
+	// If this is a user navigation, it takes precedence.
 	if (props.navigationType === "userNavigation") {
 		navigationStateManager.abortAllNavigationsExcept(props.href);
 		navigationStateManager.setActiveUserNavigation(props.href);
 
-		// Check for existing prefetch to upgrade
+		// If a prefetch for this href exists, upgrade it.
 		const existing = navigationStateManager.getNavigation(props.href);
-		if (existing && existing.type === "prefetch") {
+		if (existing?.type === "prefetch") {
 			existing.type = "userNavigation";
-			// Update the navigation props to reflect the upgrade
-			const originalPromise = existing.control.promise;
-			existing.control.promise = originalPromise.then((result) => {
-				if (result && !("redirectData" in result)) {
-					// Update the navigation type in the result props
-					return {
-						...result,
-						props: {
-							...result.props,
-							navigationType: "userNavigation" as NavigationType,
-						},
-					};
-				}
-				return result;
-			});
 			return existing.control;
 		}
 	}
 
-	// Handle prefetch deduplication
+	// If a revalidation is starting, abort any old one.
+	if (props.navigationType === "revalidation") {
+		const activeRevalidation =
+			navigationStateManager.getActiveRevalidation();
+		activeRevalidation?.abortController?.abort();
+		navigationStateManager.setActiveRevalidation(null);
+	}
+
+	// If a prefetch for this href exists, return it.
 	if (props.navigationType === "prefetch") {
 		const existing = navigationStateManager.getNavigation(props.href);
 		if (existing) return existing.control;
@@ -585,6 +627,10 @@ export function beginNavigation(props: NavigateProps): NavigationControl {
 		control,
 		type: props.navigationType,
 	});
+
+	if (props.navigationType === "revalidation") {
+		navigationStateManager.setActiveRevalidation(control);
+	}
 
 	return control;
 }
