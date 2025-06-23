@@ -38,16 +38,16 @@ The system uses five distinct navigation types:
 - **Modifier Keys**: Cmd/Ctrl/Shift/Alt clicks ignored for browser default
   behavior.
 - **Hash-Only Links**:
-  - Calls `saveScrollState()` to save current position
-  - Allows browser default scroll-to-element behavior
-  - Does NOT trigger navigation
+    - Calls `saveScrollState()` to save current position
+    - Allows browser default scroll-to-element behavior
+    - Does NOT trigger navigation
 - **Already Prefetching**: If link already has completed prefetch data, uses it
   immediately on click.
 
 ### 1.4. Programmatic Navigation
 
 - **`navigate(href, options?)`**: Public API for navigation
-  - `options.replace`: Uses `history.replaceState` instead of `pushState`
+    - `options.replace`: Uses `history.replaceState` instead of `pushState`
 - **`__navigate(props)`**: Internal function taking full NavigateProps
 
 ## 2. Navigation Lifecycle
@@ -57,36 +57,36 @@ The system uses five distinct navigation types:
 1. **Set Loading Status**: Sets appropriate loading state to `true` (except for
    `prefetch`)
 2. **Handle User Navigation Specifics**:
-   - Abort all other navigations via `abortAllNavigationsExcept(href)`
-   - Set `activeUserNavigation = href`
-   - Check for existing prefetch to upgrade (changes type, reuses control)
+    - Abort all other navigations via `abortAllNavigationsExcept(href)`
+    - Set `activeUserNavigation = href`
+    - Check for existing prefetch to upgrade (changes type, reuses control)
 3. **Prefetch Deduplication**: If prefetch exists for href, return existing
    control
 4. **Create Navigation**:
-   - New `AbortController`
-   - Create control object with promise from `__fetchRouteData`
-   - Store in `navigationState.navigations` with type
+    - New `AbortController`
+    - Create control object with promise from `__fetchRouteData`
+    - Store in `navigationState.navigations` with type
 
 ### 2.2. Phase 2: Fetch Route Data (`__fetchRouteData`)
 
 1. **URL Construction**:
-   - Add `river_json=<buildID>` query param (or "1" if no buildID)
-   - Use absolute URL from `window.location.href`
+    - Add `river_json=<buildID>` query param (or "1" if no buildID)
+    - Use absolute URL from `window.location.href`
 2. **Request Execution**:
-   - Headers include `X-Accepts-Client-Redirect: 1`
-   - Request goes through `handleRedirects` function
+    - Headers include `X-Accepts-Client-Redirect: 1`
+    - Request goes through `handleRedirects` function
 3. **Response Validation**:
-   - Check for redirect completion or non-OK status (except 304)
-   - Empty JSON response is failure
-   - Set loading status to false on failure
+    - Check for redirect completion or non-OK status (except 304)
+    - Empty JSON response is failure
+    - Set loading status to false on failure
 4. **Asset Preloading**:
-   - **Modules**: Create `<link rel="modulepreload">` for each URL in:
-     - Production: `json.deps`
-     - Development: `json.importURLs` (deduped with `new Set()`)
-   - **CSS**: Create `<link rel="preload" as="style">` for each
-     `json.cssBundles`
-     - Create Promise for each with onload/onerror handlers
-     - Store promises in `cssBundlePromises` array
+    - **Modules**: Create `<link rel="modulepreload">` for each URL in:
+        - Production: `json.deps`
+        - Development: `json.importURLs` (deduped with `new Set()`)
+    - **CSS**: Create `<link rel="preload" as="style">` for each
+      `json.cssBundles`
+        - Create Promise for each with onload/onerror handlers
+        - Store promises in `cssBundlePromises` array
 5. **Client Wait Functions**: Execute `runWaitFns(json, buildID)` returning
    promise
 6. **Cleanup**: Always remove from `navigations` map and clear
@@ -96,8 +96,8 @@ The system uses five distinct navigation types:
 
 1. **Redirect Check**: If result has `redirectData`, execute it and return
 2. **Build ID Check**:
-   - Compare response buildID with current
-   - If different, dispatch `river:build-id` event with old/new IDs
+    - Compare response buildID with current
+    - If different, dispatch `river:build-id` event with old/new IDs
 3. **Wait for Client Data**: Await `waitFnPromise` from Phase 2
 4. **Store Client Data**: Set `clientLoadersData` in global state
 5. **Render**: Call `__reRenderApp` with all data
@@ -106,31 +106,31 @@ The system uses five distinct navigation types:
 
 1. **Clear Loading State**: Set loading status to false
 2. **View Transitions Check**:
-   - Only if `useViewTransitions` enabled AND `document.startViewTransition`
-     exists
-   - Skip for `prefetch` and `revalidation` types
-   - Wrap rest of rendering in transition
+    - Only if `useViewTransitions` enabled AND `document.startViewTransition`
+      exists
+    - Skip for `prefetch` and `revalidation` types
+    - Wrap rest of rendering in transition
 3. **Update Global State** (`__reRenderAppInner`):
-   - Set all route data in `internal_RiverClientGlobal`
-   - Keys: `outermostError`, `outermostErrorIdx`, `errorExportKey`,
-     `matchedPatterns`, `loadersData`, `importURLs`, `exportKeys`,
-     `hasRootData`, `params`, `splatValues`
+    - Set all route data in `internal_RiverClientGlobal`
+    - Keys: `outermostError`, `outermostErrorIdx`, `errorExportKey`,
+      `matchedPatterns`, `loadersData`, `importURLs`, `exportKeys`,
+      `hasRootData`, `params`, `splatValues`
 4. **Load Components**: Call `handleComponents(json.importURLs)`
 5. **History Management** (for `userNavigation` and `redirect`):
-   - Compare target URL with current
-   - Use `push` if different and not replace mode
-   - Use `replace` if same URL or replace mode
-   - Set scroll state: hash if present, else `{x: 0, y: 0}`
+    - Compare target URL with current
+    - Use `push` if different and not replace mode
+    - Use `replace` if same URL or replace mode
+    - Set scroll state: hash if present, else `{x: 0, y: 0}`
 6. **Browser History Scroll** (for `browserHistory`):
-   - Use provided `scrollStateToRestore`
-   - Or use hash if present
+    - Use provided `scrollStateToRestore`
+    - Or use hash if present
 7. **Update Title**:
-   - Create temporary `<textarea>` to decode HTML entities
-   - Set `document.title` if different
+    - Create temporary `<textarea>` to decode HTML entities
+    - Set `document.title` if different
 8. **Wait for CSS**:
-   - Log "Waiting for CSS bundle preloads..."
-   - `await Promise.all(cssBundlePromises)`
-   - Log completion or errors
+    - Log "Waiting for CSS bundle preloads..."
+    - `await Promise.all(cssBundlePromises)`
+    - Log completion or errors
 9. **Dispatch Route Change**: Fire `river:route-change` event with scroll state
 10. **Apply CSS** (in `requestAnimationFrame`):
     - Check for existing `link[data-river-css-bundle="..."]`
@@ -151,19 +151,19 @@ The system uses five distinct navigation types:
 
 - **Start**: On `mouseenter`, sets timeout for `delayMs` (default 100ms)
 - **Prefetch Execution**:
-  - Checks not already prefetching
-  - Calls `beforeBegin` callback
-  - Starts navigation with type `prefetch`
-  - Stores promise result for potential reuse
+    - Checks not already prefetching
+    - Calls `beforeBegin` callback
+    - Starts navigation with type `prefetch`
+    - Stores promise result for potential reuse
 - **Cancellation** (`stop`):
-  - Clears timeout
-  - Aborts ONLY if still type `prefetch` (not upgraded)
-  - Clears stored nav and result
+    - Clears timeout
+    - Aborts ONLY if still type `prefetch` (not upgraded)
+    - Clears stored nav and result
 - **Click with Prefetch**:
-  - If prefetch completed, uses stored result immediately
-  - Prevents default, shows loading state
-  - Upgrades prefetch to `userNavigation`
-  - Executes callbacks: `beforeBegin`, `beforeRender`, `afterRender`
+    - If prefetch completed, uses stored result immediately
+    - Prevents default, shows loading state
+    - Upgrades prefetch to `userNavigation`
+    - Executes callbacks: `beforeBegin`, `beforeRender`, `afterRender`
 
 ## 4. Scroll Restoration
 
@@ -183,12 +183,12 @@ The system uses five distinct navigation types:
 ### 4.3. Restoring Scroll State
 
 - **On POP Navigation**:
-  - Hash additions/updates: Scroll to element with ID
-  - Hash removal: Restore saved position or `{x: 0, y: 0}`
-  - Different document: Use saved position for history key
+    - Hash additions/updates: Scroll to element with ID
+    - Hash removal: Restore saved position or `{x: 0, y: 0}`
+    - Different document: Use saved position for history key
 - **Standard Navigation**:
-  - With hash: Scroll to element
-  - Without: Scroll to top `{x: 0, y: 0}`
+    - With hash: Scroll to element
+    - Without: Scroll to top `{x: 0, y: 0}`
 - **No State + Hash**: Falls back to
   `document.getElementById(hash)?.scrollIntoView()`
 
@@ -212,20 +212,20 @@ server-controlled client-side redirects.
 
 1. **`X-River-Reload`** (Highest Priority):
 
-   - Forces hard reload to specified URL
-   - Always uses hard redirect strategy
-   - Ignores other redirect mechanisms
+    - Forces hard reload to specified URL
+    - Always uses hard redirect strategy
+    - Ignores other redirect mechanisms
 
 2. **Native Browser Redirect** (`response.redirected`):
 
-   - Only handled for GET requests (non-GET returns null)
-   - If redirected to current URL: Returns "did" status (already completed)
-   - Otherwise: Soft redirect for internal URLs, hard for external
+    - Only handled for GET requests (non-GET returns null)
+    - If redirected to current URL: Returns "did" status (already completed)
+    - Otherwise: Soft redirect for internal URLs, hard for external
 
 3. **`X-Client-Redirect`** (Lowest Priority):
-   - Custom client-side redirect instruction
-   - Soft redirect for internal URLs, hard for external
-   - Only checked if no other redirect mechanism triggered
+    - Custom client-side redirect instruction
+    - Soft redirect for internal URLs, hard for external
+    - Only checked if no other redirect mechanism triggered
 
 ### 5.3. Build ID Tracking
 
@@ -236,13 +236,13 @@ server-controlled client-side redirects.
 ### 5.4. Redirect Strategies
 
 - **Soft Redirect** (Internal URLs):
-  - Triggers new navigation with type `redirect`
-  - No page reload
-  - Preserves SPA experience
+    - Triggers new navigation with type `redirect`
+    - No page reload
+    - Preserves SPA experience
 - **Hard Redirect** (External URLs or Forced):
-  - External: Sets `window.location.href` directly
-  - Internal forced: Adds `?river_reload=<buildID>` param and reloads
-  - Returns completion data with status "did"
+    - External: Sets `window.location.href` directly
+    - Internal forced: Adds `?river_reload=<buildID>` param and reloads
+    - Returns completion data with status "did"
 
 ### 5.5. Error Handling
 
@@ -258,18 +258,25 @@ present.
 
 ## 6. Form Submissions
 
-### 6.1. Submit Function (`submit`)
+## 6.1. Submit Function (`submit`)
 
-- **Deduplication**: Same URL+method aborts previous submission
+- **Deduplication**: Controlled by an optional `dedupeKey` string provided in
+  the `submit` function's options.
+    - If a submission is made with a `dedupeKey` that matches an in-progress
+      submission for the same URL and method, the older submission is aborted.
+      This creates a "take latest" strategy.
+    - If no `dedupeKey` is provided (the default behavior), multiple submissions
+      to the same endpoint can run concurrently without interfering with each
+      other.
 - **Loading State**: Sets `isSubmitting = true`
 - **Request Handling**:
-  - FormData and strings sent as-is
-  - Other bodies JSON stringified
-  - Goes through redirect handling
+    - FormData and strings sent as-is
+    - Other bodies JSON stringified
+    - Goes through redirect handling
 - **Revalidation**:
-  - Non-GET: Auto-revalidates unless redirected
-  - GET: No auto-revalidation
-  - Manages loading state transition (submission → revalidation)
+    - Non-GET: Auto-revalidates unless redirected
+    - GET: No auto-revalidation
+    - Manages loading state transition (submission → revalidation)
 - **Returns**: `{success: true, data: T}` or `{success: false, error: string}`
 
 ### 6.2. Revalidate Function
@@ -313,9 +320,14 @@ present.
 
 ### 8.2. Error Boundaries
 
-- Uses `outermostErrorIdx` to find error component
-- Falls back to `defaultErrorBoundary` if not found
-- Uses `errorExportKey` for non-default exports
+- **Module Identification**: Uses `outermostErrorIdx` to point to the module in
+  the `importURLs` array that contains the error component.
+- **Component Resolution**: Requires a corresponding `errorExportKey` in the
+  server payload to resolve the specific named export from that module.
+- **Fallback**: If `errorExportKey` is not provided for a module indicated by
+  `outermostErrorIdx`, no route-specific error boundary is resolved, and the
+  system will use the globally configured `defaultErrorBoundary` in case of an
+  error.
 
 ### 8.3. URL Resolution
 
@@ -323,31 +335,18 @@ present.
 - Uses `viteDevURL` in dev, `publicPathPrefix` in prod
 - Handles trailing slashes correctly
 
-## 9. Development Features
-
-### 9.1. HMR Support
-
-- **Setup**: `hmrRunClientLoaders` tracks files with HMR
-- **Updates**: Listens for `vite:afterUpdate` events
-- **Revalidation**: Debounced by 10ms when relevant files change
-- **Global**: `window.__waveRevalidate` available for debugging
-
-### 9.2. HMR State
-
-- Tracks `latestHMRTimestamp`
-- Logs "HMR update detected" messages
-- Only registers HMR once per file via Set
+## 9. [Reserved]
 
 ## 10. Initialization (`initClient`)
 
-1. **HMR Setup** (dev only): Register update listener
+1. **[Reserved]**
 2. **Configure Options**:
-   - `defaultErrorBoundary`: Fallback error component
-   - `useViewTransitions`: Enable view transitions
+    - `defaultErrorBoundary`: Fallback error component
+    - `useViewTransitions`: Enable view transitions
 3. **Initialize History**:
-   - Create browser history instance
-   - Set up POP listener
-   - Set `scrollRestoration = 'manual'`
+    - Create browser history instance
+    - Set up POP listener
+    - Set `scrollRestoration = 'manual'`
 4. **Clean URL**: Remove `river_reload` param if present
 5. **Load Initial Components**: Via `handleComponents`
 6. **Setup Client Loaders**: Run initial wait functions
@@ -414,6 +413,6 @@ features.
 
 export { addBuildIDListener, addLocationListener, addRouteChangeListener,
 addStatusListener, applyScrollState, getBuildID, getHistoryInstance,
-getLocation, getPrefetchHandlers, getRootEl, getStatus, hmrRunClientLoaders,
-initClient, makeLinkOnClickFn, navigate, type RouteChangeEvent, revalidate, type
+getLocation, getPrefetchHandlers, getRootEl, getStatus, initClient,
+makeLinkOnClickFn, navigate, type RouteChangeEvent, revalidate, type
 StatusEvent, submit };

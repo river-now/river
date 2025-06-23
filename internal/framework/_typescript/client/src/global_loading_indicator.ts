@@ -34,37 +34,43 @@ function resolveIncludes(
 	return isArray && config.include?.includes(includesOption);
 }
 
-export function setupGlobalLoadingIndicator(config: GlobalLoadingIndicatorConfig) {
+export function setupGlobalLoadingIndicator(
+	config: GlobalLoadingIndicatorConfig,
+) {
 	let gliDebounceStartTimer: number | null = null;
 	let gliDebounceStopTimer: number | null = null;
 	const includesAll = !config.include || config.include === "all";
 	const pc: ParsedGlobalLoadingIndicatorConfig = {
 		includesAll,
-		includesNavigations: resolveIncludes(config, "navigations") || includesAll,
-		includesSubmissions: resolveIncludes(config, "submissions") || includesAll,
-		includesRevalidations: resolveIncludes(config, "revalidations") || includesAll,
+		includesNavigations:
+			resolveIncludes(config, "navigations") || includesAll,
+		includesSubmissions:
+			resolveIncludes(config, "submissions") || includesAll,
+		includesRevalidations:
+			resolveIncludes(config, "revalidations") || includesAll,
 		startDelayMS: config.startDelayMS ?? DEFAULT_START_DELAY_MS,
 		stopDelayMS: config.stopDelayMS ?? DEFAULT_STOP_DELAY_MS,
 	};
-	function clearTimers() {
+	function clearStartTimer() {
 		if (gliDebounceStartTimer) {
 			window.clearTimeout(gliDebounceStartTimer);
 			gliDebounceStartTimer = null;
 		}
+	}
+	function clearStopTimer() {
 		if (gliDebounceStopTimer) {
 			window.clearTimeout(gliDebounceStopTimer);
 			gliDebounceStopTimer = null;
 		}
 	}
+	function clearTimers() {
+		clearStartTimer();
+		clearStopTimer();
+	}
 	function handleStatusChange(e?: StatusEvent) {
 		const shouldBeWorking = getIsWorking(pc, e);
 		if (shouldBeWorking) {
-			// Clear stop timer if transitioning to working
-			if (gliDebounceStopTimer) {
-				window.clearTimeout(gliDebounceStopTimer);
-				gliDebounceStopTimer = null;
-			}
-			// Only set start timer if not already set
+			clearStopTimer();
 			if (!gliDebounceStartTimer) {
 				gliDebounceStartTimer = window.setTimeout(() => {
 					gliDebounceStartTimer = null;
@@ -74,12 +80,7 @@ export function setupGlobalLoadingIndicator(config: GlobalLoadingIndicatorConfig
 				}, pc.startDelayMS);
 			}
 		} else {
-			// Clear start timer if transitioning to not working
-			if (gliDebounceStartTimer) {
-				window.clearTimeout(gliDebounceStartTimer);
-				gliDebounceStartTimer = null;
-			}
-			// Only set stop timer if not already set
+			clearStartTimer();
 			if (!gliDebounceStopTimer) {
 				gliDebounceStopTimer = window.setTimeout(() => {
 					gliDebounceStopTimer = null;
@@ -90,9 +91,7 @@ export function setupGlobalLoadingIndicator(config: GlobalLoadingIndicatorConfig
 			}
 		}
 	}
-	// Check initial state
 	handleStatusChange();
-	// Listen for changes
 	const removeStatusListenerCallback = addStatusListener(handleStatusChange);
 	return () => {
 		removeStatusListenerCallback();
@@ -109,7 +108,9 @@ function getIsWorking(
 ): boolean {
 	const status = e?.detail ?? getStatus();
 	if (pc.includesAll) {
-		return status.isNavigating || status.isSubmitting || status.isRevalidating;
+		return (
+			status.isNavigating || status.isSubmitting || status.isRevalidating
+		);
 	}
 	if (pc.includesNavigations && status.isNavigating) {
 		return true;

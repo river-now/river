@@ -29,7 +29,7 @@ import { isAbortError, LogError, LogInfo, Panic } from "./utils.ts";
 // COMMON
 /////////////////////////////////////////////////////////////////////
 
-const RIVER_ROUTE_CHANGE_EVENT_KEY = "river:route-change";
+export const RIVER_ROUTE_CHANGE_EVENT_KEY = "river:route-change";
 
 export type ScrollState = { x: number; y: number } | { hash: string };
 type RouteChangeEventDetail = {
@@ -179,7 +179,10 @@ async function __completeNavigation(x: NavigationResult) {
 		return;
 	}
 	if ("redirectData" in x) {
-		await effectuateRedirectDataResult(x.redirectData, x.props.redirectCount || 0);
+		await effectuateRedirectDataResult(
+			x.redirectData,
+			x.props.redirectCount || 0,
+		);
 		return;
 	}
 	const oldID = internal_RiverClientGlobal.get("buildID");
@@ -227,6 +230,7 @@ async function __fetchRouteData(
 			abortController: controller,
 			url,
 			isPrefetch: props.navigationType === "prefetch",
+			redirectCount: props.redirectCount,
 		});
 
 		const redirected = redirectData?.status === "did";
@@ -295,8 +299,8 @@ async function __fetchRouteData(
 	} catch (error) {
 		if (!isAbortError(error)) {
 			LogError("Navigation failed", error);
-			setLoadingStatus({ type: props.navigationType, value: false });
 		}
+		setLoadingStatus({ type: props.navigationType, value: false });
 	} finally {
 		navigationState.navigations.delete(props.href);
 		if (navigationState.activeUserNavigation === props.href) {
@@ -362,7 +366,11 @@ export function getPrefetchHandlers<E extends Event>(
 	input: GetPrefetchHandlersInput<E>,
 ) {
 	const hrefDetails = getHrefDetails(input.href);
-	if (!hrefDetails.isHTTP || !hrefDetails.relativeURL || hrefDetails.isExternal) {
+	if (
+		!hrefDetails.isHTTP ||
+		!hrefDetails.relativeURL ||
+		hrefDetails.isExternal
+	) {
 		return;
 	}
 
@@ -390,7 +398,9 @@ export function getPrefetchHandlers<E extends Event>(
 				}
 
 				if (!("json" in prerenderResult)) {
-					throw new Error("Invalid navigation result: no JSON response.");
+					throw new Error(
+						"Invalid navigation result: no JSON response.",
+					);
 				}
 
 				await __completeNavigation({
@@ -480,7 +490,9 @@ export function getPrefetchHandlers<E extends Event>(
 			return;
 		}
 
-		const anchorDetails = getAnchorDetailsFromEvent(e as unknown as MouseEvent);
+		const anchorDetails = getAnchorDetailsFromEvent(
+			e as unknown as MouseEvent,
+		);
 		if (!anchorDetails) {
 			return;
 		}
@@ -609,7 +621,6 @@ export async function handleRedirects(props: {
 		return { redirectData: null, response: undefined };
 	}
 
-	let res: Response | undefined;
 	const bodyParentObj: RequestInit = {};
 
 	const isGET = getIsGETRequest(props.requestInit);
@@ -637,38 +648,18 @@ export async function handleRedirects(props: {
 		...bodyParentObj,
 	};
 
-	let redirectData: RedirectData | null = null;
+	const res = await fetch(props.url, finalRequestInit);
 
-	try {
-		res = await fetch(props.url, finalRequestInit);
+	let redirectData = parseFetchResponseForRedirectData(finalRequestInit, res);
 
-		redirectData = parseFetchResponseForRedirectData(finalRequestInit, res);
-
-		if (props.isPrefetch || !redirectData || redirectData.status === "did") {
-			return { redirectData, response: res };
-		}
-
-		redirectData = await effectuateRedirectDataResult(redirectData, redirectCount);
-	} catch (error) {
-		// If this was an attempted redirect, potentially a CORS error here.
-		// Recommend returning a client redirect instruction instead.
-		if (!isAbortError(error)) {
-			// if a GET and not a prefetch, try just hard reloading
-			if (isGET && !props.isPrefetch) {
-				window.location.href = props.url.href;
-				return {
-					redirectData: {
-						// satisfy TypeScript (does not matter, we are hard reloading)
-						hrefDetails: null as any,
-						status: "did",
-						href: props.url.href,
-					},
-					response: res,
-				};
-			}
-			LogError(error);
-		}
+	if (props.isPrefetch || !redirectData || redirectData.status === "did") {
+		return { redirectData, response: res };
 	}
+
+	redirectData = await effectuateRedirectDataResult(
+		redirectData,
+		redirectCount,
+	);
 
 	return { redirectData, response: res };
 }
@@ -697,8 +688,9 @@ function handleSubmissionController(key: string) {
 export async function submit<T = any>(
 	url: string | URL,
 	requestInit?: RequestInit,
+	options?: { dedupeKey?: string },
 ): Promise<{ success: true; data: T } | { success: false; error: string }> {
-	const submitRes = await submitInner(url, requestInit);
+	const submitRes = await submitInner(url, requestInit, options);
 	const isGET = getIsGETRequest(requestInit);
 	const needsRevalidation = !submitRes.alreadyRevalidated && !isGET;
 
@@ -738,8 +730,12 @@ export async function submit<T = any>(
 async function submitInner(
 	url: string | URL,
 	_requestInit_?: RequestInit,
+	options?: { dedupeKey?: string },
 ): Promise<
-	({ success: true; response: Response } | { success: false; error: string }) & {
+	(
+		| { success: true; response: Response }
+		| { success: false; error: string }
+	) & {
 		alreadyRevalidated: boolean;
 	}
 > {
@@ -747,9 +743,19 @@ async function submitInner(
 
 	setLoadingStatus({ type: "submission", value: true });
 
-	const urlStr = typeof url === "string" ? url : url.href;
-	const submissionKey = urlStr + (requestInit?.method || "");
-	const { abortController, didAbort } = handleSubmissionController(submissionKey);
+	let abortController: AbortController;
+	let submissionKey: string | undefined;
+	let didAbort = false;
+
+	if (options?.dedupeKey) {
+		const urlStr = typeof url === "string" ? url : url.href;
+		submissionKey = `${urlStr}${requestInit?.method || ""}${options.dedupeKey}`;
+		const result = handleSubmissionController(submissionKey);
+		abortController = result.abortController;
+		didAbort = result.didAbort;
+	} else {
+		abortController = new AbortController();
+	}
 
 	const urlToUse = new URL(url, window.location.href);
 
@@ -773,7 +779,9 @@ async function submitInner(
 
 		const redirected = redirectData?.status === "did";
 
-		navigationState.submissions.delete(submissionKey);
+		if (submissionKey !== undefined) {
+			navigationState.submissions.delete(submissionKey);
+		}
 
 		if (response && getIsErrorRes(response)) {
 			return {
@@ -830,7 +838,7 @@ let isNavigating = false;
 let isSubmitting = false;
 let isRevalidating = false;
 
-function setLoadingStatus({
+export function setLoadingStatus({
 	type,
 	value,
 }: {
@@ -906,7 +914,7 @@ export const addRouteChangeListener = makeListenerAdder<RouteChangeEventDetail>(
 // RE-RENDER APP
 /////////////////////////////////////////////////////////////////////
 
-function resolvePublicHref(relativeHref: string): string {
+export function resolvePublicHref(relativeHref: string): string {
 	let baseURL = internal_RiverClientGlobal.get("viteDevURL");
 	if (!baseURL) {
 		baseURL = internal_RiverClientGlobal.get("publicPathPrefix");
@@ -986,7 +994,10 @@ async function __reRenderAppInner({
 
 		const hash = href.split("#")[1];
 
-		if (navigationType === "userNavigation" || navigationType === "redirect") {
+		if (
+			navigationType === "userNavigation" ||
+			navigationType === "redirect"
+		) {
 			const target = new URL(href, window.location.href).href;
 			const current = new URL(window.location.href).href;
 			if (target !== current && !replace) {
@@ -1043,13 +1054,16 @@ async function __reRenderAppInner({
 			}
 			const newLink = document.createElement("link");
 			newLink.rel = "stylesheet";
-			newLink.href = internal_RiverClientGlobal.get("publicPathPrefix") + x;
+			newLink.href =
+				internal_RiverClientGlobal.get("publicPathPrefix") + x;
 			newLink.setAttribute(cssBundleDataAttr, x);
 			document.head.appendChild(newLink);
 		}
 	});
 
-	window.dispatchEvent(new CustomEvent(RIVER_ROUTE_CHANGE_EVENT_KEY, { detail }));
+	window.dispatchEvent(
+		new CustomEvent(RIVER_ROUTE_CHANGE_EVENT_KEY, { detail }),
+	);
 
 	updateHeadEls("meta", json.metaHeadEls ?? []);
 	updateHeadEls("rest", json.restHeadEls ?? []);
@@ -1077,20 +1091,6 @@ async function revalidateNonDebounced() {
 }
 
 export const revalidate = debounce(revalidateNonDebounced, 10);
-
-let devTimeSetupClientLoadersDebounced: () => Promise<void> = () => Promise.resolve();
-
-if (import.meta.env.DEV) {
-	(window as any).__waveRevalidate = revalidate;
-	devTimeSetupClientLoadersDebounced = debounce(async () => {
-		setLoadingStatus({ type: "revalidation", value: true });
-		await setupClientLoaders();
-		setLoadingStatus({ type: "revalidation", value: false });
-		window.dispatchEvent(
-			new CustomEvent(RIVER_ROUTE_CHANGE_EVENT_KEY, { detail: {} }),
-		);
-	}, 10);
-}
 
 /////////////////////////////////////////////////////////////////////
 // SCROLL RESTORATION
@@ -1156,7 +1156,9 @@ export function getHistoryInstance(): historyInstance {
 
 export function initCustomHistory() {
 	lastKnownCustomLocation = getHistoryInstance().location;
-	getHistoryInstance().listen(customHistoryListener as unknown as historyListener);
+	getHistoryInstance().listen(
+		customHistoryListener as unknown as historyListener,
+	);
 	setNativeScrollRestorationToManual();
 }
 
@@ -1166,7 +1168,7 @@ function setNativeScrollRestorationToManual() {
 	}
 }
 
-async function customHistoryListener({ action, location }: Update) {
+export async function customHistoryListener({ action, location }: Update) {
 	if (location.key !== lastKnownCustomLocation.key) {
 		dispatchLocationEvent();
 	}
@@ -1218,42 +1220,7 @@ export function getRootEl() {
 	return document.getElementById("river-root") as HTMLDivElement;
 }
 
-let latestHMRTimestamp = Date.now();
-
-let hmrRevalidateSet: Set<string>;
-
-export let hmrRunClientLoaders: (importMeta: ImportMeta) => void = () => {};
-
-if (import.meta.env.DEV) {
-	hmrRunClientLoaders = (importMeta: ImportMeta) => {
-		if (hmrRevalidateSet === undefined) {
-			hmrRevalidateSet = new Set();
-		}
-		if (import.meta.env.DEV && import.meta.hot) {
-			const thisURL = new URL(importMeta.url, location.href);
-			thisURL.search = "";
-			const thisPathname = thisURL.pathname;
-			const alreadyRegistered = hmrRevalidateSet.has(thisPathname);
-			if (alreadyRegistered) {
-				return;
-			}
-			hmrRevalidateSet.add(thisPathname);
-			import.meta.hot.on("vite:afterUpdate", (props) => {
-				for (const update of props.updates) {
-					if (update.type === "js-update") {
-						const updateURL = new URL(update.path, location.href);
-						updateURL.search = "";
-						if (updateURL.pathname === thisURL.pathname) {
-							devTimeSetupClientLoadersDebounced();
-						}
-					}
-				}
-			});
-		}
-	};
-}
-
-async function setupClientLoaders() {
+export async function setupClientLoaders() {
 	const clientLoadersData = await runWaitFns(
 		{
 			hasRootData: internal_RiverClientGlobal.get("hasRootData"),
@@ -1285,13 +1252,17 @@ window.addEventListener("beforeunload", () => {
 		unix: Date.now(),
 		href: window.location.href,
 	};
-	sessionStorage.setItem(pageRefreshScrollStateKey, JSON.stringify(scrollState));
+	sessionStorage.setItem(
+		pageRefreshScrollStateKey,
+		JSON.stringify(scrollState),
+	);
 });
 
 function checkIfShouldScrollPostRefresh() {
 	const scrollStateString = sessionStorage.getItem(pageRefreshScrollStateKey);
 	if (scrollStateString) {
-		const scrollState: pageRefreshScrollState = JSON.parse(scrollStateString);
+		const scrollState: pageRefreshScrollState =
+			JSON.parse(scrollStateString);
 		if (
 			scrollState.href === window.location.href &&
 			Date.now() - scrollState.unix < 5_000
@@ -1311,20 +1282,16 @@ export async function initClient(
 		useViewTransitions?: boolean;
 	},
 ) {
-	if (import.meta.env.DEV && import.meta.hot) {
-		import.meta.hot.on("vite:afterUpdate", () => {
-			latestHMRTimestamp = Date.now();
-			LogInfo("HMR update detected", latestHMRTimestamp);
-		});
-	}
-
 	if (options?.defaultErrorBoundary) {
 		internal_RiverClientGlobal.set(
 			"defaultErrorBoundary",
 			options.defaultErrorBoundary,
 		);
 	} else {
-		internal_RiverClientGlobal.set("defaultErrorBoundary", defaultErrorBoundary);
+		internal_RiverClientGlobal.set(
+			"defaultErrorBoundary",
+			defaultErrorBoundary,
+		);
 	}
 
 	if (options?.useViewTransitions) {
@@ -1373,7 +1340,9 @@ async function importNewComponentsAndGetModulesMap(
 			return await import(/* @vite-ignore */ resolvePublicHref(x));
 		}),
 	);
-	return new Map(dedupedImportURLs.map((url, index) => [url, dedupedModules[index]]));
+	return new Map(
+		dedupedImportURLs.map((url, index) => [url, dedupedModules[index]]),
+	);
 }
 
 async function handleComponents(importURLs: Array<string>) {
@@ -1388,7 +1357,8 @@ async function handleComponents(importURLs: Array<string>) {
 		),
 	);
 
-	const outermostErrorIdx = internal_RiverClientGlobal.get("outermostErrorIdx");
+	const outermostErrorIdx =
+		internal_RiverClientGlobal.get("outermostErrorIdx");
 
 	if (outermostErrorIdx != null) {
 		let errorComp: any;
@@ -1398,7 +1368,8 @@ async function handleComponents(importURLs: Array<string>) {
 		if (errorModuleImportURL) {
 			const errorModule = modulesMap.get(errorModuleImportURL);
 
-			const errorExportKey = internal_RiverClientGlobal.get("errorExportKey");
+			const errorExportKey =
+				internal_RiverClientGlobal.get("errorExportKey");
 			if (errorExportKey) {
 				errorComp = errorModule[errorExportKey];
 			}
@@ -1411,7 +1382,9 @@ async function handleComponents(importURLs: Array<string>) {
 	}
 }
 
-const defaultErrorBoundary: RouteErrorComponent = (props: { error: string }) => {
+const defaultErrorBoundary: RouteErrorComponent = (props: {
+	error: string;
+}) => {
 	return "Route Error: " + props.error;
 };
 
@@ -1422,14 +1395,17 @@ async function runWaitFns(
 	await importNewComponentsAndGetModulesMap(json.importURLs);
 
 	const matchedPatterns = json.matchedPatterns ?? [];
-	const patternToWaitFnMap = internal_RiverClientGlobal.get("patternToWaitFnMap");
+	const patternToWaitFnMap =
+		internal_RiverClientGlobal.get("patternToWaitFnMap");
 	const waitFnPromises: Array<Promise<any>> = [];
 
 	let i = 0;
 	for (const pattern of matchedPatterns) {
 		if (patternToWaitFnMap[pattern]) {
 			waitFnPromises.push(
-				patternToWaitFnMap[pattern](resolveWaitFnPropsFromJSON(json, buildID, i)),
+				patternToWaitFnMap[pattern](
+					resolveWaitFnPropsFromJSON(json, buildID, i),
+				),
 			);
 		} else {
 			waitFnPromises.push(Promise.resolve());
@@ -1450,7 +1426,8 @@ function dispatchLocationEvent() {
 	window.dispatchEvent(new CustomEvent(LOCATION_EVENT_KEY));
 }
 
-export const addLocationListener = makeListenerAdder<BuildIDEvent>(LOCATION_EVENT_KEY);
+export const addLocationListener =
+	makeListenerAdder<BuildIDEvent>(LOCATION_EVENT_KEY);
 
 export function getLocation() {
 	return {
@@ -1473,7 +1450,8 @@ function dispatchBuildIDEvent(detail: BuildIDEvent) {
 	window.dispatchEvent(new CustomEvent(BUILD_ID_EVENT_KEY, { detail }));
 }
 
-export const addBuildIDListener = makeListenerAdder<BuildIDEvent>(BUILD_ID_EVENT_KEY);
+export const addBuildIDListener =
+	makeListenerAdder<BuildIDEvent>(BUILD_ID_EVENT_KEY);
 
 export function getBuildID() {
 	return internal_RiverClientGlobal.get("buildID");
@@ -1518,12 +1496,15 @@ export function makeLinkOnClickFn<E extends Event>(
 			return;
 		}
 
-		const anchorDetails = getAnchorDetailsFromEvent(e as unknown as MouseEvent);
+		const anchorDetails = getAnchorDetailsFromEvent(
+			e as unknown as MouseEvent,
+		);
 		if (!anchorDetails) {
 			return;
 		}
 
-		const { anchor, isEligibleForDefaultPrevention, isInternal } = anchorDetails;
+		const { anchor, isEligibleForDefaultPrevention, isInternal } =
+			anchorDetails;
 
 		if (!anchor) {
 			return;

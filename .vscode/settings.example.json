@@ -1,8 +1,5 @@
 {
-	"editor.codeActionsOnSave": {
-		"source.organizeImports.biome": "explicit",
-		"source.fixAll.biome": "explicit"
-	},
+	"editor.codeActionsOnSave": {},
 
 	"search.exclude": {
 		"**/node_modules": true,
@@ -16,11 +13,7 @@
 		"editor.defaultFormatter": "golang.go"
 	},
 
-	"[html][css][json][jsonc][javascript][typescript][javascriptreact][typescriptreact]": {
-		"editor.defaultFormatter": "biomejs.biome"
-	},
-
-	"[markdown]": {
+	"[html][css][json][jsonc][javascript][typescript][javascriptreact][typescriptreact][markdown]": {
 		"editor.defaultFormatter": "esbenp.prettier-vscode",
 		"prettier.proseWrap": "always"
 	}
