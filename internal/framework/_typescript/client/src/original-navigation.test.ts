@@ -23,7 +23,6 @@ import {
 	navigationStateManager,
 	revalidate,
 	type ScrollState,
-	setLoadingStatus,
 	submit,
 } from "../src/client.ts";
 import { internal_RiverClientGlobal } from "../src/river_ctx.ts";
@@ -225,11 +224,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 	});
 
 	afterEach(async () => {
-		// Reset loading states FIRST while fake timers are active
-		setLoadingStatus({ type: "submission", value: false });
-		setLoadingStatus({ type: "revalidation", value: false });
-		setLoadingStatus({ type: "userNavigation", value: false });
-
 		// Run all pending timers to ensure status events fire
 		await vi.runAllTimersAsync();
 
@@ -607,13 +601,14 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Let it complete
 				await vi.runAllTimersAsync();
 
-				// Should be removed from map after completion
+				// UPDATED: Prefetch stays in map until explicitly stopped
+				// This allows reuse if user clicks the link
+				handlers?.stop();
+
+				// NOW it should be removed from the map
 				expect(
 					navigationState.navigations.has("/prefetch-cleanup"),
 				).toBe(false);
-
-				// Clean up
-				handlers?.stop();
 			});
 		});
 
@@ -2902,9 +2897,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 		describe("7.1 Loading States (river:status)", () => {
 			it("should track isNavigating state", async () => {
 				// Ensure clean state
-				setLoadingStatus({ type: "userNavigation", value: false });
-				setLoadingStatus({ type: "submission", value: false });
-				setLoadingStatus({ type: "revalidation", value: false });
 				await vi.runAllTimersAsync();
 
 				const statusListener = vi.fn();
@@ -2961,9 +2953,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 			it("should track isSubmitting state", async () => {
 				// Ensure clean state
-				setLoadingStatus({ type: "userNavigation", value: false });
-				setLoadingStatus({ type: "submission", value: false });
-				setLoadingStatus({ type: "revalidation", value: false });
 				await vi.runAllTimersAsync();
 
 				const statusListener = vi.fn();
@@ -3975,9 +3964,15 @@ describe("Comprehensive Navigation Test Suite", () => {
 				expect(getStatus().isNavigating).toBe(true);
 
 				await navPromise;
+
+				// The navigation promise resolves, but we need to wait for
+				// processNavigationResult to complete its cleanup
 				await vi.runAllTimersAsync();
 
-				// Should be done navigating after 404
+				// Force the debounced status event to fire
+				vi.advanceTimersByTime(5);
+
+				// Now check the status
 				expect(getStatus().isNavigating).toBe(false);
 			});
 		});

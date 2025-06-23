@@ -2,7 +2,6 @@ import { debounce } from "river.now/kit/debounce";
 import {
 	RIVER_ROUTE_CHANGE_EVENT_KEY,
 	revalidate,
-	setLoadingStatus,
 	setupClientLoaders,
 } from "./client.ts";
 
@@ -12,9 +11,7 @@ let devTimeSetupClientLoadersDebounced: () => Promise<void> = () =>
 if (import.meta.env.DEV) {
 	(window as any).__waveRevalidate = revalidate;
 	devTimeSetupClientLoadersDebounced = debounce(async () => {
-		setLoadingStatus({ type: "revalidation", value: true });
 		await setupClientLoaders();
-		setLoadingStatus({ type: "revalidation", value: false });
 		window.dispatchEvent(
 			new CustomEvent(RIVER_ROUTE_CHANGE_EVENT_KEY, { detail: {} }),
 		);
