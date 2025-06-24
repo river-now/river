@@ -1,4 +1,3 @@
-// ./src/client.ts
 /// <reference types="vite/client" />
 
 import { createBrowserHistory, type Update } from "history";
@@ -7,7 +6,6 @@ import { jsonDeepEquals } from "river.now/kit/json";
 import {
 	getAnchorDetailsFromEvent,
 	getHrefDetails,
-	getIsErrorRes,
 	getIsGETRequest,
 } from "river.now/kit/url";
 import { updateHeadEls } from "./head.ts";
@@ -20,10 +18,9 @@ import {
 import {
 	type GetRouteDataOutput,
 	internal_RiverClientGlobal,
-	type RiverClientGlobal,
 	type RouteErrorComponent,
 } from "./river_ctx.ts";
-import { isAbortError, LogError, LogInfo, Panic } from "./utils.ts";
+import { isAbortError, LogError } from "./utils.ts";
 
 /////////////////////////////////////////////////////////////////////
 // TYPES
@@ -44,7 +41,7 @@ type RouteChangeEventDetail = {
 	index?: number;
 };
 
-type StatusEventDetail = {
+export type StatusEventDetail = {
 	isNavigating: boolean;
 	isSubmitting: boolean;
 	isRevalidating: boolean;
@@ -61,7 +58,8 @@ type NavigationType =
 	| "userNavigation"
 	| "revalidation"
 	| "redirect"
-	| "prefetch";
+	| "prefetch"
+	| "action";
 
 export type NavigateProps = {
 	href: string;
@@ -88,16 +86,6 @@ type NavigationResult =
 export type NavigationControl = {
 	abortController: AbortController | undefined;
 	promise: Promise<NavigationResult>;
-};
-
-type NavigationEntry = {
-	control: NavigationControl;
-	type: NavigationType;
-};
-
-type SubmissionEntry = {
-	controller: AbortController;
-	type: "submission";
 };
 
 type LinkOnClickCallback<E extends Event> = (event: E) => void | Promise<void>;
@@ -137,18 +125,43 @@ type RerenderAppProps = {
 };
 
 /////////////////////////////////////////////////////////////////////
-// NAVIGATION STATE MANAGER (Enhanced with NavigationManager pattern)
+// NAVIGATION STATE MANAGER
 /////////////////////////////////////////////////////////////////////
 
+// Navigation phases represent the lifecycle stages
+type NavigationPhase =
+	| "fetching" // Fetching route data
+	| "waiting" // Waiting for assets/loaders
+	| "rendering" // Applying changes to DOM
+	| "complete"; // Navigation finished
+
+// Navigation intent represents what should happen when complete
+type NavigationIntent =
+	| "none" // Prefetch -- don't navigate unless upgraded
+	| "navigate" // Normal navigation -- update URL and render
+	| "revalidate"; // Revalidation -- only update if still on same page
+
+interface NavigationEntry {
+	control: NavigationControl;
+	type: NavigationType;
+	intent: NavigationIntent;
+	phase: NavigationPhase;
+	startTime: number;
+	targetUrl: string; // URL this navigation is targeting
+	originUrl: string; // URL when navigation started (for revalidation)
+}
+
+interface SubmissionEntry {
+	control: NavigationControl;
+	startTime: number;
+}
+
 class NavigationStateManager {
-	// State from current implementation
-	private navigations = new Map<string, NavigationEntry>();
-	private activeUserNavigation: string | null = null;
-	private activeRevalidation: NavigationControl | null = null;
-	private submissions = new Map<string, SubmissionEntry>();
-	private nonDedupedSubmissions = new Set<AbortController>();
+	private _navigations = new Map<string, NavigationEntry>();
+	private _submissions = new Map<string | symbol, SubmissionEntry>();
 	private lastDispatchedStatus: StatusEventDetail | null = null;
 	private dispatchStatusEventDebounced: () => void;
+	private readonly REVALIDATION_COALESCE_MS = 5;
 
 	constructor() {
 		this.dispatchStatusEventDebounced = debounce(() => {
@@ -156,267 +169,188 @@ class NavigationStateManager {
 		}, 5);
 	}
 
-	// --- Public Navigation API (from old implementation pattern) ---
-
-	/**
-	 * Main navigation method that handles all navigation types
-	 */
 	async navigate(props: NavigateProps): Promise<void> {
 		const control = this.beginNavigation(props);
-		if (!control.promise) return;
 
 		try {
 			const result = await control.promise;
 			if (!result) {
-				// Clean up failed navigation
-				this.removeNavigation(props.href);
-				if (this.activeUserNavigation === props.href) {
-					this.activeUserNavigation = null;
-				}
-				this.scheduleStatusUpdate();
 				return;
 			}
 
-			await this.processNavigationResult(result, control, props);
-		} catch (error) {
-			// Clean up on error
-			this.removeNavigation(props.href);
-			if (this.activeUserNavigation === props.href) {
-				this.activeUserNavigation = null;
+			// Process based on navigation entry state
+			const targetUrl = new URL(props.href, window.location.href).href;
+			const entry = this._navigations.get(targetUrl);
+			if (!entry) {
+				return;
 			}
-			this.scheduleStatusUpdate();
-			throw error;
+
+			if (entry.intent === "none" && entry.type === "prefetch") {
+				// Prefetch complete but not navigating
+				this.transitionPhase(targetUrl, "complete");
+				return;
+			}
+
+			await this.processNavigationResult(result, entry);
+		} catch (error) {
+			const targetUrl = new URL(props.href, window.location.href).href;
+			this.deleteNavigation(targetUrl);
+			if (!isAbortError(error)) {
+				LogError("Navigate error:", error);
+			}
 		}
 	}
 
-	/**
-	 * Begins a navigation and returns control handle
-	 */
 	beginNavigation(props: NavigateProps): NavigationControl {
-		// If this is a user navigation, it takes precedence
-		if (props.navigationType === "userNavigation") {
-			this.abortAllNavigationsExcept(props.href);
-			this.activeUserNavigation = props.href;
+		const existing = this._navigations.get(
+			new URL(props.href, window.location.href).href,
+		);
 
-			// If a prefetch exists, upgrade it
-			const existing = this.navigations.get(props.href);
-			if (existing?.type === "prefetch") {
-				existing.type = "userNavigation";
-				this.scheduleStatusUpdate(); // Ensure status updates
+		switch (props.navigationType) {
+			case "userNavigation":
+				return this.beginUserNavigation(props, existing);
+			case "prefetch":
+				return this.beginPrefetch(props, existing);
+			case "revalidation":
+				return this.beginRevalidation(props);
+			case "browserHistory":
+			case "redirect":
+			default:
+				return this.createNavigation(props, "navigate");
+		}
+	}
+
+	private beginUserNavigation(
+		props: NavigateProps,
+		existing: NavigationEntry | undefined,
+	): NavigationControl {
+		const targetUrl = new URL(props.href, window.location.href).href;
+
+		// Abort all other navigations
+		this.abortAllNavigationsExcept(targetUrl);
+
+		if (existing) {
+			if (existing.type === "prefetch") {
+				// Upgrade prefetch to user navigation
+				this.upgradeNavigation(targetUrl, {
+					type: "userNavigation",
+					intent: "navigate",
+				});
 				return existing.control;
 			}
+
+			// Already navigating to this URL, return existing
+			return existing.control;
 		}
 
-		// If a revalidation is starting, abort any old one
-		if (props.navigationType === "revalidation") {
-			this.activeRevalidation?.abortController?.abort();
-			this.activeRevalidation = null;
-		}
-
-		// Return existing navigation if present
-		if (props.navigationType === "prefetch") {
-			const existing = this.navigations.get(props.href);
-			if (existing) return existing.control;
-		}
-
-		// Create new navigation
-		const controller = new AbortController();
-		const control: NavigationControl = {
-			abortController: controller,
-			promise: this.fetchRouteData(controller, props),
-		};
-
-		this.navigations.set(props.href, {
-			control,
-			type: props.navigationType,
-		});
-
-		if (props.navigationType === "revalidation") {
-			this.activeRevalidation = control;
-		}
-
-		this.scheduleStatusUpdate();
-		return control;
+		return this.createNavigation(props, "navigate");
 	}
 
-	/**
-	 * Process navigation result (public for hook support)
-	 */
-	async processNavigationResult(
-		result: NavigationResult,
-		control: NavigationControl,
-		originalProps: NavigateProps,
-	): Promise<void> {
-		try {
-			if (!result) return;
+	private beginPrefetch(
+		props: NavigateProps,
+		existing: NavigationEntry | undefined,
+	): NavigationControl {
+		const targetUrl = new URL(props.href, window.location.href).href;
 
-			if ("redirectData" in result) {
-				await effectuateRedirectDataResult(
-					result.redirectData,
-					result.props.redirectCount || 0,
-				);
-			} else {
-				await this.completeNavigation(result);
-			}
-		} finally {
-			this.removeNavigation(originalProps.href);
-			if (this.activeUserNavigation === originalProps.href) {
-				this.activeUserNavigation = null;
-			}
-			if (this.activeRevalidation === control) {
-				this.activeRevalidation = null;
-			}
-			this.scheduleStatusUpdate(); // Ensure final status update
-		}
-	}
-
-	// --- Submit API ---
-
-	async submit<T = any>(
-		url: string | URL,
-		requestInit?: RequestInit,
-		options?: { dedupeKey?: string },
-	): Promise<{ success: true; data: T } | { success: false; error: string }> {
-		const submitRes = await this.submitInner(url, requestInit, options);
-		const isGET = getIsGETRequest(requestInit);
-		const needsRevalidation = !submitRes.alreadyRevalidated && !isGET;
-
-		if (needsRevalidation) {
-			await revalidate();
+		if (existing) {
+			return existing.control;
 		}
 
-		if (!submitRes.success) {
-			LogError(submitRes.error);
-			return { success: false, error: submitRes.error };
-		}
-
-		try {
-			const json = await submitRes.response.json();
-			return { success: true, data: json as T };
-		} catch (e) {
-			LogError(e);
+		// Don't prefetch current page
+		const currentUrl = new URL(window.location.href);
+		const targetUrlObj = new URL(targetUrl);
+		currentUrl.hash = "";
+		targetUrlObj.hash = "";
+		if (currentUrl.href === targetUrlObj.href) {
+			// Return a no-op control
 			return {
-				success: false,
-				error: e instanceof Error ? e.message : "Unknown error",
+				abortController: new AbortController(),
+				promise: Promise.resolve(undefined),
 			};
 		}
+
+		return this.createNavigation(props, "none");
 	}
 
-	// --- State Management (from current implementation) ---
+	private beginRevalidation(props: NavigateProps): NavigationControl {
+		// Store current URL to validate against later
+		const currentUrl = window.location.href;
 
-	addNavigation(href: string, entry: NavigationEntry): void {
-		this.navigations.set(href, entry);
-		this.scheduleStatusUpdate();
-	}
-
-	removeNavigation(href: string): void {
-		this.navigations.delete(href);
-		if (this.activeUserNavigation === href) {
-			this.activeUserNavigation = null;
+		// Check for recent revalidation to same URL
+		const existing = this._navigations.get(currentUrl);
+		if (
+			existing?.type === "revalidation" &&
+			Date.now() - existing.startTime < this.REVALIDATION_COALESCE_MS
+		) {
+			return existing.control;
 		}
-		this.scheduleStatusUpdate();
+
+		// Abort other revalidations
+		for (const [key, nav] of this._navigations.entries()) {
+			if (nav.type === "revalidation") {
+				nav.control.abortController?.abort();
+				this.deleteNavigation(key);
+			}
+		}
+
+		// Create revalidation with current URL
+		return this.createNavigation(
+			{ ...props, href: currentUrl },
+			"revalidate",
+		);
 	}
 
-	getNavigation(href: string): NavigationEntry | undefined {
-		return this.navigations.get(href);
-	}
+	private createNavigation(
+		props: NavigateProps,
+		intent: NavigationIntent,
+	): NavigationControl {
+		const controller = new AbortController();
+		const targetUrl = new URL(props.href, window.location.href).href;
 
-	hasNavigation(href: string): boolean {
-		return this.navigations.has(href);
-	}
-
-	getNavigationsSize(): number {
-		return this.navigations.size;
-	}
-
-	setActiveUserNavigation(href: string | null): void {
-		this.activeUserNavigation = href;
-	}
-
-	getActiveUserNavigation(): string | null {
-		return this.activeUserNavigation;
-	}
-
-	setActiveRevalidation(control: NavigationControl | null): void {
-		this.activeRevalidation = control;
-		this.scheduleStatusUpdate();
-	}
-
-	getActiveRevalidation(): NavigationControl | null {
-		return this.activeRevalidation;
-	}
-
-	// Submission management
-	addSubmission(key: string, entry: SubmissionEntry): void {
-		this.submissions.set(key, entry);
-		this.scheduleStatusUpdate();
-	}
-
-	removeSubmission(key: string): void {
-		this.submissions.delete(key);
-		this.scheduleStatusUpdate();
-	}
-
-	getSubmission(key: string): SubmissionEntry | undefined {
-		return this.submissions.get(key);
-	}
-
-	addNonDedupedSubmission(controller: AbortController): void {
-		this.nonDedupedSubmissions.add(controller);
-		this.scheduleStatusUpdate();
-	}
-
-	removeNonDedupedSubmission(controller: AbortController): void {
-		this.nonDedupedSubmissions.delete(controller);
-		this.scheduleStatusUpdate();
-	}
-
-	// Status management
-	getStatus(): StatusEventDetail {
-		const navigations = Array.from(this.navigations.values());
-		const hasActiveSubmissions =
-			this.submissions.size > 0 || this.nonDedupedSubmissions.size > 0;
-
-		// More accurate navigation detection
-		const isNavigating =
-			!!this.activeUserNavigation ||
-			navigations.some(
-				(nav) =>
-					nav.type === "userNavigation" ||
-					nav.type === "redirect" ||
-					nav.type === "browserHistory",
-			);
-
-		const isRevalidating =
-			navigations.some((nav) => nav.type === "revalidation") ||
-			!!this.activeRevalidation;
-
-		return {
-			isNavigating,
-			isSubmitting: hasActiveSubmissions,
-			isRevalidating,
+		const entry: NavigationEntry = {
+			control: {
+				abortController: controller,
+				promise: this.fetchRouteData(controller, props).catch(
+					(error) => {
+						this.deleteNavigation(targetUrl);
+						throw error;
+					},
+				),
+			},
+			type: props.navigationType,
+			intent,
+			phase: "fetching",
+			startTime: Date.now(),
+			targetUrl,
+			originUrl: window.location.href,
 		};
+
+		this.setNavigation(targetUrl, entry);
+		return entry.control;
 	}
 
-	clearAll(): void {
-		this.navigations.clear();
-		this.submissions.clear();
-		this.nonDedupedSubmissions.clear();
-		this.activeUserNavigation = null;
-		this.activeRevalidation = null;
-		this.scheduleStatusUpdate();
+	private upgradeNavigation(
+		href: string,
+		updates: Partial<Pick<NavigationEntry, "type" | "intent">>,
+	): void {
+		const existing = this._navigations.get(href);
+		if (!existing) return;
+
+		this.setNavigation(href, {
+			...existing,
+			...updates,
+		});
 	}
 
-	// Getters for backwards compatibility
-	getNavigations(): Map<string, NavigationEntry> {
-		return this.navigations;
-	}
+	private transitionPhase(href: string, phase: NavigationPhase): void {
+		const existing = this._navigations.get(href);
+		if (!existing) return;
 
-	getSubmissions(): Map<string, SubmissionEntry> {
-		return this.submissions;
+		this.setNavigation(href, {
+			...existing,
+			phase,
+		});
 	}
-
-	// --- Private Methods ---
 
 	private async fetchRouteData(
 		controller: AbortController,
@@ -440,7 +374,7 @@ class NavigationStateManager {
 			const responseNotOK = !response?.ok && response?.status !== 304;
 
 			if (redirected || !response || responseNotOK) {
-				return;
+				return undefined;
 			}
 
 			if (redirectData?.status === "should") {
@@ -454,11 +388,9 @@ class NavigationStateManager {
 				throw new Error("No JSON response");
 			}
 
-			// Preload assets - these happen in parallel
 			const depsToPreload = import.meta.env.DEV
 				? [...new Set(json.importURLs)]
 				: json.deps;
-
 			for (const dep of depsToPreload ?? []) {
 				if (dep) AssetManager.preloadModule(dep);
 			}
@@ -466,29 +398,77 @@ class NavigationStateManager {
 			const buildID = getBuildIDFromResponse(response);
 			const waitFnPromise = runWaitFns(json, buildID);
 			const cssBundlePromises: Array<Promise<any>> = [];
-
 			for (const bundle of json.cssBundles ?? []) {
 				cssBundlePromises.push(AssetManager.preloadCSS(bundle));
 			}
 
-			// IMPORTANT: Loading status remains ON until completeNavigation finishes
-			// This ensures all JS modules, CSS, and client loaders are ready before transition
 			return { response, json, props, cssBundlePromises, waitFnPromise };
 		} catch (error) {
 			if (!isAbortError(error)) {
 				LogError("Navigation failed", error);
 			}
-			// Only remove on error - successful navigations are cleaned up in processNavigationResult
-			this.removeNavigation(props.href);
+			throw error;
+		}
+	}
+
+	private async processNavigationResult(
+		result: NavigationResult,
+		entry: NavigationEntry,
+	): Promise<void> {
+		if (!result) return;
+
+		try {
+			if ("redirectData" in result) {
+				// Clean up before redirect to prevent race conditions
+				this.deleteNavigation(entry.targetUrl);
+
+				await effectuateRedirectDataResult(
+					result.redirectData,
+					result.props.redirectCount || 0,
+				);
+				return;
+			}
+
+			// Type guard to ensure we have the json branch
+			if (!("json" in result)) {
+				LogError("Invalid navigation result: no JSON or redirect");
+				return;
+			}
+
+			// Validate revalidation is still applicable
+			if (entry.type === "revalidation") {
+				const currentUrl = window.location.href;
+				if (currentUrl !== entry.originUrl) {
+					this.deleteNavigation(entry.targetUrl);
+					return;
+				}
+			}
+
+			// Transition to waiting phase
+			this.transitionPhase(entry.targetUrl, "waiting");
+
+			// Complete the navigation
+			await this.completeNavigation(result, entry);
+		} finally {
+			// Always clean up
+			this.deleteNavigation(entry.targetUrl);
 		}
 	}
 
 	private async completeNavigation(
-		result: Exclude<NavigationResult, { redirectData: any } | undefined>,
+		result: NavigationResult & {
+			json: GetRouteDataOutput;
+			cssBundlePromises: Array<Promise<any>>;
+			waitFnPromise: Promise<any> | undefined;
+		},
+		entry: NavigationEntry,
 	): Promise<void> {
-		if (!("json" in result)) return;
+		// Skip if navigation was aborted
+		if (!this._navigations.has(entry.targetUrl)) {
+			return;
+		}
 
-		// Handle build ID change
+		// Update build ID if needed
 		const oldID = internal_RiverClientGlobal.get("buildID");
 		const newID = getBuildIDFromResponse(result.response);
 		if (newID && newID !== oldID) {
@@ -499,175 +479,212 @@ class NavigationStateManager {
 		const clientLoadersData = await result.waitFnPromise;
 		internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
 
-		// For revalidation, check if we're still on the page we're revalidating
-		if (result.props.navigationType === "revalidation") {
-			const revalidatingUrl = new URL(
-				result.props.href,
-				window.location.href,
-			);
-			const currentUrl = new URL(window.location.href);
-
-			if (
-				revalidatingUrl.pathname !== currentUrl.pathname ||
-				revalidatingUrl.search !== currentUrl.search
-			) {
-				// We've navigated away, skip rendering
-				return;
+		// Wait for CSS
+		if (result.cssBundlePromises.length > 0) {
+			try {
+				await Promise.all(result.cssBundlePromises);
+			} catch (error) {
+				LogError("Error preloading CSS bundles:", error);
 			}
 		}
 
+		// Skip rendering for prefetch without intent
+		if (entry.intent === "none") {
+			return;
+		}
+
+		// Skip rendering for revalidation if not on target page
+		if (
+			entry.type === "revalidation" &&
+			window.location.href !== entry.originUrl
+		) {
+			return;
+		}
+
+		// Transition to rendering phase
+		this.transitionPhase(entry.targetUrl, "rendering");
+
+		// Render the app
 		try {
 			await __reRenderApp({
 				json: result.json,
-				navigationType: result.props.navigationType,
-				runHistoryOptions: result.props,
+				navigationType: entry.type,
+				runHistoryOptions:
+					entry.intent === "navigate"
+						? {
+								href: entry.targetUrl,
+								scrollStateToRestore:
+									result.props.scrollStateToRestore,
+								replace: result.props.replace,
+							}
+						: undefined,
 				cssBundlePromises: result.cssBundlePromises,
 			});
 		} catch (error) {
 			if (!isAbortError(error)) {
 				LogError("Error completing navigation", error);
 			}
+			throw error;
 		}
+
+		// Mark as complete
+		this.transitionPhase(entry.targetUrl, "complete");
 	}
 
-	private async submitInner(
+	async submit<T = any>(
 		url: string | URL,
-		_requestInit?: RequestInit,
+		requestInit?: RequestInit,
 		options?: { dedupeKey?: string },
-	): Promise<
-		(
-			| { success: true; response: Response }
-			| { success: false; error: string }
-		) & {
-			alreadyRevalidated: boolean;
-		}
-	> {
-		const requestInit = _requestInit || {};
-		let abortController: AbortController;
-		let submissionKey: string | undefined;
-		let didAbort = false;
+	): Promise<{ success: true; data: T } | { success: false; error: string }> {
+		const abortController = new AbortController();
+		const submissionKey = options?.dedupeKey
+			? `submission:${options.dedupeKey}`
+			: Symbol("submission");
 
-		// Handle deduplication
-		if (options?.dedupeKey) {
-			const urlStr = typeof url === "string" ? url : url.href;
-			submissionKey = `${urlStr}${requestInit?.method || ""}${options.dedupeKey}`;
-
-			const existing = this.getSubmission(submissionKey);
+		// Abort duplicate submission
+		if (typeof submissionKey === "string") {
+			const existing = this._submissions.get(submissionKey);
 			if (existing) {
-				existing.controller.abort();
-				this.removeSubmission(submissionKey);
-				didAbort = true;
+				existing.control.abortController?.abort("deduped");
 			}
-
-			abortController = new AbortController();
-			this.addSubmission(submissionKey, {
-				controller: abortController,
-				type: "submission",
-			});
-		} else {
-			abortController = new AbortController();
-			this.addNonDedupedSubmission(abortController);
 		}
 
-		const urlToUse = new URL(url, window.location.href);
-		const headers = new Headers(requestInit.headers);
-		requestInit.headers = headers;
-		const isGET = getIsGETRequest(requestInit);
+		const entry: SubmissionEntry = {
+			control: {
+				abortController,
+				promise: Promise.resolve() as any,
+			},
+			startTime: Date.now(),
+		};
+
+		this._submissions.set(submissionKey, entry);
+		this.scheduleStatusUpdate();
 
 		try {
+			const urlToUse = new URL(url, window.location.href);
+			const headers = new Headers(requestInit?.headers);
+			const finalRequestInit: RequestInit = {
+				...requestInit,
+				headers,
+				signal: abortController.signal,
+			};
+
 			const { redirectData, response } = await handleRedirects({
 				abortController,
 				url: urlToUse,
 				isPrefetch: false,
 				redirectCount: 0,
-				requestInit,
+				requestInit: finalRequestInit,
 			});
 
-			// Handle build ID
 			const oldID = internal_RiverClientGlobal.get("buildID");
 			const newID = getBuildIDFromResponse(response);
 			if (newID && newID !== oldID) {
+				const isGET = getIsGETRequest(requestInit);
 				dispatchBuildIDEvent({ newID, oldID, fromGETAction: isGET });
 			}
 
-			const redirected = redirectData?.status === "did";
-
-			// Clean up
-			if (submissionKey !== undefined) {
-				this.removeSubmission(submissionKey);
-			} else {
-				this.removeNonDedupedSubmission(abortController);
-			}
-
-			// Handle response
-			if (response && getIsErrorRes(response)) {
-				return {
-					success: false,
-					error: String(response.status),
-					alreadyRevalidated: redirected,
-				};
-			}
-
-			if (didAbort) {
-				return {
-					success: false,
-					error: "Aborted",
-					alreadyRevalidated: false,
-				};
-			}
-
-			if (!response?.ok) {
+			if (!response || !response.ok) {
 				return {
 					success: false,
 					error: String(response?.status || "unknown"),
-					alreadyRevalidated: redirected,
 				};
 			}
 
-			return {
-				success: true,
-				response,
-				alreadyRevalidated: redirected,
-			};
+			const data = await response.json();
+
+			// Auto-revalidate for mutations
+			const isGET = getIsGETRequest(requestInit);
+			const redirected = redirectData?.status === "did";
+			if (!isGET && !redirected) {
+				await revalidate();
+			}
+
+			return { success: true, data: data as T };
 		} catch (error) {
-			// Clean up
-			if (submissionKey !== undefined) {
-				this.removeSubmission(submissionKey);
-			} else {
-				this.removeNonDedupedSubmission(abortController);
-			}
-
 			if (isAbortError(error)) {
-				return {
-					success: false,
-					error: "Aborted",
-					alreadyRevalidated: false,
-				};
+				return { success: false, error: "Aborted" };
 			}
-
 			LogError(error);
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : "Unknown error",
-				alreadyRevalidated: false,
 			};
+		} finally {
+			this._submissions.delete(submissionKey);
+			this.scheduleStatusUpdate();
 		}
 	}
 
+	private setNavigation(key: string, entry: NavigationEntry): void {
+		this._navigations.set(key, entry);
+		this.scheduleStatusUpdate();
+	}
+
+	private deleteNavigation(key: string): boolean {
+		const result = this._navigations.delete(key);
+		if (result) {
+			this.scheduleStatusUpdate();
+		}
+		return result;
+	}
+
+	removeNavigation(key: string): void {
+		this.deleteNavigation(key);
+	}
+
+	getNavigation(key: string): NavigationEntry | undefined {
+		return this._navigations.get(key);
+	}
+
+	hasNavigation(key: string): boolean {
+		return this._navigations.has(key);
+	}
+
+	getNavigationsSize(): number {
+		return this._navigations.size;
+	}
+
+	getNavigations(): Map<string, NavigationEntry> {
+		return this._navigations;
+	}
+
 	private abortAllNavigationsExcept(excludeHref?: string): void {
-		for (const [href, nav] of this.navigations.entries()) {
-			// Always abort revalidations when starting a new navigation
-			// Otherwise, only abort if href doesn't match
-			if (nav.type === "revalidation" || href !== excludeHref) {
+		for (const [href, nav] of this._navigations.entries()) {
+			if (href !== excludeHref) {
 				nav.control.abortController?.abort();
-				this.navigations.delete(href);
+				this.deleteNavigation(href);
 			}
 		}
-		if (this.activeRevalidation) {
-			this.activeRevalidation.abortController?.abort();
-			this.activeRevalidation = null;
+	}
+
+	getStatus(): StatusEventDetail {
+		const navigations = Array.from(this._navigations.values());
+		const submissions = Array.from(this._submissions.values());
+
+		const isNavigating = navigations.some(
+			(nav) => nav.intent === "navigate" && nav.phase !== "complete",
+		);
+
+		const isRevalidating = navigations.some(
+			(nav) => nav.type === "revalidation" && nav.phase !== "complete",
+		);
+
+		const isSubmitting = submissions.length > 0;
+
+		return { isNavigating, isSubmitting, isRevalidating };
+	}
+
+	clearAll(): void {
+		for (const nav of this._navigations.values()) {
+			nav.control.abortController?.abort();
 		}
-		this.scheduleStatusUpdate(); // Ensure status update after aborting
+		this._navigations.clear();
+		for (const sub of this._submissions.values()) {
+			sub.control.abortController?.abort();
+		}
+		this._submissions.clear();
+		this.scheduleStatusUpdate();
 	}
 
 	private scheduleStatusUpdate(): void {
@@ -680,11 +697,56 @@ class NavigationStateManager {
 		if (jsonDeepEquals(this.lastDispatchedStatus, newStatus)) {
 			return;
 		}
-
 		this.lastDispatchedStatus = newStatus;
 		window.dispatchEvent(
 			new CustomEvent(STATUS_EVENT_KEY, { detail: newStatus }),
 		);
+	}
+
+	// Backward compatibility methods
+	setActiveUserNavigation(href: string | null): void {
+		// No-op for compatibility
+		this.scheduleStatusUpdate();
+	}
+
+	getActiveUserNavigation(): string | null {
+		for (const [href, nav] of this._navigations.entries()) {
+			if (nav.type === "userNavigation") {
+				return href;
+			}
+		}
+		return null;
+	}
+
+	setActiveRevalidation(control: NavigationControl | null): void {
+		// No-op for compatibility
+		this.scheduleStatusUpdate();
+	}
+
+	getActiveRevalidation(): NavigationControl | null {
+		for (const nav of this._navigations.values()) {
+			if (nav.type === "revalidation") {
+				return nav.control;
+			}
+		}
+		return null;
+	}
+
+	// For backwards compatibility with tests
+	get activeUserNavigation() {
+		return this.getActiveUserNavigation();
+	}
+
+	set activeUserNavigation(value: string | null) {
+		this.scheduleStatusUpdate();
+	}
+
+	get activeRevalidation() {
+		return this.getActiveRevalidation();
+	}
+
+	set activeRevalidation(value: NavigationControl | null) {
+		this.scheduleStatusUpdate();
 	}
 }
 
@@ -695,9 +757,6 @@ export const navigationStateManager = new NavigationStateManager();
 export const navigationState = {
 	get navigations() {
 		return navigationStateManager.getNavigations();
-	},
-	get submissions() {
-		return navigationStateManager.getSubmissions();
 	},
 	get activeUserNavigation() {
 		return navigationStateManager.getActiveUserNavigation();
@@ -907,11 +966,13 @@ class ComponentLoader {
 		const exportKeys = internal_RiverClientGlobal.get("exportKeys") ?? [];
 
 		// Set active components
-		const activeComponents = originalImportURLs.map((url, i) => {
-			const module = modulesMap.get(url);
-			const key = exportKeys[i] ?? "default";
-			return module?.[key] ?? null;
-		});
+		const activeComponents = originalImportURLs.map(
+			(url: string, i: number) => {
+				const module = modulesMap.get(url);
+				const key = exportKeys[i] ?? "default";
+				return module?.[key] ?? null;
+			},
+		);
 		internal_RiverClientGlobal.set("activeComponents", activeComponents);
 
 		// Handle error boundary
@@ -953,12 +1014,12 @@ export async function navigate(
 	});
 }
 
-export const revalidate = debounce(async () => {
+export async function revalidate() {
 	await navigationStateManager.navigate({
 		href: window.location.href,
 		navigationType: "revalidation",
 	});
-}, 10);
+}
 
 export async function submit<T = any>(
 	url: string | URL,
@@ -1049,18 +1110,25 @@ export function makeLinkOnClickFn<E extends Event>(
 			const res = await control.promise;
 
 			if (!res) {
-				// __TODO add test for this
 				// If not here, loading indicator can get stuck on
 				// following redirects
-				navigationStateManager.removeNavigation(anchor.href);
+				const targetUrl = new URL(anchor.href, window.location.href)
+					.href;
+				navigationStateManager.removeNavigation(targetUrl);
 				return;
 			}
 
 			await callbacks.beforeRender?.(e);
-			await navigationStateManager.processNavigationResult(res, control, {
-				href: anchor.href,
-				navigationType: "userNavigation",
-			});
+
+			const targetUrl = new URL(anchor.href, window.location.href).href;
+			const entry = navigationStateManager.getNavigation(targetUrl);
+			if (entry) {
+				await navigationStateManager["processNavigationResult"](
+					res,
+					entry,
+				);
+			}
+
 			await callbacks.afterRender?.(e);
 		}
 	};
@@ -1074,65 +1142,51 @@ export function getPrefetchHandlers<E extends Event>(
 		return;
 	}
 
-	// TypeScript type guard - after this check, we know relativeURL exists
+	// TypeScript type guard -- after this check, we know relativeURL exists
 	const { relativeURL } = hrefDetails;
 	if (!relativeURL || hrefDetails.isExternal) {
 		return;
 	}
 
 	let timer: number | undefined;
-	let currentNav: NavigationControl | null = null;
-	let prerenderResult: NavigationResult | null = null;
+	let prefetchStarted = false;
 	const delayMs = input.delayMs ?? 100;
 
 	async function prefetch(e: E): Promise<void> {
-		if (currentNav) return;
-
-		// Don't prefetch current page
-		const currentUrl = new URL(window.location.href);
-		const targetUrl = new URL(relativeURL, window.location.href);
-		currentUrl.hash = "";
-		targetUrl.hash = "";
-		if (currentUrl.href === targetUrl.href) return;
+		if (prefetchStarted) return;
+		prefetchStarted = true;
 
 		if (input.beforeBegin) {
 			await input.beforeBegin(e);
 		}
 
-		currentNav = navigationStateManager.beginNavigation({
+		// Use the navigation system
+		await navigationStateManager.navigate({
 			href: relativeURL,
 			navigationType: "prefetch",
 		});
-
-		currentNav.promise
-			.then((result) => {
-				prerenderResult = result;
-			})
-			.catch((error) => {
-				if (!isAbortError(error)) {
-					LogError("Prefetch failed:", error);
-				}
-			});
 	}
 
 	function start(e: E): void {
-		if (currentNav) return;
+		if (prefetchStarted) return;
 		timer = window.setTimeout(() => prefetch(e), delayMs);
 	}
 
 	function stop(): void {
 		if (timer) {
 			clearTimeout(timer);
+			timer = undefined;
 		}
 
-		const nav = navigationStateManager.getNavigation(relativeURL);
-		if (nav?.type === "prefetch") {
+		// Abort prefetch if it exists and hasn't been upgraded
+		const targetUrl = new URL(relativeURL, window.location.href).href;
+		const nav = navigationStateManager.getNavigation(targetUrl);
+		if (nav && nav.type === "prefetch" && nav.intent === "none") {
 			nav.control.abortController?.abort();
-			navigationStateManager.removeNavigation(relativeURL);
+			navigationStateManager.removeNavigation(targetUrl);
 		}
 
-		currentNav = null;
-		prerenderResult = null;
+		prefetchStarted = false;
 	}
 
 	async function onClick(e: E): Promise<void> {
@@ -1153,88 +1207,25 @@ export function getPrefetchHandlers<E extends Event>(
 
 		e.preventDefault();
 
-		if (prerenderResult) {
-			await finalize(e);
-			return;
+		if (timer) {
+			clearTimeout(timer);
+			timer = undefined;
 		}
 
-		if (timer) clearTimeout(timer);
-
-		if (input.beforeBegin) {
+		// Execute callbacks
+		if (input.beforeBegin && !prefetchStarted) {
 			await input.beforeBegin(e);
 		}
 
-		currentNav = navigationStateManager.beginNavigation({
-			href: relativeURL,
-			navigationType: "userNavigation",
-		});
-
-		prerenderResult = null;
-
-		try {
-			await finalize(e);
-		} catch (error) {
-			if (!isAbortError(error)) {
-				LogError("Error during click navigation:", error);
-			}
+		if (input.beforeRender) {
+			await input.beforeRender(e);
 		}
-	}
 
-	async function finalize(e: E): Promise<void> {
-		try {
-			if (!prerenderResult && currentNav) {
-				prerenderResult = await currentNav.promise;
-			}
+		// Use standard navigation -- it will upgrade the prefetch if it exists
+		await navigate(relativeURL);
 
-			if (!prerenderResult) {
-				// __TODO add test for this
-				// If not here, loading indicator can get stuck on
-				// following redirects
-				navigationStateManager.removeNavigation(relativeURL);
-				return;
-			}
-
-			if (prerenderResult) {
-				await input.beforeRender?.(e);
-
-				if ("redirectData" in prerenderResult) {
-					await effectuateRedirectDataResult(
-						prerenderResult.redirectData,
-						prerenderResult.props.redirectCount || 0,
-					);
-					return;
-				}
-
-				if (!("json" in prerenderResult)) {
-					throw new Error(
-						"Invalid navigation result: no JSON response.",
-					);
-				}
-
-				await navigationStateManager.processNavigationResult(
-					{
-						...prerenderResult,
-						props: {
-							...prerenderResult.props,
-							navigationType: "userNavigation" as const,
-						},
-					},
-					currentNav!,
-					{
-						href: relativeURL,
-						navigationType: "userNavigation",
-					},
-				);
-
-				await input.afterRender?.(e);
-			}
-		} catch (e) {
-			if (!isAbortError(e)) {
-				LogError("Error finalizing prefetch:", e);
-			}
-		} finally {
-			prerenderResult = null;
-			currentNav = null;
+		if (input.afterRender) {
+			await input.afterRender(e);
 		}
 	}
 
@@ -1324,7 +1315,6 @@ export async function initClient(
 	window.addEventListener(
 		"touchstart",
 		() => {
-			LogInfo("Touch device detected");
 			internal_RiverClientGlobal.set("isTouchDevice", true);
 		},
 		{ once: true },
@@ -1469,25 +1459,12 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 		}
 	}
 
-	// CRITICAL: Wait for CSS bundles to be ready before proceeding
-	// This ensures the page transition happens only when all assets are loaded
-	if (cssBundlePromises.length > 0) {
-		try {
-			LogInfo("Waiting for CSS bundle preloads to complete...");
-			await Promise.all(cssBundlePromises);
-			LogInfo("CSS bundle preloads completed.");
-		} catch (error) {
-			LogError("Error preloading CSS bundles:", error);
-		}
-	}
-
 	// Apply CSS
 	if (json.cssBundles) {
 		AssetManager.applyCSS(json.cssBundles);
 	}
 
-	// Dispatch route change event - this triggers the actual UI update
-	// Loading status is cleared AFTER this completes
+	// Dispatch route change event -- this triggers the actual UI update
 	window.dispatchEvent(
 		new CustomEvent(RIVER_ROUTE_CHANGE_EVENT_KEY, {
 			detail: { scrollState: scrollStateToDispatch },
@@ -1503,7 +1480,9 @@ async function effectuateRedirectDataResult(
 	redirectData: RedirectData,
 	redirectCount: number,
 ): Promise<RedirectData | null> {
-	if (redirectData.status !== "should") return null;
+	if (redirectData.status !== "should") {
+		return null;
+	}
 
 	if (redirectData.shouldRedirectStrategy === "hard") {
 		if (!redirectData.hrefDetails.isHTTP) return null;
@@ -1527,6 +1506,7 @@ async function effectuateRedirectDataResult(
 	}
 
 	if (redirectData.shouldRedirectStrategy === "soft") {
+		// Use navigate() which will create a new navigation with redirect type
 		await navigationStateManager.navigate({
 			href: redirectData.href,
 			navigationType: "redirect",
@@ -1597,10 +1577,6 @@ async function handleRedirects(props: {
 	);
 	return { redirectData, response: res };
 }
-
-/////////////////////////////////////////////////////////////////////
-// INTERNAL FUNCTIONS
-/////////////////////////////////////////////////////////////////////
 
 export async function setupClientLoaders(): Promise<void> {
 	const clientLoadersData = await runWaitFns(
