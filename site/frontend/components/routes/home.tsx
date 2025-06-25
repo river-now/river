@@ -18,16 +18,17 @@ type RootCLD = ReturnType<typeof useClientLoaderData>;
 export function Home(_props: RouteProps<"/_index">) {
 	const _x = usePatternLoaderData("");
 	const _y = usePatternClientLoaderData<RootCLD>("");
-	// console.log("x", x());
-	// console.log("y", y());
+	// console.log("_x", _x());
+	// console.log("_y", _y());
 
 	return (
 		<div class="flex h-full justify-center flex-col items-center mb-16 gap-6">
 			<h2 class="text-center text-balance text-3xl sm:text-4xl md:text-5xl lg:text-5xl w-5xl max-w-full leading-normal my-6 px-6">
-				River is a <FancySpan>Go</FancySpan> / <FancySpan>TypeScript</FancySpan>{" "}
-				meta-framework with first-class support for <FancySpan>React</FancySpan>,{" "}
-				<FancySpan>Solid</FancySpan>, and <FancySpan>Preact</FancySpan> – built on{" "}
-				<FancySpan>Vite</FancySpan>.
+				River is a <FancySpan>Go</FancySpan> /{" "}
+				<FancySpan>TypeScript</FancySpan> meta-framework with
+				first-class support for <FancySpan>React</FancySpan>,{" "}
+				<FancySpan>Solid</FancySpan>, and <FancySpan>Preact</FancySpan>{" "}
+				– built on <FancySpan>Vite</FancySpan>.
 			</h2>
 
 			<Link

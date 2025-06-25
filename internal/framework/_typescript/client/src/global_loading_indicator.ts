@@ -1,7 +1,7 @@
 import { addStatusListener, getStatus, type StatusEvent } from "./client.ts";
 
-const DEFAULT_START_DELAY_MS = 20;
-const DEFAULT_STOP_DELAY_MS = 5;
+const DEFAULT_START_DELAY_MS = 10;
+const DEFAULT_STOP_DELAY_MS = 10;
 
 type GlobalLoadingIndicatorIncludesOption =
 	| "navigations"

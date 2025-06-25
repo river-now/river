@@ -149,7 +149,7 @@ declare global {
 	function hashedURL(staticPublicAsset: StaticPublicAsset): string;
 }
 
-export const publicPathPrefix = "/public/";
+export const publicPathPrefix = "/";
 
 export function waveRuntimeURL(originalPublicURL: keyof typeof staticPublicAssetMap) {
 	const url = staticPublicAssetMap[originalPublicURL] ?? originalPublicURL;
@@ -169,7 +169,7 @@ export function riverVitePlugin(): Plugin {
 
 			return {
 				...c,
-				base: isDev ? "/" : "/public/",
+				base: isDev ? "/" : "/",
 				build: {
 					target: "es2022",
 					...c.build,
@@ -230,7 +230,7 @@ export function riverVitePlugin(): Plugin {
 				(_, __, assetPath) => {
 					const hashed = (staticPublicAssetMap as Record<string, string>)[assetPath];
 					if (!hashed) return '\"' + assetPath + '\"';
-					return `"/public/${hashed}"`;
+					return `"/${hashed}"`;
 				},
 			);
 			if (replacedCode === code) return null;

@@ -18,8 +18,8 @@ func (c *Config) SetupDistDir() error {
 		return fmt.Errorf("error making x file: %w", err)
 	}
 
-	// make an empty dist/static/assets/public/internal directory
-	path = c._dist.S().Static.S().Assets.S().Public.S().PublicInternal.FullPath()
+	// make an empty dist/static/assets/public directory
+	path = c._dist.S().Static.S().Assets.S().Public.FullPath()
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return fmt.Errorf("error making public directory: %w", err)
 	}

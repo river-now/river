@@ -23,12 +23,8 @@ type DistStatic struct {
 }
 
 type DistStaticAssets struct {
-	Public  *dirs.Dir[DistStaticAssetsPublic]
+	Public  *dirs.DirEmpty
 	Private *dirs.DirEmpty
-}
-
-type DistStaticAssetsPublic struct {
-	PublicInternal *dirs.DirEmpty
 }
 
 type DistWaveInternal struct {
@@ -46,9 +42,7 @@ func toDistLayout(cleanDistDir string) *dirs.Dir[Dist] {
 		Binary: dirs.ToFile(mainOut),
 		Static: dirs.ToDir("static", DistStatic{
 			Assets: dirs.ToDir("assets", DistStaticAssets{
-				Public: dirs.ToDir(PUBLIC, DistStaticAssetsPublic{
-					PublicInternal: dirs.ToDirEmpty("internal"),
-				}),
+				Public:  dirs.ToDirEmpty(PUBLIC),
 				Private: dirs.ToDirEmpty(PRIVATE),
 			}),
 			Internal: dirs.ToDir("internal", DistWaveInternal{

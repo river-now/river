@@ -85,7 +85,7 @@ func (c *Config) savePublicFileMapJSToInternalPublicDir(mapToSave FileMap) error
 	}
 
 	return os.WriteFile(filepath.Join(
-		c._dist.S().Static.S().Assets.S().Public.S().PublicInternal.FullPath(),
+		c._dist.S().Static.S().Assets.S().Public.FullPath(),
 		hashedFilename,
 	), bytes, 0644)
 }
@@ -162,7 +162,7 @@ func (c *Config) getInitialPublicFileMapURL() (string, error) {
 
 	return path.Join(
 		c._uc.Core.PublicPathPrefix,
-		c._dist.S().Static.S().Assets.S().Public.S().PublicInternal.LastSegment(),
+		c._dist.S().Static.S().Assets.S().Public.LastSegment(),
 		string(content),
 	), nil
 }

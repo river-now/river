@@ -1484,6 +1484,16 @@ async function effectuateRedirectDataResult(
 		return null;
 	}
 
+	// Clean up any active revalidations when redirecting.
+	// Otherwise loading state will get stuck.
+	const navEntries = navigationStateManager.getNavigations().entries();
+	for (const [key, nav] of navEntries) {
+		if (nav.type === "revalidation") {
+			nav.control.abortController?.abort();
+			navigationStateManager.removeNavigation(key);
+		}
+	}
+
 	if (redirectData.shouldRedirectStrategy === "hard") {
 		if (!redirectData.hrefDetails.isHTTP) return null;
 
