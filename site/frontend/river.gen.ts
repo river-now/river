@@ -229,7 +229,7 @@ export function riverVitePlugin(): Plugin {
 				assetRegex,
 				(_, __, assetPath) => {
 					const hashed = (staticPublicAssetMap as Record<string, string>)[assetPath];
-					if (!hashed) return '\"' + assetPath + '\"';
+					if (!hashed) return `"${assetPath}"`;
 					return `"/${hashed}"`;
 				},
 			);

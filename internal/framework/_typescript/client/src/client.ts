@@ -22,6 +22,8 @@ import {
 } from "./river_ctx.ts";
 import { isAbortError, LogError } from "./utils.ts";
 
+// __TODO get rid of the back-compat methods and re-write tests not to need them
+
 /////////////////////////////////////////////////////////////////////
 // TYPES
 /////////////////////////////////////////////////////////////////////
@@ -121,7 +123,6 @@ type RerenderAppProps = {
 		scrollStateToRestore?: ScrollState;
 		replace?: boolean;
 	};
-	cssBundlePromises: Array<any>;
 };
 
 /////////////////////////////////////////////////////////////////////
@@ -523,7 +524,6 @@ class NavigationStateManager {
 								replace: result.props.replace,
 							}
 						: undefined,
-				cssBundlePromises: result.cssBundlePromises,
 			});
 		} catch (error) {
 			if (!isAbortError(error)) {
@@ -709,7 +709,7 @@ class NavigationStateManager {
 	}
 
 	// Backward compatibility methods
-	setActiveUserNavigation(href: string | null): void {
+	setActiveUserNavigation(): void {
 		// No-op for compatibility
 		this.scheduleStatusUpdate();
 	}
@@ -723,7 +723,7 @@ class NavigationStateManager {
 		return null;
 	}
 
-	setActiveRevalidation(control: NavigationControl | null): void {
+	setActiveRevalidation(): void {
 		// No-op for compatibility
 		this.scheduleStatusUpdate();
 	}
@@ -767,7 +767,7 @@ export const navigationState = {
 		return navigationStateManager.getActiveUserNavigation();
 	},
 	set activeUserNavigation(value: string | null) {
-		navigationStateManager.setActiveUserNavigation(value);
+		navigationStateManager.setActiveUserNavigation();
 	},
 };
 
@@ -1407,8 +1407,7 @@ async function __reRenderApp(props: RerenderAppProps): Promise<void> {
 }
 
 async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
-	const { json, navigationType, runHistoryOptions, cssBundlePromises } =
-		props;
+	const { json, navigationType, runHistoryOptions } = props;
 
 	// Update global state
 	const stateKeys = [

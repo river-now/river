@@ -31,7 +31,7 @@ run_test() {
 
 run_test "make gotest"
 run_test "make tstest"
-# run_test "make tslint"
+run_test "make tslint"
 run_test "make tscheck"
 
 echo "[pre-commit]  OK     Done."

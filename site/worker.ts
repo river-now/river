@@ -9,7 +9,7 @@ export class SiteContainer extends Container {
 type Env = { SITE_CONTAINER: any };
 
 export default {
-	async fetch(request: Request, env: Env, ctx: any): Promise<Response> {
+	async fetch(request: Request, env: Env, _: any): Promise<Response> {
 		const container = await loadBalance(env.SITE_CONTAINER, 3);
 		return await container.fetch(request);
 	},

@@ -1,14 +1,6 @@
 // /comprehensive-navigation.test.ts
 
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	type MockedFunction,
-	vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	addBuildIDListener,
 	addLocationListener,
@@ -30,9 +22,7 @@ import {
 	navigationState,
 	navigationStateManager,
 	revalidate,
-	RIVER_ROUTE_CHANGE_EVENT_KEY,
 	type ScrollState,
-	STATUS_EVENT_KEY,
 	type StatusEventDetail,
 	submit,
 } from "./client.ts";
@@ -327,15 +317,11 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				const history = getHistoryInstance();
 
-				// Save the initial location key
-				const initialKey = history.location.key;
-
 				// Navigate to create history entries
 				history.push("/page1");
 				const page1Key = history.location.key;
 
 				history.push("/page2");
-				const page2Key = history.location.key;
 
 				// Clear any fetch calls from initialization
 				vi.clearAllMocks();
@@ -513,7 +499,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				process.on("unhandledRejection", unhandledRejectionHandler);
 
 				// Start second navigation
-				const control2 = beginNavigation({
+				beginNavigation({
 					href: "/page2",
 					navigationType: "userNavigation",
 				});
@@ -3340,8 +3326,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 					routeChangeListener,
 				);
 
-				const oldTitle = document.title;
-
 				vi.mocked(fetch).mockResolvedValue(
 					createMockResponse({
 						title: { dangerousInnerHTML: "New Title" },
@@ -3891,7 +3875,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 			it("should maintain lastKnownCustomLocation", async () => {
 				const history = getHistoryInstance();
-				const initialLocation = history.location;
 
 				history.push("/new-location");
 				await vi.runAllTimersAsync();
@@ -4323,11 +4306,8 @@ describe("Comprehensive Navigation Test Suite", () => {
 	describe("14. Critical Edge Cases for Refactoring", () => {
 		it("should handle multiple navigations to different URLs", async () => {
 			// Create promises we can control
-			let resolve1: (value: any) => void;
 			let resolve2: (value: any) => void;
-			const promise1 = new Promise((r) => {
-				resolve1 = r;
-			});
+			const promise1 = new Promise(() => {});
 			const promise2 = new Promise((r) => {
 				resolve2 = r;
 			});
@@ -4339,7 +4319,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 			}) as any);
 
 			// Start first navigation
-			const nav1 = navigate("/page1");
+			navigate("/page1");
 			expect(navigationState.navigations.size).toBe(1);
 			expect(navigationState.activeUserNavigation).toBe(
 				"http://localhost:3000/page1",

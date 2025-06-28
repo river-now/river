@@ -31,7 +31,7 @@ tsreset:
 	@pnpm i
 
 tslint:
-	@pnpm biome check .
+	@pnpm oxlint --config .oxlintrc.json
 
 tscheck: tscheck-kit tscheck-fw-client tscheck-fw-react tscheck-fw-solid
 

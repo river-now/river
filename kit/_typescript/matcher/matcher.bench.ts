@@ -129,7 +129,7 @@ describe("FindBestMatch Benchmarks", () => {
 	for (const s of scenarios) {
 		bench(`FindBestMatchSimple - ${s.name}`, () => {
 			// Single operation per benchmark iteration
-			const [match, ok] = mediumMatcher.FindBestMatch(s.path);
+			const [_, ok] = mediumMatcher.FindBestMatch(s.path);
 			if (!ok) throw new Error("Expected match");
 		});
 	}
@@ -138,24 +138,24 @@ describe("FindBestMatch Benchmarks", () => {
 		const paths = generateNonNestedPathsForBenchmark("small");
 		// Use a stable path index to avoid modulo operation in benchmark
 		const path = paths[0];
-		const [match, _] = smallMatcher.FindBestMatch(path || "");
+		const [_, __] = smallMatcher.FindBestMatch(path || "");
 	});
 
 	bench("FindBestMatchAtScale - Scale_medium", () => {
 		const paths = generateNonNestedPathsForBenchmark("medium");
 		const path = paths[0];
-		const [match, _] = mediumMatcher.FindBestMatch(path || "");
+		const [_, __] = mediumMatcher.FindBestMatch(path || "");
 	});
 
 	bench("FindBestMatchAtScale - Scale_large", () => {
 		const paths = generateNonNestedPathsForBenchmark("large");
 		const path = paths[0];
-		const [match, _] = largeMatcher.FindBestMatch(path || "");
+		const [_, __] = largeMatcher.FindBestMatch(path || "");
 	});
 
 	bench("WorstCase_DeepNested", () => {
 		const path = "/api/v9/users/999/posts/999";
-		const [match, _] = largeMatcher.FindBestMatch(path);
+		const [_, __] = largeMatcher.FindBestMatch(path);
 	});
 });
 
@@ -211,7 +211,7 @@ describe("FindNestedMatches Benchmarks", () => {
 		bench(`FindNestedMatches - ${tc.name}`, () => {
 			// Single operation per benchmark iteration
 			const path = tc.paths[0];
-			const [matches, _] = nestedMatcher.FindNestedMatches(path || "");
+			const [_, __] = nestedMatcher.FindNestedMatches(path || "");
 		});
 	}
 });
