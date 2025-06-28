@@ -4,7 +4,9 @@ import { makeFinalLinkProps, type RiverLinkPropsBase } from "river.now/client";
 export function RiverLink(
 	props: ComponentProps<"a"> &
 		RiverLinkPropsBase<
-			(e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => void | Promise<void>
+			(
+				e: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
+			) => void | Promise<void>
 		>,
 ) {
 	const finalLinkProps = useMemo(() => makeFinalLinkProps(props), [props]);
@@ -18,7 +20,6 @@ export function RiverLink(
 			onPointerLeave={finalLinkProps.onPointerLeave}
 			onBlur={finalLinkProps.onBlur}
 			onTouchCancel={finalLinkProps.onTouchCancel}
-			// biome-ignore lint: this onClick is very intentional
 			onClick={finalLinkProps.onClick}
 		>
 			{props.children}

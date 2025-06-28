@@ -94,7 +94,6 @@ export function RiverRootOutlet(props: { idx?: number }): h.JSX.Element {
 	const nextImportURL = signal(importURLs.value?.[idx + 1]);
 	const nextExportKey = signal(exportKeys.value?.[idx + 1]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	useEffect(() => {
 		const dispose = effect(() => {
 			if (!currentImportURL.value || latestEvent.value) {
@@ -153,10 +152,13 @@ export function RiverRootOutlet(props: { idx?: number }): h.JSX.Element {
 		return activeComponents.value?.[idx];
 	});
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	const Outlet = useMemo(
 		() => (localProps: Record<string, any> | undefined) => {
-			return h(RiverRootOutlet, { ...localProps, ...props, idx: idx + 1 });
+			return h(RiverRootOutlet, {
+				...localProps,
+				...props,
+				idx: idx + 1,
+			});
 		},
 		[nextImportURL.value, nextExportKey.value],
 	);

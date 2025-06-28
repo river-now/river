@@ -24,7 +24,9 @@ import {
 
 const jotaiStore = createStore();
 
-export function RiverProvider({ children }: React.PropsWithChildren): JSX.Element {
+export function RiverProvider({
+	children,
+}: React.PropsWithChildren): JSX.Element {
 	return <Provider store={jotaiStore}>{children}</Provider>;
 }
 
@@ -139,7 +141,6 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 	const [nextImportURL, setNextImportURL] = useState(importURLs?.[idx + 1]);
 	const [nextExportKey, setNextExportKey] = useState(exportKeys?.[idx + 1]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	useEffect(() => {
 		if (!currentImportURL || !latestEvent) {
 			return;
@@ -180,7 +181,6 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		return idx === outermostErrorIdx;
 	}, [idx, outermostErrorIdx]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	const CurrentCompMemo = useMemo(() => {
 		if (isErrorIdxMemo) {
 			return null;
@@ -188,7 +188,6 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		return activeComponents?.[idx];
 	}, [isErrorIdxMemo, currentImportURL, currentExportKey, activeComponents]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: nope
 	const Outlet = useMemo(
 		() => (localProps: Record<string, any> | undefined) => {
 			return <RiverRootOutlet {...localProps} {...props} idx={idx + 1} />;
