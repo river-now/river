@@ -31,7 +31,7 @@ tsreset:
 	@pnpm i
 
 tslint:
-	@pnpm oxlint --config .oxlintrc.json
+	@pnpm oxlint
 
 tscheck: tscheck-kit tscheck-fw-client tscheck-fw-react tscheck-fw-solid
 

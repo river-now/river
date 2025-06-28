@@ -1,6 +1,4 @@
 {
-	"editor.codeActionsOnSave": {},
-
 	"search.exclude": {
 		"**/node_modules": true,
 		"**/river.gen.ts": true
