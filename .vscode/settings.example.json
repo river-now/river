@@ -14,5 +14,7 @@
 	"[html][css][json][jsonc][javascript][typescript][javascriptreact][typescriptreact][markdown]": {
 		"editor.defaultFormatter": "esbenp.prettier-vscode",
 		"prettier.proseWrap": "always"
-	}
+	},
+
+	"typescript.experimental.useTsgo": true
 }

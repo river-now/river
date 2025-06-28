@@ -23,6 +23,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.1.6
         version: 19.1.6(@types/react@19.1.8)
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20250628.1
+        version: 7.0.0-dev.20250628.1
       esbuild:
         specifier: ^0.25.5
         version: 0.25.5
@@ -701,6 +704,53 @@ packages:
 
   '@types/whatwg-mimetype@3.0.2':
     resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
+
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20250628.1':
+    resolution: {integrity: sha512-uIYl7JRK4oogp6gtdJfvHk6eqmyRj7ReMH69pzmpF2Os029v4T/B4ubEStJZeipNV5i0H5S22ke7nB2n/fdwOg==}
+    engines: {node: '>=20.6.0'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20250628.1':
+    resolution: {integrity: sha512-yA6urzWberCtOA0p5ZHTDgDIRgWOTlLdIuyJT7wEAzmTp4iAcXlbjtlqHO48YbPY6u8QQO2gkPb63xUVkgXTOw==}
+    engines: {node: '>=20.6.0'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20250628.1':
+    resolution: {integrity: sha512-4jLcHUaDDU7Pq35/lfNgVIKoixAoWJb4XOviVNmsBUBDbOCRpC6w3NEm3WkLp/FlSwHWxdxvS5ZxGfl0tQBU6w==}
+    engines: {node: '>=20.6.0'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20250628.1':
+    resolution: {integrity: sha512-Yj0Lx5ObYtlnDhlRVjxZqUOBlWA3yjd2YuDqxLVwfwfpgY/J6TDPRiw2FNKA4U8AbpQfOp9w9w2zzuVPcnK5Eg==}
+    engines: {node: '>=20.6.0'}
+    cpu: [arm]
+    os: [linux]
+
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20250628.1':
+    resolution: {integrity: sha512-eTQyMTocik0bzTZU78955U+/yXOnVtPkobkIw3ItJll4OvK7C7xxUkciyN68cgl0+AcXmAKUVuwZy2bkIxNelQ==}
+    engines: {node: '>=20.6.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20250628.1':
+    resolution: {integrity: sha512-fn1fsJOU1ZeR9XKrU4m77ofKYOhdInoB5WmIn877m23i9wJgDf0khnbsl+K0sBJRm3qkjCFTGhVufNbny0WBqg==}
+    engines: {node: '>=20.6.0'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20250628.1':
+    resolution: {integrity: sha512-ioHfytkBTHobTmDZqjgiCT/OaYyi3a24a9g0bC/m6wle/31BKUAnIMn3EByMsydkU0cycVdADImK4+BX3zei7A==}
+    engines: {node: '>=20.6.0'}
+    cpu: [x64]
+    os: [win32]
+
+  '@typescript/native-preview@7.0.0-dev.20250628.1':
+    resolution: {integrity: sha512-NcrPSdEV1E0oNgKBMnEK/N+/YN5ry2RuG9lIyYfmTzw1RJT9lUGCibPwHD9jd0nL6qyoPY3EeWu0SNHLiXHZzw==}
+    engines: {node: '>=20.6.0'}
+    hasBin: true
 
   '@vitest/browser@3.2.4':
     resolution: {integrity: sha512-tJxiPrWmzH8a+w9nLKlQMzAKX/7VjFs50MWgcAj7p9XQ7AQ9/35fByFYptgPELyLw+0aixTnC4pUWV+APcZ/kw==}
@@ -2026,6 +2076,37 @@ snapshots:
 
   '@types/whatwg-mimetype@3.0.2':
     optional: true
+
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20250628.1':
+    optional: true
+
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20250628.1':
+    optional: true
+
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20250628.1':
+    optional: true
+
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20250628.1':
+    optional: true
+
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20250628.1':
+    optional: true
+
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20250628.1':
+    optional: true
+
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20250628.1':
+    optional: true
+
+  '@typescript/native-preview@7.0.0-dev.20250628.1':
+    optionalDependencies:
+      '@typescript/native-preview-darwin-arm64': 7.0.0-dev.20250628.1
+      '@typescript/native-preview-darwin-x64': 7.0.0-dev.20250628.1
+      '@typescript/native-preview-linux-arm': 7.0.0-dev.20250628.1
+      '@typescript/native-preview-linux-arm64': 7.0.0-dev.20250628.1
+      '@typescript/native-preview-linux-x64': 7.0.0-dev.20250628.1
+      '@typescript/native-preview-win32-arm64': 7.0.0-dev.20250628.1
+      '@typescript/native-preview-win32-x64': 7.0.0-dev.20250628.1
 
   '@vitest/browser@3.2.4(playwright@1.53.1)(rolldown-vite@6.3.7(@types/node@22.15.32)(esbuild@0.25.5))(vitest@3.2.4)':
     dependencies:

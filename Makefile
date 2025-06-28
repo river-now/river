@@ -36,19 +36,19 @@ tslint:
 tscheck: tscheck-kit tscheck-fw-client tscheck-fw-react tscheck-fw-solid
 
 tscheck-kit:
-	@pnpm tsc --noEmit --project ./kit/_typescript
+	@pnpm tsgo --noEmit --project ./kit/_typescript
 
 tscheck-fw-client:
-	@pnpm tsc --noEmit --project ./internal/framework/_typescript/client
+	@pnpm tsgo --noEmit --project ./internal/framework/_typescript/client
 
 tscheck-fw-react:
-	@pnpm tsc --noEmit --project ./internal/framework/_typescript/react
+	@pnpm tsgo --noEmit --project ./internal/framework/_typescript/react
 
 tscheck-fw-solid:
-	@pnpm tsc --noEmit --project ./internal/framework/_typescript/solid
+	@pnpm tsgo --noEmit --project ./internal/framework/_typescript/solid
 
 tscheck-fw-preact:
-	@pnpm tsc --noEmit --project ./internal/framework/_typescript/preact
+	@pnpm tsgo --noEmit --project ./internal/framework/_typescript/preact
 
 tsprepforpub: tsreset tstest tslint tscheck
 
