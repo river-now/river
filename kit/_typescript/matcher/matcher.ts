@@ -986,7 +986,6 @@ function flattenAndSortMatches(
 	];
 }
 
-// Exports
 export {
 	BestMatch,
 	EnsureLeadingSlash,
