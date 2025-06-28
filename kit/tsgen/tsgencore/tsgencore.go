@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-//
-// Public API & Types
-//
+/////////////////////////////////////////////////////////////////////
+/////// PUBLIC API & TYPES
+/////////////////////////////////////////////////////////////////////
 
 type IDStr = string
 type _results = map[IDStr]*TypeInfo
@@ -58,9 +58,9 @@ func (r *Results) GetTypeInfo(adHocType *AdHocType) *TypeInfo {
 	}
 }
 
-//
-// Internal Types & State
-//
+/////////////////////////////////////////////////////////////////////
+/////// INTERNAL TYPES & STATE
+/////////////////////////////////////////////////////////////////////
 
 type TypeInfo struct {
 	OriginalName   string
@@ -92,9 +92,9 @@ func newTypeCollector() *typeCollector {
 	return &typeCollector{types: make(map[reflect.Type]*typeEntry)}
 }
 
-//
-// Core Traversal & Generation Logic
-//
+/////////////////////////////////////////////////////////////////////
+/////// CORE TRAVERSAL & GENERATION LOGIC
+/////////////////////////////////////////////////////////////////////
 
 var idRegex = regexp.MustCompile(`\$tsgen\$[^$]+\$tsgen\$`)
 
@@ -215,9 +215,9 @@ func mergeTypeResults(results ..._results) Results {
 	}
 }
 
-//
-// Type Collection & Traversal Helpers (methods of typeCollector)
-//
+/////////////////////////////////////////////////////////////////////
+/////// TYPE COLLECTOR METHODS
+/////////////////////////////////////////////////////////////////////
 
 func (c *typeCollector) getOrCreateEntry(t reflect.Type, userDefinedAlias ...string) *typeEntry {
 	if entry, exists := c.types[t]; exists {
@@ -342,9 +342,9 @@ func (c *typeCollector) collectFieldType(t reflect.Type) {
 	}
 }
 
-//
-// TypeScript String Generation
-//
+/////////////////////////////////////////////////////////////////////
+/////// TS STRING GENERATION
+/////////////////////////////////////////////////////////////////////
 
 func (c *typeCollector) generateStructTypeFields(t reflect.Type) []string {
 	if t.Kind() != reflect.Struct {
@@ -497,9 +497,9 @@ func buildObj(fields []string) string {
 	return sb.String()
 }
 
-//
-// General Reflection & String Helpers
-//
+/////////////////////////////////////////////////////////////////////
+/////// REFLECTION & STRING HELPERS
+/////////////////////////////////////////////////////////////////////
 
 var _any any
 var _null_id = getID(&AdHocType{TypeInstance: nil})
