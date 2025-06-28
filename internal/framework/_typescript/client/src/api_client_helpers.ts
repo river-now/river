@@ -1,5 +1,8 @@
 import { serializeToSearchParams } from "river.now/kit/json";
 
+// __TODO -- update these helpers (and quickstart templates) to use
+// options obj with dedupeKey arg
+
 export const apiHelper = {
 	toQueryOpts,
 	toMutationOpts,
@@ -32,7 +35,8 @@ function toMutationOpts(
 
 function buildURL(opts: APIClientHelperOpts) {
 	const url = new URL(
-		stripTrailingSlash(opts.actionsRouterMountRoot) + resolvePath(opts.props),
+		stripTrailingSlash(opts.actionsRouterMountRoot) +
+			resolvePath(opts.props),
 		getCurrentOrigin(),
 	);
 	if (opts.type === "query" && opts.props.input) {
@@ -48,17 +52,19 @@ function resolveMethod(opts: APIClientHelperOpts) {
 	return "GET";
 }
 
-type StrIncludesColon<T extends string> = T extends `${infer _pre}:${infer _post}`
+type StrIncludesColon<T extends string> =
+	T extends `${infer _pre}:${infer _post}` ? true : false;
+
+type StrEndsInAsterisk<T extends string> = T extends `${infer _pre}*`
 	? true
 	: false;
 
-type StrEndsInAsterisk<T extends string> = T extends `${infer _pre}*` ? true : false;
-
-type PatternIsDynamic<T extends string> = StrIncludesColon<T> extends true
-	? true
-	: StrEndsInAsterisk<T> extends true
+type PatternIsDynamic<T extends string> =
+	StrIncludesColon<T> extends true
 		? true
-		: false;
+		: StrEndsInAsterisk<T> extends true
+			? true
+			: false;
 
 export type SharedBase<P extends string> = {
 	pattern: P;
