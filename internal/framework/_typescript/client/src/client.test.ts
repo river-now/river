@@ -1,5 +1,3 @@
-// /comprehensive-navigation.test.ts
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	addBuildIDListener,
@@ -227,9 +225,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 	afterEach(async () => {
 		// Run all pending timers to ensure status events fire
 		await vi.runAllTimersAsync();
-
-		// THEN switch to real timers
-		// vi.useRealTimers();
 
 		// Clean up all listeners
 		cleanupFns.forEach((fn) => fn());
