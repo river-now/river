@@ -394,6 +394,10 @@ class NavigationStateManager {
 				throw new Error("No JSON response");
 			}
 
+			// deps are only present in prod because they stem from the rollup metafile
+			// (same for CSS bundles -- vite handles them in dev)
+			// so in dev, to get similar behavior, we use the importURLs
+			// (which is a subset of what the deps would be in prod)
 			const depsToPreload = import.meta.env.DEV
 				? [...new Set(json.importURLs)]
 				: json.deps;
@@ -1460,13 +1464,14 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 		}
 	}
 
-	// Update title
-	if (json.title?.dangerousInnerHTML) {
-		const temp = document.createElement("textarea");
-		temp.innerHTML = json.title.dangerousInnerHTML;
-		if (document.title !== temp.value) {
-			document.title = temp.value;
-		}
+	// Changing the title instantly makes it feel faster
+	// The temp textarea trick is to decode any HTML entities in the title.
+	// This should come after pushing to history though, so that the title is
+	// correct in the history entry.
+	const tempTxt = document.createElement("textarea");
+	tempTxt.innerHTML = json.title?.dangerousInnerHTML || "";
+	if (document.title !== tempTxt.value) {
+		document.title = tempTxt.value;
 	}
 
 	// Apply CSS
@@ -1574,6 +1579,8 @@ async function handleRedirects(props: {
 	}
 
 	const headers = new Headers(props.requestInit?.headers);
+	// To temporarily test traditional server redirect behavior,
+	// you can set this to "0" instead of "1"
 	headers.set("X-Accepts-Client-Redirect", "1");
 	bodyParentObj.headers = headers;
 
