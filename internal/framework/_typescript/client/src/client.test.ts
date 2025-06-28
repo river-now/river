@@ -17,7 +17,6 @@ import {
 	initCustomHistory,
 	makeLinkOnClickFn,
 	navigate,
-	navigationState,
 	navigationStateManager,
 	revalidate,
 	type ScrollState,
@@ -229,10 +228,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 		// Clean up all listeners
 		cleanupFns.forEach((fn) => fn());
 		cleanupFns.length = 0;
-
-		// Clear navigation state
-		navigationState.navigations.clear();
-		navigationState.activeUserNavigation = null;
 
 		// Clear DOM
 		document.body.innerHTML = "";
@@ -522,11 +517,15 @@ describe("Comprehensive Navigation Test Suite", () => {
 				process.off("unhandledRejection", unhandledRejectionHandler);
 			});
 
-			it("should track all navigation types in navigations Map", () => {
+			it("should track all navigation types in navigations Map", async () => {
 				vi.mocked(fetch).mockImplementation(
 					() => new Promise(() => {}), // Never resolve
 				);
 
+				const statusListener = vi.fn();
+				const cleanup = addListener(addStatusListener, statusListener);
+
+				// Start navigations of different types
 				beginNavigation({
 					href: "/nav1",
 					navigationType: "userNavigation",
@@ -537,42 +536,81 @@ describe("Comprehensive Navigation Test Suite", () => {
 					navigationType: "revalidation",
 				});
 
-				const navigations = Array.from(
-					navigationState.navigations.values(),
+				// Wait for debounced status update
+				await vi.advanceTimersByTimeAsync(10);
+
+				// Verify through status that we're tracking multiple operations
+				expect(statusListener).toHaveBeenCalledWith(
+					expect.objectContaining({
+						detail: expect.objectContaining({
+							isNavigating: true,
+							isRevalidating: true,
+							isSubmitting: false,
+						}),
+					}),
 				);
 
-				expect(navigationState.navigations.size).toBe(3);
+				// Verify each type is actually running by checking fetch was called 3 times
+				expect(fetch).toHaveBeenCalledTimes(3);
 
-				// Check that we have one of each type
-				const types = navigations.map((nav) => nav.type).sort();
-				expect(types).toEqual([
-					"prefetch",
-					"revalidation",
-					"userNavigation",
-				]);
+				// Get the actual URL objects that were passed to fetch
+				const fetchCalls = vi.mocked(fetch).mock.calls;
 
-				// Clean up
-				for (const [, nav] of navigationState.navigations) {
-					nav.control.abortController?.abort();
-				}
+				// Verify each navigation type was started with correct URL
+				expect(fetchCalls[0]?.[0]).toBeInstanceOf(URL);
+				expect((fetchCalls[0]?.[0] as any)?.href).toBe(
+					"http://localhost:3000/nav1?river_json=1",
+				);
+
+				expect(fetchCalls[1]?.[0]).toBeInstanceOf(URL);
+				expect((fetchCalls[1]?.[0] as any)?.href).toBe(
+					"http://localhost:3000/nav2?river_json=1",
+				);
+
+				// Revalidation uses current window.location.href (which is "/")
+				expect(fetchCalls[2]?.[0]).toBeInstanceOf(URL);
+				expect((fetchCalls[2]?.[0] as any)?.href).toBe(
+					"http://localhost:3000/?river_json=1",
+				);
+
+				// Verify the options object structure
+				expect(fetchCalls[0]?.[1]).toMatchObject({
+					headers: expect.any(Headers),
+					signal: expect.any(AbortSignal),
+				});
+				expect(fetchCalls[1]?.[1]).toMatchObject({
+					headers: expect.any(Headers),
+					signal: expect.any(AbortSignal),
+				});
+				expect(fetchCalls[2]?.[1]).toMatchObject({
+					headers: expect.any(Headers),
+					signal: expect.any(AbortSignal),
+				});
+
+				// Verify different navigation types have different effects on status
+				// User navigation and revalidation affect loading states
+				expect(getStatus().isNavigating).toBe(true);
+				expect(getStatus().isRevalidating).toBe(true);
+
+				// Clear all and verify cleanup
+				navigationStateManager.clearAll();
+
+				// Wait for status update
+				await vi.advanceTimersByTimeAsync(10);
+
+				// All loading states should be cleared
+				expect(getStatus()).toEqual({
+					isNavigating: false,
+					isSubmitting: false,
+					isRevalidating: false,
+				});
+
+				// Cleanup
+				cleanup();
 			});
 
 			it("should clean up navigations from map when complete", async () => {
-				vi.mocked(fetch).mockResolvedValue(
-					createMockResponse({ importURLs: [], cssBundles: [] }),
-				);
-
-				await navigate("/cleanup-test");
-				await vi.runAllTimersAsync();
-
-				// Non-prefetch navigations should be cleaned up
-				expect(navigationState.navigations.has("/cleanup-test")).toBe(
-					false,
-				);
-			});
-
-			it("should clean up prefetch navigations from map when complete", async () => {
-				// Mock fetch to return a promise that takes time to resolve
+				// Mock a slightly delayed response to ensure we catch the navigating state
 				vi.mocked(fetch).mockImplementation(
 					() =>
 						new Promise((resolve) =>
@@ -584,9 +622,89 @@ describe("Comprehensive Navigation Test Suite", () => {
 											cssBundles: [],
 										}),
 									),
-								100,
+								20,
 							),
 						),
+				);
+
+				const statusListener = vi.fn();
+				const cleanup = addListener(addStatusListener, statusListener);
+
+				// Clear any pending status events first
+				await vi.runAllTimersAsync();
+				statusListener.mockClear();
+
+				// Create an AbortController spy to verify cleanup
+				const abortControllers: AbortController[] = [];
+				const OriginalAbortController = global.AbortController;
+				global.AbortController = class extends OriginalAbortController {
+					constructor() {
+						super();
+						abortControllers.push(this);
+					}
+				} as any;
+
+				// Start navigation
+				const navPromise = navigate("/cleanup-test");
+
+				// IMMEDIATELY check status synchronously - should be navigating
+				expect(getStatus().isNavigating).toBe(true);
+
+				// Should have created an AbortController
+				expect(abortControllers.length).toBe(1);
+				const firstController = abortControllers[0];
+
+				// Wait for debounced status event
+				await vi.advanceTimersByTimeAsync(10);
+
+				// Now the listener should have been called with isNavigating: true
+				expect(statusListener).toHaveBeenCalledWith(
+					expect.objectContaining({
+						detail: {
+							isNavigating: true,
+							isSubmitting: false,
+							isRevalidating: false,
+						},
+					}),
+				);
+
+				// Complete the navigation
+				await vi.advanceTimersByTimeAsync(20);
+				await navPromise;
+				await vi.runAllTimersAsync();
+
+				// Status should now be false
+				expect(getStatus().isNavigating).toBe(false);
+
+				// The AbortController should not be aborted (navigation completed successfully)
+				expect(firstController?.signal.aborted).toBe(false);
+
+				// Verify cleanup by starting a new navigation to same URL - should trigger new fetch
+				vi.clearAllMocks();
+				abortControllers.length = 0;
+
+				const navPromise2 = navigate("/cleanup-test");
+
+				// Should create a new AbortController (proves the old one was cleaned up)
+				expect(abortControllers.length).toBe(1);
+				expect(abortControllers[0]).not.toBe(firstController);
+
+				// Should make a new fetch call (proves previous navigation was cleaned up)
+				expect(fetch).toHaveBeenCalledTimes(1);
+
+				// Complete the second navigation
+				await vi.advanceTimersByTimeAsync(20);
+				await navPromise2;
+				await vi.runAllTimersAsync();
+
+				// Restore original AbortController
+				global.AbortController = OriginalAbortController;
+				cleanup();
+			});
+
+			it("should clean up prefetch navigations from map when complete", async () => {
+				vi.mocked(fetch).mockResolvedValue(
+					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
 				const handlers = getPrefetchHandlers({
@@ -595,32 +713,111 @@ describe("Comprehensive Navigation Test Suite", () => {
 				});
 				handlers?.start({} as Event);
 
-				// Advance past the 50ms delay to start the prefetch
+				// Let prefetch start after the 50ms delay
 				await vi.advanceTimersByTimeAsync(50);
 
-				// Check that a prefetch navigation exists
-				const hasPrefetch = Array.from(
-					navigationState.navigations.values(),
-				).some((nav) => nav.type === "prefetch");
-				expect(hasPrefetch).toBe(true);
-
-				// Let it complete
+				// Let prefetch complete
 				await vi.runAllTimersAsync();
 
-				// Prefetch should still be in map (for potential reuse)
-				const stillHasPrefetch = Array.from(
-					navigationState.navigations.values(),
-				).some((nav) => nav.type === "prefetch");
-				expect(stillHasPrefetch).toBe(true);
-
-				// Stop the prefetch
+				// Stop the prefetch to trigger cleanup
 				handlers?.stop();
 
-				// Now it should be removed from the map
-				const hasAnyPrefetch = Array.from(
-					navigationState.navigations.values(),
-				).some((nav) => nav.type === "prefetch");
-				expect(hasAnyPrefetch).toBe(false);
+				// Verify cleanup by starting a new prefetch - should trigger new fetch
+				vi.clearAllMocks();
+
+				const handlers2 = getPrefetchHandlers({
+					href: "/prefetch-cleanup",
+					delayMs: 0, // No delay this time
+				});
+				handlers2?.start({} as Event);
+
+				// Wait for the prefetch to actually start
+				await vi.advanceTimersByTimeAsync(10);
+
+				expect(fetch).toHaveBeenCalledTimes(1); // Would be 0 if old prefetch was still tracked
+
+				// Clean up
+				handlers2?.stop();
+			});
+
+			it("should properly clean up prefetch navigations and their resources", async () => {
+				const abortControllers: AbortController[] = [];
+				const OriginalAbortController = global.AbortController;
+				global.AbortController = class extends OriginalAbortController {
+					constructor() {
+						super();
+						abortControllers.push(this);
+					}
+				} as any;
+
+				// Mock fetch with a controllable promise
+				let resolveFetch: (value: any) => void;
+				const fetchPromise = new Promise((resolve) => {
+					resolveFetch = resolve;
+				});
+				vi.mocked(fetch).mockReturnValue(fetchPromise as any);
+
+				const handlers = getPrefetchHandlers({
+					href: "/prefetch-cleanup-verify",
+					delayMs: 50,
+				});
+
+				// Start prefetch
+				handlers?.start({} as Event);
+
+				// Let prefetch start after the 50ms delay
+				await vi.advanceTimersByTimeAsync(50);
+
+				// Should have created an AbortController
+				expect(abortControllers.length).toBe(1);
+				const prefetchController = abortControllers[0];
+				expect(prefetchController?.signal.aborted).toBe(false);
+
+				// Track if abort event fires
+				let abortFired = false;
+				prefetchController?.signal.addEventListener("abort", () => {
+					abortFired = true;
+				});
+
+				// Complete the prefetch
+				resolveFetch!(
+					createMockResponse({ importURLs: [], cssBundles: [] }),
+				);
+				await vi.runAllTimersAsync();
+
+				// Prefetch should still have its controller (not aborted)
+				expect(prefetchController?.signal.aborted).toBe(false);
+
+				// Stop the prefetch to trigger cleanup
+				handlers?.stop();
+
+				// Controller should now be aborted
+				expect(prefetchController?.signal.aborted).toBe(true);
+				expect(abortFired).toBe(true);
+
+				// Verify cleanup by starting a new prefetch - should create new resources
+				vi.clearAllMocks();
+				abortControllers.length = 0;
+
+				const handlers2 = getPrefetchHandlers({
+					href: "/prefetch-cleanup-verify",
+					delayMs: 0, // No delay this time
+				});
+				handlers2?.start({} as Event);
+
+				// Wait for the prefetch to actually start
+				await vi.advanceTimersByTimeAsync(10);
+
+				// Should have created a new AbortController
+				expect(abortControllers.length).toBe(1);
+				expect(abortControllers[0]).not.toBe(prefetchController);
+
+				// Should make a new fetch call (proves old prefetch was cleaned up)
+				expect(fetch).toHaveBeenCalledTimes(1);
+
+				// Clean up
+				handlers2?.stop();
+				global.AbortController = OriginalAbortController;
 			});
 		});
 
@@ -769,7 +966,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 	describe("2. Navigation Lifecycle", () => {
 		describe("2.1 Begin Navigation Phase", () => {
-			it("should set appropriate loading states", () => {
+			it("should set appropriate loading states", async () => {
 				vi.mocked(fetch).mockImplementation(
 					() => new Promise(() => {}),
 				);
@@ -781,7 +978,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 					href: "/loading",
 					navigationType: "userNavigation",
 				});
-				vi.runAllTimers();
+
+				// Wait for the 5ms debounce to fire
+				await vi.advanceTimersByTimeAsync(10);
 
 				expect(statusListener).toHaveBeenCalledWith(
 					expect.objectContaining({
@@ -837,14 +1036,11 @@ describe("Comprehensive Navigation Test Suite", () => {
 					navigationType: "prefetch",
 				});
 
-				// Find the prefetch navigation
-				const findNavByType = (type: string) =>
-					Array.from(navigationState.navigations.values()).find(
-						(nav) => nav.type === type,
-					);
+				// Wait for debounced status update
+				await vi.advanceTimersByTimeAsync(10);
 
-				const prefetchNav = findNavByType("prefetch");
-				expect(prefetchNav).toBeDefined();
+				// Verify prefetch doesn't affect navigation status
+				expect(getStatus().isNavigating).toBe(false);
 
 				// Upgrade to user navigation
 				const userControl = beginNavigation({
@@ -852,12 +1048,8 @@ describe("Comprehensive Navigation Test Suite", () => {
 					navigationType: "userNavigation",
 				});
 
-				// Should have upgraded the type
-				const userNav = findNavByType("userNavigation");
-				expect(userNav).toBeDefined();
-
-				// Should not have a prefetch anymore
-				expect(findNavByType("prefetch")).toBeUndefined();
+				// Should now be navigating
+				expect(getStatus().isNavigating).toBe(true);
 
 				// Should be the same control (reused)
 				expect(userControl).toBe(prefetchControl);
@@ -865,6 +1057,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Wait for completion
 				await userControl.promise;
 				await vi.runAllTimersAsync();
+
+				// Should have only made one fetch (reused the prefetch)
+				expect(fetch).toHaveBeenCalledTimes(1);
 			});
 
 			it("should deduplicate prefetch requests", () => {
@@ -881,8 +1076,11 @@ describe("Comprehensive Navigation Test Suite", () => {
 					navigationType: "prefetch",
 				});
 
+				// Should return the same control
 				expect(control1).toBe(control2);
-				expect(navigationState.navigations.size).toBe(1);
+
+				// Should only make one fetch call
+				expect(fetch).toHaveBeenCalledTimes(1);
 
 				// Cleanup
 				control1.abortController?.abort();
@@ -953,13 +1151,30 @@ describe("Comprehensive Navigation Test Suite", () => {
 					new Response("", { status: 200 }),
 				);
 
+				// Check initial state
+				expect(getStatus().isNavigating).toBe(false);
+
+				const navPromise = navigate("/empty-json");
+
+				// Should be navigating immediately (synchronous check)
+				expect(getStatus().isNavigating).toBe(true);
+
+				// Let the navigation attempt to complete
+				await navPromise;
+				await vi.runAllTimersAsync();
+
+				// Should be done navigating after empty response (navigation failed)
+				expect(getStatus().isNavigating).toBe(false);
+
+				// Title shouldn't have changed
+				expect(document.title).toBe("Initial Page");
+
+				// Verify cleanup by trying to navigate to same URL again
+				vi.clearAllMocks();
 				await navigate("/empty-json");
 
-				// The navigation should fail and not complete
-				expect(navigationState.navigations.has("/empty-json")).toBe(
-					false,
-				);
-				expect(document.title).toBe("Initial Page"); // Title shouldn't change
+				// Should make a new fetch call (proves previous navigation was cleaned up)
+				expect(fetch).toHaveBeenCalledTimes(1);
 			});
 
 			it("should preload modules in production mode", async () => {
@@ -1071,22 +1286,29 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
-				// Should start with no navigations
-				expect(navigationState.navigations.size).toBe(0);
+				// Ensure clean state first
+				await vi.runAllTimersAsync();
+
+				// Check initial state
+				expect(getStatus().isNavigating).toBe(false);
 
 				const navPromise = navigate("/cleanup");
 
-				// Should have one navigation in progress
-				expect(navigationState.navigations.size).toBe(1);
+				// Should be navigating immediately
 				expect(getStatus().isNavigating).toBe(true);
 
 				await navPromise;
 				await vi.runAllTimersAsync();
 
 				// Should be cleaned up after completion
-				expect(navigationState.navigations.size).toBe(0);
 				expect(getStatus().isNavigating).toBe(false);
-				expect(navigationState.activeUserNavigation).toBe(null);
+
+				// Verify cleanup by trying to navigate to same URL again
+				vi.clearAllMocks();
+				await navigate("/cleanup");
+
+				// Should make a new fetch call (proves previous navigation was cleaned up)
+				expect(fetch).toHaveBeenCalledTimes(1);
 			});
 		});
 
@@ -1690,16 +1912,13 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				await vi.advanceTimersByTimeAsync(100);
 
-				// Find the prefetch navigation
-				const prefetchNav = Array.from(
-					navigationState.navigations.values(),
-				).find((nav) => nav.type === "prefetch");
+				// Verify prefetch started
+				expect(fetch).toHaveBeenCalledTimes(1);
 
-				expect(prefetchNav).toBeDefined();
-				const abortSpy = vi.spyOn(
-					prefetchNav!.control.abortController!,
-					"abort",
-				);
+				// Get the abort controller from the fetch call
+				const firstFetchSignal =
+					vi.mocked(fetch).mock.calls[0]?.[1]?.signal;
+				expect(firstFetchSignal?.aborted).toBe(false);
 
 				// Upgrade by starting a user navigation to the same URL
 				navigate("/abort-test");
@@ -1708,13 +1927,13 @@ describe("Comprehensive Navigation Test Suite", () => {
 				handlers?.stop();
 
 				// The navigation should not be aborted because it's been upgraded
-				expect(abortSpy).not.toHaveBeenCalled();
+				expect(firstFetchSignal?.aborted).toBe(false);
 
-				// Should still have a navigation (now as userNavigation)
-				const activeNav = Array.from(
-					navigationState.navigations.values(),
-				).find((nav) => nav.type === "userNavigation");
-				expect(activeNav).toBeDefined();
+				// Should still be navigating
+				expect(getStatus().isNavigating).toBe(true);
+
+				// Should still only have one fetch (reused)
+				expect(fetch).toHaveBeenCalledTimes(1);
 			});
 
 			it("should handle click during prefetch", async () => {
@@ -1862,7 +2081,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				(window as any).scrollY = 300;
 
 				await navigate("/next");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				const stored = JSON.parse(
 					sessionStorage.getItem("__river__scrollStateMap") || "[]",
@@ -2012,7 +2231,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const scrollIntoViewSpy = vi.spyOn(element, "scrollIntoView");
 
 				await navigate("/page#target");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				// Apply scroll state from route change event
 				applyScrollState({ hash: "target" });
@@ -2127,10 +2346,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 			// Clean up all listeners
 			cleanupFns.forEach((fn) => fn());
 			cleanupFns = [];
-
-			// Clear all navigations to prevent memory leaks
-			navigationState.navigations.clear();
-			navigationState.activeUserNavigation = null;
 
 			// Clear fetch mocks
 			vi.mocked(fetch).mockClear();
@@ -3113,6 +3328,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 				await navResult;
 				await vi.runAllTimersAsync();
 
+				// Wait for final status update
+				await vi.advanceTimersByTimeAsync(10);
+
 				// Should have isNavigating: false
 				expect(statusListener).toHaveBeenCalledWith(
 					expect.objectContaining({
@@ -3154,6 +3372,8 @@ describe("Comprehensive Navigation Test Suite", () => {
 					expect.objectContaining({
 						detail: expect.objectContaining({
 							isSubmitting: true,
+							isNavigating: false,
+							isRevalidating: false,
 						}),
 					}),
 				);
@@ -3163,15 +3383,25 @@ describe("Comprehensive Navigation Test Suite", () => {
 				await submitPromise;
 				await vi.runAllTimersAsync();
 
+				// Wait for final status update
+				await vi.advanceTimersByTimeAsync(10);
+
+				// Should have isSubmitting false
+				const lastCall =
+					statusListener.mock.calls[
+						statusListener.mock.calls.length - 1
+					];
+				expect(lastCall?.[0].detail.isSubmitting).toBe(false);
+
 				cleanup();
 			});
 
 			it("should track isRevalidating state", async () => {
 				const statusListener = vi.fn();
-				addListener(addStatusListener, statusListener);
+				const cleanup = addListener(addStatusListener, statusListener);
 
 				// 1. Create a fetch promise that we can resolve manually
-				let resolveFetch;
+				let resolveFetch: () => void;
 				const mockFetchPromise = new Promise((resolve) => {
 					resolveFetch = () =>
 						resolve(
@@ -3188,20 +3418,25 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const revalidationPromise = revalidate();
 
 				// 3. The status update is debounced by 5ms. Advance the timer to fire it.
-				await vi.advanceTimersByTimeAsync(5);
+				await vi.advanceTimersByTimeAsync(10);
 
 				// 4. NOW, the revalidation is in-flight. Check that the status event was fired.
 				expect(statusListener).toHaveBeenCalledWith(
 					expect.objectContaining({
 						detail: expect.objectContaining({
 							isRevalidating: true,
+							isNavigating: false,
+							isSubmitting: false,
 						}),
 					}),
 				);
 
 				// 5. Clean up: resolve the fetch and await the process to complete.
-				(resolveFetch as any)();
+				resolveFetch!();
 				await revalidationPromise;
+				await vi.runAllTimersAsync();
+
+				cleanup();
 			});
 
 			it("should debounce status events by 5ms", async () => {
@@ -3226,7 +3461,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				expect(statusListener).not.toHaveBeenCalled();
 
 				// After debounce
-				vi.advanceTimersByTime(5);
+				await vi.advanceTimersByTimeAsync(5);
 				expect(statusListener).toHaveBeenCalledTimes(1);
 			});
 
@@ -3242,7 +3477,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					href: "/same",
 					navigationType: "userNavigation",
 				});
-				vi.advanceTimersByTime(5);
+				await vi.advanceTimersByTimeAsync(5);
 
 				const callCount = statusListener.mock.calls.length;
 
@@ -3251,7 +3486,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					href: "/same2",
 					navigationType: "userNavigation",
 				});
-				vi.advanceTimersByTime(5);
+				await vi.advanceTimersByTimeAsync(5);
 
 				// Should not dispatch duplicate
 				expect(statusListener).toHaveBeenCalledTimes(callCount);
@@ -3289,7 +3524,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				await navigate("/route-change");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				expect(routeChangeListener).toHaveBeenCalledTimes(1);
 			});
@@ -3303,7 +3538,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				await navigate("/with-hash#section");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				expect(routeChangeListener).toHaveBeenCalledWith(
 					expect.objectContaining({
@@ -3393,7 +3628,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				await navigate("/new-build");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				expect(buildIdListener).toHaveBeenCalledWith(
 					expect.objectContaining({
@@ -3423,7 +3658,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				});
 
 				await navigate("/check-update");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				expect(buildIdListener).toHaveBeenCalled();
 			});
@@ -3440,7 +3675,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				await submit("/api/search", { method: "GET" });
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				expect(buildIdListener).toHaveBeenCalledWith(
 					expect.objectContaining({
@@ -3478,7 +3713,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				await navigate("/with-module");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				expect(
 					internal_RiverClientGlobal.get("activeComponents"),
@@ -3582,7 +3817,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				await navigate("/missing-error");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				expect(
 					internal_RiverClientGlobal.get("activeErrorBoundary"),
@@ -3619,7 +3854,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				await navigate("/dev-test");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				// In dev, should use viteDevURL with ?river_dev=1
 				expect(importedUrl).toContain("?river_dev=1");
@@ -3647,7 +3882,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				}));
 
 				await navigate("/prod-test");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				// Verify it tried to import from the correct path
 				expect(
@@ -3994,15 +4229,17 @@ describe("Comprehensive Navigation Test Suite", () => {
 				vi.mocked(fetch).mockRejectedValue(abortError);
 
 				const statusListener = vi.fn();
-				addListener(addStatusListener, statusListener);
+				const cleanup = addListener(addStatusListener, statusListener);
 
 				await navigate("/will-abort");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				// Should not log abort errors
 				expect(console.error).not.toHaveBeenCalledWith(
 					expect.stringContaining("abort"),
 				);
+
+				cleanup();
 			});
 
 			it("should clear loading states on abort", async () => {
@@ -4133,7 +4370,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					.mockImplementation(() => {});
 
 				await navigate("/network-error");
-				vi.runAllTimers();
+				await vi.runAllTimersAsync();
 
 				expect(consoleErrorSpy).toHaveBeenCalled();
 				consoleErrorSpy.mockRestore();
@@ -4315,17 +4552,15 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 			// Start first navigation
 			navigate("/page1");
-			expect(navigationState.navigations.size).toBe(1);
-			expect(navigationState.activeUserNavigation).toBe(
-				"http://localhost:3000/page1",
-			);
+
+			// Verify it's navigating
+			expect(getStatus().isNavigating).toBe(true);
 
 			// Start second navigation before first completes
 			const nav2 = navigate("/page2");
-			expect(navigationState.navigations.size).toBe(1); // First should be aborted
-			expect(navigationState.activeUserNavigation).toBe(
-				"http://localhost:3000/page2",
-			);
+
+			// Should still be navigating (now to page2)
+			expect(getStatus().isNavigating).toBe(true);
 
 			// Resolve second navigation
 			resolve2!(
@@ -4339,8 +4574,12 @@ describe("Comprehensive Navigation Test Suite", () => {
 			await nav2;
 			await vi.runAllTimersAsync();
 
+			// Verify navigation completed
 			expect(document.title).toBe("Page 2");
-			expect(navigationState.navigations.size).toBe(0);
+			expect(getStatus().isNavigating).toBe(false);
+
+			// Verify first navigation was aborted (only 2 fetch calls, not 3)
+			expect(fetch).toHaveBeenCalledTimes(2);
 		});
 
 		it("should handle race between prefetch completion and user navigation", async () => {
@@ -4356,20 +4595,14 @@ describe("Comprehensive Navigation Test Suite", () => {
 			handlers?.start({} as Event);
 			await vi.advanceTimersByTimeAsync(100);
 
-			const prefetchUrl = "http://localhost:3000/prefetch-race";
-			expect(navigationState.navigations.has(prefetchUrl)).toBe(true);
-			expect(navigationState.navigations.get(prefetchUrl)?.type).toBe(
-				"prefetch",
-			);
+			// Verify prefetch started
+			expect(fetch).toHaveBeenCalledTimes(1);
 
 			// Start user navigation while prefetch is in flight
 			const navPromise = navigate("/prefetch-race");
 
-			// Should upgrade the existing prefetch
-			expect(navigationState.navigations.get(prefetchUrl)?.type).toBe(
-				"userNavigation",
-			);
-			expect(navigationState.navigations.size).toBe(1);
+			// Should not make another fetch call (reusing prefetch)
+			expect(fetch).toHaveBeenCalledTimes(1);
 
 			// Complete the fetch
 			resolvePrefetch!(
@@ -4383,6 +4616,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 			await navPromise;
 			await vi.runAllTimersAsync();
 
+			// Verify navigation completed with prefetched data
 			expect(document.title).toBe("Prefetched Page");
 			expect(fetch).toHaveBeenCalledTimes(1); // Should reuse prefetch
 		});
@@ -4435,8 +4669,13 @@ describe("Comprehensive Navigation Test Suite", () => {
 			);
 		});
 
-		it("should clean up all AbortControllers", async () => {
+		it("should clear all navigations to prevent memory leaks", async () => {
 			const abortControllers: AbortController[] = [];
+			const fetchPromises: Array<{
+				resolve: (value: any) => void;
+				reject: (error: any) => void;
+				promise: Promise<any>;
+			}> = [];
 
 			// Spy on AbortController constructor
 			const OriginalAbortController = global.AbortController;
@@ -4447,33 +4686,119 @@ describe("Comprehensive Navigation Test Suite", () => {
 				}
 			} as any;
 
-			// Start multiple navigations
-			vi.mocked(fetch).mockImplementation(() => new Promise(() => {}));
+			// Track all fetch calls and their promises
+			vi.mocked(fetch).mockImplementation(() => {
+				let promiseResolve: any;
+				let promiseReject: any;
+				const promise = new Promise((resolve, reject) => {
+					promiseResolve = resolve;
+					promiseReject = reject;
+				});
 
-			beginNavigation({
+				// Add catch handler to prevent unhandled rejections
+				promise.catch(() => {
+					// Silently handle rejections
+				});
+
+				fetchPromises.push({
+					resolve: promiseResolve,
+					reject: promiseReject,
+					promise,
+				});
+
+				return promise as any;
+			});
+
+			// Start multiple navigations
+			const nav1 = beginNavigation({
 				href: "/leak-test-1",
 				navigationType: "userNavigation",
 			});
-			beginNavigation({
+			const nav2 = beginNavigation({
 				href: "/leak-test-2",
 				navigationType: "prefetch",
 			});
-			beginNavigation({
+			const nav3 = beginNavigation({
 				href: "/leak-test-3",
 				navigationType: "userNavigation",
 			});
 
 			// All controllers should be created
 			expect(abortControllers.length).toBe(3);
+			expect(fetchPromises.length).toBe(3);
 
-			// Check that previous controllers were aborted
+			// Check that previous controllers were aborted (userNavigation aborts others)
 			expect(abortControllers[0]?.signal.aborted).toBe(true);
 			expect(abortControllers[1]?.signal.aborted).toBe(true);
 			expect(abortControllers[2]?.signal.aborted).toBe(false);
 
+			// Verify we're navigating
+			expect(getStatus().isNavigating).toBe(true);
+
+			// Add abort event listeners to verify they're called
+			const abortEvents: number[] = [];
+			abortControllers.forEach((controller, index) => {
+				controller.signal.addEventListener("abort", () => {
+					abortEvents.push(index);
+				});
+			});
+
+			// Add catch handlers to the navigation promises to prevent unhandled rejections
+			nav1.promise.catch(() => {});
+			nav2.promise.catch(() => {});
+			nav3.promise.catch(() => {});
+
+			// Clear all navigations
+			navigationStateManager.clearAll();
+
+			// All should be aborted now
+			expect(abortControllers[0]?.signal.aborted).toBe(true);
+			expect(abortControllers[1]?.signal.aborted).toBe(true);
+			expect(abortControllers[2]?.signal.aborted).toBe(true);
+
+			// Verify abort events were fired for the non-aborted controller
+			expect(abortEvents).toContain(2);
+
+			// Wait for debounced status update
+			await vi.advanceTimersByTimeAsync(10);
+
+			// Should not be navigating anymore
+			expect(getStatus().isNavigating).toBe(false);
+			expect(getStatus().isRevalidating).toBe(false);
+			expect(getStatus().isSubmitting).toBe(false);
+
+			// Reject the promises to simulate the abort
+			// Since we added catch handlers, this won't cause unhandled rejections
+			fetchPromises.forEach((handlers) => {
+				if (handlers.reject) {
+					const error = new Error("Aborted");
+					error.name = "AbortError";
+					handlers.reject(error);
+				}
+			});
+
+			// Let promises settle
+			await vi.runAllTimersAsync();
+
+			// Verify we can start new navigations (proves old ones were cleaned up)
+			vi.clearAllMocks();
+			abortControllers.length = 0;
+			fetchPromises.length = 0;
+
+			const newNav = beginNavigation({
+				href: "/new-nav",
+				navigationType: "userNavigation",
+			});
+
+			// Should create fresh controllers and promises
+			expect(abortControllers.length).toBe(1);
+			expect(fetchPromises.length).toBe(1);
+			expect(abortControllers[0]?.signal.aborted).toBe(false);
+
 			// Cleanup
+			newNav.abortController?.abort();
+			newNav.promise.catch(() => {}); // Handle potential rejection
 			global.AbortController = OriginalAbortController;
-			abortControllers[2]?.abort();
 		});
 
 		it("should remove event listeners on cleanup", async () => {

@@ -711,69 +711,10 @@ class NavigationStateManager {
 			new CustomEvent(STATUS_EVENT_KEY, { detail: newStatus }),
 		);
 	}
-
-	// Backward compatibility methods
-	setActiveUserNavigation(): void {
-		// No-op for compatibility
-		this.scheduleStatusUpdate();
-	}
-
-	getActiveUserNavigation(): string | null {
-		for (const [href, nav] of this._navigations.entries()) {
-			if (nav.type === "userNavigation") {
-				return href;
-			}
-		}
-		return null;
-	}
-
-	setActiveRevalidation(): void {
-		// No-op for compatibility
-		this.scheduleStatusUpdate();
-	}
-
-	getActiveRevalidation(): NavigationControl | null {
-		for (const nav of this._navigations.values()) {
-			if (nav.type === "revalidation") {
-				return nav.control;
-			}
-		}
-		return null;
-	}
-
-	// For backwards compatibility with tests
-	get activeUserNavigation() {
-		return this.getActiveUserNavigation();
-	}
-
-	set activeUserNavigation(value: string | null) {
-		this.scheduleStatusUpdate();
-	}
-
-	get activeRevalidation() {
-		return this.getActiveRevalidation();
-	}
-
-	set activeRevalidation(value: NavigationControl | null) {
-		this.scheduleStatusUpdate();
-	}
 }
 
 // Global instance
 export const navigationStateManager = new NavigationStateManager();
-
-// Export for backwards compatibility
-export const navigationState = {
-	get navigations() {
-		return navigationStateManager.getNavigations();
-	},
-	get activeUserNavigation() {
-		return navigationStateManager.getActiveUserNavigation();
-	},
-	set activeUserNavigation(value: string | null) {
-		navigationStateManager.setActiveUserNavigation();
-	},
-};
 
 /////////////////////////////////////////////////////////////////////
 // SCROLL STATE MANAGER
