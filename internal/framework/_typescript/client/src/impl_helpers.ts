@@ -37,7 +37,9 @@ type BaseRouterData<RootData, Params extends string> = ReturnType<
 	typeof getRouterData<RootData, Record<Params, string>>
 >;
 
-type Wrapper<UseAccessor extends boolean, T> = UseAccessor extends false ? T : () => T;
+type Wrapper<UseAccessor extends boolean, T> = UseAccessor extends false
+	? T
+	: () => T;
 
 export type UseRouterDataFunction<
 	OuterLoader extends RiverUntypedLoader,
@@ -68,7 +70,7 @@ export type RiverLinkPropsBase<LinkOnClickCallback> = {
 	beforeBegin?: LinkOnClickCallback;
 	beforeRender?: LinkOnClickCallback;
 	afterRender?: LinkOnClickCallback;
-} & Record<string, any>;
+};
 
 function linkPropsToPrefetchObj<LinkOnClickCallback>(
 	props: RiverLinkPropsBase<LinkOnClickCallback>,
@@ -131,14 +133,14 @@ export function makeFinalLinkProps<LinkOnClickCallback>(
 		dataExternal: prefetchObj?.isExternal || undefined,
 		onPointerEnter: (e: any) => {
 			prefetchObj?.start(e);
-			if (isFn(props[keys.onPointerEnter])) {
-				props[keys.onPointerEnter](e);
+			if (isFn((props as any)[keys.onPointerEnter])) {
+				(props as any)[keys.onPointerEnter](e);
 			}
 		},
 		onFocus: (e: any) => {
 			prefetchObj?.start(e);
-			if (isFn(props[keys.onFocus])) {
-				props[keys.onFocus](e);
+			if (isFn((props as any)[keys.onFocus])) {
+				(props as any)[keys.onFocus](e);
 			}
 		},
 		onPointerLeave: (e: any) => {
@@ -147,25 +149,25 @@ export function makeFinalLinkProps<LinkOnClickCallback>(
 			if (!internal_RiverClientGlobal.get("isTouchDevice")) {
 				prefetchObj?.stop();
 			}
-			if (isFn(props[keys.onPointerLeave])) {
-				props[keys.onPointerLeave](e);
+			if (isFn((props as any)[keys.onPointerLeave])) {
+				(props as any)[keys.onPointerLeave](e);
 			}
 		},
 		onBlur: (e: any) => {
 			prefetchObj?.stop();
-			if (isFn(props[keys.onBlur])) {
-				props[keys.onBlur](e);
+			if (isFn((props as any)[keys.onBlur])) {
+				(props as any)[keys.onBlur](e);
 			}
 		},
 		onTouchCancel: (e: any) => {
 			prefetchObj?.stop();
-			if (isFn(props[keys.onTouchCancel])) {
-				props[keys.onTouchCancel](e);
+			if (isFn((props as any)[keys.onTouchCancel])) {
+				(props as any)[keys.onTouchCancel](e);
 			}
 		},
 		onClick: async (e: any) => {
-			if (isFn(props[keys.onClick])) {
-				props[keys.onClick](e);
+			if (isFn((props as any)[keys.onClick])) {
+				(props as any)[keys.onClick](e);
 			}
 			if (prefetchObj) {
 				await prefetchObj.onClick(e);

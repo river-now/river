@@ -191,6 +191,11 @@ class NavigationStateManager {
 				return;
 			}
 
+			if (entry.intent === "navigate" || entry.intent === "revalidate") {
+				const now = Date.now();
+				lastTriggeredNavOrRevalidateTimestampMS = now;
+			}
+
 			await this.processNavigationResult(result, entry);
 		} catch (error) {
 			const targetUrl = new URL(props.href, window.location.href).href;
@@ -1014,6 +1019,12 @@ export async function navigate(
 	});
 }
 
+let lastTriggeredNavOrRevalidateTimestampMS = Date.now();
+
+export function getLastTriggeredNavOrRevalidateTimestampMS(): number {
+	return lastTriggeredNavOrRevalidateTimestampMS;
+}
+
 export async function revalidate() {
 	await navigationStateManager.navigate({
 		href: window.location.href,
@@ -1484,11 +1495,11 @@ async function effectuateRedirectDataResult(
 		return null;
 	}
 
-	// Clean up any active revalidations when redirecting.
+	// Clean up any active redirect or revalidations when redirecting.
 	// Otherwise loading state will get stuck.
 	const navEntries = navigationStateManager.getNavigations().entries();
 	for (const [key, nav] of navEntries) {
-		if (nav.type === "revalidation") {
+		if (nav.type === "redirect" || nav.type === "revalidation") {
 			nav.control.abortController?.abort();
 			navigationStateManager.removeNavigation(key);
 		}

@@ -19,7 +19,10 @@ export {
 	type RouteChangeEvent,
 	type StatusEvent,
 } from "./src/client.ts";
-export { setupGlobalLoadingIndicator } from "./src/global_loading_indicator.ts";
+export {
+	revalidateOnWindowFocus,
+	setupGlobalLoadingIndicator,
+} from "./src/global_loading_indicator.ts";
 export { hmrRunClientLoaders } from "./src/hmr.ts";
 export {
 	makeFinalLinkProps,

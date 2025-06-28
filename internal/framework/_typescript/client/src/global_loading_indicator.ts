@@ -1,7 +1,13 @@
-import { addStatusListener, getStatus, type StatusEvent } from "./client.ts";
+import { addOnWindowFocusListener } from "river.now/kit/listeners";
+import {
+	addStatusListener,
+	getLastTriggeredNavOrRevalidateTimestampMS,
+	getStatus,
+	revalidate,
+	type StatusEvent,
+} from "./client.ts";
 
-const DEFAULT_START_DELAY_MS = 10;
-const DEFAULT_STOP_DELAY_MS = 10;
+const DEFAULT_DELAY = 12;
 
 type GlobalLoadingIndicatorIncludesOption =
 	| "navigations"
@@ -48,8 +54,8 @@ export function setupGlobalLoadingIndicator(
 			resolveIncludes(config, "submissions") || includesAll,
 		includesRevalidations:
 			resolveIncludes(config, "revalidations") || includesAll,
-		startDelayMS: config.startDelayMS ?? DEFAULT_START_DELAY_MS,
-		stopDelayMS: config.stopDelayMS ?? DEFAULT_STOP_DELAY_MS,
+		startDelayMS: config.startDelayMS ?? DEFAULT_DELAY,
+		stopDelayMS: config.stopDelayMS ?? DEFAULT_DELAY,
 	};
 	function clearStartTimer() {
 		if (gliDebounceStartTimer) {
@@ -122,4 +128,30 @@ function getIsWorking(
 		return true;
 	}
 	return false;
+}
+
+/**
+ * If called, will setup listeners to revalidate the current route when
+ * the window regains focus and at least `staleTimeMS` has passed since
+ * the last revalidation. The `staleTimeMS` option defaults to 5,000
+ * (5 seconds). Returns a cleanup function.
+ */
+export function revalidateOnWindowFocus(options?: { staleTimeMS?: number }) {
+	const staleTimeMS = options?.staleTimeMS ?? 5_000;
+	return addOnWindowFocusListener(() => {
+		const status = getStatus();
+		if (
+			!status.isNavigating &&
+			!status.isSubmitting &&
+			!status.isRevalidating
+		) {
+			if (
+				Date.now() - getLastTriggeredNavOrRevalidateTimestampMS() <
+				staleTimeMS
+			) {
+				return;
+			}
+			revalidate();
+		}
+	});
 }
