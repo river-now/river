@@ -37,7 +37,7 @@ var River = &river.River{
 	},
 
 	GetDefaultHeadEls: func(r *http.Request) ([]*htmlutil.Element, error) {
-		root := r.URL.Host + r.URL.Path
+		root := "https://river.now" + r.URL.Path
 		imgURL := root + Wave.GetPublicURL("river-banner.webp")
 		currentURL := root
 		if r.URL.Path != "/" {
