@@ -202,7 +202,9 @@ func (c *Config) GetSimplePublicFileMapBuildtime() (map[string]string, error) {
 	filemap, err := c.getInitialPublicFileMapFromGobBuildtime()
 
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		fmt.Println("__TEMP_LOG: Public file map gob not found, processing build time files...")
 		if err := c.do_build_time_file_processing(false); err != nil {
+			fmt.Println("__TEMP_LOG: Error processing build time files:", err)
 			return nil, fmt.Errorf("error processing build time files: %w", err)
 		}
 
