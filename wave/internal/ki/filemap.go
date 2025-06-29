@@ -34,6 +34,7 @@ func (c *Config) loadMapFromGob(gobFileName string, isBuildTime bool) (FileMap, 
 	// __LOCATION_ASSUMPTION: Inside "dist/static"
 	file, err := appropriateFS.Open(path.Join(distWaveInternal.LastSegment(), gobFileName))
 	if err != nil {
+		debugFS(appropriateFS, "loadMapFromGob - appropriateFS")
 		return nil, fmt.Errorf("error opening file %s: %w", gobFileName, err)
 	}
 
@@ -228,4 +229,32 @@ func (c *Config) GetSimplePublicFileMapBuildtime() (map[string]string, error) {
 	}
 
 	return simpleStrMap, nil
+}
+
+func debugFS(fsys fs.FS, label string) {
+	fmt.Printf("=== DEBUG FS: %s ===\n", label)
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			fmt.Printf("ERROR walking %s: %v\n", path, err)
+			return nil // Continue walking despite errors
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			fmt.Printf("%s (error getting info: %v)\n", path, err)
+			return nil
+		}
+
+		if d.IsDir() {
+			fmt.Printf("DIR:  %s/\n", path)
+		} else {
+			fmt.Printf("FILE: %s (size: %d)\n", path, info.Size())
+		}
+		return nil
+	})
+
+	if err != nil {
+		fmt.Printf("ERROR: Failed to walk FS: %v\n", err)
+	}
+	fmt.Printf("=== END DEBUG FS ===\n")
 }
