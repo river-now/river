@@ -90,7 +90,6 @@ func (c *Config) get_initial_base_fs() (fs.FS, error) {
 
 	// If we are not using the embedded file system, we should use the os file system,
 	// and assume that the executable is a sibling to the wave-outputted "static" directory
-	fmt.Println("__TEMP_LOG: Using os.DirFS for base FS")
 	execDir, err := executil.GetExecutableDir()
 	if err != nil {
 		return nil, err

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
-	"os"
 	"path"
 	"strings"
 )
@@ -33,13 +32,6 @@ func (c *Config) GetServeStaticHandler(addImmutableCacheHeaders bool) (http.Hand
 }
 
 func (c *Config) getInitialPublicFileMapFromGobBuildtime() (FileMap, error) {
-	// __TEMP_LOG
-	execPath, err := os.Executable()
-	if err != nil {
-		return nil, fmt.Errorf("__TEMP_LOG: error getting executable path: %w", err)
-	}
-	fmt.Println("__TEMP_LOG: execPath:", execPath)
-	// __TEMP_LOG
 	return c.loadMapFromGob(PublicFileMapGobName, true)
 }
 

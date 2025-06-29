@@ -34,7 +34,6 @@ func (c *Config) loadMapFromGob(gobFileName string, isBuildTime bool) (FileMap, 
 	// __LOCATION_ASSUMPTION: Inside "dist/static"
 	file, err := appropriateFS.Open(path.Join(distWaveInternal.LastSegment(), gobFileName))
 	if err != nil {
-		debugFS(appropriateFS, "loadMapFromGob - appropriateFS")
 		return nil, fmt.Errorf("error opening file %s: %w", gobFileName, err)
 	}
 
@@ -49,9 +48,7 @@ func (c *Config) loadMapFromGob(gobFileName string, isBuildTime bool) (FileMap, 
 }
 
 func (c *Config) getAppropriateFSMaybeBuildTime(isBuildTime bool) (fs.FS, error) {
-	fmt.Println("__TEMP_LOG: isBuildTime:", isBuildTime)
 	if isBuildTime {
-		fmt.Println("__TEMP_LOG: c._dist.S().Static.FullPath():", c._dist.S().Static.FullPath())
 		return os.DirFS(c._dist.S().Static.FullPath()), nil
 	}
 	return c.GetBaseFS()
@@ -205,9 +202,7 @@ func (c *Config) GetSimplePublicFileMapBuildtime() (map[string]string, error) {
 	filemap, err := c.getInitialPublicFileMapFromGobBuildtime()
 
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
-		fmt.Println("__TEMP_LOG: Public file map gob not found, processing build time files...")
 		if err := c.do_build_time_file_processing(false); err != nil {
-			fmt.Println("__TEMP_LOG: Error processing build time files:", err)
 			return nil, fmt.Errorf("error processing build time files: %w", err)
 		}
 
@@ -229,32 +224,4 @@ func (c *Config) GetSimplePublicFileMapBuildtime() (map[string]string, error) {
 	}
 
 	return simpleStrMap, nil
-}
-
-func debugFS(fsys fs.FS, label string) {
-	fmt.Printf("=== DEBUG FS: %s ===\n", label)
-	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			fmt.Printf("ERROR walking %s: %v\n", path, err)
-			return nil // Continue walking despite errors
-		}
-
-		info, err := d.Info()
-		if err != nil {
-			fmt.Printf("%s (error getting info: %v)\n", path, err)
-			return nil
-		}
-
-		if d.IsDir() {
-			fmt.Printf("DIR:  %s/\n", path)
-		} else {
-			fmt.Printf("FILE: %s (size: %d)\n", path, info.Size())
-		}
-		return nil
-	})
-
-	if err != nil {
-		fmt.Printf("ERROR: Failed to walk FS: %v\n", err)
-	}
-	fmt.Printf("=== END DEBUG FS ===\n")
 }
