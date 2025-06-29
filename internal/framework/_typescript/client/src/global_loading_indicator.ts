@@ -1,7 +1,13 @@
-import { addStatusListener, getStatus, type StatusEvent } from "./client.ts";
+import { addOnWindowFocusListener } from "river.now/kit/listeners";
+import {
+	addStatusListener,
+	getLastTriggeredNavOrRevalidateTimestampMS,
+	getStatus,
+	revalidate,
+	type StatusEvent,
+} from "./client.ts";
 
-const DEFAULT_START_DELAY_MS = 20;
-const DEFAULT_STOP_DELAY_MS = 5;
+const DEFAULT_DELAY = 12;
 
 type GlobalLoadingIndicatorIncludesOption =
 	| "navigations"
@@ -34,37 +40,43 @@ function resolveIncludes(
 	return isArray && config.include?.includes(includesOption);
 }
 
-export function setupGlobalLoadingIndicator(config: GlobalLoadingIndicatorConfig) {
+export function setupGlobalLoadingIndicator(
+	config: GlobalLoadingIndicatorConfig,
+) {
 	let gliDebounceStartTimer: number | null = null;
 	let gliDebounceStopTimer: number | null = null;
 	const includesAll = !config.include || config.include === "all";
 	const pc: ParsedGlobalLoadingIndicatorConfig = {
 		includesAll,
-		includesNavigations: resolveIncludes(config, "navigations") || includesAll,
-		includesSubmissions: resolveIncludes(config, "submissions") || includesAll,
-		includesRevalidations: resolveIncludes(config, "revalidations") || includesAll,
-		startDelayMS: config.startDelayMS ?? DEFAULT_START_DELAY_MS,
-		stopDelayMS: config.stopDelayMS ?? DEFAULT_STOP_DELAY_MS,
+		includesNavigations:
+			resolveIncludes(config, "navigations") || includesAll,
+		includesSubmissions:
+			resolveIncludes(config, "submissions") || includesAll,
+		includesRevalidations:
+			resolveIncludes(config, "revalidations") || includesAll,
+		startDelayMS: config.startDelayMS ?? DEFAULT_DELAY,
+		stopDelayMS: config.stopDelayMS ?? DEFAULT_DELAY,
 	};
-	function clearTimers() {
+	function clearStartTimer() {
 		if (gliDebounceStartTimer) {
 			window.clearTimeout(gliDebounceStartTimer);
 			gliDebounceStartTimer = null;
 		}
+	}
+	function clearStopTimer() {
 		if (gliDebounceStopTimer) {
 			window.clearTimeout(gliDebounceStopTimer);
 			gliDebounceStopTimer = null;
 		}
 	}
+	function clearTimers() {
+		clearStartTimer();
+		clearStopTimer();
+	}
 	function handleStatusChange(e?: StatusEvent) {
 		const shouldBeWorking = getIsWorking(pc, e);
 		if (shouldBeWorking) {
-			// Clear stop timer if transitioning to working
-			if (gliDebounceStopTimer) {
-				window.clearTimeout(gliDebounceStopTimer);
-				gliDebounceStopTimer = null;
-			}
-			// Only set start timer if not already set
+			clearStopTimer();
 			if (!gliDebounceStartTimer) {
 				gliDebounceStartTimer = window.setTimeout(() => {
 					gliDebounceStartTimer = null;
@@ -74,12 +86,7 @@ export function setupGlobalLoadingIndicator(config: GlobalLoadingIndicatorConfig
 				}, pc.startDelayMS);
 			}
 		} else {
-			// Clear start timer if transitioning to not working
-			if (gliDebounceStartTimer) {
-				window.clearTimeout(gliDebounceStartTimer);
-				gliDebounceStartTimer = null;
-			}
-			// Only set stop timer if not already set
+			clearStartTimer();
 			if (!gliDebounceStopTimer) {
 				gliDebounceStopTimer = window.setTimeout(() => {
 					gliDebounceStopTimer = null;
@@ -90,9 +97,7 @@ export function setupGlobalLoadingIndicator(config: GlobalLoadingIndicatorConfig
 			}
 		}
 	}
-	// Check initial state
 	handleStatusChange();
-	// Listen for changes
 	const removeStatusListenerCallback = addStatusListener(handleStatusChange);
 	return () => {
 		removeStatusListenerCallback();
@@ -109,7 +114,9 @@ function getIsWorking(
 ): boolean {
 	const status = e?.detail ?? getStatus();
 	if (pc.includesAll) {
-		return status.isNavigating || status.isSubmitting || status.isRevalidating;
+		return (
+			status.isNavigating || status.isSubmitting || status.isRevalidating
+		);
 	}
 	if (pc.includesNavigations && status.isNavigating) {
 		return true;
@@ -121,4 +128,30 @@ function getIsWorking(
 		return true;
 	}
 	return false;
+}
+
+/**
+ * If called, will setup listeners to revalidate the current route when
+ * the window regains focus and at least `staleTimeMS` has passed since
+ * the last revalidation. The `staleTimeMS` option defaults to 5,000
+ * (5 seconds). Returns a cleanup function.
+ */
+export function revalidateOnWindowFocus(options?: { staleTimeMS?: number }) {
+	const staleTimeMS = options?.staleTimeMS ?? 5_000;
+	return addOnWindowFocusListener(() => {
+		const status = getStatus();
+		if (
+			!status.isNavigating &&
+			!status.isSubmitting &&
+			!status.isRevalidating
+		) {
+			if (
+				Date.now() - getLastTriggeredNavOrRevalidateTimestampMS() <
+				staleTimeMS
+			) {
+				return;
+			}
+			revalidate();
+		}
+	});
 }

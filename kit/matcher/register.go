@@ -45,6 +45,19 @@ func HasTrailingSlash(pattern string) bool {
 	return len(pattern) > 0 && pattern[len(pattern)-1] == '/'
 }
 
+func EnsureLeadingSlash(pattern string) string {
+	if !HasLeadingSlash(pattern) {
+		return "/" + pattern
+	}
+	return pattern
+}
+func EnsureTrailingSlash(pattern string) string {
+	if !HasTrailingSlash(pattern) {
+		return pattern + "/"
+	}
+	return pattern
+}
+
 func StripLeadingSlash(pattern string) string {
 	if HasLeadingSlash(pattern) {
 		return pattern[1:]

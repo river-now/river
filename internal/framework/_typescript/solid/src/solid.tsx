@@ -22,7 +22,9 @@ import {
 /////// CORE SETUP
 /////////////////////////////////////////////////////////////////////
 
-const [latestEvent, setLatestEvent] = createSignal<RouteChangeEvent | null>(null);
+const [latestEvent, setLatestEvent] = createSignal<RouteChangeEvent | null>(
+	null,
+);
 const [loadersData, setLoadersData] = createSignal(ctx.get("loadersData"));
 const [clientLoadersData, setClientLoadersData] = createSignal(
 	ctx.get("clientLoadersData"),
@@ -31,7 +33,9 @@ const [routerData, setRouterData] = createSignal(getRouterData());
 const [outermostErrorIdx, setOutermostErrorIdx] = createSignal(
 	ctx.get("outermostErrorIdx"),
 );
-const [outermostError, setOutermostError] = createSignal(ctx.get("outermostError"));
+const [outermostError, setOutermostError] = createSignal(
+	ctx.get("outermostError"),
+);
 const [activeComponents, setActiveComponents] = createSignal(
 	ctx.get("activeComponents"),
 );
@@ -98,8 +102,12 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		});
 	}
 
-	const [currentImportURL, setCurrentImportURL] = createSignal(importURLs()?.[idx]);
-	const [currentExportKey, setCurrentExportKey] = createSignal(exportKeys()?.[idx]);
+	const [currentImportURL, setCurrentImportURL] = createSignal(
+		importURLs()?.[idx],
+	);
+	const [currentExportKey, setCurrentExportKey] = createSignal(
+		exportKeys()?.[idx],
+	);
 
 	if (currentImportURL) {
 		createEffect(() => {
@@ -168,7 +176,13 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 				{currentCompMemo()({
 					idx: idx,
 					Outlet: (localProps: Record<string, any> | undefined) => {
-						return <RiverRootOutlet {...localProps} {...props} idx={idx + 1} />;
+						return (
+							<RiverRootOutlet
+								{...localProps}
+								{...props}
+								idx={idx + 1}
+							/>
+						);
 					},
 				})}
 			</Show>

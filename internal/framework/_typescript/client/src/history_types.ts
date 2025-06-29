@@ -60,14 +60,12 @@ interface historyUpdate {
 	location: historyLocation;
 }
 export interface historyListener {
-	// biome-ignore lint: _
 	(update: historyUpdate): void;
 }
 interface historyTransition extends historyUpdate {
 	retry(): void;
 }
 interface historyBlocker {
-	// biome-ignore lint: _
 	(tx: historyTransition): void;
 }
 declare type historyTo = string | Partial<historyPath>;

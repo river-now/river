@@ -1,7 +1,4 @@
-export {
-	apiHelper,
-	type SharedBase,
-} from "./src/api_client_helpers.ts";
+export { apiHelper, type SharedBase } from "./src/api_client_helpers.ts";
 export {
 	addBuildIDListener,
 	addLocationListener,
@@ -14,16 +11,19 @@ export {
 	getPrefetchHandlers,
 	getRootEl,
 	getStatus,
-	hmrRunClientLoaders,
 	initClient,
 	makeLinkOnClickFn,
 	navigate,
-	type RouteChangeEvent,
 	revalidate,
-	type StatusEvent,
 	submit,
+	type RouteChangeEvent,
+	type StatusEvent,
 } from "./src/client.ts";
-export { setupGlobalLoadingIndicator } from "./src/global_loading_indicator.ts";
+export {
+	revalidateOnWindowFocus,
+	setupGlobalLoadingIndicator,
+} from "./src/global_loading_indicator.ts";
+export { hmrRunClientLoaders } from "./src/hmr.ts";
 export {
 	makeFinalLinkProps,
 	type RiverLinkPropsBase,

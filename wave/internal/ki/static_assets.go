@@ -2,6 +2,7 @@ package ki
 
 import (
 	"fmt"
+	"io/fs"
 	"net/http"
 	"path"
 	"strings"
@@ -97,4 +98,44 @@ func (c *Config) GetPublicURL(originalPublicURL string) string {
 
 func cleanURL(url string) string {
 	return strings.TrimPrefix(path.Clean(url), "/")
+}
+
+func (c *Config) ServeStaticPublicAssets(addImmutableCacheHeaders bool) func(http.Handler) http.Handler {
+	handler, err := c.GetServeStaticHandler(addImmutableCacheHeaders)
+	if err != nil {
+		c.Logger.Error(fmt.Sprintf("error getting serve static handler: %v", err))
+		panic(err)
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if c.shouldServeAsPublicAsset(r.URL.Path) {
+				handler.ServeHTTP(w, r)
+			} else {
+				next.ServeHTTP(w, r)
+			}
+		})
+	}
+}
+
+func (c *Config) shouldServeAsPublicAsset(path string) bool {
+	publicPathPrefix := c.GetPublicPathPrefix()
+	if publicPathPrefix == "" || publicPathPrefix == "/" {
+		return c.getIsPublicAsset(path)
+	}
+	return strings.HasPrefix(path, publicPathPrefix)
+}
+
+func (c *Config) getIsPublicAsset(hashedFileName string) bool {
+	isAsset, _ := c.runtime_cache.is_public_asset.Get(hashedFileName)
+	return isAsset
+}
+
+func (c *Config) getInitialIsPublicAsset(hashedFileName string) (bool, error) {
+	publicFS, err := c.GetPublicFS()
+	if err != nil {
+		return false, err
+	}
+	clean := cleanURL(hashedFileName)
+	_, err = fs.Stat(publicFS, clean)
+	return err == nil, nil
 }

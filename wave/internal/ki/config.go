@@ -9,6 +9,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/river-now/river/kit/dirs"
+	"github.com/river-now/river/kit/matcher"
 	"github.com/river-now/river/kit/safecache"
 	"github.com/river-now/river/kit/viteutil"
 	"golang.org/x/sync/semaphore"
@@ -57,6 +58,7 @@ type runtimeCache struct {
 	public_filemap_url      *safecache.Cache[string]
 	public_filemap_details  *safecache.Cache[*publicFileMapDetails]
 	public_urls             *safecache.CacheMap[string, string, string]
+	is_public_asset         *safecache.CacheMap[string, string, bool]
 }
 
 func (c *Config) InitRuntimeCache() {
@@ -77,6 +79,9 @@ func (c *Config) InitRuntimeCache() {
 		public_filemap_url:      safecache.New(c.getInitialPublicFileMapURL, GetIsDev),
 		public_filemap_details:  safecache.New(c.getInitialPublicFileMapDetails, GetIsDev),
 		public_urls: safecache.NewMap(c.getInitialPublicURL, publicURLsKeyMaker, func(string) bool {
+			return GetIsDev()
+		}),
+		is_public_asset: safecache.NewMap(c.getInitialIsPublicAsset, publicURLsKeyMaker, func(string) bool {
 			return GetIsDev()
 		}),
 	}
@@ -127,7 +132,11 @@ func (c *Config) GetDistDir() string {
 	return c._uc.Core.DistDir
 }
 func (c *Config) GetPublicPathPrefix() string {
-	return c._uc.Core.PublicPathPrefix
+	p := c._uc.Core.PublicPathPrefix
+	if p == "" || p == "/" {
+		return "/"
+	}
+	return matcher.EnsureLeadingSlash(matcher.EnsureTrailingSlash(p))
 }
 
 /////////////////////////////////////////////////////////////////////

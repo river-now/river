@@ -1,7 +1,11 @@
 import { hmrRunClientLoaders } from "river.now/client";
 import { Show } from "solid-js";
 import { Link } from "../app_link.tsx";
-import { addClientLoader, type RouteProps, useLoaderData } from "../app_utils.ts";
+import {
+	addClientLoader,
+	type RouteProps,
+	useLoaderData,
+} from "../app_utils.ts";
 import { RenderedMarkdown } from "../rendered-markdown.tsx";
 
 // Use this if you want your client loaders to re-run when you save this file

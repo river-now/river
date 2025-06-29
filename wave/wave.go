@@ -116,6 +116,10 @@ func (k Wave) MustGetServeStaticHandler(addImmutableCacheHeaders bool) http.Hand
 	}
 	return handler
 }
+
+func (k Wave) ServeStatic(addImmutableCacheHeaders bool) func(http.Handler) http.Handler {
+	return k.c.ServeStaticPublicAssets(addImmutableCacheHeaders)
+}
 func (k Wave) GetPublicFileMap() (FileMap, error) {
 	return k.c.GetPublicFileMap()
 }

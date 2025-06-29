@@ -1209,11 +1209,11 @@ func TestNameMethod(t *testing.T) {
 	}
 }
 
-// Test SetWithProxy, SetWithWriter, ClearWithProxy, and ClearWithWriter methods
+// Test SetWithProxy, SetWithWriter, DeleteWithProxy, and DeleteWithWriter methods
 func TestSetAndDeleteMethods(t *testing.T) {
 	mgr := newTestManager(false)
 
-	t.Run("SecureCookie SetWithProxy and ClearWithProxy", func(t *testing.T) {
+	t.Run("SecureCookie SetWithProxy and DeleteWithProxy", func(t *testing.T) {
 		cookie := NewSecureCookie[testSessionData](SecureCookieConfig{
 			Manager: mgr,
 			Name:    "session",
@@ -1251,9 +1251,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("cookie value should be encrypted, got %s", setCookie.Value)
 		}
 
-		// Test ClearWithProxy
+		// Test DeleteWithProxy
 		proxy2 := response.NewProxy()
-		cookie.ClearWithProxy(proxy2)
+		cookie.DeleteWithProxy(proxy2)
 
 		deleteCookies := proxy2.GetCookies()
 		if len(deleteCookies) != 1 {
@@ -1272,7 +1272,7 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("SecureCookie SetWithWriter and ClearWithWriter", func(t *testing.T) {
+	t.Run("SecureCookie SetWithWriter and DeleteWithWriter", func(t *testing.T) {
 		cookie := NewSecureCookie[string](SecureCookieConfig{
 			Manager: mgr,
 			Name:    "token",
@@ -1299,9 +1299,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("expected MaxAge 7200, got %d", setCookie.MaxAge)
 		}
 
-		// Test ClearWithWriter
+		// Test DeleteWithWriter
 		w2 := httptest.NewRecorder()
-		cookie.ClearWithWriter(w2)
+		cookie.DeleteWithWriter(w2)
 
 		deleteCookies := w2.Result().Cookies()
 		if len(deleteCookies) != 1 {
@@ -1317,7 +1317,7 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("SecureCookieNonHostOnly SetWithProxy and ClearWithProxy", func(t *testing.T) {
+	t.Run("SecureCookieNonHostOnly SetWithProxy and DeleteWithProxy", func(t *testing.T) {
 		cookie := NewSecureCookieNonHostOnly[string](SecureCookieNonHostOnlyConfig{
 			Manager: mgr,
 			Name:    "api-token",
@@ -1349,9 +1349,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("expected domain .example.com, got %s", setCookie.Domain)
 		}
 
-		// Test ClearWithProxy
+		// Test DeleteWithProxy
 		proxy2 := response.NewProxy()
-		cookie.ClearWithProxy(proxy2)
+		cookie.DeleteWithProxy(proxy2)
 
 		deleteCookies := proxy2.GetCookies()
 		if len(deleteCookies) != 1 {
@@ -1370,7 +1370,7 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("ClientReadableCookie SetWithProxy and ClearWithProxy", func(t *testing.T) {
+	t.Run("ClientReadableCookie SetWithProxy and DeleteWithProxy", func(t *testing.T) {
 		cookie := NewClientReadableCookie[string](ClientReadableCookieConfig{
 			Manager: mgr,
 			Name:    "theme",
@@ -1397,9 +1397,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("expected HttpOnly to be false for client-readable cookie")
 		}
 
-		// Test ClearWithProxy
+		// Test DeleteWithProxy
 		proxy2 := response.NewProxy()
-		cookie.ClearWithProxy(proxy2)
+		cookie.DeleteWithProxy(proxy2)
 
 		deleteCookies := proxy2.GetCookies()
 		if len(deleteCookies) != 1 {
@@ -1418,7 +1418,7 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("ClientReadableCookie SetWithWriter and ClearWithWriter", func(t *testing.T) {
+	t.Run("ClientReadableCookie SetWithWriter and DeleteWithWriter", func(t *testing.T) {
 		type Locale string
 		cookie := NewClientReadableCookie[Locale](ClientReadableCookieConfig{
 			Manager: mgr,
@@ -1443,9 +1443,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("expected value en-US, got %s", setCookie.Value)
 		}
 
-		// Test ClearWithWriter
+		// Test DeleteWithWriter
 		w2 := httptest.NewRecorder()
-		cookie.ClearWithWriter(w2)
+		cookie.DeleteWithWriter(w2)
 
 		deleteCookies := w2.Result().Cookies()
 		if len(deleteCookies) != 1 {
@@ -1458,7 +1458,7 @@ func TestSetAndDeleteMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("ClientReadableCookieNonHostOnly SetWithProxy and ClearWithProxy", func(t *testing.T) {
+	t.Run("ClientReadableCookieNonHostOnly SetWithProxy and DeleteWithProxy", func(t *testing.T) {
 		cookie := NewClientReadableCookieNonHostOnly[string](ClientReadableCookieNonHostOnlyConfig{
 			Manager: mgr,
 			Name:    "preferences",
@@ -1490,9 +1490,9 @@ func TestSetAndDeleteMethods(t *testing.T) {
 			t.Errorf("expected domain .example.com, got %s", setCookie.Domain)
 		}
 
-		// Test ClearWithProxy
+		// Test DeleteWithProxy
 		proxy2 := response.NewProxy()
-		cookie.ClearWithProxy(proxy2)
+		cookie.DeleteWithProxy(proxy2)
 
 		deleteCookies := proxy2.GetCookies()
 		if len(deleteCookies) != 1 {

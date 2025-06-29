@@ -9,7 +9,6 @@ import (
 	"github.com/river-now/river/kit/headels"
 	"github.com/river-now/river/kit/htmlutil"
 	"github.com/river-now/river/kit/theme"
-	"github.com/river-now/river/kit/xyz"
 	"github.com/river-now/river/wave"
 )
 
@@ -38,7 +37,7 @@ var River = &river.River{
 	},
 
 	GetDefaultHeadEls: func(r *http.Request) ([]*htmlutil.Element, error) {
-		root := xyz.GetRootURL(r)
+		root := "https://river.now" + r.URL.Path
 		imgURL := root + Wave.GetPublicURL("river-banner.webp")
 		currentURL := root
 		if r.URL.Path != "/" {

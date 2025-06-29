@@ -3,7 +3,9 @@ import { createMemo, type JSX } from "solid-js";
 
 export function RiverLink(
 	props: JSX.AnchorHTMLAttributes<HTMLAnchorElement> &
-		RiverLinkPropsBase<JSX.CustomEventHandlersCamelCase<HTMLAnchorElement>["onClick"]>,
+		RiverLinkPropsBase<
+			JSX.CustomEventHandlersCamelCase<HTMLAnchorElement>["onClick"]
+		>,
 ) {
 	const finalLinkProps = createMemo(() => makeFinalLinkProps(props));
 
@@ -16,7 +18,6 @@ export function RiverLink(
 			onPointerLeave={finalLinkProps().onPointerLeave}
 			onBlur={finalLinkProps().onBlur}
 			onTouchCancel={finalLinkProps().onTouchCancel}
-			// biome-ignore lint: this onClick is very intentional
 			onClick={finalLinkProps().onClick}
 		>
 			{props.children}

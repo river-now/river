@@ -1,4 +1,8 @@
-import { getHrefDetails, getIsGETRequest, type HrefDetails } from "river.now/kit/url";
+import {
+	getHrefDetails,
+	getIsGETRequest,
+	type HrefDetails,
+} from "river.now/kit/url";
 import { LogInfo } from "./utils.ts";
 
 export type RedirectData = { href: string; hrefDetails: HrefDetails } & (

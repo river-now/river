@@ -17,7 +17,6 @@ import (
 	esbuild "github.com/evanw/esbuild/pkg/api"
 	"github.com/river-now/river/kit/esbuildutil"
 	"github.com/river-now/river/kit/id"
-	"github.com/river-now/river/kit/matcher"
 	"github.com/river-now/river/kit/mux"
 	"github.com/river-now/river/kit/stringsutil"
 	"github.com/river-now/river/kit/tsgen"
@@ -154,8 +153,8 @@ export function riverVitePlugin(): Plugin {
 				assetRegex,
 				(_, __, assetPath) => {
 					const hashed = (staticPublicAssetMap as Record<string, string>)[assetPath];
-					if (!hashed) return '\"' + assetPath + '\"';
-					return {{.Tick}}"/{{.PublicDir}}/${hashed}"{{.Tick}};
+					if (!hashed) return {{.Tick}}"${assetPath}"{{.Tick}};
+					return {{.Tick}}"{{.PublicPathPrefix}}${hashed}"{{.Tick}};
 				},
 			);
 			if (replacedCode === code) return null;
@@ -226,9 +225,6 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	return publicPathPrefix + url;
 }`)
 
-	publicPrefixToUse := path.Clean(h.Wave.GetPublicPathPrefix())
-	publicPrefixToUse = matcher.StripLeadingSlash(publicPrefixToUse)
-	publicPrefixToUse = matcher.StripTrailingSlash(publicPrefixToUse)
 	tick := "`"
 
 	var buf bytes.Buffer
@@ -269,7 +265,6 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 
 	err = vitePluginTemplate.Execute(&buf, map[string]any{
 		"FuncName":         h.Wave.GetRiverBuildtimePublicURLFuncName(),
-		"PublicDir":        publicPrefixToUse,
 		"PublicPathPrefix": h.Wave.GetPublicPathPrefix(),
 		"Tick":             tick,
 		"IgnoredList":      template.HTML(stringifiedIgnore),

@@ -18,6 +18,7 @@ func Core() *mux.Router {
 
 	mux.SetGlobalHTTPMiddleware(r, chimw.Logger)
 	mux.SetGlobalHTTPMiddleware(r, chimw.Recoverer)
+	mux.SetGlobalHTTPMiddleware(r, app.Wave.ServeStatic(true))
 	mux.SetGlobalHTTPMiddleware(r, etag.Auto(&etag.Config{
 		SkipFunc: func(r *http.Request) bool {
 			return strings.HasPrefix(r.URL.Path, app.Wave.GetPublicPathPrefix())
@@ -27,9 +28,6 @@ func Core() *mux.Router {
 	mux.SetGlobalHTTPMiddleware(r, healthcheck.Healthz)
 	mux.SetGlobalHTTPMiddleware(r, robotstxt.Allow)
 	mux.SetGlobalHTTPMiddleware(r, app.Wave.FaviconRedirect())
-
-	// static public assets
-	mux.RegisterHandler(r, "GET", app.Wave.GetPublicPathPrefix()+"*", app.Wave.MustGetServeStaticHandler(true))
 
 	// river UI routes
 	mux.RegisterHandler(r, "GET", "/*", app.River.GetUIHandler(LoadersRouter))

@@ -367,7 +367,7 @@ type fileInfo struct {
 }
 
 // __TODO this should probably be a config option and use glob patterns
-var STATIC_FILES_IGNORE_LIST = map[string]struct{}{
+var STATIC_FILENAMES_IGNORE_LIST = map[string]struct{}{
 	".DS_Store": {},
 }
 
@@ -412,7 +412,7 @@ func (c *Config) processStaticFiles(opts *staticFileProcessorOpts) error {
 				if isNoHashDir {
 					relativePath = strings.TrimPrefix(relativePath, noHashPublicDirsByVersion[version]+"/")
 				}
-				if _, isIgnore := STATIC_FILES_IGNORE_LIST[relativePath]; isIgnore {
+				if _, isIgnore := STATIC_FILENAMES_IGNORE_LIST[filepath.Base(relativePath)]; isIgnore {
 					return nil
 				}
 				fileChan <- fileInfo{path: path, relativePath: relativePath, isNoHashDir: isNoHashDir}
