@@ -48,8 +48,10 @@ func (c *Config) loadMapFromGob(gobFileName string, isBuildTime bool) (FileMap, 
 }
 
 func (c *Config) getAppropriateFSMaybeBuildTime(isBuildTime bool) (fs.FS, error) {
+	fmt.Println("__TEMP_LOG: isBuildTime:", isBuildTime)
 	if isBuildTime {
-		return c.runtime_cache.base_dir_fs.Get()
+		fmt.Println("__TEMP_LOG: c._dist.S().Static.FullPath():", c._dist.S().Static.FullPath())
+		return os.DirFS(c._dist.S().Static.FullPath()), nil
 	}
 	return c.GetBaseFS()
 }
