@@ -373,6 +373,17 @@ var STATIC_FILENAMES_IGNORE_LIST = map[string]struct{}{
 
 func (c *Config) processStaticFiles(opts *staticFileProcessorOpts) error {
 	if _, err := os.Stat(opts.srcDir); os.IsNotExist(err) {
+		// If source dir doesn't exist, just save empty maps and return.
+		err := c.saveMapToGob(map[string]fileVal{}, opts.mapName)
+		if err != nil {
+			return fmt.Errorf("error saving empty file map: %w", err)
+		}
+		if opts.basename == PUBLIC {
+			err = c.savePublicFileMapJSToInternalPublicDir(map[string]fileVal{})
+			if err != nil {
+				return fmt.Errorf("error saving empty public file map JSON: %w", err)
+			}
+		}
 		return nil
 	}
 
