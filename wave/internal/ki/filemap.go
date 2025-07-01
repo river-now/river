@@ -77,7 +77,7 @@ func (c *Config) savePublicFileMapJSToInternalPublicDir(mapToSave FileMap) error
 
 	bytes := []byte(fmt.Sprintf("export const wavePublicFileMap = %s;", string(mapAsJSON)))
 
-	hashedFilename := getHashedFilenameFromBytes(bytes, PublicFileMapJSName)
+	hashedFilename := getHashedFilename(bytes, PublicFileMapJSName)
 
 	hashedFileRefPath := c._dist.S().Static.S().Internal.S().PublicFileMapFileRefDotTXT.FullPath()
 	if err := os.WriteFile(hashedFileRefPath, []byte(hashedFilename), 0644); err != nil {

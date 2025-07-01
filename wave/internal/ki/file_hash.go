@@ -35,8 +35,12 @@ func getHashedFilenameFromPath(filePath string, originalFileName string) (string
 	return toOutputFileName(hash, originalFileName), nil
 }
 
-func getHashedFilenameFromBytes(content []byte, originalFileName string) string {
+func getHashedFilename(content []byte, originalFileName string) string {
 	hash := sha256.New()
+	// Include original file name in hash to prevent collision in a potential
+	// edge case with files saved to root that happen to the named the same as
+	// underscore-replaced full path resolved names.
+	hash.Write([]byte(originalFileName))
 	hash.Write(content)
 	return toOutputFileName(hash, originalFileName)
 }

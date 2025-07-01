@@ -294,7 +294,7 @@ func (c *Config) __processCSS(nature string) error {
 		}
 
 		// Hash the css output
-		outputFileName = getHashedFilenameFromBytes(result.OutputFiles[0].Contents, "normal.css")
+		outputFileName = getHashedFilename(result.OutputFiles[0].Contents, "normal.css")
 	}
 
 	// Ensure output directory exists

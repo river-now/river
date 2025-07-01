@@ -377,8 +377,16 @@ class NavigationStateManager {
 			const redirected = redirectData?.status === "did";
 			const responseNotOK = !response?.ok && response?.status !== 304;
 
-			if (redirected || !response || responseNotOK) {
+			if (redirected || !response) {
+				// This is a valid end to a navigation attempt (e.g., a redirect occurred
+				// or the request was aborted). It's not an error.
 				return undefined;
+			}
+
+			if (responseNotOK) {
+				// This is a server error. Throwing an exception allows our .catch()
+				// blocks to handle cleanup and reset the loading state.
+				throw new Error(`Fetch failed with status ${response.status}`);
 			}
 
 			if (redirectData?.status === "should") {
@@ -423,9 +431,9 @@ class NavigationStateManager {
 		result: NavigationResult,
 		entry: NavigationEntry,
 	): Promise<void> {
-		if (!result) return;
-
 		try {
+			if (!result) return;
+
 			if ("redirectData" in result) {
 				// Clean up before redirect to prevent race conditions
 				this.deleteNavigation(entry.targetUrl);

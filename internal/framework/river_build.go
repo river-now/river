@@ -2,6 +2,8 @@ package framework
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -15,6 +17,7 @@ import (
 	"time"
 
 	esbuild "github.com/evanw/esbuild/pkg/api"
+	"github.com/river-now/river/kit/cryptoutil"
 	"github.com/river-now/river/kit/esbuildutil"
 	"github.com/river-now/river/kit/id"
 	"github.com/river-now/river/kit/mux"
@@ -32,7 +35,7 @@ const (
 type PathsFile struct {
 	// both stages one and two
 	Stage          string           `json:"stage"`
-	BuildID        string           `json:"buildID"`
+	BuildID        string           `json:"buildID,omitempty"`
 	ClientEntrySrc string           `json:"clientEntrySrc"`
 	Paths          map[string]*Path `json:"paths"`
 
@@ -354,14 +357,17 @@ func (h *River) Build(opts *BuildOptions) error {
 
 	h._isDev = opts.IsDev
 
-	buildID, err := id.New(16)
-	if err != nil {
-		Log.Error(fmt.Sprintf("error generating random ID: %s", err))
-		return err
+	if h._isDev {
+		buildID, err := id.New(16)
+		if err != nil {
+			Log.Error(fmt.Sprintf("error generating random ID: %s", err))
+			return err
+		}
+		h._buildID = "dev_" + buildID
+		Log.Info("START building River (DEV)")
+	} else {
+		Log.Info("START building River (PROD)")
 	}
-	h._buildID = buildID
-
-	Log.Info("START building River", "buildID", h._buildID)
 
 	esbuildResult := esbuild.Build(esbuild.BuildOptions{
 		EntryPoints: []string{h.Wave.GetRiverClientRouteDefsFile()},
@@ -630,15 +636,45 @@ func (h *River) toPathsFile_StageTwo() (*PathsFile, error) {
 		}
 	}
 
-	return &PathsFile{
+	htmlTemplateContent, err := os.ReadFile(path.Join(h.Wave.GetPrivateStaticDir(), h.Wave.GetRiverHTMLTemplateLocation()))
+	if err != nil {
+		Log.Error(fmt.Sprintf("error reading HTML template file: %s", err))
+		return nil, err
+	}
+	htmlContentHash := cryptoutil.Sha256Hash(htmlTemplateContent)
+
+	pf := &PathsFile{
 		Stage:             "two",
 		DepToCSSBundleMap: depToCSSBundleMap,
 		Paths:             h._paths,
 		ClientEntrySrc:    h.Wave.GetRiverClientEntry(),
 		ClientEntryOut:    riverClientEntryOut,
 		ClientEntryDeps:   riverClientEntryDeps,
-		BuildID:           h._buildID,
-	}, nil
+	}
+
+	asJSON, err := json.Marshal(pf)
+	if err != nil {
+		Log.Error(fmt.Sprintf("error marshalling paths file to JSON: %s", err))
+		return nil, err
+	}
+	pfJSONHash := cryptoutil.Sha256Hash(asJSON)
+
+	publicFSSummaryHash, err := getFSSummaryHash(os.DirFS(h.Wave.GetStaticPublicOutDir()))
+	if err != nil {
+		Log.Error(fmt.Sprintf("error getting FS summary hash: %s", err))
+		return nil, err
+	}
+
+	fullHash := sha256.New()
+	fullHash.Write(htmlContentHash)
+	fullHash.Write(pfJSONHash)
+	fullHash.Write(publicFSSummaryHash)
+	buildID := base64.RawURLEncoding.EncodeToString(fullHash.Sum(nil)[:16])
+
+	h._buildID = buildID
+	pf.BuildID = buildID
+
+	return pf, nil
 }
 
 type BuildOptions struct {
