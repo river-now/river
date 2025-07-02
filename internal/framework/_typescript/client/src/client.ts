@@ -1541,14 +1541,6 @@ async function handleRedirects(props: {
 	const res = await fetch(props.url, finalRequestInit);
 	let redirectData = parseFetchResponseForRedirectData(finalRequestInit, res);
 
-	if (props.isPrefetch || !redirectData || redirectData.status === "did") {
-		return { redirectData, response: res };
-	}
-
-	redirectData = await effectuateRedirectDataResult(
-		redirectData,
-		redirectCount,
-	);
 	return { redirectData, response: res };
 }
 

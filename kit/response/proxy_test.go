@@ -3,6 +3,7 @@ package response
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -450,6 +451,360 @@ func TestMergeProxyResponses(t *testing.T) {
 		}
 		if !merged.IsRedirect() {
 			t.Error("Should be a redirect")
+		}
+	})
+}
+
+// Test that client redirects should override, not accumulate
+func TestProxy_ClientRedirect_Override(t *testing.T) {
+	t.Run("Multiple_ClientRedirects_Override", func(t *testing.T) {
+		p := NewProxy()
+
+		// First redirect
+		err := p.clientRedirect("/first")
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		// Second redirect should override
+		err = p.clientRedirect("/second")
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		// Should only have one redirect header value - the last one
+		vals := p.GetHeaders(ClientRedirectHeader)
+		if len(vals) != 1 {
+			t.Errorf("Expected 1 redirect value, got %d", len(vals))
+		}
+		if len(vals) > 0 && vals[0] != "/second" {
+			t.Errorf("Expected '/second', got %v", vals[0])
+		}
+	})
+
+	t.Run("Redirect_Called_Multiple_Times", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set(ClientAcceptsRedirectHeader, "true")
+
+		p := NewProxy()
+
+		// Multiple redirect calls
+		p.Redirect(req, "/first")
+		p.Redirect(req, "/second")
+		p.Redirect(req, "/third")
+
+		// Should have only the last redirect
+		vals := p.GetHeaders(ClientRedirectHeader)
+		if len(vals) != 1 {
+			t.Errorf("Expected 1 redirect value, got %d", len(vals))
+		}
+		if len(vals) > 0 && vals[0] != "/third" {
+			t.Errorf("Expected '/third', got %v", vals[0])
+		}
+	})
+}
+
+// Test that SetHeader clears previous values
+func TestProxy_SetHeader_Clears(t *testing.T) {
+	t.Run("Set_Clears_Previous_Values", func(t *testing.T) {
+		p := NewProxy()
+
+		// This sequence should result in only ["value3", "value4"]
+		p.SetHeader("X-Custom", "value1")
+		p.AddHeader("X-Custom", "value2")
+		p.SetHeader("X-Custom", "value3") // Should clear previous
+		p.AddHeader("X-Custom", "value4")
+
+		vals := p.GetHeaders("X-Custom")
+
+		if len(vals) != 2 {
+			t.Errorf("Expected 2 values, got %d: %v", len(vals), vals)
+		}
+		if len(vals) >= 2 && (vals[0] != "value3" || vals[1] != "value4") {
+			t.Errorf("Expected ['value3', 'value4'], got %v", vals)
+		}
+	})
+
+	t.Run("Multiple_Sets_Last_Wins", func(t *testing.T) {
+		p := NewProxy()
+
+		p.SetHeader("X-Test", "first")
+		p.SetHeader("X-Test", "second")
+		p.SetHeader("X-Test", "third")
+
+		vals := p.GetHeaders("X-Test")
+		if len(vals) != 1 || vals[0] != "third" {
+			t.Errorf("Expected ['third'], got %v", vals)
+		}
+	})
+}
+
+// Test ApplyToResponseWriter handles redirects correctly
+func TestProxy_ApplyToResponseWriter_RedirectOrder(t *testing.T) {
+	t.Run("Redirect_Works_With_Status", func(t *testing.T) {
+		p := NewProxy()
+		p.SetStatus(200)
+		p.serverRedirect("/login", 302)
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/", nil)
+
+		p.ApplyToResponseWriter(w, req)
+
+		// Redirect should work properly
+		if w.Code != 302 {
+			t.Errorf("Expected redirect status 302, got %d", w.Code)
+		}
+		if loc := w.Header().Get("Location"); loc != "/login" {
+			t.Errorf("Expected Location header '/login', got %q", loc)
+		}
+	})
+
+	t.Run("Redirect_Ignored_On_Error", func(t *testing.T) {
+		p := NewProxy()
+		p.SetStatus(404, "Not Found")
+		p.serverRedirect("/404-page", 302)
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/", nil)
+
+		p.ApplyToResponseWriter(w, req)
+
+		// Error status should win, redirect ignored
+		if w.Code != 404 {
+			t.Errorf("Expected error status 404, got %d", w.Code)
+		}
+		if loc := w.Header().Get("Location"); loc != "" {
+			t.Errorf("Should not have Location header on error, got %q", loc)
+		}
+	})
+
+	t.Run("Redirect_Overrides_Success_Status", func(t *testing.T) {
+		p := NewProxy()
+		p.SetStatus(200)
+		p.SetHeader("Content-Type", "application/json")
+		p.serverRedirect("/login", 303)
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/", nil)
+
+		p.ApplyToResponseWriter(w, req)
+
+		// Redirect should override the 200 status
+		if w.Code != 303 {
+			t.Errorf("Expected redirect status 303, got %d", w.Code)
+		}
+		if loc := w.Header().Get("Location"); loc != "/login" {
+			t.Errorf("Expected Location header '/login', got %q", loc)
+		}
+	})
+}
+
+// Test ApplyToResponseWriter respects Set vs Add
+func TestProxy_ApplyToResponseWriter_HeaderSemantics(t *testing.T) {
+	t.Run("SetHeader_Replaces_Existing", func(t *testing.T) {
+		// Simulate middleware setting headers
+		w := httptest.NewRecorder()
+		w.Header().Set("X-Request-ID", "original")
+		w.Header().Set("X-Custom", "middleware")
+
+		p := NewProxy()
+		p.SetHeader("X-Request-ID", "proxy-id")
+		p.SetHeader("X-Custom", "proxy-value")
+
+		req := httptest.NewRequest("GET", "/", nil)
+		p.ApplyToResponseWriter(w, req)
+
+		// Should have replaced the values
+		if v := w.Header().Get("X-Request-ID"); v != "proxy-id" {
+			t.Errorf("Expected 'proxy-id', got %q", v)
+		}
+		if v := w.Header().Get("X-Custom"); v != "proxy-value" {
+			t.Errorf("Expected 'proxy-value', got %q", v)
+		}
+
+		// Should not have multiple values
+		if vals := w.Header().Values("X-Request-ID"); len(vals) != 1 {
+			t.Errorf("Expected 1 value, got %d: %v", len(vals), vals)
+		}
+	})
+
+	t.Run("AddHeader_Appends_To_Existing", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		w.Header().Add("X-Forward", "10.0.0.1")
+
+		p := NewProxy()
+		p.AddHeader("X-Forward", "10.0.0.2")
+		p.AddHeader("X-Forward", "10.0.0.3")
+
+		req := httptest.NewRequest("GET", "/", nil)
+		p.ApplyToResponseWriter(w, req)
+
+		vals := w.Header().Values("X-Forward")
+		if len(vals) != 3 {
+			t.Errorf("Expected 3 values, got %d: %v", len(vals), vals)
+		}
+		expected := []string{"10.0.0.1", "10.0.0.2", "10.0.0.3"}
+		for i, v := range vals {
+			if v != expected[i] {
+				t.Errorf("Expected %q at position %d, got %q", expected[i], i, v)
+			}
+		}
+	})
+
+	t.Run("Client_Redirect_Single_Value", func(t *testing.T) {
+		w := httptest.NewRecorder()
+
+		p := NewProxy()
+		p.clientRedirect("/first")
+		p.clientRedirect("/second")
+
+		req := httptest.NewRequest("GET", "/", nil)
+		p.ApplyToResponseWriter(w, req)
+
+		vals := w.Header().Values(ClientRedirectHeader)
+		if len(vals) != 1 {
+			t.Errorf("Expected 1 redirect value, got %d: %v", len(vals), vals)
+		}
+		if len(vals) > 0 && vals[0] != "/second" {
+			t.Errorf("Expected '/second', got %q", vals[0])
+		}
+	})
+}
+
+// Test MergeProxyResponses respects header operations
+func TestMergeProxyResponses_HeaderOperations(t *testing.T) {
+	t.Run("Merge_SetHeader_Clears_Previous", func(t *testing.T) {
+		p1 := NewProxy()
+		p1.SetHeader("X-Test", "p1-value1")
+		p1.AddHeader("X-Test", "p1-value2")
+
+		p2 := NewProxy()
+		p2.SetHeader("X-Test", "p2-value1") // Should clear p1's values
+		p2.AddHeader("X-Test", "p2-value2")
+
+		merged := MergeProxyResponses(p1, p2)
+
+		vals := merged.GetHeaders("X-Test")
+		if len(vals) != 2 {
+			t.Errorf("Expected 2 values, got %d: %v", len(vals), vals)
+		}
+		if len(vals) >= 2 && (vals[0] != "p2-value1" || vals[1] != "p2-value2") {
+			t.Errorf("Expected ['p2-value1', 'p2-value2'], got %v", vals)
+		}
+	})
+
+	t.Run("Merge_Complex_Operations", func(t *testing.T) {
+		p1 := NewProxy()
+		p1.AddHeader("Cache-Control", "no-cache")
+		p1.AddHeader("Cache-Control", "no-store")
+
+		p2 := NewProxy()
+		p2.SetHeader("Cache-Control", "max-age=3600") // Should replace all
+
+		p3 := NewProxy()
+		p3.AddHeader("Cache-Control", "must-revalidate")
+
+		merged := MergeProxyResponses(p1, p2, p3)
+
+		vals := merged.GetHeaders("Cache-Control")
+		// Should be ["max-age=3600", "must-revalidate"]
+		if len(vals) != 2 {
+			t.Errorf("Expected 2 values, got %d: %v", len(vals), vals)
+		}
+		if len(vals) >= 2 && (vals[0] != "max-age=3600" || vals[1] != "must-revalidate") {
+			t.Errorf("Expected ['max-age=3600', 'must-revalidate'], got %v", vals)
+		}
+	})
+
+	t.Run("Merge_First_Client_Redirect_Wins", func(t *testing.T) {
+		p1 := NewProxy()
+		p1.clientRedirect("/page1")
+
+		p2 := NewProxy()
+		p2.clientRedirect("/page2")
+
+		p3 := NewProxy()
+		p3.clientRedirect("/page3")
+
+		merged := MergeProxyResponses(p1, p2, p3)
+
+		vals := merged.GetHeaders(ClientRedirectHeader)
+		if len(vals) != 1 {
+			t.Errorf("Expected 1 redirect value, got %d", len(vals))
+		}
+		if len(vals) > 0 && vals[0] != "/page1" {
+			t.Errorf("Expected first redirect '/page1', got %q", vals[0])
+		}
+	})
+}
+
+// Test complex scenarios
+func TestProxy_ComplexScenarios(t *testing.T) {
+	t.Run("Middleware_Chain_Simulation", func(t *testing.T) {
+		// Proxy 1: Initial middleware
+		p1 := NewProxy()
+		p1.SetHeader("X-Request-ID", "req-123")
+		p1.AddHeader("X-Forwarded-For", "10.0.0.1")
+		p1.SetStatus(200)
+
+		// Proxy 2: Auth middleware - overrides request ID
+		p2 := NewProxy()
+		p2.SetHeader("X-Request-ID", "auth-456")
+		p2.AddHeader("X-Auth-User", "john")
+
+		// Proxy 3: Business logic - final request ID
+		p3 := NewProxy()
+		p3.AddHeader("X-Forwarded-For", "10.0.0.2")
+		p3.SetHeader("X-Request-ID", "final-789")
+
+		// Merge all
+		merged := MergeProxyResponses(p1, p2, p3)
+
+		// Apply to response writer
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/", nil)
+		merged.ApplyToResponseWriter(w, req)
+
+		// Verify final state
+		reqID := w.Header().Get("X-Request-ID")
+		if reqID != "final-789" {
+			t.Errorf("Expected X-Request-ID 'final-789', got %q", reqID)
+		}
+
+		forwards := w.Header().Values("X-Forwarded-For")
+		if len(forwards) != 2 {
+			t.Errorf("Expected 2 X-Forwarded-For values, got %d: %v", len(forwards), forwards)
+		}
+
+		authUser := w.Header().Get("X-Auth-User")
+		if authUser != "john" {
+			t.Errorf("Expected X-Auth-User 'john', got %q", authUser)
+		}
+	})
+
+	t.Run("Error_Redirect_Priority", func(t *testing.T) {
+		// Test that errors take precedence over redirects
+		p1 := NewProxy()
+		p1.serverRedirect("/login", 302)
+
+		p2 := NewProxy()
+		p2.SetStatus(403, "Forbidden")
+
+		merged := MergeProxyResponses(p1, p2)
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/", nil)
+		merged.ApplyToResponseWriter(w, req)
+
+		if w.Code != 403 {
+			t.Errorf("Expected error 403 to override redirect, got %d", w.Code)
+		}
+		if loc := w.Header().Get("Location"); loc != "" {
+			t.Errorf("Should not have Location header with error, got %q", loc)
+		}
+		if !strings.Contains(w.Body.String(), "Forbidden") {
+			t.Errorf("Expected error body to contain 'Forbidden'")
 		}
 	})
 }

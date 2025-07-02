@@ -15,17 +15,22 @@ import (
 // afterwards should be used by a parent scope to actually
 // de-duplicate, determine priority, and write to the real
 // http.ResponseWriter.
+type headerOp struct {
+	op    string
+	value string
+}
+
 type Proxy struct {
 	_status      int
 	_status_text string
-	_headers     map[string][]string
+	_headerOps   map[string][]headerOp
 	_cookies     []*http.Cookie
 	_head_els    []*htmlutil.Element
 	_location    string
 }
 
 func NewProxy() *Proxy {
-	return &Proxy{_headers: make(map[string][]string)}
+	return &Proxy{_headerOps: make(map[string][]headerOp)}
 }
 
 /////// STATUS (use directly for both success and error responses)
@@ -44,22 +49,45 @@ func (p *Proxy) GetStatus() (int, string) {
 /////// HEADERS
 
 func (p *Proxy) SetHeader(key, value string) {
-	p._headers[key] = []string{value}
+	p._headerOps[key] = append(
+		p._headerOps[key],
+		headerOp{op: "set", value: value},
+	)
 }
 
 func (p *Proxy) AddHeader(key, value string) {
-	p._headers[key] = append(p._headers[key], value)
+	p._headerOps[key] = append(
+		p._headerOps[key],
+		headerOp{op: "add", value: value},
+	)
 }
 
 func (p *Proxy) GetHeader(key string) string {
-	if len(p._headers[key]) == 0 {
+	values := p.computeHeaderValues(key)
+	if len(values) == 0 {
 		return ""
 	}
-	return p._headers[key][0]
+	return values[0]
 }
 
 func (p *Proxy) GetHeaders(key string) []string {
-	return p._headers[key]
+	return p.computeHeaderValues(key)
+}
+
+func (p *Proxy) computeHeaderValues(key string) []string {
+	ops := p._headerOps[key]
+	if len(ops) == 0 {
+		return nil
+	}
+	var values []string
+	for _, op := range ops {
+		if op.op == "set" {
+			values = []string{op.value}
+		} else {
+			values = append(values, op.value)
+		}
+	}
+	return values
 }
 
 /////// COOKIES
@@ -99,6 +127,10 @@ func (p *Proxy) Redirect(r *http.Request, url string, code ...int) bool {
 }
 
 func (p *Proxy) serverRedirect(url string, code ...int) {
+	// Don't override error statuses with redirects
+	if p.IsError() {
+		return
+	}
 	p._status = resolveSpreadCode(code)
 	p._location = url
 }
@@ -120,7 +152,7 @@ func (p *Proxy) clientRedirect(url string) error {
 	if currentStatus == 0 {
 		p.SetStatus(http.StatusOK)
 	}
-	p.AddHeader(ClientRedirectHeader, url)
+	p.SetHeader(ClientRedirectHeader, url)
 	return nil
 }
 
@@ -164,15 +196,30 @@ func (p *Proxy) IsSuccess() bool {
 
 func (p *Proxy) ApplyToResponseWriter(w http.ResponseWriter, r *http.Request) {
 	// Headers
-	for k, vs := range p._headers {
-		for _, v := range vs {
-			w.Header().Add(k, v)
+	for key, ops := range p._headerOps {
+		currentValues := []string{}
+		for _, op := range ops {
+			if op.op == "set" {
+				w.Header().Del(key)
+				currentValues = []string{op.value}
+			} else {
+				currentValues = append(currentValues, op.value)
+			}
+		}
+		for _, v := range currentValues {
+			w.Header().Add(key, v)
 		}
 	}
 
 	// Cookies
 	for _, c := range p._cookies {
 		http.SetCookie(w, c)
+	}
+
+	// Redirect (only if not an error status)
+	if p.isServerRedirect() && !p.IsError() {
+		http.Redirect(w, r, p._location, p._status)
+		return
 	}
 
 	// Status
@@ -186,11 +233,6 @@ func (p *Proxy) ApplyToResponseWriter(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.WriteHeader(p._status)
 		}
-	}
-
-	// Redirect
-	if p.isServerRedirect() {
-		http.Redirect(w, r, p._location, p._status)
 	}
 }
 
@@ -211,10 +253,10 @@ func MergeProxyResponses(proxies ...*Proxy) *Proxy {
 	}
 
 	// Headers -- MERGED IN ORDER
-	merged._headers = make(map[string][]string)
+	merged._headerOps = make(map[string][]headerOp)
 	for _, p := range proxies {
-		for k, vs := range p._headers {
-			merged._headers[k] = append(merged._headers[k], vs...)
+		for key, ops := range p._headerOps {
+			merged._headerOps[key] = append(merged._headerOps[key], ops...)
 		}
 	}
 
@@ -258,6 +300,12 @@ func MergeProxyResponses(proxies ...*Proxy) *Proxy {
 			if p.IsRedirect() {
 				merged._status = p._status
 				merged._location = p._location
+				if p.isClientRedirect() {
+					merged.SetHeader(
+						ClientRedirectHeader,
+						p.GetHeader(ClientRedirectHeader),
+					)
+				}
 				break
 			}
 		}
