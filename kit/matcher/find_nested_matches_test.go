@@ -422,6 +422,75 @@ func TestFindAllMatches(t *testing.T) {
 	}
 }
 
+func TestFindAllMatchesAdditionalScenarios(t *testing.T) {
+	testCases := []struct {
+		name        string
+		patterns    []string
+		path        string
+		expectMatch bool
+	}{
+		{
+			name:        "Invalid match with unhandled segment",
+			patterns:    []string{"/", "/:slug", "/_index", "/app"},
+			path:        "/settings/account",
+			expectMatch: false,
+		},
+		{
+			name:        "Deeper Invalid 'Almost' Match",
+			patterns:    []string{"/dashboard/customers"},
+			path:        "/dashboard/customers/reports",
+			expectMatch: false,
+		},
+		{
+			name:        "Splat as the Only Full Match",
+			patterns:    []string{"/files/*", "/files/images"},
+			path:        "/files/documents/report.pdf",
+			expectMatch: true,
+		},
+		{
+			name:        "Index Segment Edge Case with Extra Segment",
+			patterns:    []string{"/articles/_index"},
+			path:        "/articles/some-topic",
+			expectMatch: false,
+		},
+		{
+			name:        "No Root Fallback for Multi-Segment Path",
+			patterns:    []string{"/"},
+			path:        "/some/random/path",
+			expectMatch: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := New(&Options{ExplicitIndexSegment: "_index", Quiet: true})
+			for _, p := range tc.patterns {
+				m.RegisterPattern(p)
+			}
+
+			results, ok := m.FindNestedMatches(tc.path)
+
+			if ok != tc.expectMatch {
+				t.Errorf("Expected match result %v for path %q, but got %v", tc.expectMatch, tc.path, ok)
+			}
+
+			// If no match was expected, ensure the results are truly empty.
+			if !tc.expectMatch {
+				if results != nil && len(results.Matches) != 0 {
+					t.Errorf("Expected no matches for path %q, but got %d matches", tc.path, len(results.Matches))
+				}
+			}
+
+			// If a match was expected, ensure the results are not empty.
+			if tc.expectMatch {
+				if results == nil || len(results.Matches) == 0 {
+					t.Errorf("Expected matches for path %q, but got none", tc.path)
+				}
+			}
+		})
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Helper functions to treat nil maps/slices as empty, avoiding false mismatches
 // ---------------------------------------------------------------------------

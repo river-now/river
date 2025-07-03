@@ -22,11 +22,13 @@ func (m *Matcher) FindNestedMatches(realPath string) (*FindNestedMatchesResults,
 		matches[emptyRR.normalizedPattern] = &Match{RegisteredPattern: emptyRR}
 	}
 
+	realSegmentsLen := len(realSegments)
+
 	if realPath == "" || realPath == "/" {
 		if rr, ok := m.staticPatterns["/"]; ok {
 			matches[rr.normalizedPattern] = &Match{RegisteredPattern: rr}
 		}
-		return flattenAndSortMatches(matches, realPath)
+		return flattenAndSortMatches(matches, realPath, realSegmentsLen)
 	}
 
 	var pb strings.Builder
@@ -37,11 +39,11 @@ func (m *Matcher) FindNestedMatches(realPath string) (*FindNestedMatchesResults,
 		pb.WriteString(realSegments[i])
 		if rr, ok := m.staticPatterns[pb.String()]; ok {
 			matches[rr.normalizedPattern] = &Match{RegisteredPattern: rr}
-			if i == len(realSegments)-1 {
+			if i == realSegmentsLen-1 {
 				foundFullStatic = true
 			}
 		}
-		if i == len(realSegments)-1 {
+		if i == realSegmentsLen-1 {
 			pb.WriteString("/")
 			if rr, ok := m.staticPatterns[pb.String()]; ok {
 				matches[rr.normalizedPattern] = &Match{RegisteredPattern: rr}
@@ -76,7 +78,7 @@ func (m *Matcher) FindNestedMatches(realPath string) (*FindNestedMatchesResults,
 	}
 
 	if len(matches) < 2 {
-		return flattenAndSortMatches(matches, realPath)
+		return flattenAndSortMatches(matches, realPath, realSegmentsLen)
 	}
 
 	var longestSegmentLen int
@@ -102,7 +104,7 @@ func (m *Matcher) FindNestedMatches(realPath string) (*FindNestedMatchesResults,
 	}
 
 	if len(matches) < 2 {
-		return flattenAndSortMatches(matches, realPath)
+		return flattenAndSortMatches(matches, realPath, realSegmentsLen)
 	}
 
 	// if the longest segment length items are (1) dynamic, (2) splat, or (3) index, remove them as follows:
@@ -116,15 +118,15 @@ func (m *Matcher) FindNestedMatches(realPath string) (*FindNestedMatchesResults,
 		_, dynamicExists := longestSegmentMatches[segTypes.dynamic]
 		_, splatExists := longestSegmentMatches[segTypes.splat]
 
-		if len(realSegments) == longestSegmentLen && dynamicExists && splatExists {
+		if realSegmentsLen == longestSegmentLen && dynamicExists && splatExists {
 			delete(matches, longestSegmentMatches[segTypes.splat].normalizedPattern)
 		}
-		if len(realSegments) > longestSegmentLen && splatExists && dynamicExists {
+		if realSegmentsLen > longestSegmentLen && splatExists && dynamicExists {
 			delete(matches, longestSegmentMatches[segTypes.dynamic].normalizedPattern)
 		}
 	}
 
-	return flattenAndSortMatches(matches, realPath)
+	return flattenAndSortMatches(matches, realPath, realSegmentsLen)
 }
 
 func (m *Matcher) dfsNestedMatches(
@@ -211,7 +213,11 @@ func (m *Matcher) dfsNestedMatches(
 	}
 }
 
-func flattenAndSortMatches(matches matchesMap, realPath string) (*FindNestedMatchesResults, bool) {
+func flattenAndSortMatches(
+	matches matchesMap,
+	realPath string,
+	realSegmentLen int,
+) (*FindNestedMatchesResults, bool) {
 	var results []*Match
 	for _, match := range matches {
 		results = append(results, match)
@@ -241,6 +247,28 @@ func flattenAndSortMatches(matches matchesMap, realPath string) (*FindNestedMatc
 	}
 
 	lastMatch := results[len(results)-1]
+
+	// Check if the last match can consume all segments.
+	if !lastMatch.lastSegIsNonRootSplat && lastMatch.normalizedPattern != "/*" {
+		// For non-splat patterns, check if pattern depth matches
+		// real segment count.
+		// Dynamic patterns should have filled params if they matched.
+		patternSegmentsLen := len(lastMatch.normalizedSegments)
+
+		// If pattern has fewer segments than the real path and it's
+		// not a splat, it's a partial match.
+		if patternSegmentsLen < realSegmentLen {
+			return nil, false
+		}
+
+		// If it's a dynamic pattern at the right depth, it should
+		// have params.
+		if patternSegmentsLen == realSegmentLen &&
+			lastMatch.numberOfDynamicParamSegs > 0 &&
+			len(lastMatch.params) == 0 {
+			return nil, false
+		}
+	}
 
 	return &FindNestedMatchesResults{
 		Params:      lastMatch.params,

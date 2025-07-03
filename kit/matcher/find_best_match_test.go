@@ -342,6 +342,23 @@ func TestFindBestMatch(t *testing.T) {
 	}
 }
 
+func TestFindBestMatchAdditionalScenarios(t *testing.T) {
+	// register /, /:slug, /_index, and /app, and make sure that /settings/account does not match
+	m := New(&Options{ExplicitIndexSegment: "_index", Quiet: true})
+
+	m.RegisterPattern("/")
+	m.RegisterPattern("/:slug")
+	m.RegisterPattern("/_index")
+	m.RegisterPattern("/app")
+
+	path := "/settings/account"
+	match, ok := m.FindBestMatch(path)
+
+	if ok {
+		t.Errorf("Expected no matches for path %q, but got: %v", path, match)
+	}
+}
+
 /////////////////////////////////////////////////////////////////////
 /////// BENCHMARKS
 /////////////////////////////////////////////////////////////////////
