@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -203,6 +204,17 @@ func (c *Config) __processCSS(nature string) error {
 					build.OnResolve(esbuild.OnResolveOptions{Filter: ".*", Namespace: "file"},
 						func(args esbuild.OnResolveArgs) (esbuild.OnResolveResult, error) {
 							if args.Kind == esbuild.ResolveCSSURLToken {
+								u, err := url.Parse(args.Path)
+								if err == nil && u.Scheme != "" {
+									// It's a valid URL with a scheme (http, https, data, etc.)
+									return esbuild.OnResolveResult{}, nil
+								}
+
+								// Check for protocol-relative URLs
+								if strings.HasPrefix(args.Path, "//") {
+									return esbuild.OnResolveResult{}, nil
+								}
+
 								return esbuild.OnResolveResult{
 									Path:     c.MustGetPublicURLBuildtime(args.Path),
 									External: true,
