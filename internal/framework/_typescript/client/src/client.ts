@@ -67,6 +67,7 @@ export type NavigateProps = {
 	scrollStateToRestore?: ScrollState;
 	replace?: boolean;
 	redirectCount?: number;
+	scrollToTop?: boolean;
 };
 
 type NavigationResult =
@@ -101,6 +102,7 @@ type LinkOnClickCallbacks<E extends Event> = LinkOnClickCallbacksBase<E>;
 type GetPrefetchHandlersInput<E extends Event> = LinkOnClickCallbacksBase<E> & {
 	href: string;
 	delayMs?: number;
+	scrollToTop?: boolean;
 };
 
 type PartialWaitFnJSON = Pick<
@@ -120,6 +122,7 @@ type RerenderAppProps = {
 		href: string;
 		scrollStateToRestore?: ScrollState;
 		replace?: boolean;
+		scrollToTop?: boolean;
 	};
 };
 
@@ -148,6 +151,7 @@ interface NavigationEntry {
 	startTime: number;
 	targetUrl: string; // URL this navigation is targeting
 	originUrl: string; // URL when navigation started (for revalidation)
+	scrollToTop?: boolean;
 }
 
 interface SubmissionEntry {
@@ -239,6 +243,7 @@ class NavigationStateManager {
 				this.upgradeNavigation(targetUrl, {
 					type: "userNavigation",
 					intent: "navigate",
+					scrollToTop: props.scrollToTop,
 				});
 				return existing.control;
 			}
@@ -327,6 +332,7 @@ class NavigationStateManager {
 			startTime: Date.now(),
 			targetUrl,
 			originUrl: window.location.href,
+			scrollToTop: props.scrollToTop,
 		};
 
 		this.setNavigation(targetUrl, entry);
@@ -335,7 +341,9 @@ class NavigationStateManager {
 
 	private upgradeNavigation(
 		href: string,
-		updates: Partial<Pick<NavigationEntry, "type" | "intent">>,
+		updates: Partial<
+			Pick<NavigationEntry, "type" | "intent" | "scrollToTop">
+		>,
 	): void {
 		const existing = this._navigations.get(href);
 		if (!existing) return;
@@ -532,6 +540,7 @@ class NavigationStateManager {
 								scrollStateToRestore:
 									result.props.scrollStateToRestore,
 								replace: result.props.replace,
+								scrollToTop: entry.scrollToTop,
 							}
 						: undefined,
 			});
@@ -961,12 +970,13 @@ class ComponentLoader {
 
 export async function navigate(
 	href: string,
-	options?: { replace?: boolean },
+	options?: { replace?: boolean; scrollToTop?: boolean },
 ): Promise<void> {
 	await navigationStateManager.navigate({
 		href,
 		navigationType: "userNavigation",
 		replace: options?.replace,
+		scrollToTop: options?.scrollToTop,
 	});
 }
 
@@ -1038,7 +1048,7 @@ export function applyScrollState(state?: ScrollState): void {
 }
 
 export function makeLinkOnClickFn<E extends Event>(
-	callbacks: LinkOnClickCallbacks<E>,
+	callbacks: LinkOnClickCallbacks<E> & { scrollToTop?: boolean },
 ) {
 	return async (e: E) => {
 		if (e.defaultPrevented) return;
@@ -1065,6 +1075,7 @@ export function makeLinkOnClickFn<E extends Event>(
 			const control = navigationStateManager.beginNavigation({
 				href: anchor.href,
 				navigationType: "userNavigation",
+				scrollToTop: callbacks.scrollToTop,
 			});
 
 			if (!control.promise) return;
@@ -1184,7 +1195,7 @@ export function getPrefetchHandlers<E extends Event>(
 		}
 
 		// Use standard navigation -- it will upgrade the prefetch if it exists
-		await navigate(relativeURL);
+		await navigate(relativeURL, { scrollToTop: input.scrollToTop });
 
 		if (input.afterRender) {
 			await input.afterRender(e);
@@ -1385,7 +1396,8 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 	let scrollStateToDispatch: ScrollState | undefined;
 
 	if (runHistoryOptions) {
-		const { href, scrollStateToRestore, replace } = runHistoryOptions;
+		const { href, scrollStateToRestore, replace, scrollToTop } =
+			runHistoryOptions;
 		const hash = href.split("#")[1];
 		const history = HistoryManager.getInstance();
 
@@ -1402,7 +1414,9 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 				history.replace(href);
 			}
 
-			scrollStateToDispatch = hash ? { hash } : { x: 0, y: 0 };
+			if (scrollToTop !== false) {
+				scrollStateToDispatch = hash ? { hash } : { x: 0, y: 0 };
+			}
 		}
 
 		if (navigationType === "browserHistory") {

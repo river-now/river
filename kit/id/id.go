@@ -29,7 +29,7 @@ func New(idLen uint8, optionalCharset ...string) (string, error) {
 	effectiveTotalValues := (256 / charsetLen) * charsetLen
 	idOutputBytes := make([]byte, idLen)
 	randomByteHolder := make([]byte, 1)
-	for i := uint8(0); i < idLen; i++ {
+	for i := range idLen {
 		for {
 			_, err := rand.Read(randomByteHolder)
 			if err != nil {
@@ -52,7 +52,7 @@ func New(idLen uint8, optionalCharset ...string) (string, error) {
 func NewMulti(idLen uint8, quantity uint8, optionalCharset ...string) ([]string, error) {
 	ids := make([]string, quantity)
 	useOptionalCharset := len(optionalCharset) > 0
-	for i := uint8(0); i < quantity; i++ {
+	for i := range quantity {
 		var id string
 		var err error
 		if useOptionalCharset {

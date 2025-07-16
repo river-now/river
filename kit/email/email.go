@@ -11,35 +11,44 @@ import (
 
 var ErrInvalidEmail = errors.New("invalid email format")
 
+type TrimmedOnly string
 type Normalized string
 
-func Normalize(input string) (Normalized, error) {
-	e := strings.TrimSpace(input)
-	if e == "" {
-		return "", ErrInvalidEmail
+type Email struct {
+	TrimmedOnly
+	Normalized
+}
+
+func Normalize(input string) (*Email, error) {
+	trimmedOnly := strings.TrimSpace(input)
+	if trimmedOnly == "" {
+		return nil, ErrInvalidEmail
 	}
-	addr, err := mail.ParseAddress(e)
+	if len(trimmedOnly) > 320 {
+		return nil, ErrInvalidEmail
+	}
+	addr, err := mail.ParseAddress(trimmedOnly)
 	if err != nil {
-		return "", ErrInvalidEmail
+		return nil, ErrInvalidEmail
 	}
 	atIdx := strings.LastIndex(addr.Address, "@")
 	if atIdx < 1 || atIdx == len(addr.Address)-1 {
-		return "", ErrInvalidEmail
+		return nil, ErrInvalidEmail
 	}
 	local := strings.ToLower(addr.Address[:atIdx])
 	localCharsetOK := validateLocalCharset(local)
 	if !localCharsetOK {
-		return "", ErrInvalidEmail
+		return nil, ErrInvalidEmail
 	}
 	if hasLeadingOrTrailingDotOrDoubleDot(local) {
-		return "", ErrInvalidEmail
+		return nil, ErrInvalidEmail
 	}
 	domain, err := idna.Lookup.ToASCII(addr.Address[atIdx+1:])
 	if err != nil {
-		return "", ErrInvalidEmail
+		return nil, ErrInvalidEmail
 	}
 	if !strings.Contains(domain, ".") || hasLeadingOrTrailingDotOrDoubleDot(domain) {
-		return "", ErrInvalidEmail
+		return nil, ErrInvalidEmail
 	}
 	if domain == "gmail.com" || domain == "googlemail.com" {
 		local = strings.ReplaceAll(local, ".", "")
@@ -48,9 +57,12 @@ func Normalize(input string) (Normalized, error) {
 		local = local[:idx]
 	}
 	if local == "" {
-		return "", ErrInvalidEmail
+		return nil, ErrInvalidEmail
 	}
-	return Normalized(local + "@" + domain), nil
+	return &Email{
+		TrimmedOnly: TrimmedOnly(trimmedOnly),
+		Normalized:  Normalized(local + "@" + domain),
+	}, nil
 }
 
 func validateLocalCharset(input string) bool {

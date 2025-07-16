@@ -297,7 +297,13 @@ func TestNormalize(t *testing.T) {
 				t.Errorf("Normalize() error = %v, want %v", err, ErrInvalidEmail)
 				return
 			}
-			if got != tt.want {
+			if tt.want == "" {
+				if got != nil {
+					t.Errorf("Normalize() = %v, want nil", got)
+				}
+				return
+			}
+			if got.Normalized != tt.want {
 				t.Errorf("Normalize() = %v, want %v", got, tt.want)
 			}
 		})

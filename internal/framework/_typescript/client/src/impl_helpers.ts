@@ -70,6 +70,7 @@ export type RiverLinkPropsBase<LinkOnClickCallback> = {
 	beforeBegin?: LinkOnClickCallback;
 	beforeRender?: LinkOnClickCallback;
 	afterRender?: LinkOnClickCallback;
+	scrollToTop?: boolean;
 };
 
 function linkPropsToPrefetchObj<LinkOnClickCallback>(
@@ -85,6 +86,7 @@ function linkPropsToPrefetchObj<LinkOnClickCallback>(
 		beforeBegin: props.beforeBegin as any,
 		beforeRender: props.beforeRender as any,
 		afterRender: props.afterRender as any,
+		scrollToTop: props.scrollToTop,
 	});
 }
 
@@ -95,6 +97,7 @@ function linkPropsToOnClickFn<LinkOnClickCallback>(
 		beforeBegin: props.beforeBegin as any,
 		beforeRender: props.beforeRender as any,
 		afterRender: props.afterRender as any,
+		scrollToTop: props.scrollToTop,
 	});
 }
 
