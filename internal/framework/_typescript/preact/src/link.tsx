@@ -5,16 +5,19 @@ import { makeFinalLinkProps, type RiverLinkPropsBase } from "river.now/client";
 export function RiverLink(
 	props: JSX.HTMLAttributes<HTMLAnchorElement> &
 		RiverLinkPropsBase<
-			(e: JSX.TargetedMouseEvent<HTMLAnchorElement>) => void | Promise<void>
+			(
+				e: JSX.TargetedMouseEvent<HTMLAnchorElement>,
+			) => void | Promise<void>
 		>,
 ) {
 	const finalLinkProps = useMemo(() => makeFinalLinkProps(props), [props]);
+	const { prefetch, scrollToTop, ...rest } = props;
 
 	return h(
 		"a",
 		{
 			"data-external": finalLinkProps.dataExternal,
-			...(props as any),
+			...(rest as any),
 			onPointerEnter: finalLinkProps.onPointerEnter,
 			onFocus: finalLinkProps.onFocus,
 			onPointerLeave: finalLinkProps.onPointerLeave,

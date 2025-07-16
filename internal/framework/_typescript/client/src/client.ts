@@ -1414,9 +1414,11 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 				history.replace(href);
 			}
 
-			if (scrollToTop !== false) {
-				scrollStateToDispatch = hash ? { hash } : { x: 0, y: 0 };
-			}
+			scrollStateToDispatch = hash
+				? { hash }
+				: scrollToTop !== false
+					? { x: 0, y: 0 }
+					: undefined;
 		}
 
 		if (navigationType === "browserHistory") {

@@ -8,11 +8,12 @@ export function RiverLink(
 		>,
 ) {
 	const finalLinkProps = createMemo(() => makeFinalLinkProps(props));
+	const { prefetch, scrollToTop, ...rest } = props;
 
 	return (
 		<a
 			data-external={finalLinkProps().dataExternal}
-			{...props}
+			{...rest}
 			onPointerEnter={finalLinkProps().onPointerEnter}
 			onFocus={finalLinkProps().onFocus}
 			onPointerLeave={finalLinkProps().onPointerLeave}
