@@ -148,7 +148,7 @@ func RootSecretsToRootKeyset(rootSecrets RootSecrets) (*Keyset, error) {
 	}
 	keys := make(UnwrappedKeyset, 0, len(rootSecrets))
 	for i, secret := range rootSecrets {
-		secretBytes, err := bytesutil.FromBase64(string(secret))
+		secretBytes, err := bytesutil.FromBase64(secret)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"error decoding base64 secret %d: %w", i, err,

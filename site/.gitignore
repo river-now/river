@@ -2,6 +2,3 @@
 __dist/static/*
 !__dist/static/.keep
 __dist/main*
-
-# Tailwind
-/frontend/css/tailwind-output.css

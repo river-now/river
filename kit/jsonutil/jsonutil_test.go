@@ -4,42 +4,42 @@ import (
 	"testing"
 )
 
-func TestToString(t *testing.T) {
-	type testStruct struct {
-		Name  string `json:"name"`
-		Value int    `json:"value"`
+func TestSerializeAndParse(t *testing.T) {
+	type TestStruct struct {
+		Name string `json:"name"`
+		Age  int    `json:"age"`
 	}
 
-	// Test case: simple struct
-	input := testStruct{Name: "Test", Value: 42}
-	expected := `{"name":"Test","value":42}`
-	result, err := ToString(input)
+	original := TestStruct{Name: "Alice", Age: 25}
+
+	// Serialize the struct to JSON
+	jsonData, err := Serialize(original)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if result != expected {
-		t.Fatalf("expected %s, got %s", expected, result)
-	}
 
-	// Test case: empty struct
-	inputEmpty := testStruct{}
-	expectedEmpty := `{"name":"","value":0}`
-	resultEmpty, err := ToString(inputEmpty)
+	// Parse the JSON back into a struct
+	var parsed TestStruct
+	parsed, err = Parse[TestStruct](jsonData)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if resultEmpty != expectedEmpty {
-		t.Fatalf("expected %s, got %s", expectedEmpty, resultEmpty)
+
+	if original != parsed {
+		t.Fatalf("expected parsed struct to match original struct")
 	}
 
-	// Test case: nil input
-	var inputNil any
-	expectedNil := "null"
-	resultNil, err := ToString(inputNil)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	// Test parsing with invalid JSON
+	invalidJSON := []byte(`{"name": "Bob", "age": "twenty"}`) // Invalid because age is not an int
+	_, err = Parse[TestStruct](invalidJSON)
+	if err == nil {
+		t.Fatalf("expected error for invalid JSON, got nil")
 	}
-	if resultNil != expectedNil {
-		t.Fatalf("expected %s, got %s", expectedNil, resultNil)
+
+	// Test parsing with empty JSON
+	emptyJSON := []byte(``)
+	_, err = Parse[TestStruct](emptyJSON)
+	if err == nil {
+		t.Fatalf("expected error for empty JSON, got nil")
 	}
 }

@@ -615,6 +615,11 @@ class NavigationStateManager {
 				};
 			}
 
+			if (redirectData?.status === "should") {
+				await effectuateRedirectDataResult(redirectData, 0);
+				return { success: true, data: undefined as T }; // No data on redirect
+			}
+
 			const data = await response.json();
 
 			// Auto-revalidate for mutations

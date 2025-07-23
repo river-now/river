@@ -3,52 +3,20 @@ package bytesutil
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
 	"reflect"
 )
 
-// Random returns a slice of cryptographically random bytes of length byteLen.
-func Random(byteLen int) ([]byte, error) {
-	r := make([]byte, byteLen)
-	if _, err := rand.Read(r); err != nil {
-		return nil, err
-	}
-	return r, nil
-}
-
 // FromBase64 decodes a base64-encoded string into a byte slice.
 func FromBase64(base64Str string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(base64Str)
 }
 
-// FromBase64Multi decodes multiple base64-encoded strings into byte slices.
-func FromBase64Multi(base64Strs ...string) ([][]byte, error) {
-	var bytes = make([][]byte, 0, len(base64Strs))
-	for _, str := range base64Strs {
-		b, err := FromBase64(str)
-		if err != nil {
-			return nil, err
-		}
-		bytes = append(bytes, b)
-	}
-	return bytes, nil
-}
-
 // ToBase64 encodes a byte slice into a base64-encoded string.
 func ToBase64(bytes []byte) string {
 	return base64.StdEncoding.EncodeToString(bytes)
-}
-
-// ToBase64Multi encodes multiple byte slices into base64-encoded strings.
-func ToBase64Multi(bytes ...[]byte) []string {
-	var strs = make([]string, 0, len(bytes))
-	for _, b := range bytes {
-		strs = append(strs, ToBase64(b))
-	}
-	return strs
 }
 
 // ToGob encodes an arbitrary value into a gob-encoded byte slice.
@@ -81,4 +49,19 @@ func FromGobInto(gobBytes []byte, destPtr any) error {
 		return fmt.Errorf("bytesutil.FromGobInto: failed to decode bytes into dest: %w", err)
 	}
 	return nil
+}
+
+// FromGob decodes a gob-encoded byte slice into a value of type T.
+func FromGob[T any](gobBytes []byte) (T, error) {
+	var zeroT T
+	if gobBytes == nil {
+		return zeroT, fmt.Errorf("bytesutil.FromGob: gobBytes is nil")
+	}
+	dec := gob.NewDecoder(bytes.NewReader(gobBytes))
+	destPtr := new(T)
+	err := dec.Decode(destPtr)
+	if err != nil {
+		return zeroT, fmt.Errorf("bytesutil.FromGob: failed to decode gob bytes: %w", err)
+	}
+	return *destPtr, nil
 }

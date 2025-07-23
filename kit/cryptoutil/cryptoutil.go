@@ -31,6 +31,15 @@ var (
 	ErrHMACInvalid        = errors.New("HMAC is invalid")
 )
 
+// Random returns a slice of cryptographically random bytes of length byteLen.
+func RandomBytes(byteLen int) ([]byte, error) {
+	r := make([]byte, byteLen)
+	if _, err := rand.Read(r); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 /////////////////////////////////////////////////////////////////////
 /////// SYMMETRIC MESSAGE SIGNING
 /////////////////////////////////////////////////////////////////////
@@ -91,7 +100,7 @@ func VerifyAndReadAsymmetric(signedMsg []byte, publicKey Key32) ([]byte, error) 
 
 // VerifyAndReadAsymmetricBase64 verifies a signed message using a base64
 // encoded Ed25519 public key and returns the original message.
-func VerifyAndReadAsymmetricBase64(signedMsg Base64, publicKey Base64) ([]byte, error) {
+func VerifyAndReadAsymmetricBase64(signedMsg, publicKey Base64) ([]byte, error) {
 	signedMsgBytes, err := bytesutil.FromBase64(signedMsg)
 	if err != nil {
 		return nil, err
@@ -122,11 +131,15 @@ func Sha256Hash(msg []byte) []byte {
 /////// HMAC-SHA-256
 /////////////////////////////////////////////////////////////////////
 
-// HmacSha256 computes the HMAC-SHA-256 of a message using a 32-byte
-// secret key.
+// HmacSha256 computes the HMAC-SHA-256 of a message using secret key.
+// As a security precaution, returns an error if the key is nil or empty.
+// If this isn't what you want, use the standard library directly.
 func HmacSha256(msg []byte, key []byte) ([]byte, error) {
 	if key == nil {
 		return nil, errors.New("key is nil")
+	}
+	if len(key) == 0 {
+		return nil, errors.New("key is empty")
 	}
 	mac := hmac.New(sha256.New, key[:])
 	if _, err := mac.Write(msg); err != nil {
@@ -135,19 +148,19 @@ func HmacSha256(msg []byte, key []byte) ([]byte, error) {
 	return mac.Sum(nil), nil
 }
 
-// ValidateHmacSha256 validates the HMAC-SHA-256 of a message against
-// a known good MAC using an attempted key. Returns true if the MAC is
-// valid and false if it is not. Does NOT necessarily return an error
-// if the MAC is invalid, so callers must rely on the boolean return
+// ValidateHmacSha256 constant-time compares the HMAC-SHA-256 of an attempted
+// message and attempted key against a known good MAC. Returns true if the
+// resulting MAC is valid and false if it is not. Does NOT necessarily return
+// an error if the MAC is invalid, so callers must rely on the boolean return
 // value to determine validity.
-func ValidateHmacSha256(msg, attemptedKey, knownGoodMAC []byte) (bool, error) {
+func ValidateHmacSha256(attemptedMsg, attemptedKey, knownGoodMAC []byte) (bool, error) {
 	if attemptedKey == nil {
 		return false, errors.New("attemptedKey is nil")
 	}
 	if len(knownGoodMAC) != sha256.Size {
 		return false, errors.New("knownGoodMAC must be 32 bytes")
 	}
-	attemptedMAC, err := HmacSha256(msg, attemptedKey)
+	attemptedMAC, err := HmacSha256(attemptedMsg, attemptedKey)
 	if err != nil {
 		return false, err
 	}

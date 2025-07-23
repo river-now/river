@@ -122,3 +122,18 @@ func FromGobInto(file fs.File, destPtr any) error {
 	}
 	return nil
 }
+
+// FromGob decodes a gob-encoded file into a value of type T.
+func FromGob[T any](file fs.File) (T, error) {
+	var zeroT T
+	if file == nil {
+		return zeroT, fmt.Errorf("fsutil.FromGobInto: cannot decode nil file")
+	}
+	dec := gob.NewDecoder(file)
+	destPtr := new(T)
+	err := dec.Decode(destPtr)
+	if err != nil {
+		return zeroT, fmt.Errorf("fsutil.FromGobInto: failed to decode file into dest: %w", err)
+	}
+	return *destPtr, nil
+}

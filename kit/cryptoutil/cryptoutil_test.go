@@ -5,11 +5,11 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"testing"
 
+	"github.com/river-now/river/kit/bytesutil"
 	"golang.org/x/crypto/nacl/auth"
 )
 
@@ -20,6 +20,38 @@ const (
 
 func new32() *[32]byte {
 	return &[32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
+}
+
+func TestRandom(t *testing.T) {
+	// Test generating random bytes
+	byteLen := 16
+	randomBytes, err := RandomBytes(byteLen)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(randomBytes) != byteLen {
+		t.Fatalf("expected random byte slice of length %d, got %d", byteLen, len(randomBytes))
+	}
+
+	// Test randomness by generating another set and comparing
+	anotherRandomBytes, err := RandomBytes(byteLen)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if bytes.Equal(randomBytes, anotherRandomBytes) {
+		t.Fatalf("expected different random byte slices, got identical slices")
+	}
+
+	// Test Random with a byte length of 0
+	zeroLengthBytes, err := RandomBytes(0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(zeroLengthBytes) != 0 {
+		t.Fatalf("expected empty byte slice, got %d bytes", len(zeroLengthBytes))
+	}
 }
 
 func TestSignSymmetric(t *testing.T) {
@@ -121,8 +153,8 @@ func TestVerifyAndReadAsymmetricBase64(t *testing.T) {
 	signature := ed25519.Sign(privateKey, message)
 	signedMsg := append(signature, message...)
 
-	signedMsgBase64 := base64.StdEncoding.EncodeToString(signedMsg)
-	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey)
+	signedMsgBase64 := bytesutil.ToBase64(signedMsg)
+	publicKeyBase64 := bytesutil.ToBase64(publicKey)
 
 	// Successful verification
 	retrievedMsg, err := VerifyAndReadAsymmetricBase64(signedMsgBase64, publicKeyBase64)
@@ -150,7 +182,7 @@ func TestVerifyAndReadAsymmetricBase64(t *testing.T) {
 	tampered := make([]byte, len(signedMsg))
 	copy(tampered, signedMsg)
 	tampered[0] ^= 0xFF
-	tamperedBase64 := base64.StdEncoding.EncodeToString(tampered)
+	tamperedBase64 := bytesutil.ToBase64(tampered)
 	_, err = VerifyAndReadAsymmetricBase64(tamperedBase64, publicKeyBase64)
 	if err == nil {
 		t.Fatalf("expected error due to invalid signature, got nil")
@@ -623,21 +655,21 @@ func TestAuthenticationTag(t *testing.T) {
 
 func TestInvalidKeySize(t *testing.T) {
 	// Test truncated public key
-	shortKey := base64.StdEncoding.EncodeToString(make([]byte, 16)) // too short
-	longKey := base64.StdEncoding.EncodeToString(make([]byte, 64))  // too long
+	shortKey := bytesutil.ToBase64(make([]byte, 16)) // too short
+	longKey := bytesutil.ToBase64(make([]byte, 64))  // too long
 	message := []byte("test")
 
-	_, err := VerifyAndReadAsymmetricBase64(base64.StdEncoding.EncodeToString(message), shortKey)
+	_, err := VerifyAndReadAsymmetricBase64(bytesutil.ToBase64(message), shortKey)
 	if err == nil {
 		t.Error("expected error with short public key")
 	}
 
-	_, err = VerifyAndReadAsymmetricBase64(base64.StdEncoding.EncodeToString(message), longKey)
+	_, err = VerifyAndReadAsymmetricBase64(bytesutil.ToBase64(message), longKey)
 	if err == nil {
 		t.Error("expected error with long public key")
 	}
 
-	_, err = VerifyAndReadAsymmetricBase64(base64.StdEncoding.EncodeToString(message), "")
+	_, err = VerifyAndReadAsymmetricBase64(bytesutil.ToBase64(message), "")
 	if err == nil {
 		t.Error("expected error with empty public key")
 	}
@@ -660,7 +692,7 @@ func TestEmptyInputs(t *testing.T) {
 	}
 
 	// Test signature operations with empty string base64
-	_, err = VerifyAndReadAsymmetricBase64("", base64.StdEncoding.EncodeToString(publicKey))
+	_, err = VerifyAndReadAsymmetricBase64("", bytesutil.ToBase64(publicKey))
 	if err == nil {
 		t.Error("expected error with empty signed message")
 	}
@@ -813,7 +845,7 @@ func TestInputValidation(t *testing.T) {
 		{
 			name: "VerifyAndReadAsymmetricBase64 invalid base64 message",
 			f: func() error {
-				_, err := VerifyAndReadAsymmetricBase64("invalid-base64", base64.StdEncoding.EncodeToString(publicKey))
+				_, err := VerifyAndReadAsymmetricBase64("invalid-base64", bytesutil.ToBase64(publicKey))
 				return err
 			},
 			wantErr: true,
@@ -821,7 +853,7 @@ func TestInputValidation(t *testing.T) {
 		{
 			name: "VerifyAndReadAsymmetricBase64 invalid base64 key",
 			f: func() error {
-				_, err := VerifyAndReadAsymmetricBase64(base64.StdEncoding.EncodeToString(validSignedAsymmetric), "invalid-base64")
+				_, err := VerifyAndReadAsymmetricBase64(bytesutil.ToBase64(validSignedAsymmetric), "invalid-base64")
 				return err
 			},
 			wantErr: true,
@@ -831,8 +863,8 @@ func TestInputValidation(t *testing.T) {
 			f: func() error {
 				wrongSizeKey := make([]byte, 31) // Not 32 bytes
 				_, err := VerifyAndReadAsymmetricBase64(
-					base64.StdEncoding.EncodeToString(validSignedAsymmetric),
-					base64.StdEncoding.EncodeToString(wrongSizeKey),
+					bytesutil.ToBase64(validSignedAsymmetric),
+					bytesutil.ToBase64(wrongSizeKey),
 				)
 				return err
 			},
@@ -1019,9 +1051,10 @@ func TestHmacSha256(t *testing.T) {
 			key:     []byte("secret key"),
 		},
 		{
-			name:    "empty key",
-			message: []byte("test message"),
-			key:     []byte{},
+			name:        "empty key",
+			message:     []byte("test message"),
+			key:         []byte{},
+			expectError: true,
 		},
 		{
 			name:    "long key",

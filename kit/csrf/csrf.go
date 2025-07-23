@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/river-now/river/kit/bytesutil"
 	"github.com/river-now/river/kit/cookies"
+	"github.com/river-now/river/kit/cryptoutil"
 	"github.com/river-now/river/kit/netutil"
 	"github.com/river-now/river/kit/response"
 )
@@ -238,7 +238,7 @@ func (p *Protector) validateOriginHeader(hdr, label string) error {
 }
 
 func (p *Protector) newCSRFCookie(sessionID string) (*http.Cookie, error) {
-	nonce, err := bytesutil.Random(nonceSize)
+	nonce, err := cryptoutil.RandomBytes(nonceSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate secure random bytes: %w", err)
 	}

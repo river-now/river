@@ -1,21 +1,10 @@
 pre:
 	@pnpm i && go mod tidy
 
-tailwind-prod:
-	@pnpx @tailwindcss/cli -i ./frontend/css/tailwind-input.css -o ./frontend/css/tailwind-output.css
-
-tailwind-dev:
-	@pnpx @tailwindcss/cli -i ./frontend/css/tailwind-input.css -o ./frontend/css/tailwind-output.css --watch
-
-serve-dev:
+dev: pre
 	@go run ./__cmd/build --dev
 
-dev-inner: tailwind-dev serve-dev
-
-dev: pre
-	@make dev-inner -j
-
-build-prod: pre tailwind-prod
+build-prod: pre
 	@go run ./__cmd/build
 
 # call with `make run-prod port=whatever`

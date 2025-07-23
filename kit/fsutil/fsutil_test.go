@@ -201,3 +201,39 @@ func TestFromGobInto(t *testing.T) {
 		t.Fatalf("expected error for nil destination, got nil")
 	}
 }
+
+// TestFromGob tests the FromGob function.
+func TestFromGob(t *testing.T) {
+	type TestStruct struct {
+		Name string
+		Age  int
+	}
+	srcStruct := TestStruct{Name: "Alice", Age: 30}
+
+	// Create a gob file
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	if err := enc.Encode(&srcStruct); err != nil {
+		t.Fatalf("expected no error encoding struct, got %v", err)
+	}
+
+	// Create a mock fs.File
+	mockFile := &mockFile{Reader: &buf}
+
+	// Test decoding
+	dstStruct, err := FromGob[TestStruct](mockFile)
+	if err != nil {
+		t.Fatalf("expected no error decoding gob, got %v", err)
+	}
+
+	// Check if the decoded struct matches the source struct
+	if srcStruct != dstStruct {
+		t.Fatalf("expected %v, got %v", srcStruct, dstStruct)
+	}
+
+	// Test decoding with nil file
+	_, err = FromGob[TestStruct](nil)
+	if err == nil {
+		t.Fatalf("expected error for nil file, got nil")
+	}
+}

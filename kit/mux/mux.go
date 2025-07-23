@@ -487,6 +487,9 @@ func (rt *Router) createTaskFinalHandler(route AnyRoute, reqDataMarker reqDataMa
 		}
 		responseProxy := reqDataMarker.ResponseProxy()
 		responseProxy.ApplyToResponseWriter(w, r)
+		if responseProxy.IsError() || responseProxy.IsRedirect() {
+			return // Don't write JSON after error/redirect
+		}
 		if reflectutil.ExcludingNoneGetIsNilOrUltimatelyPointsToNil(data) {
 			muxLog.Warn(
 				"Do not return nil values from task handlers unless: (i) the underlying type is an empty struct or pointer to an empty struct; or (ii) you are returning an error.",

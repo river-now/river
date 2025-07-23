@@ -39,12 +39,7 @@ func (c *Config) loadMapFromGob(gobFileName string, isBuildTime bool) (FileMap, 
 
 	defer file.Close()
 
-	var mapFromGob FileMap
-	err = fsutil.FromGobInto(file, &mapFromGob)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding gob: %w", err)
-	}
-	return mapFromGob, nil
+	return fsutil.FromGob[FileMap](file)
 }
 
 func (c *Config) getAppropriateFSMaybeBuildTime(isBuildTime bool) (fs.FS, error) {

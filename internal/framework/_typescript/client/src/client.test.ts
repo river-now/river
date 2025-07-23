@@ -3051,6 +3051,11 @@ describe("Comprehensive Navigation Test Suite", () => {
 			});
 
 			it("should handle redirect responses", async () => {
+				// Track the current location
+				const initialLocation = window.location.href;
+				expect(initialLocation).toBe("http://localhost:3000/");
+				const initialTitle = document.title;
+
 				vi.mocked(fetch)
 					.mockResolvedValueOnce(
 						createMockResponse(null, {
@@ -3067,8 +3072,80 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				const result = await submit("/api/action", { method: "POST" });
 
+				// Wait for any async navigation to complete
+				await vi.runAllTimersAsync();
+
+				// Verify the redirect was followed
 				expect(result.success).toBe(true);
+
+				// CRITICAL: Verify fetch was called twice (submit + redirect navigation)
+				expect(fetch).toHaveBeenCalledTimes(2);
+
+				// Verify the second fetch was for the redirect target
+				expect(fetch).toHaveBeenNthCalledWith(
+					2,
+					expect.objectContaining({
+						href: expect.stringContaining("/after-submit"),
+					}),
+					expect.any(Object),
+				);
+
+				// Verify the page actually changed
+				expect(window.location.pathname).toBe("/after-submit");
 				expect(document.title).toBe("After Submit");
+				expect(document.title).not.toBe(initialTitle);
+			});
+
+			it("should handle X-River-Reload redirects from submit", async () => {
+				let locationHref = window.location.href;
+				Object.defineProperty(window.location, "href", {
+					get: () => locationHref,
+					set: (value) => {
+						locationHref = value;
+					},
+					configurable: true,
+				});
+
+				vi.mocked(fetch).mockResolvedValueOnce(
+					createMockResponse(null, {
+						headers: {
+							"X-River-Reload": "/force-reload",
+							"X-River-Build-Id": "new-build",
+						},
+					}),
+				);
+
+				await submit("/api/action", { method: "POST" });
+				await vi.runAllTimersAsync();
+
+				// Should do a hard redirect with river_reload param
+				expect(locationHref).toContain("/force-reload");
+				expect(locationHref).toContain("river_reload=new-build");
+			});
+
+			it("should handle external redirects from submit", async () => {
+				let locationHref = window.location.href;
+				Object.defineProperty(window.location, "href", {
+					get: () => locationHref,
+					set: (value) => {
+						locationHref = value;
+					},
+					configurable: true,
+				});
+
+				vi.mocked(fetch).mockResolvedValueOnce(
+					createMockResponse(null, {
+						headers: {
+							"X-Client-Redirect": "https://external.com",
+						},
+					}),
+				);
+
+				await submit("/api/action", { method: "POST" });
+				await vi.runAllTimersAsync();
+
+				// Should do a hard redirect to external URL
+				expect(locationHref).toBe("https://external.com/");
 			});
 
 			it("should auto-revalidate after non-GET submission", async () => {

@@ -1,4 +1,4 @@
-package securestring
+package securebytes
 
 import (
 	"crypto/rand"
@@ -10,10 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/river-now/river/kit/bytesutil"
 	"github.com/river-now/river/kit/cryptoutil"
 	"github.com/river-now/river/kit/keyset"
-	"github.com/river-now/river/kit/securebytes"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -39,11 +37,11 @@ func mustKeys(t *testing.T, n int) *keyset.Keyset {
 
 func roundTrip[T comparable](t *testing.T, value T) {
 	kcs := mustKeys(t, 1)
-	ss, err := Serialize(kcs, value)
+	sb, err := Serialize(kcs, value)
 	if err != nil {
 		t.Fatalf("Serialize failed for value %v: %v", value, err)
 	}
-	got, err := Parse[T](kcs, ss)
+	got, err := Parse[T](kcs, sb)
 	if err != nil {
 		t.Fatalf("Parse failed for value %v: %v", value, err)
 	}
@@ -52,7 +50,25 @@ func roundTrip[T comparable](t *testing.T, value T) {
 	}
 }
 
-func TestSecureString_RoundTrip(t *testing.T) {
+func roundTripBytes(t *testing.T, value []byte) {
+	kcs := mustKeys(t, 1)
+	sb, err := Serialize(kcs, value)
+	if err != nil {
+		t.Fatalf("Serialize failed for byte slice: %v", err)
+	}
+	got, err := Parse[[]byte](kcs, sb)
+	if err != nil {
+		t.Fatalf("Parse failed for byte slice: %v", err)
+	}
+	if len(value) == 0 && len(got) == 0 {
+		return // Both empty, consider it a match
+	}
+	if !reflect.DeepEqual(got, value) {
+		t.Fatalf("round‑trip mismatch for bytes: want %v, got %v", value, got)
+	}
+}
+
+func TestSecureBytes_RoundTrip(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
 		roundTrip(t, "hello world")
 	})
@@ -68,9 +84,14 @@ func TestSecureString_RoundTrip(t *testing.T) {
 		}
 		roundTrip(t, demo{A: 7, B: "seven"})
 	})
+
+	t.Run("byte slice", func(t *testing.T) {
+		data := []byte("raw byte data")
+		roundTripBytes(t, data)
+	})
 }
 
-func TestSecureString_RoundTrip_PointerTypes(t *testing.T) {
+func TestSecureBytes_RoundTrip_PointerTypes(t *testing.T) {
 	kcs := mustKeys(t, 1)
 
 	type demoPtrStruct struct {
@@ -80,12 +101,12 @@ func TestSecureString_RoundTrip_PointerTypes(t *testing.T) {
 
 	t.Run("pointer to struct", func(t *testing.T) {
 		original := &demoPtrStruct{Name: "TestPtr", Value: 123}
-		ss, err := Serialize(kcs, original)
+		sb, err := Serialize(kcs, original)
 		if err != nil {
 			t.Fatalf("Serialize failed for pointer to struct: %v", err)
 		}
 
-		got, err := Parse[*demoPtrStruct](kcs, ss)
+		got, err := Parse[*demoPtrStruct](kcs, sb)
 		if err != nil {
 			t.Fatalf("Parse failed for pointer to struct: %v", err)
 		}
@@ -102,11 +123,11 @@ func TestSecureString_RoundTrip_PointerTypes(t *testing.T) {
 		strValue := "hello pointer"
 		original := &strValue
 
-		ss, err := Serialize(kcs, original)
+		sb, err := Serialize(kcs, original)
 		if err != nil {
 			t.Fatalf("Serialize failed for pointer to string: %v", err)
 		}
-		got, err := Parse[*string](kcs, ss)
+		got, err := Parse[*string](kcs, sb)
 		if err != nil {
 			t.Fatalf("Parse failed for pointer to string: %v", err)
 		}
@@ -127,54 +148,45 @@ func TestSecureString_RoundTrip_PointerTypes(t *testing.T) {
 	})
 }
 
-func TestSecureString_WrongKeyFails(t *testing.T) {
+func TestSecureBytes_WrongKeyFails(t *testing.T) {
 	good := mustKeys(t, 1)
 	bad := mustKeys(t, 1)
 
-	ss, err := Serialize(good, "secret data")
+	sb, err := Serialize(good, "secret data")
 	if err != nil {
 		t.Fatalf("Serialize failed: %v", err)
 	}
-	if _, err = Parse[string](bad, ss); err == nil {
+	if _, err = Parse[string](bad, sb); err == nil {
 		t.Fatalf("expected decryption failure with wrong key")
 	}
 }
 
-func TestSecureString_SizeLimits(t *testing.T) {
+func TestSecureBytes_SizeLimits(t *testing.T) {
 	kcs := mustKeys(t, 1)
 
 	t.Run("Serialize payload too large", func(t *testing.T) {
-		big := make([]byte, securebytes.MaxSize+1)
+		big := make([]byte, MaxSize+1)
 		if _, err := Serialize(kcs, big); err == nil {
 			t.Fatalf("expected Serialize to fail for payload >1 MiB")
 		}
 	})
 
-	t.Run("Parse SecureString too large", func(t *testing.T) {
-		baseSizeForOver1MBDecoded := securebytes.MaxSize - 100
-		payloadJustUnderLimitEncoded := make([]byte, baseSizeForOver1MBDecoded/3*4+3)
-		rand.Read(payloadJustUnderLimitEncoded)
-		for i, char := range payloadJustUnderLimitEncoded {
-			payloadJustUnderLimitEncoded[i] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[char%64]
+	t.Run("Parse SecureBytes too large", func(t *testing.T) {
+		// Create a SecureBytes that's too large
+		oversized := make([]byte, MaxSize+1)
+		if _, err := Parse[string](kcs, SecureBytes(oversized)); err == nil {
+			t.Fatalf("expected Parse to fail for oversized SecureBytes")
 		}
-		oversizeUnderlyingData := make([]byte, securebytes.MaxSize)
-		ss := SecureString(base64.StdEncoding.EncodeToString(oversizeUnderlyingData) + "extraPaddingMakesItTooLong")
-		if len(ss) <= MaxBase64Size {
-			t.Logf("Generated SecureString length %d, limit %d. Adjusting to ensure it's over.", len(ss), MaxBase64Size)
-			paddingNeeded := (MaxBase64Size - len(ss)) + 10
-			if paddingNeeded <= 0 {
-				paddingNeeded = 10
-			}
-			ss = SecureString(string(ss) + strings.Repeat("A", paddingNeeded))
-		}
+	})
 
-		if _, err := Parse[string](kcs, ss); err == nil {
-			t.Fatalf("expected Parse to fail for oversized base64 input (len(ss) check)")
+	t.Run("Parse with empty SecureBytes", func(t *testing.T) {
+		if _, err := Parse[string](kcs, SecureBytes{}); err == nil {
+			t.Fatalf("expected Parse to fail for empty SecureBytes")
 		}
 	})
 }
 
-func TestSecureString_KeyRotation(t *testing.T) {
+func TestSecureBytes_KeyRotation(t *testing.T) {
 	oldKeyContainer := mustKeys(t, 1)
 	newKeyContainer := mustKeys(t, 1)
 
@@ -188,12 +200,12 @@ func TestSecureString_KeyRotation(t *testing.T) {
 	rotatedKeys, _ := keyset.FromUnwrapped(keyset.UnwrappedKeyset{uNew[0], uOld[0]})
 
 	value := "sensitive data for rotation"
-	ss, err := Serialize(oldKeyContainer, value)
+	sb, err := Serialize(oldKeyContainer, value)
 	if err != nil {
 		t.Fatalf("Serialize with oldKey failed: %v", err)
 	}
 
-	got, err := Parse[string](rotatedKeys, ss)
+	got, err := Parse[string](rotatedKeys, sb)
 	if err != nil {
 		t.Fatalf("Parse with rotated keys failed: %v", err)
 	}
@@ -202,12 +214,12 @@ func TestSecureString_KeyRotation(t *testing.T) {
 	}
 
 	valueNew := "new sensitive data"
-	ssNew, err := Serialize(newKeyContainer, valueNew)
+	sbNew, err := Serialize(newKeyContainer, valueNew)
 	if err != nil {
 		t.Fatalf("Serialize with newKey failed: %v", err)
 	}
 	oldFirstRotatedKeys, _ := keyset.FromUnwrapped(keyset.UnwrappedKeyset{uOld[0], uNew[0]})
-	gotNew, err := Parse[string](oldFirstRotatedKeys, ssNew)
+	gotNew, err := Parse[string](oldFirstRotatedKeys, sbNew)
 	if err != nil {
 		t.Fatalf("Parse with oldFirstRotatedKeys failed: %v", err)
 	}
@@ -216,7 +228,7 @@ func TestSecureString_KeyRotation(t *testing.T) {
 	}
 }
 
-func TestSecureString_EmptyInput(t *testing.T) {
+func TestSecureBytes_EmptyInput(t *testing.T) {
 	kcs := mustKeys(t, 1)
 
 	t.Run("empty string", func(t *testing.T) {
@@ -233,62 +245,62 @@ func TestSecureString_EmptyInput(t *testing.T) {
 			t.Fatalf("expected error when serializing nil (interface{}(nil))")
 		}
 	})
+
+	t.Run("empty byte slice", func(t *testing.T) {
+		emptySlice := []byte{}
+		roundTripBytes(t, emptySlice)
+	})
 }
 
-func TestSecureString_InvalidInputs(t *testing.T) {
+func TestSecureBytes_InvalidInputs(t *testing.T) {
 	kcsValid := mustKeys(t, 1)
 	validValue := "some test data for invalid inputs"
-	ssValid, errSerialize := Serialize(kcsValid, validValue)
+	sbValid, errSerialize := Serialize(kcsValid, validValue)
 	if errSerialize != nil {
-		t.Fatalf("Setup: Serialize for TestSecureString_InvalidInputs failed: %v", errSerialize)
+		t.Fatalf("Setup: Serialize for TestSecureBytes_InvalidInputs failed: %v", errSerialize)
 	}
 
-	t.Run("Parse with invalid base64 SecureString", func(t *testing.T) {
-		ss := SecureString("not-valid-base64!@#$%^")
-		if _, err := Parse[string](kcsValid, ss); err == nil {
-			t.Fatalf("expected error for invalid base64 SecureString")
-		}
-	})
-
 	t.Run("Parse tampered ciphertext", func(t *testing.T) {
-		ciphertext, err := bytesutil.FromBase64(string(ssValid))
-		if err != nil {
-			t.Fatalf("Setup: FromBase64 for tampering test failed: %v", err)
-		}
-
-		if len(ciphertext) == 0 {
+		if len(sbValid) == 0 {
 			t.Skip("Skipping tamper test for zero-length ciphertext, which is unexpected.")
 		}
 
-		tamperedCiphertext := make([]byte, len(ciphertext))
-		copy(tamperedCiphertext, ciphertext)
+		tamperedCiphertext := make([]byte, len(sbValid))
+		copy(tamperedCiphertext, sbValid)
 
 		idxToTamper := len(tamperedCiphertext) / 2
 		tamperedCiphertext[idxToTamper] = tamperedCiphertext[idxToTamper] ^ 0x01
 
-		tamperedSS := SecureString(bytesutil.ToBase64(tamperedCiphertext))
-
-		if _, err := Parse[string](kcsValid, tamperedSS); err == nil {
+		if _, err := Parse[string](kcsValid, SecureBytes(tamperedCiphertext)); err == nil {
 			t.Fatalf("expected error for tampered ciphertext")
 		}
 	})
 
 	t.Run("Parse with no keys", func(t *testing.T) {
 		noKeys := &keyset.Keyset{}
-		if _, err := Parse[string](noKeys, ssValid); err == nil {
+		if _, err := Parse[string](noKeys, sbValid); err == nil {
 			t.Fatalf("expected error when parsing with no keys")
 		}
 	})
 
 	t.Run("Parse with only nil keys", func(t *testing.T) {
 		nilKeys, _ := keyset.FromUnwrapped(keyset.UnwrappedKeyset{nil, nil})
-		if _, err := Parse[string](nilKeys, ssValid); err == nil {
+		if _, err := Parse[string](nilKeys, sbValid); err == nil {
 			t.Fatalf("expected error for only nil keys, as no valid key would be found")
+		}
+	})
+
+	t.Run("Parse with truncated ciphertext", func(t *testing.T) {
+		if len(sbValid) > 10 {
+			truncated := sbValid[:10]
+			if _, err := Parse[string](kcsValid, truncated); err == nil {
+				t.Fatalf("expected error for truncated ciphertext")
+			}
 		}
 	})
 }
 
-func TestSecureString_Version(t *testing.T) {
+func TestSecureBytes_Version(t *testing.T) {
 	kcs := mustKeys(t, 1)
 	uks := kcs.Unwrap()
 	if uks[0] == nil {
@@ -296,17 +308,13 @@ func TestSecureString_Version(t *testing.T) {
 	}
 
 	value := "test message for versioning"
-	ss, err := Serialize(kcs, value)
+	sb, err := Serialize(kcs, value)
 	if err != nil {
 		t.Fatalf("Serialize failed: %v", err)
 	}
 
-	ciphertext, err := bytesutil.FromBase64(string(ss))
-	if err != nil {
-		t.Fatalf("FromBase64 failed: %v", err)
-	}
-
-	plaintext, err := cryptoutil.DecryptSymmetricXChaCha20Poly1305(ciphertext, uks[0])
+	// Manually decrypt to access version byte
+	plaintext, err := cryptoutil.DecryptSymmetricXChaCha20Poly1305(sb, uks[0])
 	if err != nil {
 		t.Fatalf("Manual DecryptSymmetricXChaCha20Poly1305 failed: %v", err)
 	}
@@ -315,28 +323,27 @@ func TestSecureString_Version(t *testing.T) {
 		t.Fatal("Manual decryption resulted in empty plaintext")
 	}
 	originalVersion := plaintext[0]
-	plaintext[0] = 99
+	plaintext[0] = 99 // Invalid version
 
 	modifiedCiphertext, err := cryptoutil.EncryptSymmetricXChaCha20Poly1305(plaintext, uks[0])
 	if err != nil {
 		t.Fatalf("Manual EncryptSymmetricXChaCha20Poly1305 failed: %v", err)
 	}
-	modifiedSS := SecureString(bytesutil.ToBase64(modifiedCiphertext))
 
-	_, err = Parse[string](kcs, modifiedSS)
+	_, err = Parse[string](kcs, SecureBytes(modifiedCiphertext))
 	if err == nil {
 		t.Fatalf("expected version error when parsing with modified version byte")
 	}
+
+	// Restore and verify it works again
 	plaintext[0] = originalVersion
 	validCiphertextAgain, _ := cryptoutil.EncryptSymmetricXChaCha20Poly1305(plaintext, uks[0])
-	validSSAgain := SecureString(bytesutil.ToBase64(validCiphertextAgain))
-	if _, err := Parse[string](kcs, validSSAgain); err != nil {
+	if _, err := Parse[string](kcs, SecureBytes(validCiphertextAgain)); err != nil {
 		t.Fatalf("Failed to Parse with original version after modification test: %v", err)
 	}
-
 }
 
-func TestSecureString_ComplexTypes(t *testing.T) {
+func TestSecureBytes_ComplexTypes(t *testing.T) {
 	kcs := mustKeys(t, 1)
 
 	t.Run("time serialization", func(t *testing.T) {
@@ -351,13 +358,13 @@ func TestSecureString_ComplexTypes(t *testing.T) {
 			Updated: now.Add(24 * time.Hour),
 		}
 
-		ss, err := Serialize(kcs, original)
+		sb, err := Serialize(kcs, original)
 		if err != nil {
 			t.Fatalf("Serialize failed for TimeData: %v", err)
 		}
 
 		var decoded TimeData
-		decoded, err = Parse[TimeData](kcs, ss)
+		decoded, err = Parse[TimeData](kcs, sb)
 		if err != nil {
 			t.Fatalf("Parse failed for TimeData: %v", err)
 		}
@@ -383,9 +390,48 @@ func TestSecureString_ComplexTypes(t *testing.T) {
 			t.Fatalf("expected error when serializing function")
 		}
 	})
+
+	t.Run("nested structures", func(t *testing.T) {
+		type Inner struct {
+			Data []byte
+			ID   int
+		}
+		type Outer struct {
+			Name  string
+			Inner Inner
+			Tags  []string
+		}
+
+		original := Outer{
+			Name: "test",
+			Inner: Inner{
+				Data: []byte("secret data"),
+				ID:   12345,
+			},
+			Tags: []string{"tag1", "tag2", "tag3"},
+		}
+
+		sb, err := Serialize(kcs, original)
+		if err != nil {
+			t.Fatalf("Serialize failed for nested struct: %v", err)
+		}
+
+		var decoded Outer
+		decoded, err = Parse[Outer](kcs, sb)
+		if err != nil {
+			t.Fatalf("Parse failed for nested struct: %v", err)
+		}
+
+		if decoded.Name != original.Name ||
+			decoded.Inner.ID != original.Inner.ID ||
+			!reflect.DeepEqual(decoded.Inner.Data, original.Inner.Data) ||
+			!reflect.DeepEqual(decoded.Tags, original.Tags) {
+			t.Fatalf("nested struct mismatch: want %+v, got %+v", original, decoded)
+		}
+	})
 }
 
-func TestSecureString_Concurrency(t *testing.T) {
+func TestSecureBytes_Concurrency(t *testing.T) {
 	kcs := mustKeys(t, 3)
 
 	const numGoroutines = 50
@@ -403,13 +449,13 @@ func TestSecureString_Concurrency(t *testing.T) {
 				value := fmt.Sprintf("concurrent-test-gopher-%d-iter-%d", gopherID, j)
 				kcsForGoroutine := kcs
 
-				ss, err := Serialize(kcsForGoroutine, value)
+				sb, err := Serialize(kcsForGoroutine, value)
 				if err != nil {
 					errChan <- fmt.Errorf("goroutine %d: Serialize error: %w", gopherID, err)
 					return
 				}
 
-				got, err := Parse[string](kcsForGoroutine, ss)
+				got, err := Parse[string](kcsForGoroutine, sb)
 				if err != nil {
 					errChan <- fmt.Errorf("goroutine %d: Parse error: %w", gopherID, err)
 					return
@@ -436,18 +482,18 @@ func TestSecureString_Concurrency(t *testing.T) {
 	}
 }
 
-func TestSecureString_CornerCases(t *testing.T) {
+func TestSecureBytes_CornerCases(t *testing.T) {
 	t.Run("many keys for decryption", func(t *testing.T) {
 		numKeys := 20
 		keyChain := mustKeys(t, numKeys)
 		value := "test with many keys decryption"
 
-		ss, err := Serialize(keyChain, value)
+		sb, err := Serialize(keyChain, value)
 		if err != nil {
 			t.Fatalf("Serialize failed: %v", err)
 		}
 
-		got, err := Parse[string](keyChain, ss)
+		got, err := Parse[string](keyChain, sb)
 		if err != nil {
 			t.Fatalf("Parse failed with many keys: %v", err)
 		}
@@ -459,12 +505,12 @@ func TestSecureString_CornerCases(t *testing.T) {
 			lastKeyIndex := numKeys - 1
 			keysWithLastActive, _ := keyset.FromUnwrapped(keyset.UnwrappedKeyset{keyChain.Unwrap()[lastKeyIndex]})
 
-			ssLast, err := Serialize(keysWithLastActive, value)
+			sbLast, err := Serialize(keysWithLastActive, value)
 			if err != nil {
 				t.Fatalf("Serialize with last key failed: %v", err)
 			}
 
-			gotLast, err := Parse[string](keyChain, ssLast)
+			gotLast, err := Parse[string](keyChain, sbLast)
 			if err != nil {
 				t.Fatalf("Parse (last key active) failed: %v", err)
 			}
@@ -477,18 +523,19 @@ func TestSecureString_CornerCases(t *testing.T) {
 	t.Run("payload nearly max size for Serialize", func(t *testing.T) {
 		kcs := mustKeys(t, 1)
 
+		// Calculate overhead
 		gobOverheadEstimate := 100
 		xchachaOverhead := chacha20poly1305.Overhead
 		versionByteOverhead := 1
 		totalOverheadEstimate := gobOverheadEstimate + xchachaOverhead + versionByteOverhead
 
-		if totalOverheadEstimate >= securebytes.MaxSize {
-			t.Skip("Overhead estimate is too large for this test relative to securebytes.MaxSize")
+		if totalOverheadEstimate >= MaxSize {
+			t.Skip("Overhead estimate is too large for this test relative to MaxSize")
 		}
 
-		safePayloadSize := securebytes.MaxSize - totalOverheadEstimate - 1
+		safePayloadSize := MaxSize - totalOverheadEstimate - 1
 		if safePayloadSize <= 0 {
-			t.Skipf("Calculated safePayloadSize %d is too small, check estimates or securebytes.MaxSize", safePayloadSize)
+			t.Skipf("Calculated safePayloadSize %d is too small, check estimates or MaxSize", safePayloadSize)
 		}
 
 		largeData := make([]byte, safePayloadSize)
@@ -496,14 +543,32 @@ func TestSecureString_CornerCases(t *testing.T) {
 			t.Fatalf("Failed to generate random data for large payload test: %v", err)
 		}
 
-		ss, err := Serialize(kcs, largeData)
+		sb, err := Serialize(kcs, largeData)
 		if err != nil {
 			t.Fatalf("Failed to serialize large but valid payload (size %d): %v", safePayloadSize, err)
 		}
-		ciphertext, _ := base64.StdEncoding.DecodeString(string(ss))
-		t.Logf("Nearly max size test: payload %d bytes, ciphertext %d bytes (limit %d)", safePayloadSize, len(ciphertext), securebytes.MaxSize)
-		if len(ciphertext) > securebytes.MaxSize {
-			t.Errorf("Ciphertext for nearly max size payload exceeded limit: len %d", len(ciphertext))
+		t.Logf("Nearly max size test: payload %d bytes, ciphertext %d bytes (limit %d)", safePayloadSize, len(sb), MaxSize)
+		if len(sb) > MaxSize {
+			t.Errorf("Ciphertext for nearly max size payload exceeded limit: len %d", len(sb))
+		}
+	})
+}
+
+func TestSecureBytes_InvalidKeyset(t *testing.T) {
+	t.Run("Serialize with invalid keyset", func(t *testing.T) {
+		invalidKs := &keyset.Keyset{} // Empty keyset
+		if _, err := Serialize(invalidKs, "test"); err == nil {
+			t.Fatalf("expected error when serializing with invalid keyset")
+		}
+	})
+
+	t.Run("Parse with invalid keyset", func(t *testing.T) {
+		kcs := mustKeys(t, 1)
+		sb, _ := Serialize(kcs, "test")
+
+		invalidKs := &keyset.Keyset{} // Empty keyset
+		if _, err := Parse[string](invalidKs, sb); err == nil {
+			t.Fatalf("expected error when parsing with invalid keyset")
 		}
 	})
 }

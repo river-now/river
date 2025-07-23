@@ -99,26 +99,12 @@ func TestSyncMap_Range(t *testing.T) {
 	}
 }
 
-func TestSyncMap_TypeSafety(t *testing.T) {
-	var m SyncMap[string, int]
-
-	// Test storing and loading with the correct types
-	m.Store("key", 42)
-	value, ok := m.Load("key")
-	if !ok || value != 42 {
-		t.Errorf("expected 42, got %d", value)
-	}
-
-	// Uncommenting the following line should cause a compile-time error due to type mismatch
-	// m.Store(123, "value")
-}
-
 func TestSyncMap_Concurrency(t *testing.T) {
 	var m SyncMap[string, int]
 	wg := sync.WaitGroup{}
 
 	// Test concurrent access
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -134,7 +120,7 @@ func TestSyncMap_Concurrency(t *testing.T) {
 	wg.Wait()
 
 	// Test that all keys are present after concurrent access
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		key := "key" + strconv.Itoa(i)
 		value, ok := m.Load(key)
 		if !ok || value != i {

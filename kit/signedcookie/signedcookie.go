@@ -169,24 +169,19 @@ func (sc *SignedCookie[T]) NewDeletionCookie() *http.Cookie {
 // VerifyAndReadCookieValue retrieves and verifies the value of the signed cookie from the request.
 // It returns the decoded value of type T or an error if retrieval or verification fails.
 func (sc *SignedCookie[T]) VerifyAndReadCookieValue(r *http.Request) (T, error) {
-	var instance T
+	var zeroT T
 
 	value, err := sc.Manager.VerifyAndReadCookieValue(r, sc.BaseCookie.Name)
 	if err != nil {
-		return instance, err
+		return zeroT, err
 	}
 
 	dataBytes, err := bytesutil.FromBase64(value)
 	if err != nil {
-		return instance, err
+		return zeroT, err
 	}
 
-	err = bytesutil.FromGobInto(dataBytes, &instance)
-	if err != nil {
-		return instance, err
-	}
-
-	return instance, nil
+	return bytesutil.FromGob[T](dataBytes)
 }
 
 // newSecureCookieWithoutValue creates a new secure cookie with the provided name, expiration, and base settings.

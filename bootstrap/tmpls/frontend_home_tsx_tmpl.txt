@@ -1,6 +1,6 @@
 import { useLoaderData, type RouteProps } from "./app_utils.ts";
 
-export function Home(props: RouteProps<"/">) {
+export function Home(props: RouteProps<"/_index">) {
 	const loaderData = useLoaderData(props);
 
 	return (

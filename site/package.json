@@ -2,7 +2,7 @@
 	"type": "module",
 	"devDependencies": {
 		"@cloudflare/containers": "^0.0.13",
-		"@tailwindcss/cli": "^4.1.5",
+		"@tailwindcss/vite": "^4.1.11",
 		"@types/nprogress": "^0.2.3",
 		"highlight.js": "^11.11.1",
 		"nprogress": "^0.2.0",

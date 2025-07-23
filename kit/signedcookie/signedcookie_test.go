@@ -1,7 +1,6 @@
 package signedcookie
 
 import (
-	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -9,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/river-now/river/kit/bytesutil"
 	"github.com/river-now/river/kit/keyset"
 )
 
@@ -380,7 +380,7 @@ func TestManagerReadInvalidSignature(t *testing.T) {
 	secrets := keyset.RootSecrets{aSecret}
 	manager, _ := NewManager(secrets)
 
-	invalidSignedValue := base64.StdEncoding.EncodeToString([]byte("invalid-signature"))
+	invalidSignedValue := bytesutil.ToBase64([]byte("invalid-signature"))
 
 	_, err := manager.verifyAndReadValue(invalidSignedValue)
 	if err == nil {
@@ -930,7 +930,7 @@ func TestManagerErrorCasesWithEncryption(t *testing.T) {
 	})
 
 	t.Run("ReadInvalidEncryptedValue", func(t *testing.T) {
-		invalidValue := base64.StdEncoding.EncodeToString([]byte{1}) // Invalid prefix
+		invalidValue := bytesutil.ToBase64([]byte{1}) // Invalid prefix
 		_, err := manager.verifyAndReadValue(invalidValue)
 		if err == nil {
 			t.Errorf("Expected error when reading invalid encrypted value, but got nil")

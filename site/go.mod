@@ -13,12 +13,12 @@ require (
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
-	github.com/evanw/esbuild v0.25.5 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.9.0 // indirect
+	github.com/evanw/esbuild v0.25.6 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/crypto v0.40.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )

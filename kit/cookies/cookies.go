@@ -212,7 +212,7 @@ func (c *secureCookie[T]) Get(r *http.Request) (T, error) {
 	if cookie.Value == "" {
 		return *new(T), fmt.Errorf("cookie value is empty")
 	}
-	return securestring.Deserialize[T](c.mgr.cfg.GetKeyset(), securestring.SecureString(cookie.Value))
+	return securestring.Parse[T](c.mgr.cfg.GetKeyset(), securestring.SecureString(cookie.Value))
 }
 
 func (c *secureCookie[T]) NewDeletion() *http.Cookie {

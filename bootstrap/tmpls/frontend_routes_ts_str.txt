@@ -3,4 +3,4 @@ import type { RiverRoutes } from "river.now/client";
 declare const routes: RiverRoutes;
 export default routes;
 
-routes.Add("/", import("./home.tsx"), "Home");
+routes.Add("/_index", import("./home.tsx"), "Home");

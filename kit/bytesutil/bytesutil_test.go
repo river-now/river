@@ -12,29 +12,6 @@ type TestStruct struct {
 	Age  int
 }
 
-func TestRandom(t *testing.T) {
-	// Test generating random bytes
-	byteLen := 16
-	randomBytes, err := Random(byteLen)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if len(randomBytes) != byteLen {
-		t.Fatalf("expected random byte slice of length %d, got %d", byteLen, len(randomBytes))
-	}
-
-	// Test randomness by generating another set and comparing
-	anotherRandomBytes, err := Random(byteLen)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if bytes.Equal(randomBytes, anotherRandomBytes) {
-		t.Fatalf("expected different random byte slices, got identical slices")
-	}
-}
-
 func TestFromBase64(t *testing.T) {
 	// Test decoding a valid base64 string
 	originalBytes := []byte("test message")
@@ -113,16 +90,32 @@ func TestFromGobInto(t *testing.T) {
 	}
 }
 
-func TestEdgeCases(t *testing.T) {
-	// Test Random with a byte length of 0
-	zeroLengthBytes, err := Random(0)
+func TestFromGob(t *testing.T) {
+	// Test decoding a gob-encoded byte slice into a struct
+	originalStruct := TestStruct{Name: "John", Age: 30}
+
+	gobBytes, err := ToGob(originalStruct)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if len(zeroLengthBytes) != 0 {
-		t.Fatalf("expected empty byte slice, got %d bytes", len(zeroLengthBytes))
+
+	decodedStruct, err := FromGob[TestStruct](gobBytes)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
 	}
 
+	if originalStruct != decodedStruct {
+		t.Fatalf("expected decoded struct to match original struct")
+	}
+
+	// Test decoding a nil byte slice
+	_, err = FromGob[TestStruct](nil)
+	if err == nil {
+		t.Fatalf("expected error for nil gobBytes, got nil")
+	}
+}
+
+func TestEdgeCases(t *testing.T) {
 	// Test FromBase64 with an empty string
 	emptyBytes, err := FromBase64("")
 	if err != nil {
@@ -154,6 +147,12 @@ func TestEdgeCases(t *testing.T) {
 	// Test FromGobInto with empty gob bytes
 	var decodedStruct TestStruct
 	err = FromGobInto([]byte{}, &decodedStruct)
+	if err == nil {
+		t.Fatalf("expected error for empty gob bytes, got nil")
+	}
+
+	// Test FromGob with empty gob bytes
+	_, err = FromGob[TestStruct]([]byte{})
 	if err == nil {
 		t.Fatalf("expected error for empty gob bytes, got nil")
 	}

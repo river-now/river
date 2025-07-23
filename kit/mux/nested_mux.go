@@ -65,6 +65,10 @@ func (nr *NestedRouter) GetSplatSegmentRune() rune {
 	return nr.matcher.GetSplatSegmentRune()
 }
 
+func (nr *NestedRouter) GetMatcher() *matcher.Matcher {
+	return nr.matcher
+}
+
 type NestedOptions struct {
 	DynamicParamPrefixRune rune
 	SplatSegmentRune       rune
