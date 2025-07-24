@@ -8,7 +8,8 @@ export function RiverLink(
 		>,
 ) {
 	const finalLinkProps = createMemo(() => makeFinalLinkProps(props));
-	const { prefetch, scrollToTop, ...rest } = props;
+	// oxlint-disable-next-line no-unused-vars
+	const { prefetch, scrollToTop, replace, ...rest } = props;
 
 	return (
 		<a

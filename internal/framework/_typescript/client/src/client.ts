@@ -103,6 +103,7 @@ type GetPrefetchHandlersInput<E extends Event> = LinkOnClickCallbacksBase<E> & {
 	href: string;
 	delayMs?: number;
 	scrollToTop?: boolean;
+	replace?: boolean;
 };
 
 type PartialWaitFnJSON = Pick<
@@ -152,6 +153,7 @@ interface NavigationEntry {
 	targetUrl: string; // URL this navigation is targeting
 	originUrl: string; // URL when navigation started (for revalidation)
 	scrollToTop?: boolean;
+	replace?: boolean;
 }
 
 interface SubmissionEntry {
@@ -172,26 +174,26 @@ class NavigationStateManager {
 		}, 5);
 	}
 
-	async navigate(props: NavigateProps): Promise<void> {
+	async navigate(props: NavigateProps): Promise<{ didNavigate: boolean }> {
 		const control = this.beginNavigation(props);
 
 		try {
 			const result = await control.promise;
 			if (!result) {
-				return;
+				return { didNavigate: false };
 			}
 
 			// Process based on navigation entry state
 			const targetUrl = new URL(props.href, window.location.href).href;
 			const entry = this._navigations.get(targetUrl);
 			if (!entry) {
-				return;
+				return { didNavigate: false };
 			}
 
 			if (entry.intent === "none" && entry.type === "prefetch") {
 				// Prefetch complete but not navigating
 				this.transitionPhase(targetUrl, "complete");
-				return;
+				return { didNavigate: false };
 			}
 
 			if (entry.intent === "navigate" || entry.intent === "revalidate") {
@@ -206,7 +208,9 @@ class NavigationStateManager {
 			if (!isAbortError(error)) {
 				LogError("Navigate error:", error);
 			}
+			return { didNavigate: false };
 		}
+		return { didNavigate: true };
 	}
 
 	beginNavigation(props: NavigateProps): NavigationControl {
@@ -244,6 +248,7 @@ class NavigationStateManager {
 					type: "userNavigation",
 					intent: "navigate",
 					scrollToTop: props.scrollToTop,
+					replace: props.replace,
 				});
 				return existing.control;
 			}
@@ -333,6 +338,7 @@ class NavigationStateManager {
 			targetUrl,
 			originUrl: window.location.href,
 			scrollToTop: props.scrollToTop,
+			replace: props.replace,
 		};
 
 		this.setNavigation(targetUrl, entry);
@@ -342,7 +348,7 @@ class NavigationStateManager {
 	private upgradeNavigation(
 		href: string,
 		updates: Partial<
-			Pick<NavigationEntry, "type" | "intent" | "scrollToTop">
+			Pick<NavigationEntry, "type" | "intent" | "scrollToTop" | "replace">
 		>,
 	): void {
 		const existing = this._navigations.get(href);
@@ -539,7 +545,7 @@ class NavigationStateManager {
 								href: entry.targetUrl,
 								scrollStateToRestore:
 									result.props.scrollStateToRestore,
-								replace: result.props.replace,
+								replace: entry.replace || result.props.replace,
 								scrollToTop: entry.scrollToTop,
 							}
 						: undefined,
@@ -1053,7 +1059,10 @@ export function applyScrollState(state?: ScrollState): void {
 }
 
 export function makeLinkOnClickFn<E extends Event>(
-	callbacks: LinkOnClickCallbacks<E> & { scrollToTop?: boolean },
+	callbacks: LinkOnClickCallbacks<E> & {
+		scrollToTop?: boolean;
+		replace?: boolean;
+	},
 ) {
 	return async (e: E) => {
 		if (e.defaultPrevented) return;
@@ -1081,6 +1090,7 @@ export function makeLinkOnClickFn<E extends Event>(
 				href: anchor.href,
 				navigationType: "userNavigation",
 				scrollToTop: callbacks.scrollToTop,
+				replace: callbacks.replace,
 			});
 
 			if (!control.promise) return;
@@ -1200,7 +1210,10 @@ export function getPrefetchHandlers<E extends Event>(
 		}
 
 		// Use standard navigation -- it will upgrade the prefetch if it exists
-		await navigate(relativeURL, { scrollToTop: input.scrollToTop });
+		await navigate(relativeURL, {
+			scrollToTop: input.scrollToTop,
+			replace: input.replace,
+		});
 
 		if (input.afterRender) {
 			await input.afterRender(e);
@@ -1328,6 +1341,8 @@ export async function customHistoryListener({
 		saveScrollState();
 	}
 
+	let navigationSucceeded = true;
+
 	if (action === "POP") {
 		const newHash = location.hash.slice(1);
 
@@ -1341,15 +1356,29 @@ export async function customHistoryListener({
 		}
 
 		if (!popWithinSameDoc) {
-			await navigationStateManager.navigate({
+			const result = await navigationStateManager.navigate({
 				href: window.location.href,
 				navigationType: "browserHistory",
 				scrollStateToRestore: scrollStateManager.getState(location.key),
 			});
+
+			if (!result.didNavigate) {
+				navigationSucceeded = false;
+				LogError(
+					"Browser POP navigation failed, attempting hard reload of the destination.",
+				);
+
+				// This just reloads the current (failed) URL.
+				// It preserves the history stack and ensures no UI/URL mismatch,
+				// which could otherwise happen if a browser forward/back navigation fails
+				window.location.reload();
+			}
 		}
 	}
 
-	HistoryManager.updateLastKnownLocation(location);
+	if (navigationSucceeded) {
+		HistoryManager.updateLastKnownLocation(location);
+	}
 }
 
 /////////////////////////////////////////////////////////////////////
