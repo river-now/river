@@ -15,6 +15,7 @@ import (
 
 	"github.com/river-now/river/kit/fsutil"
 	"github.com/river-now/river/kit/htmlutil"
+	"github.com/river-now/river/kit/matcher"
 )
 
 const (
@@ -155,10 +156,12 @@ func (c *Config) getInitialPublicFileMapURL() (string, error) {
 		return "", err
 	}
 
-	return path.Join(
-		c._uc.Core.PublicPathPrefix,
-		c._dist.S().Static.S().Assets.S().Public.LastSegment(),
-		string(content),
+	return matcher.EnsureLeadingSlash(
+		path.Join(
+			c._uc.Core.PublicPathPrefix,
+			c._dist.S().Static.S().Assets.S().Public.LastSegment(),
+			string(content),
+		),
 	), nil
 }
 

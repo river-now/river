@@ -3,6 +3,7 @@ package app
 import (
 	"embed"
 	"net/http"
+	"path"
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/colorlog"
@@ -37,12 +38,9 @@ var River = &river.River{
 	},
 
 	GetDefaultHeadEls: func(r *http.Request) ([]*htmlutil.Element, error) {
-		root := "https://river.now" + r.URL.Path
-		imgURL := root + Wave.GetPublicURL("river-banner.webp")
-		currentURL := root
-		if r.URL.Path != "/" {
-			currentURL += r.URL.Path
-		}
+		root := "https://river.now"
+		currentURL := path.Join(root, r.URL.Path)
+		imgURL := path.Join(root, Wave.GetPublicURL("river-banner.webp"))
 
 		e := river.NewHeadEls()
 

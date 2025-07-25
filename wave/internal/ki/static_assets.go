@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"path"
 	"strings"
+
+	"github.com/river-now/river/kit/matcher"
 )
 
 type fileVal struct {
@@ -65,7 +67,12 @@ func (c *Config) getInitialPublicURL(originalPublicURL string) (string, error) {
 		c.Logger.Error(fmt.Sprintf(
 			"error getting public file map from gob for originalPublicURL %s: %v", originalPublicURL, err,
 		))
-		return path.Join(c._uc.Core.PublicPathPrefix, originalPublicURL), err
+		return matcher.EnsureLeadingSlash(
+			path.Join(
+				c._uc.Core.PublicPathPrefix,
+				originalPublicURL,
+			),
+		), err
 	}
 
 	return c.getInitialPublicURLInner(originalPublicURL, fileMapFromGob)
@@ -77,7 +84,9 @@ func (c *Config) getInitialPublicURLInner(originalPublicURL string, fileMapFromG
 	}
 
 	if hashedURL, existsInFileMap := fileMapFromGob[cleanURL(originalPublicURL)]; existsInFileMap {
-		return path.Join(c._uc.Core.PublicPathPrefix, hashedURL.Val), nil
+		return matcher.EnsureLeadingSlash(
+			path.Join(c._uc.Core.PublicPathPrefix, hashedURL.Val),
+		), nil
 	}
 
 	// If no hashed URL found, return the original URL
@@ -86,7 +95,9 @@ func (c *Config) getInitialPublicURLInner(originalPublicURL string, fileMapFromG
 		originalPublicURL,
 	))
 
-	return path.Join(c._uc.Core.PublicPathPrefix, originalPublicURL), nil
+	return matcher.EnsureLeadingSlash(
+		path.Join(c._uc.Core.PublicPathPrefix, originalPublicURL),
+	), nil
 }
 
 func publicURLsKeyMaker(x string) string { return x }

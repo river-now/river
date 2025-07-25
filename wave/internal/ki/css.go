@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/river-now/river/kit/htmlutil"
+	"github.com/river-now/river/kit/matcher"
 )
 
 const (
@@ -61,7 +62,9 @@ func (c *Config) getInitialStyleSheetURL() (string, error) {
 		return "", err
 	}
 
-	return path.Join(c._uc.Core.PublicPathPrefix, string(content)), nil
+	return matcher.EnsureLeadingSlash(
+		path.Join(c._uc.Core.PublicPathPrefix, string(content)),
+	), nil
 }
 
 func (c *Config) GetStyleSheetLinkElement() template.HTML {
