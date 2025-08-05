@@ -94,3 +94,8 @@ func InitBase(options InitOptions) (Base, error) {
 func SetDevMode() error {
 	return os.Setenv(ModeKey, ModeValueDev)
 }
+
+// Convenience wrapper over godotenv.Load
+func Load(filenames ...string) (err error) {
+	return godotenv.Load(filenames...)
+}

@@ -101,7 +101,6 @@ type Config struct {
 	StaticFSEmbedDirective string
 	ConfigBytes            []byte
 	Logger                 *slog.Logger
-	FilesToVendor          [][2]string // __TODO move to json config
 
 	dev
 	_runtime

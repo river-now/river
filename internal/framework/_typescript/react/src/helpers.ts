@@ -7,8 +7,13 @@ import {
 	type RiverRoutePropsGeneric,
 	type RiverUntypedLoader,
 	type UseRouterDataFunction,
+	type ParamsForPattern,
 } from "river.now/client";
-import { clientLoadersDataAtom, loadersDataAtom, routerDataAtom } from "./react.tsx";
+import {
+	clientLoadersDataAtom,
+	loadersDataAtom,
+	routerDataAtom,
+} from "./react.tsx";
 
 export type RiverRouteProps<
 	Loader extends RiverUntypedLoader = RiverUntypedLoader,
@@ -42,7 +47,9 @@ export function makeTypedUseLoaderData<Loader extends RiverUntypedLoader>() {
 	};
 }
 
-export function makeTypedUsePatternLoaderData<Loader extends RiverUntypedLoader>() {
+export function makeTypedUsePatternLoaderData<
+	Loader extends RiverUntypedLoader,
+>() {
 	return function usePatternData<Pattern extends string = string>(
 		pattern: Pattern,
 	): Extract<Loader, { pattern: Pattern }>["phantomOutputType"] | undefined {
@@ -80,10 +87,18 @@ export function makeTypedAddClientLoader<
 	return function addClientLoader<
 		Pattern extends OuterLoader["pattern"],
 		Loader extends Extract<OuterLoader, { pattern: Pattern }>,
-		RouterData = ReturnType<typeof getRouterData<RootData>>,
+		RouterData = ReturnType<
+			typeof getRouterData<
+				RootData,
+				Record<ParamsForPattern<OuterLoader, Pattern>, string>
+			>
+		>,
 		LoaderData = Loader["phantomOutputType"],
 		T = any,
-	>(p: Pattern, fn: (props: RouterData & { loaderData: LoaderData }) => Promise<T>) {
+	>(
+		p: Pattern,
+		fn: (props: RouterData & { loaderData: LoaderData }) => Promise<T>,
+	) {
 		(m as any)[p] = fn;
 
 		return function useClientLoaderData(

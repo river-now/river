@@ -3,6 +3,7 @@ package bytesutil
 
 import (
 	"bytes"
+	"encoding/base32"
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
@@ -10,13 +11,33 @@ import (
 )
 
 // FromBase64 decodes a base64-encoded string into a byte slice.
-func FromBase64(base64Str string) ([]byte, error) {
-	return base64.StdEncoding.DecodeString(base64Str)
+func FromBase64(s string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(s)
 }
 
 // ToBase64 encodes a byte slice into a base64-encoded string.
-func ToBase64(bytes []byte) string {
-	return base64.StdEncoding.EncodeToString(bytes)
+func ToBase64(b []byte) string {
+	return base64.StdEncoding.EncodeToString(b)
+}
+
+// FromBase64URLRaw decodes a base64 URL-safe encoded string into a byte slice without padding.
+func FromBase64URLRaw(s string) ([]byte, error) {
+	return base64.RawURLEncoding.DecodeString(s)
+}
+
+// ToBase64URLRaw encodes a byte slice into a base64 URL-safe encoded string without padding.
+func ToBase64URLRaw(b []byte) string {
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+// FromBase32Raw decodes a base32-encoded string into a byte slice without padding.
+func FromBase32Raw(s string) ([]byte, error) {
+	return base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(s)
+}
+
+// ToBase32Raw encodes a byte slice into a base32-encoded string without padding.
+func ToBase32Raw(b []byte) string {
+	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
 }
 
 // ToGob encodes an arbitrary value into a gob-encoded byte slice.

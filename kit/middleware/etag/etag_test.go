@@ -255,7 +255,7 @@ func TestGenerateETag(t *testing.T) {
 		h := md5.New()
 		h.Write(content)
 		strong := true
-		etag := generateETag(h, strong)
+		etag := generateETag(h, strong, http.Header{})
 
 		if !strings.HasPrefix(etag, `"`) || !strings.HasSuffix(etag, `"`) {
 			t.Errorf("Strong ETag should be wrapped in double quotes, got: %s", etag)
@@ -270,7 +270,7 @@ func TestGenerateETag(t *testing.T) {
 		h := md5.New()
 		h.Write(content)
 		strong := false
-		etag := generateETag(h, strong)
+		etag := generateETag(h, strong, http.Header{})
 
 		if !strings.HasPrefix(etag, `W/"`) || !strings.HasSuffix(etag, `"`) {
 			t.Errorf("Weak ETag should be wrapped in W/\"...\", got: %s", etag)
@@ -1317,3 +1317,6 @@ func TestSkipFunc(t *testing.T) {
 		t.Error("/ request should have ETag")
 	}
 }
+
+// __TODO
+func TestXRiverBuildIdHeaderChangesEtag(t *testing.T) {}

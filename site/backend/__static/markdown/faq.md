@@ -51,22 +51,22 @@ perhaps) this will be useful.
 ## Framework-controlled Route Data
 
 To access framework-controlled route data, you should make your own local
-`useRouteData` hook, like so:
+`useRouterData` hook, like so:
 
 ```ts
 import { makeTypedUseRouterData } from "river.now/react";
 import type { RiverLoader, RiverRootData } from "./river.gen.ts";
 
-export const useRouteData = makeTypedUseRouterData<
-  RiverLoader,
-  RiverRootData
+export const useRouterData = makeTypedUseRouterData<
+	RiverLoader,
+	RiverRootData
 >();
 ```
 
 Then you can call that in any component:
 
 ```ts
-const routeData = useRouteData();
+const routerData = useRouterData();
 ```
 
 If you want the route params to be strongly typed, you can either pass your
@@ -74,10 +74,10 @@ route props in (assuming _they_ are strongly typed) or pass a pattern type arg:
 
 ```ts
 // strongly typed from the props
-const routeData = useRouteData(props);
+const routerData = useRouterData(props);
 
 // strongly typed from the pattern type arg
-const routeData2 = useRouteData<"/:myDynamicSegment">();
+const routerData2 = useRouterData<"/:myDynamicSegment">();
 ```
 
 This returns an object containing your current `buildID`, an array of currently

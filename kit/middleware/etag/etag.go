@@ -54,7 +54,7 @@ func Auto(config ...*Config) func(http.Handler) http.Handler {
 				ew.WriteOriginalResponse()
 				return
 			}
-			etag := generateETag(ew.hash, configToUse.Strong)
+			etag := generateETag(ew.hash, configToUse.Strong, ew.headers)
 			ifNoneMatch := r.Header.Get("If-None-Match")
 			if ifNoneMatch != "" && etagMatches(ifNoneMatch, etag) {
 				respondNotModified(w, etag)
@@ -186,7 +186,11 @@ func canUseETag(ew *etagWriter) bool {
 	return true
 }
 
-func generateETag(h hash.Hash, strong bool) string {
+func generateETag(h hash.Hash, strong bool, headers http.Header) string {
+	if buildID := headers.Get("X-River-Build-Id"); buildID != "" {
+		h.Write([]byte(buildID))
+	}
+
 	sum := h.Sum(nil)
 	tag := hex.EncodeToString(sum)
 

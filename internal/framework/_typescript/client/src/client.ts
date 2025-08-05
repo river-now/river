@@ -564,7 +564,7 @@ class NavigationStateManager {
 	async submit<T = any>(
 		url: string | URL,
 		requestInit?: RequestInit,
-		options?: { dedupeKey?: string },
+		options?: SubmitOptions,
 	): Promise<{ success: true; data: T } | { success: false; error: string }> {
 		const abortController = new AbortController();
 		const submissionKey = options?.dedupeKey
@@ -631,7 +631,7 @@ class NavigationStateManager {
 			// Auto-revalidate for mutations
 			const isGET = getIsGETRequest(requestInit);
 			const redirected = redirectData?.status === "did";
-			if (!isGET && !redirected) {
+			if (!isGET && !redirected && options?.revalidate !== false) {
 				await revalidate();
 			}
 
@@ -1004,10 +1004,15 @@ export async function revalidate() {
 	});
 }
 
+export type SubmitOptions = {
+	dedupeKey?: string;
+	revalidate?: boolean;
+};
+
 export async function submit<T = any>(
 	url: string | URL,
 	requestInit?: RequestInit,
-	options?: { dedupeKey?: string },
+	options?: SubmitOptions,
 ): Promise<{ success: true; data: T } | { success: false; error: string }> {
 	return navigationStateManager.submit(url, requestInit, options);
 }
@@ -1528,7 +1533,6 @@ async function effectuateRedirectDataResult(
 	}
 
 	if (redirectData.shouldRedirectStrategy === "soft") {
-		// Use navigate() which will create a new navigation with redirect type
 		await navigationStateManager.navigate({
 			href: redirectData.href,
 			navigationType: "redirect",

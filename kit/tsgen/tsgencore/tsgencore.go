@@ -444,6 +444,10 @@ func (c *typeCollector) getTypeScriptType(t reflect.Type) string {
 	case reflect.Ptr:
 		return c.getTypeScriptType(t.Elem())
 	case reflect.Slice, reflect.Array:
+		// Byte slices are serialized as base64 by encoding/json
+		if t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
+			return "string"
+		}
 		return fmt.Sprintf("Array<%s>", c.getTypeScriptType(t.Elem()))
 	case reflect.Map:
 		return fmt.Sprintf("Record<%s, %s>", c.getTypeScriptType(t.Key()), c.getTypeScriptType(t.Elem()))

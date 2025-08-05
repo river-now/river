@@ -1,7 +1,5 @@
 import { serializeToSearchParams } from "river.now/kit/json";
-
-// __TODO -- update these helpers (and quickstart templates)
-// to use options obj with dedupeKey arg
+import type { SubmitOptions } from "./client.ts";
 
 export const apiHelper = {
 	toQueryOpts,
@@ -11,7 +9,10 @@ export const apiHelper = {
 	resolvePath,
 };
 
-type Props = SharedBase<string> & { input?: any; method?: string };
+type Props = SharedBase<string> & {
+	input?: any;
+	method?: string;
+};
 
 type APIClientHelperOpts = {
 	actionsRouterMountRoot: string;
@@ -68,6 +69,7 @@ type PatternIsDynamic<T extends string> =
 
 export type SharedBase<P extends string> = {
 	pattern: P;
+	options?: SubmitOptions;
 } & (PatternIsDynamic<P> extends true ? { path: string } : { path?: string });
 
 function resolvePath(props: SharedBase<string>) {

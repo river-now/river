@@ -48,7 +48,9 @@ export type RiverClientGlobal = shared & {
 	isTouchDevice: boolean;
 	patternToWaitFnMap: Record<
 		string,
-		(props: ReturnType<typeof getRouterData> & { loaderData: any }) => Promise<any>
+		(
+			props: ReturnType<typeof getRouterData> & { loaderData: any },
+		) => Promise<any>
 	>;
 	clientLoadersData: Array<any>;
 	defaultErrorBoundary: RouteErrorComponent;
@@ -60,10 +62,10 @@ export function __getRiverClientGlobal() {
 	function get<K extends keyof RiverClientGlobal>(key: K) {
 		return dangerousGlobalThis[RIVER_SYMBOL][key] as RiverClientGlobal[K];
 	}
-	function set<K extends keyof RiverClientGlobal, V extends RiverClientGlobal[K]>(
-		key: K,
-		value: V,
-	) {
+	function set<
+		K extends keyof RiverClientGlobal,
+		V extends RiverClientGlobal[K],
+	>(key: K, value: V) {
 		dangerousGlobalThis[RIVER_SYMBOL][key] = value;
 	}
 	return { get, set };
@@ -83,7 +85,8 @@ export function getRouterData<
 		: null;
 	return {
 		buildID: internal_RiverClientGlobal.get("buildID") || "",
-		matchedPatterns: internal_RiverClientGlobal.get("matchedPatterns") || [],
+		matchedPatterns:
+			internal_RiverClientGlobal.get("matchedPatterns") || [],
 		splatValues: internal_RiverClientGlobal.get("splatValues") || [],
 		params: (internal_RiverClientGlobal.get("params") || {}) as P,
 		rootData,

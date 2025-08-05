@@ -5,6 +5,7 @@ import {
 	type RiverRoutePropsGeneric,
 	type RiverUntypedLoader,
 	type UseRouterDataFunction,
+	type ParamsForPattern,
 } from "river.now/client";
 import { type Accessor, createMemo } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
@@ -24,7 +25,11 @@ export function makeTypedUseRouterData<
 	OuterLoader extends RiverUntypedLoader,
 	RootData,
 >() {
-	return (() => routerData) as UseRouterDataFunction<OuterLoader, RootData, true>;
+	return (() => routerData) as UseRouterDataFunction<
+		OuterLoader,
+		RootData,
+		true
+	>;
 }
 
 export function makeTypedUseLoaderData<Loader extends RiverUntypedLoader>() {
@@ -41,10 +46,14 @@ export function makeTypedUseLoaderData<Loader extends RiverUntypedLoader>() {
 	};
 }
 
-export function makeTypedUsePatternLoaderData<Loader extends RiverUntypedLoader>() {
+export function makeTypedUsePatternLoaderData<
+	Loader extends RiverUntypedLoader,
+>() {
 	return function usePatternData<Pattern extends string = string>(
 		pattern: Pattern,
-	): Accessor<Extract<Loader, { pattern: Pattern }>["phantomOutputType"] | undefined> {
+	): Accessor<
+		Extract<Loader, { pattern: Pattern }>["phantomOutputType"] | undefined
+	> {
 		const idx = createMemo(() => {
 			const matchedPatterns = routerData().matchedPatterns;
 			return matchedPatterns.findIndex((p) => p === pattern);
@@ -85,10 +94,18 @@ export function makeTypedAddClientLoader<
 	return function addClientLoader<
 		Pattern extends OuterLoader["pattern"],
 		Loader extends Extract<OuterLoader, { pattern: Pattern }>,
-		RouterData = ReturnType<typeof getRouterData<RootData>>,
+		RouterData = ReturnType<
+			typeof getRouterData<
+				RootData,
+				Record<ParamsForPattern<OuterLoader, Pattern>, string>
+			>
+		>,
 		LoaderData = Loader["phantomOutputType"],
 		T = any,
-	>(p: Pattern, fn: (props: RouterData & { loaderData: LoaderData }) => Promise<T>) {
+	>(
+		p: Pattern,
+		fn: (props: RouterData & { loaderData: LoaderData }) => Promise<T>,
+	) {
 		(m as any)[p] = fn;
 
 		return function useClientLoaderData(

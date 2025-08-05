@@ -28,7 +28,7 @@ export type RiverRouteGeneric<
 	Pattern extends T["pattern"] = T["pattern"],
 > = (props: RiverRoutePropsGeneric<JSXElement, T, Pattern>) => JSXElement;
 
-type ParamsForPattern<
+export type ParamsForPattern<
 	Loader extends RiverUntypedLoader,
 	Pattern extends Loader["pattern"],
 > = Extract<Loader, { pattern: Pattern }>["params"][number];

@@ -31,6 +31,7 @@ export {
 	type RiverRoutePropsGeneric,
 	type RiverUntypedLoader,
 	type UseRouterDataFunction,
+	type ParamsForPattern,
 } from "./src/impl_helpers.ts";
 export { getRouterData, internal_RiverClientGlobal } from "./src/river_ctx.ts";
 export type { RiverRoutes } from "./src/route_def_helpers.ts";

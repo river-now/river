@@ -2,7 +2,7 @@ import nProgress from "nprogress";
 import { setupGlobalLoadingIndicator } from "river.now/client";
 import { setTheme, THEMES } from "river.now/kit/theme";
 import { RiverRootOutlet } from "river.now/solid";
-import "../css/tailwind-input.css";
+import "../css/tailwind-output.css";
 import { Link } from "./app_link.tsx";
 import { theme, useRouterData } from "./app_utils.ts";
 
