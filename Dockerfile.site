@@ -34,6 +34,9 @@ COPY --from=river-npm-deps /monorepo/npm_dist ./npm_dist
 COPY --from=frontend-deps /monorepo/site ./site
 WORKDIR /monorepo/site
 RUN go mod download
+RUN npx @tailwindcss/cli \
+	-i ./frontend/css/tailwind-input.css \
+	-o ./frontend/css/tailwind-output.css
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 	-o /tmp/build_tool \
 	./__cmd/build
