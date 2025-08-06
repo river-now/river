@@ -2,6 +2,7 @@ package reflectutil
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/river-now/river/kit/genericsutil"
 )
@@ -59,4 +60,19 @@ func excludingNoneGetIsNilOrUltimatelyPointsToNil_inner(v any, skipIsNoneCheck b
 	default:
 		return false
 	}
+}
+
+func GetJSONFieldName(field reflect.StructField) string {
+	tag := field.Tag.Get("json")
+	if tag == "" {
+		return field.Name
+	}
+	parts := strings.Split(tag, ",")
+	if parts[0] == "-" {
+		return ""
+	}
+	if parts[0] != "" {
+		return parts[0]
+	}
+	return field.Name
 }

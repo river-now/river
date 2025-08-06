@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/river-now/river/kit/reflectutil"
 )
 
 /////////////////////////////////////////////////////////////////////
@@ -380,7 +382,7 @@ func (c *typeCollector) generateStructTypeFields(t reflect.Type) []string {
 				continue
 			}
 
-			jsonFieldName := getJSONFieldName(field)
+			jsonFieldName := reflectutil.GetJSONFieldName(field)
 			if jsonFieldName == "" {
 				continue
 			}
@@ -606,21 +608,6 @@ func isOptionalField(field reflect.StructField) bool {
 		}
 	}
 	return false
-}
-
-func getJSONFieldName(field reflect.StructField) string {
-	tag := field.Tag.Get("json")
-	if tag == "" {
-		return field.Name
-	}
-	parts := strings.Split(tag, ",")
-	if parts[0] == "-" {
-		return ""
-	}
-	if parts[0] != "" {
-		return parts[0]
-	}
-	return field.Name
 }
 
 func shouldOmitField(field reflect.StructField) bool {

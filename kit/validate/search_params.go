@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/river-now/river/kit/reflectutil"
 )
 
 // parseURLValues parses URL values into a struct.
@@ -47,10 +49,7 @@ func setNestedField(v reflect.Value, values map[string][]string) error {
 			continue
 		}
 
-		tag := field.Tag.Get("json")
-		if tag == "" {
-			tag = field.Name
-		}
+		tag := reflectutil.GetJSONFieldName(field)
 
 		// Handle embedded structs
 		if field.Anonymous {
