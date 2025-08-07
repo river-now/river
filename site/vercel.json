@@ -1,7 +1,7 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
-	"installCommand": "curl -L https://go.dev/dl/go1.24.5.linux-amd64.tar.gz | tar -C /tmp -xz && export PATH=/tmp/go/bin:$PATH && pnpm i",
-	"buildCommand": "export PATH=/tmp/go/bin:$PATH && go run ./__cmd/build --no-binary",
+	"installCommand": "make vercel-install",
+	"buildCommand": "make vercel-build",
 	"outputDirectory": "app/__dist/static/assets/public",
 	"rewrites": [
 		{
