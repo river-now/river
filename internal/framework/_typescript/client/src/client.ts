@@ -1668,9 +1668,6 @@ function resolvePublicHref(relativeHref: string): string {
 	let final = relativeHref.startsWith("/")
 		? baseURL + relativeHref
 		: baseURL + "/" + relativeHref;
-	if (import.meta.env.DEV) {
-		final += "?river_dev=1";
-	}
 	return final;
 }
 

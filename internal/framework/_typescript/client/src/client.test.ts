@@ -1574,7 +1574,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const appendChildSpy = vi.spyOn(document.head, "appendChild");
 
 				// Mock the dynamic imports that will be triggered
-				vi.doMock("/static/?river_dev=1", () => ({
+				vi.doMock("/static/", () => ({
 					default: () => {},
 				}));
 
@@ -1696,7 +1696,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const appendChildSpy = vi.spyOn(document.head, "appendChild");
 
 				// Mock the dynamic imports
-				vi.doMock("/static/?river_dev=1", () => ({
+				vi.doMock("/static/", () => ({
 					default: () => {},
 				}));
 
@@ -3774,7 +3774,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		describe("8.1 Initial Load", () => {
 			it("should dynamically import modules from importURLs", async () => {
 				const mockModule = { default: () => "Component" };
-				vi.doMock("/static/module.js?river_dev=1", () => mockModule);
+				vi.doMock("/static/module.js", () => mockModule);
 
 				setupGlobalRiverContext({
 					importURLs: ["/module.js"],
@@ -3804,7 +3804,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				};
 
 				// In dev mode, viteDevURL is empty, so the path is just the module path with query
-				vi.doMock("/multi-export.js?river_dev=1", () => mockModule);
+				vi.doMock("/multi-export.js", () => mockModule);
 
 				vi.mocked(fetch).mockResolvedValue(
 					createMockResponse({
@@ -3833,13 +3833,13 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const namedErrorComponent = () => "Named Error Component";
 
 				// Mock the dynamic imports for all modules involved.
-				vi.doMock("/layout.js?river_dev=1", () => ({
+				vi.doMock("/layout.js", () => ({
 					Layout: layoutComponent,
 				}));
-				vi.doMock("/page.js?river_dev=1", () => ({
+				vi.doMock("/page.js", () => ({
 					Page: pageComponent,
 				}));
-				vi.doMock("/error.js?river_dev=1", () => ({
+				vi.doMock("/error.js", () => ({
 					ErrorBoundary: namedErrorComponent,
 				}));
 
@@ -3903,7 +3903,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		});
 
 		describe("8.3 URL Resolution", () => {
-			it("should add ?river_dev=1 in development", async () => {
+			it("should add  in development", async () => {
 				const originalEnv = import.meta.env.DEV;
 				(import.meta.env as any).DEV = true;
 
@@ -3921,20 +3921,16 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				// Mock the import to verify the URL
 				let importedUrl = "";
-				vi.doMock(
-					"http://localhost:5173/dev-module.js?river_dev=1",
-					() => {
-						importedUrl =
-							"http://localhost:5173/dev-module.js?river_dev=1";
-						return { default: () => {} };
-					},
-				);
+				vi.doMock("http://localhost:5173/dev-module.js", () => {
+					importedUrl = "http://localhost:5173/dev-module.js";
+					return { default: () => {} };
+				});
 
 				await navigate("/dev-test");
 				await vi.runAllTimersAsync();
 
-				// In dev, should use viteDevURL with ?river_dev=1
-				expect(importedUrl).toContain("?river_dev=1");
+				// In dev, should use viteDevURL with
+				expect(importedUrl).toContain("");
 
 				(import.meta.env as any).DEV = originalEnv;
 			});
@@ -3975,7 +3971,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				});
 
 				// Mock the module
-				vi.doMock("/module.js?river_dev=1", () => ({
+				vi.doMock("/module.js", () => ({
 					default: () => "Module",
 				}));
 
@@ -4091,7 +4087,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				publicPathPrefix: "/",
 			});
 
-			vi.doMock("/initial.js?river_dev=1", () => ({
+			vi.doMock("/initial.js", () => ({
 				default: () => "Initial Component",
 			}));
 
@@ -4702,10 +4698,10 @@ describe("Comprehensive Navigation Test Suite", () => {
 			const errorBoundary1 = () => "Error Boundary 1";
 			const errorBoundary2 = () => "Error Boundary 2";
 
-			vi.doMock("/error1.js?river_dev=1", () => ({
+			vi.doMock("/error1.js", () => ({
 				ErrorBoundary: errorBoundary1,
 			}));
-			vi.doMock("/error2.js?river_dev=1", () => ({
+			vi.doMock("/error2.js", () => ({
 				ErrorBoundary: errorBoundary2,
 			}));
 

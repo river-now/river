@@ -1,8 +1,7 @@
 {
 	"type": "module",
 	"devDependencies": {
-		"@cloudflare/containers": "^0.0.13",
-		"@tailwindcss/cli": "^4.1.11",
+		"@tailwindcss/vite": "^4.1.11",
 		"@types/nprogress": "^0.2.3",
 		"highlight.js": "^11.11.1",
 		"nprogress": "^0.2.0",
@@ -11,7 +10,6 @@
 		"tailwindcss": "^4.1.11",
 		"typescript": "^5.8.3",
 		"vite": "npm:rolldown-vite@latest",
-		"vite-plugin-solid": "^2.11.6",
-		"wrangler": "^4.21.1"
+		"vite-plugin-solid": "^2.11.6"
 	}
 }

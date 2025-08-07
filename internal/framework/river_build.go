@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	riverPrehashedFilePrefix       = "river_out_"
+	riverVitePrehashedFilePrefix   = "river_out_vite_"
 	RiverPathsStageOneJSONFileName = "river_paths_stage_1.json"
 	RiverPathsStageTwoJSONFileName = "river_paths_stage_2.json"
 )
@@ -191,9 +191,9 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	sb.Tab().Line("] as string[],")
 	sb.Tab().Line(`preserveEntrySignatures: "exports-only",`)
 	sb.Tab().Line("output: {")
-	sb.Tab().Tab().Line(`assetFileNames: "` + riverPrehashedFilePrefix + `[name]-[hash][extname]",`)
-	sb.Tab().Tab().Line(`chunkFileNames: "` + riverPrehashedFilePrefix + `[name]-[hash].js",`)
-	sb.Tab().Tab().Line(`entryFileNames: "` + riverPrehashedFilePrefix + `[name]-[hash].js",`)
+	sb.Tab().Tab().Line(`assetFileNames: "` + riverVitePrehashedFilePrefix + `[name]-[hash][extname]",`)
+	sb.Tab().Tab().Line(`chunkFileNames: "` + riverVitePrehashedFilePrefix + `[name]-[hash].js",`)
+	sb.Tab().Tab().Line(`entryFileNames: "` + riverVitePrehashedFilePrefix + `[name]-[hash].js",`)
 	sb.Tab().Line("},")
 	sb.Line("} as const;")
 
@@ -547,7 +547,7 @@ func cleanStaticPublicOutDir(staticPublicOutDir string) error {
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(filepath.Base(path), riverPrehashedFilePrefix) {
+		if strings.HasPrefix(filepath.Base(path), riverVitePrehashedFilePrefix) {
 			err = os.Remove(path)
 			if err != nil {
 				return err
