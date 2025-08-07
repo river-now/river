@@ -1,7 +1,7 @@
 package main
 
 import (
-	"app"
+	"app/app"
 	"app/backend/router"
 
 	"github.com/river-now/river"

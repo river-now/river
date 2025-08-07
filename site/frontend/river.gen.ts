@@ -201,7 +201,7 @@ export function riverVitePlugin(): Plugin {
 							...(Array.isArray(ign) ? ign : []),
 							...[
 								"**/*.go",
-								"**/__dist/**/*",
+								"**/app/__dist/**/*",
 								"**/backend/__static/**/*",
 								"**/wave.config.json",
 								"**/frontend/river.gen.ts",

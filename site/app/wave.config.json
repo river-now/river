@@ -5,7 +5,7 @@
 		"DevBuildHook": "go run ./__cmd/build --dev --hook",
 		"ProdBuildHook": "go run ./__cmd/build --hook",
 		"MainAppEntry": "__cmd/app",
-		"DistDir": "__dist",
+		"DistDir": "app/__dist",
 		"StaticAssetDirs": {
 			"Private": "backend/__static",
 			"Public": "frontend/__static"

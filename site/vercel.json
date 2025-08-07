@@ -1,0 +1,23 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"installCommand": "curl -L https://go.dev/dl/go1.24.5.linux-amd64.tar.gz | tar -C /tmp -xz && export PATH=/tmp/go/bin:$PATH && pnpm i",
+	"buildCommand": "export PATH=/tmp/go/bin:$PATH && go run ./__cmd/build --no-binary",
+	"outputDirectory": "app/__dist/static/assets/public",
+	"rewrites": [
+		{
+			"source": "/(.*)",
+			"destination": "/api"
+		}
+	],
+	"headers": [
+		{
+			"source": "/river_out_(.*).(.*)",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=31536000, immutable"
+				}
+			]
+		}
+	]
+}

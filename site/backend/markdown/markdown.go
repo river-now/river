@@ -1,7 +1,7 @@
 package markdown
 
 import (
-	"app"
+	"app/app"
 	"io"
 
 	"github.com/adrg/frontmatter"

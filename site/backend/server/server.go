@@ -1,7 +1,7 @@
 package server
 
 import (
-	"app"
+	"app/app"
 	"app/backend/router"
 	"context"
 	"fmt"
