@@ -15,7 +15,7 @@ run-prod:
 vercel-install:
 	@curl -L https://go.dev/dl/go1.24.0.linux-amd64.tar.gz \
 		| tar -C /tmp -xz
-	@export PATH=/tmp/go/bin:$PATH \
+	@export PATH=/tmp/go/bin:$PATH
 	@pnpm i
 
 vercel-build:
