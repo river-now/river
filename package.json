@@ -65,7 +65,7 @@
 		"npm_dist/",
 		"LICENSE",
 		"README.md",
-		"site/frontend/__static/river-banner.webp",
+		"internal/site/frontend/__static/river-banner.webp",
 		"tsconfig.base.json",
 		"internal/framework/_typescript/",
 		"kit/_typescript/"

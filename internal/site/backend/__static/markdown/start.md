@@ -74,7 +74,7 @@ rm -rf ./__bootstrap
 
 Enjoy! If you have questions about how to use River, make sure to first check
 out the
-[source code for this site](https://github.com/river-now/river/tree/main/site),
+[source code for this site](https://github.com/river-now/river/tree/main/internal/site),
 which shows how to do some basic things. Then, if you still have questions, feel
 free to open issues in our
 [GitHub repo](https://github.com/river-now/river/issues) or contact us on
