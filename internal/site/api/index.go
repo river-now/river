@@ -1,4 +1,4 @@
-package vercel
+package api
 
 import (
 	"net/http"
