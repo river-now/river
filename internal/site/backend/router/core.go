@@ -1,7 +1,7 @@
 package router
 
 import (
-	"app"
+	"site/app"
 
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/river-now/river/kit/middleware/etag"
