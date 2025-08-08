@@ -87,9 +87,9 @@ vercel-install:
 vercel-build:
 	@echo 1
 	@pwd
-	@make npmbuild
-	@echo 2
 	@export PATH=/tmp/go/bin:$PATH
+	@echo 2
+	@make npmbuild
 	@echo 3
 	@cd internal/site && go run ./__cmd/build --no-binary
 	@echo 4
