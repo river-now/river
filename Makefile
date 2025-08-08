@@ -71,13 +71,26 @@ docker-run-site:
 	docker run -d -p $(PORT):$(PORT) -e PORT=$(PORT) river-site
 
 vercel-install:
+	@echo 1
+	@pwd
 	@curl -L https://go.dev/dl/go1.24.0.linux-amd64.tar.gz \
 		| tar -C /tmp -xz
+	@echo 2
 	@export PATH=/tmp/go/bin:$PATH
+	@echo 3
 	@pnpm i
+	@echo 4
 	@cd internal/site && pnpm i
+	@echo 5
+	@pwd
 
 vercel-build:
+	@echo 1
+	@pwd
 	@make npmbuild
+	@echo 2
 	@export PATH=/tmp/go/bin:$PATH
+	@echo 3
 	@cd internal/site && go run ./__cmd/build --no-binary
+	@echo 4
+	@pwd
