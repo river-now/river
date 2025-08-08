@@ -1,8 +1,9 @@
 package router
 
 import (
+	"site/app"
+
 	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/river-now/river/internal/site/app"
 	"github.com/river-now/river/kit/middleware/etag"
 	"github.com/river-now/river/kit/middleware/healthcheck"
 	"github.com/river-now/river/kit/middleware/robotstxt"

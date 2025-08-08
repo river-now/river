@@ -1,10 +1,11 @@
-package api
+package vercel
 
 import (
 	"net/http"
 
-	"github.com/river-now/river/internal/site/app"
-	"github.com/river-now/river/internal/site/backend/router"
+	"site/app"
+	"site/backend/router"
+
 	"github.com/river-now/river/wave"
 )
 

@@ -8,8 +8,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/river-now/river/internal/site/app"
-	"github.com/river-now/river/internal/site/backend/router"
+	"site/app"
+	"site/backend/router"
+
 	"github.com/river-now/river/kit/grace"
 	"github.com/river-now/river/wave"
 )

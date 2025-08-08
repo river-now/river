@@ -1,9 +1,10 @@
 package main
 
 import (
+	"site/app"
+	"site/backend/router"
+
 	"github.com/river-now/river"
-	"github.com/river-now/river/internal/site/app"
-	"github.com/river-now/river/internal/site/backend/router"
 	"github.com/river-now/river/kit/tsgen"
 )
 
