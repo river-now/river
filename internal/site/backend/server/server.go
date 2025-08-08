@@ -1,8 +1,6 @@
 package server
 
 import (
-	"app/app"
-	"app/backend/router"
 	"context"
 	"fmt"
 	"log"
@@ -10,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/river-now/river/internal/site/app"
+	"github.com/river-now/river/internal/site/backend/router"
 	"github.com/river-now/river/kit/grace"
 	"github.com/river-now/river/wave"
 )

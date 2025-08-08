@@ -1,10 +1,10 @@
 package markdown
 
 import (
-	"app/app"
 	"io"
 
 	"github.com/adrg/frontmatter"
+	"github.com/river-now/river/internal/site/app"
 	"github.com/river-now/river/kit/xyz/fsmarkdown"
 	"github.com/river-now/river/wave"
 	"github.com/russross/blackfriday/v2"

@@ -1,11 +1,11 @@
 package router
 
 import (
-	"app/app"
-	"app/backend/markdown"
 	"fmt"
 
 	"github.com/river-now/river"
+	"github.com/river-now/river/internal/site/app"
+	"github.com/river-now/river/internal/site/backend/markdown"
 	"github.com/river-now/river/kit/mux"
 	"github.com/river-now/river/kit/xyz/fsmarkdown"
 	"github.com/river-now/river/wave"

@@ -21,8 +21,8 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
       river.now:
-        specifier: link:../
-        version: link:..
+        specifier: link:../../
+        version: link:../..
       solid-js:
         specifier: ^1.9.6
         version: 1.9.7
