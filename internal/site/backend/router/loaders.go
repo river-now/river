@@ -29,16 +29,16 @@ type RootData struct {
 var currentNPMVersion = "v" + river.Internal__GetCurrentNPMVersion()
 
 var _ = newLoader("/", func(c *mux.NestedReqData) (*RootData, error) {
-	req, res := c.Request(), c.ResponseProxy()
+	r, rp := c.Request(), c.ResponseProxy()
 
 	if !wave.GetIsDev() {
-		if river.IsJSONRequest(req) {
+		if river.IsJSONRequest(r) {
 			// Because this app has no user-specific data, we can cache the JSON response
 			// pretty aggressively.
-			// res.SetHeader("Cache-Control", "public, max-age=10, s-maxage=20, must-revalidate")
+			rp.SetHeader("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400, must-revalidate")
 		} else {
 			// Don't cache HTML, but stop short of "no-store" so it's still eligible for ETag revalidation
-			res.SetHeader("Cache-Control", "no-cache")
+			rp.SetHeader("Cache-Control", "no-cache")
 		}
 	}
 
@@ -50,7 +50,7 @@ var _ = newLoader("/_index", func(c *mux.NestedReqData) (string, error) {
 })
 
 var _ = newLoader("/*", func(c *mux.NestedReqData) (*fsmarkdown.DetailedPage, error) {
-	r := c.Request()
+	r, rp := c.Request(), c.ResponseProxy()
 
 	p, err := markdown.Markdown.GetPageDetails(r)
 	if err != nil {
@@ -70,7 +70,7 @@ var _ = newLoader("/*", func(c *mux.NestedReqData) (*fsmarkdown.DetailedPage, er
 		e.Meta(e.Property("og:description"), e.Content(p.Description))
 	}
 
-	c.ResponseProxy().AddHeadElements(e.Collect()...)
+	rp.AddHeadElements(e.Collect()...)
 
 	return data, nil
 })
