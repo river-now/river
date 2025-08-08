@@ -21,8 +21,8 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
       river.now:
-        specifier: link:../../
-        version: link:../..
+        specifier: 0.48.0
+        version: 0.48.0
       solid-js:
         specifier: ^1.9.6
         version: 1.9.7
@@ -729,6 +729,9 @@ packages:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
     engines: {node: ^10 || ^12 || >=14}
 
+  river.now@0.48.0:
+    resolution: {integrity: sha512-dl/lZW4gRRvFz1sYOLy/hnvSs4IHg9kvzz/E5o0bVHQEjM/oPtaXJW/I5MaIjGU+s0aZe/W0VvGpt9t4yzpFzA==}
+
   rolldown-vite@7.1.0:
     resolution: {integrity: sha512-DCfutVwSkuc3NA75SdFuetKwcpq97tO2JZdM6gYv7GwW6/9qyXnITYER+8zrJt+vQVGP2SadAkMOpWw7B4LVwg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -1433,6 +1436,8 @@ snapshots:
       nanoid: 3.3.11
       picocolors: 1.1.1
       source-map-js: 1.2.1
+
+  river.now@0.48.0: {}
 
   rolldown-vite@7.1.0(esbuild@0.25.4)(jiti@2.4.2):
     dependencies:
