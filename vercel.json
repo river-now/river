@@ -1,7 +1,7 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
-	"installCommand": "cd internal/site && make vercel-install",
-	"buildCommand": "cd internal/site && make vercel-build",
+	"installCommand": "make vercel-install",
+	"buildCommand": "make vercel-build",
 	"outputDirectory": "internal/site/app/__dist/static/assets/public",
 	"rewrites": [
 		{
