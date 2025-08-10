@@ -26,6 +26,7 @@ func main() {
 	t.NewLine()
 
 	cmd := t.Cmd("go", "get", fmt.Sprintf("github.com/river-now/river@%s", goVersion))
+	cmd.Dir = "internal/site"
 	t.MustRun(cmd, "failed to update Go module")
 
 	// Update npm package
@@ -39,6 +40,7 @@ func main() {
 	t.NewLine()
 
 	cmd = t.Cmd("pnpm", "update", fmt.Sprintf("river.now@%s", npmTag))
+	cmd.Dir = "internal/site"
 	t.MustRun(cmd, "failed to update npm package")
 
 	t.Green("✓ Site packages updated successfully")
