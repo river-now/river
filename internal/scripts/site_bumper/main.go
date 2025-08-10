@@ -29,6 +29,10 @@ func main() {
 	cmd.Dir = "internal/site"
 	t.MustRun(cmd, "failed to update Go module")
 
+	cmd = t.Cmd("go", "mod", "tidy")
+	cmd.Dir = "internal/site"
+	t.MustRun(cmd, "failed to tidy Go module")
+
 	// Update npm package
 	npmTag := "latest"
 	if isPre {

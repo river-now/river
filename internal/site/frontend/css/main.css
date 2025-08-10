@@ -1,6 +1,34 @@
 @import url("./hljs.css");
 @import url("./nprogress.css");
 
+:root {
+	--dark-green: #064929;
+	--light-green: #4bba5b;
+	--resolved-green: light-dark(var(--dark-green), var(--light-green));
+	--css1-loaded: 1;
+}
+
+html {
+	font-family: monospace;
+	font-size: 16px;
+}
+html,
+body {
+	height: 100dvh;
+	background: var(--bg);
+}
+html,
+body,
+#river-root,
+main {
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
+}
+main {
+	margin: 1rem;
+}
+
 a,
 button,
 input[type="button"],
@@ -9,9 +37,23 @@ input[type="submit"] {
 }
 
 .content {
+	width: 720px;
+	max-width: 100%;
+	margin: 2rem auto;
+
+	p,
+	ul,
+	ol,
+	pre {
+		font-size: 17px;
+		line-height: 1.8;
+		margin-bottom: 1.5rem;
+	}
+
 	p {
 		margin-bottom: 1.5rem;
 	}
+
 	a {
 		text-decoration: underline;
 		text-underline-offset: 3px;
@@ -19,6 +61,7 @@ input[type="submit"] {
 			color: var(--resolved-green);
 		}
 	}
+
 	h1,
 	h2 {
 		text-transform: uppercase;
@@ -61,6 +104,8 @@ input[type="submit"] {
 	}
 
 	pre {
+		font-size: 15.5px;
+		line-height: 1.7;
 		overflow-x: auto;
 		background-color: light-dark(#fcf4e7, black);
 		padding: 0.75rem 1rem;
@@ -88,5 +133,8 @@ input[type="submit"] {
 	ol {
 		margin-left: 3rem;
 		list-style: decimal;
+	}
+	li {
+		margin-bottom: 0.5rem;
 	}
 }
