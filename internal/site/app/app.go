@@ -33,6 +33,7 @@ var River = &river.River{
 		e.Meta(e.Property("og:url"))
 		e.Meta(e.Name("twitter:card"))
 		e.Meta(e.Name("twitter:site"))
+		e.Link(e.Rel("icon"))
 
 		return e
 	},
@@ -56,8 +57,7 @@ var River = &river.River{
 		e.Meta(e.Name("twitter:card"), e.Content("summary_large_image"))
 		e.Meta(e.Name("twitter:site"), e.Content("@riverframework"))
 
-		// __TODO add to unique rules
-		e.Link(e.Attr("rel", "icon"), e.Attr("href", favURL))
+		e.Link(e.Rel("icon"), e.Attr("href", favURL))
 
 		return e.Collect(), nil
 	},

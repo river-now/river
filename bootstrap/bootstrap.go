@@ -237,8 +237,10 @@ func Init(o Options) {
 	fmt.Println()
 	fmt.Println("✨ SUCCESS! Your River app is ready.")
 	fmt.Println()
-	runCmd := do.ResolveJSPackageManagerRunScriptPrefix() + " dev"
-	fmt.Printf("💻 Run `%s` to start the development server.\n", runCmd)
+	fmt.Printf(
+		"💻 Run `%s dev` to start the development server.\n",
+		do.ResolveJSPackageManagerRunScriptPrefix(),
+	)
 	fmt.Println()
 }
 
