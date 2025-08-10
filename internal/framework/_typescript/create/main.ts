@@ -5,6 +5,11 @@ import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 async function main() {
 	intro("🌊 Create River App");
@@ -227,10 +232,15 @@ func main() {
 		fs.writeFileSync(bootstrapFile, goCode);
 
 		// Install River dependency
+		const packageJsonPath = path.join(__dirname, "../package.json");
+		const packageJson = JSON.parse(
+			fs.readFileSync(packageJsonPath, "utf8"),
+		);
+		const version = packageJson.version;
 		const s1 = spinner();
 		s1.start("Installing River dependency");
 		try {
-			execSync("go get github.com/river-now/river", {
+			execSync(`go get github.com/river-now/river@v${version}`, {
 				cwd: process.cwd(),
 				stdio: "pipe",
 			});

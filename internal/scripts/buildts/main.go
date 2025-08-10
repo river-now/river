@@ -154,6 +154,7 @@ func buildCreate() {
 			"node:readline",
 			"node:stream",
 			"node:util",
+			"node:url",
 		},
 		Outdir:   "./internal/framework/_typescript/create/dist",
 		Tsconfig: tsconfig,
