@@ -79,9 +79,9 @@ func (o Options) derived() derivedOptions {
 	if o.DeploymentTarget == "vercel" {
 		do.VercelPackageJSONExtras = fmt.Sprintf(`,
 		"vercel-install-go": "curl -L https://go.dev/dl/%s.linux-amd64.tar.gz | tar -C /tmp -xz",
-		"vercel-install": "%s run vercel-install-go && export PATH=/tmp/go/bin:$PATH && %s install",
+		"vercel-install": "%s vercel-install-go && export PATH=/tmp/go/bin:$PATH && %s install",
 		"vercel-build": "export PATH=/tmp/go/bin:$PATH && go run ./__cmd/build --no-binary"`,
-			goVersion, do.JSPackageManager, do.JSPackageManager,
+			goVersion, do.ResolveJSPackageManagerRunScriptPrefix(), do.JSPackageManager,
 		)
 	}
 
@@ -237,12 +237,17 @@ func Init(o Options) {
 	fmt.Println()
 	fmt.Println("✨ SUCCESS! Your River app is ready.")
 	fmt.Println()
-	runCmd := "npm run dev"
-	if do.JSPackageManager != "npm" {
-		runCmd = do.JSPackageManager + " dev"
-	}
+	runCmd := do.ResolveJSPackageManagerRunScriptPrefix() + " dev"
 	fmt.Printf("💻 Run `%s` to start the development server.\n", runCmd)
 	fmt.Println()
+}
+
+func (do derivedOptions) ResolveJSPackageManagerRunScriptPrefix() string {
+	cmd := "npm run"
+	if do.JSPackageManager != "npm" {
+		cmd = do.JSPackageManager
+	}
+	return cmd
 }
 
 func installJSPkg(do derivedOptions, pkg string) {
