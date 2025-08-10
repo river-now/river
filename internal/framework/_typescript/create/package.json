@@ -1,0 +1,28 @@
+{
+	"name": "create-river",
+	"version": "0.50.0-pre.3",
+	"type": "module",
+	"license": "BSD-3-Clause",
+	"repository": {
+		"url": "https://github.com/river-now/river",
+		"type": "git"
+	},
+	"homepage": "https://river.now",
+	"author": "Samuel J. Cook",
+	"bin": {
+		"create-river": "./dist/main.js"
+	},
+	"files": [
+		"dist"
+	],
+	"dependencies": {
+		"@clack/prompts": "^0.11.0"
+	},
+	"devDependencies": {
+		"@types/node": "^24.2.1",
+		"typescript": "^5.9.2"
+	},
+	"engines": {
+		"node": ">=22.11.0"
+	}
+}

@@ -1,7 +1,7 @@
 package main
 
 import (
-	app "{{.GoImportBase}}"
+	"{{.GoImportBase}}/app"
 	"{{.GoImportBase}}/backend/router"
 
 	"github.com/river-now/river"

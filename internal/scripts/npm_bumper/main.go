@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	// Handle main package
 	lines, versionLine, currentVersion := parseutil.PackageJSONFromFile("./package.json")
 
 	// Show current tag
@@ -52,6 +53,21 @@ func main() {
 		t.Exit("failed to write file", err)
 	}
 
+	// Update create package version
+	createPackagePath := "./internal/framework/_typescript/create/package.json"
+	createLines, createVersionLine, createCurrentVersion := parseutil.PackageJSONFromFile(createPackagePath)
+
+	t.Plain("Updating create package: ")
+	t.Red(createCurrentVersion)
+	t.Plain(" --> ")
+	t.Green(trimmedVersion)
+	t.NewLine()
+
+	createLines[createVersionLine] = strings.Replace(createLines[createVersionLine], createCurrentVersion, trimmedVersion, 1)
+	if err = os.WriteFile(createPackagePath, []byte(strings.Join(createLines, "\n")+"\n"), 0644); err != nil {
+		t.Exit("failed to write create package.json", err)
+	}
+
 	// Sanity check
 	_, _, newCurrentVersion := parseutil.PackageJSONFromFile("./package.json")
 	if newCurrentVersion != trimmedVersion {
@@ -59,7 +75,6 @@ func main() {
 	}
 
 	isPre := strings.Contains(newCurrentVersion, "pre")
-
 	if isPre {
 		t.Plain("pre-release version detected")
 		t.NewLine()

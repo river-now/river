@@ -27,6 +27,7 @@ func main() {
 	buildReact()
 	buildSolid()
 	buildPreact()
+	buildCreate()
 }
 
 func buildKit() {
@@ -129,6 +130,32 @@ func buildPreact() {
 			"preact/jsx-runtime", "preact/compat", "preact/test-utils",
 		},
 		Outdir:   "./npm_dist/internal/framework/_typescript/preact",
+		Tsconfig: tsconfig,
+	})
+}
+
+func buildCreate() {
+	tsconfig := "./internal/framework/_typescript/create/tsconfig.json"
+	runTSC(tsconfig)
+	build("create", esbuild.BuildOptions{
+		Sourcemap:   esbuild.SourceMapLinked,
+		Target:      esbuild.ESNext,
+		Format:      esbuild.FormatESModule,
+		TreeShaking: esbuild.TreeShakingTrue,
+		Write:       true,
+		Bundle:      true,
+		EntryPoints: []string{"./internal/framework/_typescript/create/main.ts"},
+		External: []string{
+			"node:child_process",
+			"node:fs",
+			"node:os",
+			"node:path",
+			"node:process",
+			"node:readline",
+			"node:stream",
+			"node:util",
+		},
+		Outdir:   "./internal/framework/_typescript/create/dist",
 		Tsconfig: tsconfig,
 	})
 }

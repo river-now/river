@@ -2,6 +2,6 @@
 node_modules
 
 # Wave
-__dist/static/*
-!__dist/static/.keep
-__dist/main*
+app/__dist/static/*
+!app/__dist/static/.keep
+app/__dist/main*

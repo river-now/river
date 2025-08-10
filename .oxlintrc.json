@@ -1,3 +1,7 @@
 {
-	"ignorePatterns": ["site/frontend/river.gen.ts"]
+	"ignorePatterns": [
+		"npm_dist",
+		"internal/site/frontend/river.gen.ts",
+		"internal/framework/_typescript/create/dist"
+	]
 }

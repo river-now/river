@@ -45,9 +45,10 @@ import "github.com/river-now/river/bootstrap"
 
 func main() {
 	bootstrap.Init(bootstrap.Options{
-		GoImportBase:     "app",   // e.g., "appname" or "modroot/apps/appname"
-		UIVariant:        "react", // "react", "solid", or "preact"
-		JSPackageManager: "npm",   // "npm", "pnpm", "yarn", or "bun"
+		GoImportBase:     "app",     // e.g., "appname" or "modroot/apps/appname"
+		UIVariant:        "react",   // "react", "solid", or "preact"
+		JSPackageManager: "npm",     // "npm", "pnpm", "yarn", or "bun"
+		DeploymentTarget: "generic", // "generic" or "vercel" (defaults to "generic")
 	})
 }
 ```
