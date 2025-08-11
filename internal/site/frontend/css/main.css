@@ -129,7 +129,8 @@ nav .logo:hover {
 	display: flex;
 	flex-direction: column;
 	gap: 2rem;
-	max-width: 640px;
+	width: 640px;
+	max-width: 100%;
 	margin: 3rem auto 2rem;
 }
 @media screen and (max-width: 1024px) {

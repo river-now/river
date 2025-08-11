@@ -46,7 +46,6 @@ var River = &river.River{
 
 		if !wave.GetIsDev() {
 			ogImgURL = path.Join(Origin, ogImgURL)
-			favURL = path.Join(Origin, favURL)
 		}
 
 		e := river.NewHeadEls()
