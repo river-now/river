@@ -1,14 +1,17 @@
 :root {
 	color-scheme: light dark;
+	--dark: rgb(24 24 27);
+	--light: rgb(244, 244, 245);
 }
 html.light {
 	color-scheme: light;
-	--bg: white;
+	--bg: var(--light);
 }
 html.dark {
 	color-scheme: dark;
-	--bg: #111;
+	--bg: var(--dark);
 }
 body {
+	background-color: var(--bg);
 	opacity: calc(var(--css1-loaded, 0) * var(--css2-loaded, 0));
 }

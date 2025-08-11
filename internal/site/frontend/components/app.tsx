@@ -37,28 +37,25 @@ export function App() {
 
 	return (
 		<>
-			<nav class="w-full sticky top-0 bg-white dark:bg-[#111] z-50">
-				<div class="flex items-center max-w-full mx-auto p-4 border-b border-[#7777]">
-					<h1 class="flex">
-						<Link href="/" class="inline-flex items-center gap-3">
-							<img
-								class="w-10 sm:w-14 aspect-2/1"
-								src={hashedURL("logo.svg")}
-								alt="River logo"
-							/>
-							<div class="flex gap-2 items-baseline">
-								<div class="sm:text-xl">River</div>
-								<div class="text-xs opacity-70 hidden sm:block">
-									({routerData().rootData?.LatestVersion})
-								</div>
-							</div>
-						</Link>
-					</h1>
+			<nav class="w-full flex items-center">
+				<div class="flex items-baseline">
+					<Link href="/">
+						<h1 class="logo">River</h1>
+					</Link>
+					<div class="text-xs opacity-70 hidden sm:flex">
+						({routerData().rootData?.LatestVersion})
+					</div>
+				</div>
+
+				<div class="flex">
+					<Link href="/start" class="nav-item">
+						Docs
+					</Link>
 
 					<button
 						type="button"
 						title="Change theme"
-						class="cursor-pointer ml-auto"
+						class="cursor-pointer nav-item"
 						onClick={() => {
 							if (theme() === "dark") {
 								setTheme(THEMES.Light);
@@ -77,49 +74,22 @@ export function App() {
 						<img
 							src={theme_to_label_map[theme()]}
 							alt="Theme icon"
-							class="w-5 h-5 dark:invert"
+							class="w-5 h-5"
 						/>
 					</button>
 				</div>
-				<div class="flex items-center max-w-full mx-auto px-4 py-1 border-b border-[#7777] gap-4">
-					<Link
-						href="/start"
-						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
-					>
-						Get Started
-					</Link>
-
-					<Link
-						href="/faq"
-						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
-					>
-						FAQs
-					</Link>
-
-					<div class="flex-1" />
-					<a
-						href="https://x.com/riverframework"
-						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
-						target="_blank"
-						rel="noreferrer"
-					>
-						X
-					</a>
-
-					<a
-						href="https://github.com/river-now/river"
-						class="text-sm opacity-70 hover:opacity-[unset] hover:underline"
-						target="_blank"
-						rel="noreferrer"
-					>
-						GitHub
-					</a>
-				</div>
 			</nav>
 
-			<main class="z-1">
+			<main class="root-outlet-wrapper">
 				<RiverRootOutlet />
 			</main>
+
+			<footer>
+				<span style="opacity:0.6">
+					BSD-3-Clause license. Copyright (c) 2023–
+					{new Date().getFullYear()} Samuel J. Cook.
+				</span>
+			</footer>
 		</>
 	);
 }

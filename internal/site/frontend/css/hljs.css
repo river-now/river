@@ -1,40 +1,39 @@
-/*!
-  MODIFIED FROM:
-
-  Theme: An Old Hope – Star Wars Syntax
-  Author: (c) Gustavo Costa <gusbemacbe@gmail.com>
-  Maintainer: @gusbemacbe
-
-  Original theme - Ocean Dark Theme – by https://github.com/gavsiu
-  Based on Jesse Leite's Atom syntax theme 'An Old Hope'
-    https://github.com/JesseLeite/an-old-hope-syntax-atom
-*/
-
-/* Millenium Falcon */
+/* Monokai Theme for highlight.js */
 .hljs {
-	background: light-dark(#c0c5ce, #1c1d21);
-	color: light-dark(#1c1d21, #c0c5ce);
+	background: #272822;
+	color: #f8f8f2;
 }
 
-/* Death Star Comment */
+/* Comments and documentation */
 .hljs-comment,
 .hljs-quote {
-	color: light-dark(#747159, #b6b18b);
+	color: #8292a2;
 }
 
-/* Darth Vader */
-.hljs-variable,
-.hljs-template-variable,
-.hljs-tag,
-.hljs-name,
-.hljs-selector-id,
-.hljs-selector-class,
-.hljs-regexp,
-.hljs-deletion {
-	color: light-dark(#872331, #eb3c54);
+/* Keywords */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #66d9ef;
 }
 
-/* Threepio */
+/* Functions and class names */
+.hljs-title,
+.hljs-section,
+.hljs-function,
+.hljs-class .hljs-title {
+	color: #e6db74;
+}
+
+/* Strings and attribute values */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition,
+.hljs-attribute {
+	color: #a6e22e;
+}
+
+/* Numbers and constants */
 .hljs-number,
 .hljs-built_in,
 .hljs-literal,
@@ -42,38 +41,71 @@
 .hljs-params,
 .hljs-meta,
 .hljs-link {
-	color: light-dark(#857730, #e7ce56);
+	color: #ae81ff;
 }
 
-/* Luke Skywalker */
-.hljs-attribute {
-	color: light-dark(#743d15, #ee7c2b);
+/* Tags, variables, and deletions */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion,
+.hljs-property {
+	color: #f92672;
 }
 
-/* Obi Wan Kenobi */
-.hljs-string,
-.hljs-symbol,
-.hljs-bullet,
-.hljs-addition {
-	color: light-dark(#2c6679, #4fb4d7);
+/* Regular expressions and important */
+.hljs-regexp {
+	color: #fd971f;
 }
 
-/* Yoda */
-.hljs-title,
-.hljs-section {
-	color: light-dark(#3d6033, #78bb65);
+/* Punctuation and operators */
+.hljs-punctuation,
+.hljs-operator {
+	color: #f8f8f2;
 }
 
-/* Mace Windu */
-.hljs-keyword,
-.hljs-selector-tag {
-	color: light-dark(#6f3a65, #b45ea4);
-}
-
+/* Bold and italic */
 .hljs-emphasis {
 	font-style: italic;
 }
 
 .hljs-strong {
 	font-weight: bold;
+}
+
+.hljs {
+	overflow-x: auto;
+	border-radius: 1rem;
+	background: rgb(30 41 59);
+	border: 4px solid #7777;
+	padding: 1rem 1.25rem;
+	max-width: 100%;
+	display: flex;
+	gap: 1.25rem;
+	color: #fff;
+}
+.inline-code {
+	padding: 2px 0.25rem;
+	white-space: nowrap;
+}
+.inline-code:not(.high-contrast) {
+	background: #7772;
+	border-radius: 0.25rem;
+}
+.inline-code.high-contrast {
+	background: black;
+	color: #fff;
+}
+@media screen and (prefers-color-scheme: dark) {
+	.inline-code:not(.high-contrast) {
+		background: #7773;
+	}
+	.inline-code.high-contrast {
+		background: white;
+		color: #000;
+	}
 }

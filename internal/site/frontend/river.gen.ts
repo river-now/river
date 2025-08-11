@@ -136,6 +136,10 @@ const rollupOptions = {
 export const staticPublicAssetMap = {
 	"desktop.svg": "river_out_desktop_eebc981612eb.svg",
 	"favicon.svg": "river_out_favicon_ed2aaf004a0d.svg",
+	"fonts/jetbrains_mono.woff2": "river_out_fonts_jetbrains_mono_1e06740a02a4.woff2",
+	"fonts/jetbrains_mono_ext.woff2": "river_out_fonts_jetbrains_mono_ext_7db7affbce1f.woff2",
+	"fonts/jetbrains_mono_italic.woff2": "river_out_fonts_jetbrains_mono_italic_6548575d6839.woff2",
+	"fonts/jetbrains_mono_italic_ext.woff2": "river_out_fonts_jetbrains_mono_italic_ext_bdce8a4f00f6.woff2",
 	"full-logo.svg": "river_out_full-logo_e0ea7a3d3cf2.svg",
 	"logo.svg": "river_out_logo_d9b0e1618362.svg",
 	"moon.svg": "river_out_moon_7e0c08985ebe.svg",
