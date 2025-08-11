@@ -48,7 +48,7 @@ var River = &river.River{
 			ogImgURL = path.Join(Origin, ogImgURL)
 		}
 
-		e := river.NewHeadEls(14)
+		e := river.NewHeadEls(12)
 
 		e.Title(SiteTitle)
 		e.Description(SiteDescription)
@@ -89,9 +89,7 @@ var River = &river.River{
 
 var fontFilesToPreload = []string{
 	"fonts/jetbrains_mono.woff2",
-	"fonts/jetbrains_mono_ext.woff2",
 	"fonts/jetbrains_mono_italic.woff2",
-	"fonts/jetbrains_mono_italic_ext.woff2",
 }
 
 //go:embed wave.config.json

@@ -92,14 +92,14 @@ export function Home(_props: RouteProps<"/_index">) {
 			</div>
 
 			<div>
-				<h3 class="scream-heading">Quickstart</h3>
+				<h2 class="scream-heading">Quickstart</h2>
 				<code class="inline-code high-contrast self-start text-xl font-bold italic">
 					npm create river@latest
 				</code>
 			</div>
 
 			<div>
-				<h3 class="scream-heading">What is River?</h3>
+				<h2 class="scream-heading">What is River?</h2>
 				<div class="flex-col-wrapper">
 					<p class="leading-[1.75]">
 						River is a lot like NextJS or Remix, but it uses{" "}
@@ -152,7 +152,7 @@ export function Home(_props: RouteProps<"/_index">) {
 			</div>
 
 			<div>
-				<h3 class="scream-heading">Get started</h3>
+				<h2 class="scream-heading">Get started</h2>
 				<div class="flex-col-wrapper">
 					<p class="leading-[1.75]">
 						If you want to dive right in, just open a terminal and
@@ -171,7 +171,7 @@ export function Home(_props: RouteProps<"/_index">) {
 			</div>
 
 			<div>
-				<h3 class="scream-heading">Disclaimer</h3>
+				<h2 class="scream-heading">Disclaimer</h2>
 				<p class="leading-[1.75]">
 					While River's technology is quite stable and has been used
 					in anger in production settings, our APIs are still

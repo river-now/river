@@ -85,7 +85,7 @@ export function App() {
 			</main>
 
 			<footer>
-				<span style="opacity:0.6">
+				<span>
 					BSD-3-Clause license. Copyright (c) 2023–
 					{new Date().getFullYear()} Samuel J. Cook.
 				</span>

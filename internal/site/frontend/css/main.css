@@ -146,6 +146,10 @@ footer {
 	padding-bottom: 1rem;
 	margin-top: 1.5rem;
 	flex-shrink: 1;
+
+	span {
+		opacity: 0.7;
+	}
 }
 
 .anchor-heading {

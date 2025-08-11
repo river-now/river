@@ -3,6 +3,8 @@ title: Docs
 description: Frequently asked questions about the river.now framework
 ---
 
+**NOTE:** These docs are currently just a bunch of sparse random topics. An comprehensive overhaul is coming soon.
+
 ## Creating a new project
 
 To create a new project, open a terminal and run the following commands (adjusted as appropriate for your preferred package manager):
