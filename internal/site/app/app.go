@@ -24,7 +24,7 @@ var River = &river.River{
 	Wave: Wave,
 
 	GetHeadElUniqueRules: func() *headels.HeadEls {
-		e := river.NewHeadEls(7)
+		e := river.NewHeadEls(8)
 
 		e.Meta(e.Property("og:title"))
 		e.Meta(e.Property("og:description"))
@@ -48,7 +48,7 @@ var River = &river.River{
 			ogImgURL = path.Join(Origin, ogImgURL)
 		}
 
-		e := river.NewHeadEls()
+		e := river.NewHeadEls(14)
 
 		e.Title(SiteTitle)
 		e.Description(SiteDescription)
@@ -62,7 +62,18 @@ var River = &river.River{
 		e.Meta(e.Name("twitter:card"), e.Content("summary_large_image"))
 		e.Meta(e.Name("twitter:site"), e.Content("@riverframework"))
 
-		e.Link(e.Rel("icon"), e.Attr("href", favURL))
+		e.Link(e.Rel("icon"), e.Attr("href", favURL), e.Attr("type", "image/svg+xml"))
+
+		for _, fontFile := range fontFilesToPreload {
+			fontURL := Wave.GetPublicURL(fontFile)
+			e.Link(
+				e.Rel("preload"),
+				e.Attr("as", "font"),
+				e.Attr("type", "font/woff2"),
+				e.Attr("crossorigin", "anonymous"),
+				e.Attr("href", fontURL),
+			)
+		}
 
 		return e.Collect(), nil
 	},
@@ -74,6 +85,13 @@ var River = &river.River{
 			"SystemThemeScriptSha256Hash": theme.SystemThemeScriptSha256Hash,
 		}, nil
 	},
+}
+
+var fontFilesToPreload = []string{
+	"fonts/jetbrains_mono.woff2",
+	"fonts/jetbrains_mono_ext.woff2",
+	"fonts/jetbrains_mono_italic.woff2",
+	"fonts/jetbrains_mono_italic_ext.woff2",
 }
 
 //go:embed wave.config.json
