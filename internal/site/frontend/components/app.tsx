@@ -48,7 +48,7 @@ export function App() {
 				</div>
 
 				<div class="flex">
-					<Link href="/start" class="nav-item">
+					<Link href="/docs" class="nav-item">
 						Docs
 					</Link>
 

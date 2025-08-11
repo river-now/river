@@ -72,7 +72,6 @@ nav {
 	display: flex;
 	flex-wrap: wrap;
 	margin-top: 1.5rem;
-	/* margin-bottom: 3rem; */
 	align-items: center;
 	justify-content: space-between;
 }
@@ -139,19 +138,6 @@ nav .logo:hover {
 	}
 }
 
-.big-heading {
-	font-size: 2.125rem;
-	line-height: 1.5;
-	opacity: 0.95;
-	padding: 1.5rem 0;
-}
-@media screen and (max-width: 1024px) {
-	.big-heading {
-		font-size: 1.875rem;
-		line-height: 1.5;
-	}
-}
-
 footer {
 	font-size: 0.75rem;
 	border-top: 1px solid #7773;
@@ -168,7 +154,7 @@ footer {
 	font-weight: 700;
 	padding-top: 1rem;
 }
-.anchor-heading a {
+.anchor-heading a.anchor {
 	color: #777;
 }
 .anchor-heading a:hover {
@@ -176,7 +162,34 @@ footer {
 	text-decoration: underline;
 }
 
-.code-block {
+h2.anchor-heading span {
+	text-decoration: dotted underline;
+	text-underline-offset: 0.35em;
+	text-decoration-thickness: 0.1em;
+}
+
+h3.anchor-heading {
+	font-size: 1.125rem;
+	font-weight: 800;
+	padding-top: 0.5rem;
+}
+
+h4.anchor-heading {
+	font-size: 1rem;
+	font-weight: 600;
+	padding-top: 0.25rem;
+}
+
+h3.anchor-heading,
+h4.anchor-heading {
+	font-style: italic;
+	.anchor {
+		font-weight: 700;
+		font-style: normal;
+	}
+}
+
+pre {
 	overflow-x: auto;
 	border-radius: 1rem;
 	background: rgb(30 41 59);
@@ -205,12 +218,31 @@ footer {
 	gap: 1.5rem;
 }
 
-.h2 {
+.content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+}
+
+.big-heading {
+	font-size: 2.125rem;
+	line-height: 1.5;
+	opacity: 0.95;
+	padding: 1.5rem 0;
+}
+@media screen and (max-width: 1024px) {
+	.big-heading {
+		font-size: 1.875rem;
+		line-height: 1.5;
+	}
+}
+.content h1 {
 	font-size: 1.875rem;
 	font-weight: 700;
 	margin-bottom: 1rem;
 }
-.h3 {
+.scream-heading {
 	font-size: 1.5rem;
 	font-weight: 700;
 	margin-bottom: 1rem;
@@ -220,29 +252,74 @@ footer {
 	font-style: italic;
 }
 
-.inline-code {
+/* Lists */
+ul,
+ol {
+	margin-bottom: 1rem;
+}
+
+ul {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+/* Inline code only (not inside pre) */
+code:not(pre code) {
 	padding: 2px 0.25rem;
 	white-space: nowrap;
 }
-.inline-code:not(.high-contrast) {
+
+code:not(pre code):not(.high-contrast) {
 	background: #7772;
 	border-radius: 0.25rem;
 }
-.inline-code.high-contrast {
+
+code:not(pre code).high-contrast {
 	background: black;
 	color: #fff;
 }
-.dark .inline-code:not(.high-contrast) {
+
+.dark code:not(pre code):not(.high-contrast) {
 	background: #7773;
 }
-.dark .inline-code.high-contrast {
+
+.dark code:not(pre code).high-contrast {
 	background: white;
 	color: #000;
 }
 
-.list-item {
+/* Code blocks (inside pre) */
+pre code {
+	padding: 0;
+	background: transparent;
+	white-space: pre;
+	color: inherit;
+}
+
+li {
 	list-style-type: disc;
 	margin-left: 1.5rem;
 	padding-left: 0.25rem;
 	line-height: 1.75;
+}
+
+ol li {
+	list-style-type: decimal;
+}
+
+/* Paragraphs - need to be styled */
+p {
+	line-height: 1.75;
+}
+
+/* Links in content need underline */
+p a {
+	text-decoration: underline;
+}
+
+/* But not nav links */
+nav a,
+.nav-item {
+	text-decoration: none;
 }

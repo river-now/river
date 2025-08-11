@@ -78,34 +78,5 @@
 }
 
 .hljs {
-	overflow-x: auto;
-	border-radius: 1rem;
-	background: rgb(30 41 59);
-	border: 4px solid #7777;
-	padding: 1rem 1.25rem;
-	max-width: 100%;
-	display: flex;
-	gap: 1.25rem;
-	color: #fff;
-}
-.inline-code {
-	padding: 2px 0.25rem;
-	white-space: nowrap;
-}
-.inline-code:not(.high-contrast) {
-	background: #7772;
-	border-radius: 0.25rem;
-}
-.inline-code.high-contrast {
-	background: black;
-	color: #fff;
-}
-@media screen and (prefers-color-scheme: dark) {
-	.inline-code:not(.high-contrast) {
-		background: #7773;
-	}
-	.inline-code.high-contrast {
-		background: white;
-		color: #000;
-	}
+	background: transparent;
 }

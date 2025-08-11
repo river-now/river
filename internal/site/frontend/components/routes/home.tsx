@@ -92,14 +92,14 @@ export function Home(_props: RouteProps<"/_index">) {
 			</div>
 
 			<div>
-				<h3 class="h3">Quickstart</h3>
+				<h3 class="scream-heading">Quickstart</h3>
 				<code class="inline-code high-contrast self-start text-xl font-bold italic">
 					npm create river@latest
 				</code>
 			</div>
 
 			<div>
-				<h3 class="h3">What is River?</h3>
+				<h3 class="scream-heading">What is River?</h3>
 				<div class="flex-col-wrapper">
 					<p class="leading-[1.75]">
 						River is a lot like NextJS or Remix, but it uses{" "}
@@ -130,19 +130,19 @@ export function Home(_props: RouteProps<"/_index">) {
 						<b>
 							<i>type-safe server actions</i>
 						</b>
-						, and{" "}
+						,{" "}
 						<b>
 							<i>parallel-executed route loaders</i>
 						</b>
-						.
+						, and much, much more.
 					</p>
 
 					<p class="leading-[1.75]">
-						And it's deeply integrated with{" "}
+						It's deeply integrated with{" "}
 						<b>
 							<i>Vite</i>
 						</b>{" "}
-						to give you{" "}
+						to give you full{" "}
 						<b>
 							<i>hot module reloading</i>
 						</b>{" "}
@@ -152,7 +152,7 @@ export function Home(_props: RouteProps<"/_index">) {
 			</div>
 
 			<div>
-				<h3 class="h3">Get started</h3>
+				<h3 class="scream-heading">Get started</h3>
 				<div class="flex-col-wrapper">
 					<p class="leading-[1.75]">
 						If you want to dive right in, just open a terminal and
@@ -171,12 +171,15 @@ export function Home(_props: RouteProps<"/_index">) {
 			</div>
 
 			<div>
-				<h3 class="h3">Disclaimer</h3>
+				<h3 class="scream-heading">Disclaimer</h3>
 				<p class="leading-[1.75]">
-					River is in beta! Act accordingly. It has, however, been
-					used in anger for quite some time, and it is not too far
-					from a stable 1.0 release. It's a perfect time to give River
-					a try for your next side project or internal tool.
+					While River's technology is quite stable and has been used
+					in anger in production settings, our APIs are still
+					evolving, and we plan to stay sub–1.0 until we feel we have
+					collected all the feedback we need to make sure we can
+					support our APIs for years to come. Our general strategy is
+					to delay a 1.0 release for long enough to be sure we won't
+					need a lot of API churn moving forward.
 				</p>
 			</div>
 		</>
