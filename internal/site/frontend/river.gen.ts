@@ -127,20 +127,24 @@ const rollupOptions = {
 	] as string[],
 	preserveEntrySignatures: "exports-only",
 	output: {
-		assetFileNames: "river_out_[name]-[hash][extname]",
-		chunkFileNames: "river_out_[name]-[hash].js",
-		entryFileNames: "river_out_[name]-[hash].js",
+		assetFileNames: "river_out_vite_[name]-[hash][extname]",
+		chunkFileNames: "river_out_vite_[name]-[hash].js",
+		entryFileNames: "river_out_vite_[name]-[hash].js",
 	},
 } as const;
 
 export const staticPublicAssetMap = {
-	"desktop.svg": "desktop_eebc981612eb.svg",
-	"favicon.svg": "favicon_ed2aaf004a0d.svg",
-	"full-logo.svg": "full-logo_e0ea7a3d3cf2.svg",
-	"logo.svg": "logo_d9b0e1618362.svg",
-	"moon.svg": "moon_7e0c08985ebe.svg",
-	"river-banner.webp": "river-banner_6dfc0fa16366.webp",
-	"sun.svg": "sun_338b26f6045d.svg"
+	"desktop.svg": "river_out_desktop_eebc981612eb.svg",
+	"favicon.svg": "river_out_favicon_ed2aaf004a0d.svg",
+	"fonts/jetbrains_mono.woff2": "river_out_fonts_jetbrains_mono_1e06740a02a4.woff2",
+	"fonts/jetbrains_mono_ext.woff2": "river_out_fonts_jetbrains_mono_ext_7db7affbce1f.woff2",
+	"fonts/jetbrains_mono_italic.woff2": "river_out_fonts_jetbrains_mono_italic_6548575d6839.woff2",
+	"fonts/jetbrains_mono_italic_ext.woff2": "river_out_fonts_jetbrains_mono_italic_ext_bdce8a4f00f6.woff2",
+	"full-logo.svg": "river_out_full-logo_e0ea7a3d3cf2.svg",
+	"logo.svg": "river_out_logo_d9b0e1618362.svg",
+	"moon.svg": "river_out_moon_7e0c08985ebe.svg",
+	"river-banner.webp": "river_out_river-banner_6dfc0fa16366.webp",
+	"sun.svg": "river_out_sun_338b26f6045d.svg"
 } as const;
 
 export type StaticPublicAsset = keyof typeof staticPublicAssetMap;

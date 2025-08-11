@@ -1,0 +1,23 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"installCommand": "{{.ResolveJSPackageManagerRunScriptPrefix}} vercel-install",
+	"buildCommand": "{{.ResolveJSPackageManagerRunScriptPrefix}} vercel-build",
+	"outputDirectory": "app/__dist/static/assets/public",
+	"rewrites": [
+		{
+			"source": "/(.*)",
+			"destination": "/api"
+		}
+	],
+	"headers": [
+		{
+			"source": "/river_out_(.*).(.*)",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=31536000, immutable"
+				}
+			]
+		}
+	]
+}

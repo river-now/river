@@ -1,7 +1,16 @@
 ---
-title: FAQs
+title: Docs
 description: Frequently asked questions about the river.now framework
 ---
+
+## Creating a new project
+
+To create a new project, open a terminal and run the following commands (adjusted as appropriate for your preferred package manager):
+
+```bash
+npm create river@latest
+npm run dev
+```
 
 ## Nested Routing
 

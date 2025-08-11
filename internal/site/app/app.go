@@ -16,8 +16,8 @@ import (
 const (
 	Domain          = "river.now"
 	Origin          = "https://" + Domain
-	SiteTitle       = "river.now"
-	SiteDescription = "River is a Go / TypeScript meta-framework with first-class support for React, Solid, and Preact – built on Vite."
+	SiteTitle       = "River Framework"
+	SiteDescription = "River is a simple, lightweight, and flexible web framework for Go/TypeScript, built on Vite."
 )
 
 var River = &river.River{
@@ -33,14 +33,21 @@ var River = &river.River{
 		e.Meta(e.Property("og:url"))
 		e.Meta(e.Name("twitter:card"))
 		e.Meta(e.Name("twitter:site"))
+		e.Link(e.Rel("icon"))
 
 		return e
 	},
 
 	GetDefaultHeadEls: func(r *http.Request) ([]*htmlutil.Element, error) {
-		root := "https://river.now"
-		currentURL := path.Join(root, r.URL.Path)
-		imgURL := path.Join(root, Wave.GetPublicURL("river-banner.webp"))
+		currentURL := path.Join(Origin, r.URL.Path)
+
+		ogImgURL := Wave.GetPublicURL("river-banner.webp")
+		favURL := Wave.GetPublicURL("favicon.svg")
+
+		if !wave.GetIsDev() {
+			ogImgURL = path.Join(Origin, ogImgURL)
+			favURL = path.Join(Origin, favURL)
+		}
 
 		e := river.NewHeadEls()
 
@@ -50,13 +57,13 @@ var River = &river.River{
 		e.Meta(e.Property("og:title"), e.Content(SiteTitle))
 		e.Meta(e.Property("og:description"), e.Content(SiteDescription))
 		e.Meta(e.Property("og:type"), e.Content("website"))
-		e.Meta(e.Property("og:image"), e.Content(imgURL))
+		e.Meta(e.Property("og:image"), e.Content(ogImgURL))
 		e.Meta(e.Property("og:url"), e.Content(currentURL))
 
 		e.Meta(e.Name("twitter:card"), e.Content("summary_large_image"))
 		e.Meta(e.Name("twitter:site"), e.Content("@riverframework"))
 
-		e.Link(e.Attr("rel", "icon"), e.Attr("href", Wave.GetPublicURL("favicon.svg")))
+		e.Link(e.Rel("icon"), e.Attr("href", favURL))
 
 		return e.Collect(), nil
 	},

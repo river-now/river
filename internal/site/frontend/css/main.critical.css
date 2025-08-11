@@ -1,59 +1,17 @@
 :root {
 	color-scheme: light dark;
-	--dark-green: #064929;
-	--light-green: #4bba5b;
-	--resolved-green: light-dark(var(--dark-green), var(--light-green));
+	--dark: rgb(24 24 27);
+	--light: rgb(244, 244, 245);
 }
 html.light {
 	color-scheme: light;
-	--bg: white;
+	--bg: var(--light);
 }
 html.dark {
 	color-scheme: dark;
-	--bg: #111;
+	--bg: var(--dark);
 }
-html {
-	font-family: monospace;
-	font-size: 16px;
-}
-html,
 body {
-	height: 100dvh;
-	background: var(--bg);
-}
-html,
-body,
-#river-root,
-main {
-	display: flex;
-	flex-direction: column;
-	flex-grow: 1;
-}
-main {
-	margin: 1rem;
-}
-.content {
-	width: 720px;
-	max-width: 100%;
-	margin: 2rem auto;
-	p,
-	ul,
-	ol,
-	pre {
-		font-size: 17px;
-		line-height: 1.8;
-		margin-bottom: 1.5rem;
-	}
-	pre {
-		font-size: 15.5px;
-		line-height: 1.7;
-	}
-	li {
-		margin-bottom: 0.5rem;
-	}
-}
-@media screen and (max-width: 640px) {
-	.content {
-		margin: 1rem auto;
-	}
+	background-color: var(--bg);
+	opacity: calc(var(--css1-loaded, 0) * var(--css2-loaded, 0));
 }

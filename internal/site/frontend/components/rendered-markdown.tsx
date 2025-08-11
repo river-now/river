@@ -25,6 +25,30 @@ export function RenderedMarkdown(props: { markdown: string }) {
 
 		containerRef.innerHTML = props.markdown; // Set the HTML content
 
+		// Process headings to add anchor links
+		const headings = containerRef.querySelectorAll(
+			"h1, h2, h3, h4, h5, h6",
+		);
+		for (const heading of headings) {
+			const id = heading.id;
+			if (id) {
+				const text = heading.textContent || "";
+				heading.textContent = "";
+				heading.classList.add("anchor-heading");
+
+				const anchor = document.createElement("a");
+				anchor.href = `#${id}`;
+				anchor.textContent = "#";
+				anchor.setAttribute("aria-label", `Link to ${text}`);
+				anchor.classList.add("anchor");
+				heading.appendChild(anchor);
+
+				const textNode = document.createElement("span");
+				textNode.textContent = text;
+				heading.appendChild(textNode);
+			}
+		}
+
 		// Process code blocks
 		const codeBlocks = containerRef.querySelectorAll("pre code");
 		for (const codeBlock of codeBlocks) {
@@ -33,11 +57,17 @@ export function RenderedMarkdown(props: { markdown: string }) {
 
 		// Process links
 		for (const link of containerRef.querySelectorAll("a")) {
+			// Skip anchor links we just created
+			if (link.parentElement?.classList.contains("anchor-heading")) {
+				continue;
+			}
+
 			const hrefDetails = getHrefDetails(link.href);
 
 			if (hrefDetails.isHTTP && hrefDetails.isExternal) {
 				link.dataset.external = "true";
 				link.target = "_blank";
+				link.rel = "noopener noreferrer";
 			} else {
 				const href = link.href;
 				const label = link.innerText;
@@ -91,5 +121,5 @@ export function RenderedMarkdown(props: { markdown: string }) {
 
 	onCleanup(cleanupPreviousRender); // Clean up all disposers when component unmounts
 
-	return <div ref={ref} class={"content"} />;
+	return <div ref={ref} class="content" />;
 }

@@ -29,6 +29,7 @@ tsreset:
 	@rm -rf node_modules 2>/dev/null || true
 	@find . -path "*/node_modules" -type d -exec rm -rf {} \; 2>/dev/null || true
 	@pnpm i
+	@cd internal/framework/_typescript/create && pnpm i
 
 tslint:
 	@pnpm oxlint
@@ -54,15 +55,20 @@ tsprepforpub: tsreset tstest tslint tscheck
 
 tspublishpre: tsprepforpub
 	@npm publish --access public --tag pre
+	@cd internal/framework/_typescript/create && npm publish --access public --tag pre
 
 tspublishnonpre: tsprepforpub
 	@npm publish --access public
+	@cd internal/framework/_typescript/create && npm publish --access public
 
 npmbuild:
 	@go run ./internal/scripts/buildts
 
 npmbump:
 	@go run ./internal/scripts/npm_bumper
+
+sitebump:
+	@go run ./internal/scripts/site_bumper
 
 docker-site:
 	@docker build -t river-site -f Dockerfile.site .

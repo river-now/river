@@ -22,30 +22,166 @@ export function Home(_props: RouteProps<"/_index">) {
 	// console.log("_y", _y());
 
 	return (
-		<div class="flex h-full justify-center flex-col items-center mb-16 gap-6">
-			<h2 class="text-center text-balance text-3xl sm:text-4xl md:text-5xl lg:text-5xl w-5xl max-w-full leading-normal my-6 px-6">
-				River is a <FancySpan>Go</FancySpan> /{" "}
-				<FancySpan>TypeScript</FancySpan> meta-framework with
-				first-class support for <FancySpan>React</FancySpan>,{" "}
-				<FancySpan>Solid</FancySpan>, and <FancySpan>Preact</FancySpan>{" "}
-				– built on <FancySpan>Vite</FancySpan>.
-			</h2>
+		<>
+			<h1 class="big-heading">
+				River is a{" "}
+				<b>
+					<i>simple</i>
+				</b>
+				,{" "}
+				<b>
+					<i>lightweight</i>
+				</b>
+				, and{" "}
+				<b>
+					<i>flexible</i>
+				</b>{" "}
+				web framework for{" "}
+				<span class="whitespace-nowrap">
+					<b>
+						<i>Go</i>
+					</b>
+					<span class="p-[2px] font-extralight">/</span>
+					<b>
+						<i>TypeScript</i>
+					</b>
+				</span>
+				, built on{" "}
+				<b>
+					<i>Vite</i>
+				</b>
+				.
+			</h1>
 
-			<Link
-				href="/start"
-				type="button"
-				class="py-4 px-6 bg-[var(--dark-green)] dark:bg-[var(--light-green)] text-white dark:text-black rounded-lg shadow-md hover:opacity-80 hover:outline-2 outline-black dark:outline-white outline-offset-2 active:opacity-100 cursor-pointer uppercase tracking-wider font-bold"
-			>
-				Get Started
-			</Link>
-		</div>
-	);
-}
+			<div class="flex gap-3 flex-wrap mb-6">
+				<a
+					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-200"
+					href="https://github.com/river-now/river"
+					target="_blank"
+					rel="noreferrer"
+				>
+					⭐ github.com
+				</a>
 
-function FancySpan(props: { children: string }) {
-	return (
-		<span class="font-bold italic text-[#064929] dark:text-[#4BBA5B]">
-			{props.children}
-		</span>
+				<a
+					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-200"
+					href="https://pkg.go.dev/github.com/river-now/river"
+					target="_blank"
+					rel="noreferrer"
+				>
+					🔷 pkg.go.dev
+				</a>
+
+				<a
+					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-200"
+					href="https://www.npmjs.com/package/river.now"
+					target="_blank"
+					rel="noreferrer"
+				>
+					📦 npmjs.com
+				</a>
+
+				<a
+					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-200"
+					href="https://x.com/riverframework"
+					target="_blank"
+					rel="noreferrer"
+				>
+					𝕏 x.com
+				</a>
+			</div>
+
+			<div>
+				<h3 class="scream-heading">Quickstart</h3>
+				<code class="inline-code high-contrast self-start text-xl font-bold italic">
+					npm create river@latest
+				</code>
+			</div>
+
+			<div>
+				<h3 class="scream-heading">What is River?</h3>
+				<div class="flex-col-wrapper">
+					<p class="leading-[1.75]">
+						River is a lot like NextJS or Remix, but it uses{" "}
+						<b>
+							<i>Go</i>
+						</b>{" "}
+						on the backend, with your choice of{" "}
+						<b>
+							<i>React</i>
+						</b>
+						,{" "}
+						<b>
+							<i>Solid</i>
+						</b>
+						, or{" "}
+						<b>
+							<i>Preact</i>
+						</b>{" "}
+						on the frontend.
+					</p>
+
+					<p class="leading-[1.75]">
+						It has{" "}
+						<b>
+							<i>nested routing</i>
+						</b>
+						,{" "}
+						<b>
+							<i>type-safe server actions</i>
+						</b>
+						,{" "}
+						<b>
+							<i>parallel-executed route loaders</i>
+						</b>
+						, and much, much more.
+					</p>
+
+					<p class="leading-[1.75]">
+						It's deeply integrated with{" "}
+						<b>
+							<i>Vite</i>
+						</b>{" "}
+						to give you full{" "}
+						<b>
+							<i>hot module reloading</i>
+						</b>{" "}
+						at dev-time.
+					</p>
+				</div>
+			</div>
+
+			<div>
+				<h3 class="scream-heading">Get started</h3>
+				<div class="flex-col-wrapper">
+					<p class="leading-[1.75]">
+						If you want to dive right in, just open a terminal and
+						run{" "}
+						<code class="inline-code">npm create river@latest</code>{" "}
+						and follow the prompts.
+					</p>
+					<p class="leading-[1.75]">
+						If you'd prefer to read more first, take a peek at{" "}
+						<Link href="/docs" class="underline">
+							our docs
+						</Link>
+						.
+					</p>
+				</div>
+			</div>
+
+			<div>
+				<h3 class="scream-heading">Disclaimer</h3>
+				<p class="leading-[1.75]">
+					While River's technology is quite stable and has been used
+					in anger in production settings, our APIs are still
+					evolving, and we plan to stay sub–1.0 until we feel we have
+					collected all the feedback we need to make sure we can
+					support our APIs for years to come. Our general strategy is
+					to delay a 1.0 release for long enough to be sure we won't
+					need a lot of API churn moving forward.
+				</p>
+			</div>
+		</>
 	);
 }
