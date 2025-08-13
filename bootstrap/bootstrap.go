@@ -80,7 +80,7 @@ func (o Options) derived() derivedOptions {
 		do.VercelPackageJSONExtras = fmt.Sprintf(`,
 		"vercel-install-go": "curl -L https://go.dev/dl/%s.linux-amd64.tar.gz | tar -C /tmp -xz",
 		"vercel-install": "%s vercel-install-go && export PATH=/tmp/go/bin:$PATH && %s install",
-		"vercel-build": "export PATH=/tmp/go/bin:$PATH && go run ./__cmd/build --no-binary"`,
+		"vercel-build": "export PATH=/tmp/go/bin:$PATH && go run ./__cmd/build"`,
 			goVersion, do.ResolveJSPackageManagerRunScriptPrefix(), do.JSPackageManager,
 		)
 	}
@@ -141,8 +141,8 @@ var (
 	tsconfig_json_tmpl_txt string
 	//go:embed tmpls/vercel_json_tmpl.txt
 	vercel_json_tmpl_txt string
-	//go:embed tmpls/api_index_go_tmpl.txt
-	api_index_go_tmpl_txt string
+	//go:embed tmpls/api_proxy_ts_str.txt
+	api_proxy_ts_str string
 )
 
 func Init(o Options) {
@@ -185,7 +185,7 @@ func Init(o Options) {
 	strWriteMust("frontend/api_client.ts", frontend_api_client_ts_str_txt)
 	if o.DeploymentTarget == "vercel" {
 		do.tmplWriteMust("vercel.json", vercel_json_tmpl_txt)
-		do.tmplWriteMust("api/index.go", api_index_go_tmpl_txt)
+		do.tmplWriteMust("api/proxy.ts", api_proxy_ts_str)
 	}
 
 	// last
@@ -217,6 +217,11 @@ func Init(o Options) {
 
 		installJSPkg(do, "preact")
 		installJSPkg(do, "@preact/signals")
+	}
+
+	if do.DeploymentTarget == "vercel" {
+		installJSPkg(do, "@types/node")
+		installJSPkg(do, "@vercel/node")
 	}
 
 	// install chi (some chi middleware is used in the template)
