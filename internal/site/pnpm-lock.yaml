@@ -21,8 +21,8 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
       river.now:
-        specifier: 0.51.0
-        version: 0.51.0
+        specifier: 0.52.0
+        version: 0.52.0
       solid-js:
         specifier: ^1.9.6
         version: 1.9.9
@@ -729,8 +729,8 @@ packages:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
     engines: {node: ^10 || ^12 || >=14}
 
-  river.now@0.51.0:
-    resolution: {integrity: sha512-yLclReBDDIn7BJ9H2QYsHytlhPgZXEj7E0QKrBauVxegvm0Qr1x7Xey4A3JsP7KVmGIdUVbae/rNxlKoX34p7w==}
+  river.now@0.52.0:
+    resolution: {integrity: sha512-8Gx6sjZqKU8lScH6EUeJmw2ALIO3Nxa6P6N8wnqiHIogr6KX7KEbOq72Dqa4Zvim2+2Z4FzWMEAjGzfhtTiiCw==}
 
   rolldown-vite@7.1.2:
     resolution: {integrity: sha512-9VwY/BOirnPDJ8HXiXTdVdLXTSQkNGDVgpuhfmMxAH7HxSBb71VaTyQh/FHPtMk2psAyglQXWheYKXV53N27/Q==}
@@ -1437,7 +1437,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  river.now@0.51.0: {}
+  river.now@0.52.0: {}
 
   rolldown-vite@7.1.2(esbuild@0.25.4)(jiti@2.4.2):
     dependencies:
