@@ -301,10 +301,45 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 		return uiRoutesData
 	}
 
+	cssBundles := h.getCSSBundles(uiRoutesData.ui_data_core.Deps)
+
 	var hb []*htmlutil.Element
 	hb = make([]*htmlutil.Element, 0, len(uiRoutesData.stage_1_head_els)+len(defaultHeadEls))
 	hb = append(hb, defaultHeadEls...)
 	hb = append(hb, uiRoutesData.stage_1_head_els...)
+
+	publicPathPrefix := h.Wave.GetPublicPathPrefix()
+
+	if !h._isDev {
+		if uiRoutesData.ui_data_core.Deps != nil {
+			for _, dep := range uiRoutesData.ui_data_core.Deps {
+				el := &htmlutil.Element{
+					Tag: "link",
+					AttributesKnownSafe: map[string]string{
+						"rel":  "modulepreload",
+						"href": publicPathPrefix + dep,
+					},
+					SelfClosing: true,
+				}
+				hb = append(hb, el)
+			}
+		}
+
+		for _, cssBundle := range cssBundles {
+			el := &htmlutil.Element{
+				Tag: "link",
+				AttributesKnownSafe: map[string]string{
+					"rel":  "stylesheet",
+					"href": publicPathPrefix + cssBundle,
+				},
+				Attributes: map[string]string{
+					"data-river-css-bundle": cssBundle,
+				},
+				SelfClosing: true,
+			}
+			hb = append(hb, el)
+		}
+	}
 
 	headEls := headElsInstance.ToSortedAndPreEscapedHeadEls(hb)
 
@@ -313,7 +348,7 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 
 		state_2_final: &ui_data_stage_2{
 			SortedAndPreEscapedHeadEls: headEls,
-			CSSBundles:                 h.getCSSBundles(uiRoutesData.ui_data_core.Deps),
+			CSSBundles:                 cssBundles,
 			ViteDevURL:                 h.getViteDevURL(),
 		},
 	}

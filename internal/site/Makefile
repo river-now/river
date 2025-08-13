@@ -4,13 +4,13 @@ pre:
 dev: pre
 	@go run ./__cmd/build --dev
 
-build-prod: pre
+build: pre
 	@go run ./__cmd/build
-	@echo "\nbuild-prod complete. now run:\n\tmake run-prod port=9090"
+	@echo "\nbuild complete. now run:\n\tmake run port=9090"
 
-# call with `make run-prod port=whatever`
-run-prod:
-	@PORT=$(port) ./__dist/main
+# call with `make run port=whatever`
+run:
+	@PORT=$(port) ./app/__dist/main
 
 vercel-install:
 	@curl -L https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | tar -C /tmp -xz && \

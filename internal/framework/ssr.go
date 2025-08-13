@@ -43,23 +43,8 @@ x.exportKeys = {{.ExportKeys}};
 x.hasRootData = {{.HasRootData}};
 x.params = {{.Params}};
 x.splatValues = {{.SplatValues}};
-if (!x.isDev) {
-	const deps = {{.Deps}};
-	deps.forEach((y) => {
-		const link = document.createElement("link");
-		link.rel = "modulepreload";
-		link.href = x.publicPathPrefix + y;
-		document.head.appendChild(link);
-	});
-	const cssBundles = {{.CSSBundles}};
-	cssBundles.forEach((y) => {
-		const link = document.createElement("link");
-		link.rel = "stylesheet";
-		link.href = x.publicPathPrefix + y;
-		link.setAttribute("data-river-css-bundle", y);
-		document.head.appendChild(link);
-	});
-}
+x.deps = {{.Deps}};
+x.cssBundles = {{.CSSBundles}};
 </script>`
 
 var ssrInnerTmpl = template.Must(template.New("ssr").Parse(ssrInnerHTMLTmplStr))

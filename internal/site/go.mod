@@ -2,6 +2,8 @@ module site
 
 go 1.24.0
 
+// replace github.com/river-now/river => ../../
+
 require (
 	github.com/adrg/frontmatter v0.2.0
 	github.com/go-chi/chi/v5 v5.2.2
