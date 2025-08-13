@@ -14,7 +14,7 @@
 			"Critical": "frontend/css/main.critical.css",
 			"NonCritical": "frontend/css/main.css"
 		},
-		"PublicPathPrefix": "/public/"
+		"PublicPathPrefix": "/"
 	},
 	"River": {
 		"UIVariant": "{{.UIVariant}}",
