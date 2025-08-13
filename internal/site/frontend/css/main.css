@@ -102,7 +102,7 @@ nav .logo:hover {
 	font-weight: 700;
 }
 .nav-item:hover {
-	background: rgb(59 130 246);
+	background: var(--color-nice-blue);
 	color: #fff;
 }
 .dark .nav-item img {

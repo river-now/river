@@ -3,7 +3,7 @@ title: Docs
 description: Frequently asked questions about the river.now framework
 ---
 
-**NOTE:** These docs are currently just a bunch of sparse random topics. An comprehensive overhaul is coming soon.
+**NOTE:** These docs are currently just a bunch of sparse random topics. A comprehensive overhaul is coming soon.
 
 ## Creating a new project
 

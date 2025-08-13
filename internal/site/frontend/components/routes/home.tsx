@@ -55,7 +55,7 @@ export function Home(_props: RouteProps<"/_index">) {
 
 			<div class="flex gap-3 flex-wrap mb-6">
 				<a
-					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-200"
+					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-nice-blue hover:text-white"
 					href="https://github.com/river-now/river"
 					target="_blank"
 					rel="noreferrer"
@@ -64,7 +64,7 @@ export function Home(_props: RouteProps<"/_index">) {
 				</a>
 
 				<a
-					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-200"
+					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-nice-blue hover:text-white"
 					href="https://pkg.go.dev/github.com/river-now/river"
 					target="_blank"
 					rel="noreferrer"
@@ -73,7 +73,7 @@ export function Home(_props: RouteProps<"/_index">) {
 				</a>
 
 				<a
-					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-200"
+					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-nice-blue hover:text-white"
 					href="https://www.npmjs.com/package/river.now"
 					target="_blank"
 					rel="noreferrer"
@@ -82,7 +82,7 @@ export function Home(_props: RouteProps<"/_index">) {
 				</a>
 
 				<a
-					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-200"
+					class="font-medium bg-[var(--fg)] py-[2px] px-[6px] text-[var(--bg)] text-sm rounded-sm cursor-pointer hover:bg-nice-blue hover:text-white"
 					href="https://x.com/riverframework"
 					target="_blank"
 					rel="noreferrer"

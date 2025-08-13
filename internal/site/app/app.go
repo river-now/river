@@ -15,7 +15,6 @@ import (
 
 const (
 	Domain          = "river.now"
-	Origin          = "https://" + Domain
 	SiteTitle       = "River Framework"
 	SiteDescription = "River is a simple, lightweight, and flexible web framework for Go/TypeScript, built on Vite."
 )
@@ -39,13 +38,13 @@ var River = &river.River{
 	},
 
 	GetDefaultHeadEls: func(r *http.Request) ([]*htmlutil.Element, error) {
-		currentURL := path.Join(Origin, r.URL.Path)
+		currentURL := "https://" + path.Join(Domain, r.URL.Path)
 
 		ogImgURL := Wave.GetPublicURL("river-banner.webp")
 		favURL := Wave.GetPublicURL("favicon.svg")
 
 		if !wave.GetIsDev() {
-			ogImgURL = path.Join(Origin, ogImgURL)
+			ogImgURL = "https://" + path.Join(Domain, ogImgURL)
 		}
 
 		e := river.NewHeadEls(12)

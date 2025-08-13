@@ -5,3 +5,7 @@
 :root {
 	--css2-loaded: 1;
 }
+
+@theme {
+	--color-nice-blue: rgb(59 130 246);
+}
