@@ -1,6 +1,6 @@
 {
 	"name": "river.now",
-	"version": "0.52.0",
+	"version": "0.53.0-pre.0",
 	"type": "module",
 	"license": "BSD-3-Clause",
 	"repository": {
@@ -96,6 +96,7 @@
 	},
 	"prettier": {
 		"useTabs": true,
-		"tabWidth": 4
+		"tabWidth": 4,
+		"proseWrap": "always"
 	}
 }

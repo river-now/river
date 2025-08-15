@@ -593,6 +593,10 @@ class NavigationStateManager {
 		try {
 			const urlToUse = new URL(url, window.location.href);
 			const headers = new Headers(requestInit?.headers);
+			const deploymentID = internal_RiverClientGlobal.get("deploymentID");
+			if (deploymentID) {
+				headers.set("x-deployment-id", deploymentID);
+			}
 			const finalRequestInit: RequestInit = {
 				...requestInit,
 				headers,
