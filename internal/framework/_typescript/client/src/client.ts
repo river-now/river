@@ -381,6 +381,11 @@ class NavigationStateManager {
 				internal_RiverClientGlobal.get("buildID") || "1",
 			);
 
+			const deploymentID = internal_RiverClientGlobal.get("deploymentID");
+			if (deploymentID) {
+				url.searchParams.set("dpl", deploymentID);
+			}
+
 			const { redirectData, response } = await handleRedirects({
 				abortController: controller,
 				url,
@@ -593,6 +598,10 @@ class NavigationStateManager {
 		try {
 			const urlToUse = new URL(url, window.location.href);
 			const headers = new Headers(requestInit?.headers);
+			const deploymentID = internal_RiverClientGlobal.get("deploymentID");
+			if (deploymentID) {
+				headers.set("x-deployment-id", deploymentID);
+			}
 			const finalRequestInit: RequestInit = {
 				...requestInit,
 				headers,

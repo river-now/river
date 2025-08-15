@@ -55,6 +55,7 @@ export type RiverClientGlobal = shared & {
 	clientLoadersData: Array<any>;
 	defaultErrorBoundary: RouteErrorComponent;
 	useViewTransitions: boolean;
+	deploymentID: string;
 };
 
 export function __getRiverClientGlobal() {

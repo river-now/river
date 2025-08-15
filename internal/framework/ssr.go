@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"strings"
 
+	"github.com/river-now/river/kit/envutil"
 	"github.com/river-now/river/kit/htmlutil"
 )
 
@@ -15,6 +16,7 @@ type SSRInnerHTMLInput struct {
 	ViteDevURL       string
 	BuildID          string
 	PublicPathPrefix string
+	DeploymentID     string
 
 	*ui_data_core
 
@@ -45,6 +47,7 @@ x.params = {{.Params}};
 x.splatValues = {{.SplatValues}};
 x.deps = {{.Deps}};
 x.cssBundles = {{.CSSBundles}};
+x.deploymentID = {{.DeploymentID}};
 </script>`
 
 var ssrInnerTmpl = template.Must(template.New("ssr").Parse(ssrInnerHTMLTmplStr))
@@ -69,6 +72,11 @@ func (h *River) GetSSRInnerHTML(routeData *final_ui_data) (*GetSSRInnerHTMLOutpu
 
 		CSSBundles: routeData.CSSBundles,
 	}
+
+	if envutil.GetBool("VERCEL_SKEW_PROTECTION_ENABLED", false) {
+		dto.DeploymentID = envutil.GetStr("VERCEL_DEPLOYMENT_ID", "")
+	}
+
 	if err := ssrInnerTmpl.Execute(&htmlBuilder, dto); err != nil {
 		wrapped := fmt.Errorf("could not execute SSR inner HTML template: %w", err)
 		Log.Error(wrapped.Error())
