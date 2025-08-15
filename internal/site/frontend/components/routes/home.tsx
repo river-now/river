@@ -92,7 +92,7 @@ export function Home(_props: RouteProps<"/_index">) {
 			</div>
 
 			<div>
-				<h2 class="scream-heading">Quickstart</h2>
+				<h2 class="scream-heading">Quick Start</h2>
 				<code class="inline-code high-contrast self-start text-xl font-bold italic">
 					npm create river@latest
 				</code>

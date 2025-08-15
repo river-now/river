@@ -57,3 +57,4 @@
 - Works with monorepos
 - Revalidation
 - Client navigation options (prefetching, scroll, etc.)
+- Skew Protection
