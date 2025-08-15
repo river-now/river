@@ -1,17 +1,15 @@
 # 🌊 River
 
-<div style="font-size:24px;">
-River is a <b><i>simple<b><i>, <b><i>lightweight<b><i>, and <b><i>flexible<b><i> web framework for
-<b><i>Go<b><i>/<b><i>TypeScript<b><i>, built on <b><i>Vite<b><i>.
-</div>
+River is a **_simple_**, **_lightweight_**, and **_flexible_** web framework for
+**_Go_**/**_TypeScript_**, built on **_Vite_**.
 
 ## Links
 
-- [river.now](https://river.now)
-- [github.com](https://github.com/river-now/river)
-- [pkg.go.dev](https://pkg.go.dev/github.com/river-now/river)
-- [npmjs.com](https://www.npmjs.com/package/river.now)
-- [x.com](https://x.com/riverframework)
+[river.now](https://river.now) |
+[github.com](https://github.com/river-now/river) |
+[pkg.go.dev](https://pkg.go.dev/github.com/river-now/river) |
+[npmjs.com](https://www.npmjs.com/package/river.now) |
+[x.com](https://x.com/riverframework)
 
 ## Quick Start
 
