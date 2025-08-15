@@ -1,7 +1,9 @@
-# River
+# 🌊 River
 
-River is a **_simple_**, **_lightweight_**, and **_flexible_** web framework for
-**_Go_**/**_TypeScript_**, built on **_Vite_**.
+<div style="font-size:24px;">
+River is a <b><i>simple<b><i>, <b><i>lightweight<b><i>, and <b><i>flexible<b><i> web framework for
+<b><i>Go<b><i>/<b><i>TypeScript<b><i>, built on <b><i>Vite<b><i>.
+</div>
 
 ## Links
 
