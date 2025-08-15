@@ -1,7 +1,7 @@
 # 🌊 River
 
 River is a **_simple_**, **_lightweight_**, and **_flexible_** web framework for
-**_Go_**/**_TypeScript_**, built on **_Vite_**.
+**_Go_**&thinsp;/&thinsp;**_TypeScript_**, built on **_Vite_**.
 
 ## Links
 
