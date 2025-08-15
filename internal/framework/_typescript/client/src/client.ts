@@ -381,9 +381,12 @@ class NavigationStateManager {
 				internal_RiverClientGlobal.get("buildID") || "1",
 			);
 
-			const deploymentID = internal_RiverClientGlobal.get("deploymentID");
-			if (deploymentID) {
-				url.searchParams.set("dpl", deploymentID);
+			if (props.navigationType === "revalidation") {
+				const deploymentID =
+					internal_RiverClientGlobal.get("deploymentID");
+				if (deploymentID) {
+					url.searchParams.set("dpl", deploymentID);
+				}
 			}
 
 			const { redirectData, response } = await handleRedirects({
