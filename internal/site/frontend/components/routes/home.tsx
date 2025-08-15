@@ -102,7 +102,7 @@ export function Home(_props: RouteProps<"/_index">) {
 				<h2 class="scream-heading">What is River?</h2>
 				<div class="flex-col-wrapper">
 					<p class="leading-[1.75]">
-						River is a lot like NextJS or Remix, but it uses{" "}
+						River is a lot like Next.js or Remix, but it uses{" "}
 						<b>
 							<i>Go</i>
 						</b>{" "}

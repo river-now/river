@@ -19,7 +19,7 @@ npm create river@latest
 
 ## What is River?
 
-River is a lot like NextJS or Remix, but it uses Go on the backend, with your
+River is a lot like Next.js or Remix, but it uses Go on the backend, with your
 choice of **_React_**, **_Solid_**, or **_Preact_** on the frontend.
 
 It has **_nested routing_**, **_type-safe server actions_**,
