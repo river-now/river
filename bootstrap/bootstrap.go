@@ -37,6 +37,7 @@ type derivedOptions struct {
 	TailwindViteCall           string
 	TailwindFileImport         string
 	DynamicLinkParamsProp      string
+	BackgroundColorKey         string
 }
 
 const tw_vite_import = "import tailwindcss from \"@tailwindcss/vite\";\n"
@@ -67,6 +68,8 @@ func (o Options) derived() derivedOptions {
 		do.JSPackageManagerBaseCmd = "bunx"
 	}
 
+	do.BackgroundColorKey = "backgroundColor"
+
 	switch o.UIVariant {
 	case "react":
 		do.TSConfigJSXVal = "react-jsx"
@@ -75,6 +78,7 @@ func (o Options) derived() derivedOptions {
 		do.TSConfigJSXVal = "preserve"
 		do.TSConfigJSXImportSourceVal = "solid-js"
 		do.Call = "()"
+		do.BackgroundColorKey = `"background-color"`
 	case "preact":
 		do.TSConfigJSXVal = "react-jsx"
 		do.TSConfigJSXImportSourceVal = "preact"
