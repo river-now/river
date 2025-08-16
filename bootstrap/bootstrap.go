@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/river-now/river"
 	"github.com/river-now/river/kit/executil"
 	"github.com/river-now/river/kit/fsutil"
 )
@@ -219,7 +220,7 @@ func Init(o Options) {
 
 	installJSPkg(do, "typescript")
 	installJSPkg(do, "vite")
-	installJSPkg(do, "river.now")
+	installJSPkg(do, fmt.Sprintf("river.now@%s", river.Internal__GetCurrentNPMVersion()))
 	installJSPkg(do, resolveUIVitePlugin(do))
 	installJSPkg(do, "nprogress")
 	installJSPkg(do, "@types/nprogress")
