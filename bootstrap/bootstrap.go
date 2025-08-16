@@ -168,6 +168,8 @@ var (
 	api_proxy_ts_str string
 	//go:embed tmpls/frontend_css_tailwind_css_str.txt
 	frontend_css_tailwind_css_str_txt string
+	//go:embed tmpls/frontend_css_nprogress_css_str.txt
+	frontend_css_nprogress_css_str_txt string
 )
 
 func Init(o Options) {
@@ -210,6 +212,7 @@ func Init(o Options) {
 	do.tmplWriteMust("frontend/about.tsx", frontend_about_tsx_tmpl_txt)
 	do.tmplWriteMust("frontend/app_utils.tsx", frontend_app_utils_tsx_tmpl_txt)
 	strWriteMust("frontend/api_client.ts", frontend_api_client_ts_str_txt)
+	strWriteMust("frontend/css/nprogress.css", frontend_css_nprogress_css_str_txt)
 	if o.DeploymentTarget == "vercel" {
 		do.tmplWriteMust("vercel.json", vercel_json_tmpl_txt)
 		do.tmplWriteMust("api/proxy.ts", api_proxy_ts_str)

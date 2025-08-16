@@ -1,5 +1,6 @@
 import { api } from "./api_client.ts";
 import { AppLink, useRouterData, type RouteProps } from "./app_utils.tsx";
+import { USERNAME_MAX_LEN } from "./river.gen.ts";
 
 export function Root(props: RouteProps<"/">) {
 	const routerData = useRouterData(props);
@@ -52,7 +53,7 @@ export function Root(props: RouteProps<"/">) {
 					});
 				}}
 			>
-				<input name="username" placeholder="New username" />
+				<input name="username" placeholder="New username" required maxLength={USERNAME_MAX_LEN} />
 				<button type="submit">Update username</button>
 			</form>
 			<hr />

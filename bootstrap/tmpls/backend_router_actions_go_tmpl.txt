@@ -2,6 +2,7 @@ package router
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/river-now/river/kit/mux"
@@ -41,6 +42,8 @@ func NewAction[I any, O any](method, pattern string, f func(c *ActionCtx[I]) (O,
 
 /////// EXAMPLES
 
+const UsernameMaxLen = 42
+
 var count = 0
 var username = "guest"
 
@@ -57,8 +60,8 @@ func (i *UsernameInput) Validate() error {
 	if i.Username == "" {
 		return errors.New("username is required")
 	}
-	if len(i.Username) > 50 {
-		return errors.New("username must be at most 50 characters")
+	if len(i.Username) > UsernameMaxLen {
+		return fmt.Errorf("username must be at most %d characters", UsernameMaxLen)
 	}
 	return nil
 }

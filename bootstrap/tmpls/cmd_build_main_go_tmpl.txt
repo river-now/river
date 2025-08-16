@@ -11,7 +11,7 @@ import (
 func main() {
 	a := tsgen.Statements{}
 
-	// a.Serialize("export const ANSWER", 42)
+	a.Serialize("export const USERNAME_MAX_LEN", router.UsernameMaxLen)
 
 	app.Wave.Builder(func(isDev bool) error {
 		return app.River.Build(&river.BuildOptions{
