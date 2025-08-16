@@ -11,7 +11,7 @@ export function Root(props: RouteProps<"/">) {
 				<AppLink pattern="/about">About</AppLink>
 				<AppLink pattern="/about/location">About | Location</AppLink>
 				<AppLink pattern="/about/hobbies">About | Hobbies</AppLink>
-				<AppLink pattern="/about/:id" params={{ id: "hi" }}>
+				<AppLink pattern="/about/:id" params={{.DynamicLinkParamsProp}}>
 					About | Dynamic
 				</AppLink>
 				<AppLink

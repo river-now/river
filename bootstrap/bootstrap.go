@@ -35,11 +35,13 @@ type derivedOptions struct {
 	TailwindViteImport         string
 	TailwindViteCall           string
 	TailwindFileImport         string
+	DynamicLinkParamsProp      string
 }
 
 const tw_vite_import = "import tailwindcss from \"@tailwindcss/vite\";\n"
 const tw_vite_call = ", tailwindcss()"
 const tw_file_import = "import \"./css/tailwind.css\";\n"
+const dynamic_link_params_prop = `{{ id: "hi" }}`
 
 func (o Options) derived() derivedOptions {
 	if o.UIVariant == "" {
@@ -94,6 +96,8 @@ func (o Options) derived() derivedOptions {
 	}
 
 	do.UIVitePlugin = resolveUIVitePlugin(do)
+
+	do.DynamicLinkParamsProp = dynamic_link_params_prop
 
 	if o.IncludeTailwind {
 		do.TailwindViteImport = tw_vite_import
