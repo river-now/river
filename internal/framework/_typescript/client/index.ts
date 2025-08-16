@@ -1,5 +1,8 @@
 export {
 	apiHelper,
+	resolvePath,
+	type APIConfig,
+	type PatternBasedProps,
 	type SharedBase,
 	type WithOptionalInput,
 } from "./src/api_client_helpers.ts";

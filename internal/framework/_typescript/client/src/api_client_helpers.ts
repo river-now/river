@@ -17,11 +17,11 @@ type Props = SharedBase<string, RiverUntypedFunction> & {
 
 type APIClientHelperOpts = {
 	apiConfig: APIConfig;
-	type: "query" | "mutation";
+	type: "loader" | "query" | "mutation";
 	props: Props;
 };
 
-type APIConfig = {
+export type APIConfig = {
 	actionsRouterMountRoot: string;
 	actionsDynamicRune: string;
 	actionsSplatRune: string;
@@ -59,17 +59,17 @@ function resolveMethod(opts: APIClientHelperOpts) {
 	return "GET";
 }
 
-type GetParams<T extends string, F extends RiverUntypedFunction> =
+export type GetParams<T extends string, F extends RiverUntypedFunction> =
 	Extract<F, { pattern: T }> extends { params: ReadonlyArray<infer P> }
 		? P extends string
 			? P
 			: never
 		: never;
 
-type HasParams<T extends string, F extends RiverUntypedFunction> =
+export type HasParams<T extends string, F extends RiverUntypedFunction> =
 	GetParams<T, F> extends never ? false : true;
 
-type IsSplat<T extends string, F extends RiverUntypedFunction> =
+export type IsSplat<T extends string, F extends RiverUntypedFunction> =
 	Extract<F, { pattern: T }> extends { isSplat: true } ? true : false;
 
 export type IsEmptyInput<T> = [T] extends [null | undefined | never]
@@ -79,9 +79,11 @@ export type IsEmptyInput<T> = [T] extends [null | undefined | never]
 export type WithOptionalInput<TInput> =
 	IsEmptyInput<TInput> extends true ? { input?: TInput } : { input: TInput };
 
-export type SharedBase<P extends string, F extends RiverUntypedFunction> = {
+export type PatternBasedProps<
+	P extends string,
+	F extends RiverUntypedFunction,
+> = {
 	pattern: P;
-	options?: SubmitOptions;
 } & (HasParams<P, F> extends true
 	? IsSplat<P, F> extends true
 		? {
@@ -97,11 +99,22 @@ export type SharedBase<P extends string, F extends RiverUntypedFunction> = {
 			}
 		: {});
 
-function resolvePath(opts: APIClientHelperOpts) {
+export type SharedBase<P extends string, F extends RiverUntypedFunction> = {
+	pattern: P;
+	options?: SubmitOptions;
+} & PatternBasedProps<P, F>;
+
+export function resolvePath(opts: APIClientHelperOpts) {
 	const { props, apiConfig } = opts;
-	const dynamicParamPrefixRune = apiConfig.actionsDynamicRune;
-	const splatSegmentRune = apiConfig.actionsSplatRune;
 	let path = props.pattern;
+
+	let dynamicParamPrefixRune = apiConfig.actionsDynamicRune;
+	let splatSegmentRune = apiConfig.actionsSplatRune;
+
+	if (opts.type === "loader") {
+		dynamicParamPrefixRune = apiConfig.loadersDynamicRune;
+		splatSegmentRune = apiConfig.loadersSplatRune;
+	}
 
 	// Replace parameter placeholders with actual values
 	if ("params" in props && props.params) {
