@@ -138,7 +138,7 @@ func TestTaskHandlers(t *testing.T) {
 
 	t.Run("Basic_TaskHandler", func(t *testing.T) {
 		r := NewRouter(&Options{
-			MarshalInput: func(req *http.Request, inputPtr any) error {
+			ParseInput: func(req *http.Request, inputPtr any) error {
 				return json.NewDecoder(req.Body).Decode(inputPtr)
 			},
 		})
@@ -554,7 +554,7 @@ func TestValidation(t *testing.T) {
 
 	t.Run("Validation_Error", func(t *testing.T) {
 		r := NewRouter(&Options{
-			MarshalInput: func(req *http.Request, inputPtr any) error {
+			ParseInput: func(req *http.Request, inputPtr any) error {
 				// Simulate validation error
 				return &validate.ValidationError{Err: errors.New("Invalid email format")}
 			},
@@ -747,7 +747,7 @@ func BenchmarkRouter(b *testing.B) {
 
 	b.Run("TaskHandler", func(b *testing.B) {
 		r := NewRouter(&Options{
-			MarshalInput: func(req *http.Request, inputPtr any) error {
+			ParseInput: func(req *http.Request, inputPtr any) error {
 				if req.Body != nil {
 					defer req.Body.Close()
 					return json.NewDecoder(req.Body).Decode(inputPtr)

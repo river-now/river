@@ -5,11 +5,14 @@
 		"@types/nprogress": "^0.2.3",
 		"highlight.js": "^11.11.1",
 		"nprogress": "^0.2.0",
-		"river.now": "0.53.1",
+		"river.now": "link:../../river",
 		"solid-js": "^1.9.6",
 		"tailwindcss": "^4.1.11",
 		"typescript": "^5.8.3",
 		"vite": "npm:rolldown-vite@latest",
 		"vite-plugin-solid": "^2.11.6"
+	},
+	"__NOTES": {
+		"river.now": "0.0.0 | link:../../river"
 	}
 }
