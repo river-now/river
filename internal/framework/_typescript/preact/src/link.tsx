@@ -1,4 +1,4 @@
-import { h, type ComponentType, type JSX } from "preact";
+import { h, type JSX } from "preact";
 import { useMemo } from "preact/hooks";
 import type { RiverUntypedFunction } from "river.now/client";
 import {
@@ -39,7 +39,7 @@ export function RiverLink(
 
 type TypedRiverLinkProps<
 	F extends RiverUntypedFunction,
-	Pattern extends F["pattern"],
+	Pattern extends F["pattern"] = F["pattern"],
 > = Omit<JSX.HTMLAttributes<HTMLAnchorElement>, "href"> &
 	RiverLinkPropsBase<
 		(e: JSX.TargetedMouseEvent<HTMLAnchorElement>) => void | Promise<void>
@@ -48,16 +48,22 @@ type TypedRiverLinkProps<
 
 export function makeTypedLink<F extends RiverUntypedFunction>(
 	apiConfig: APIConfig,
-	defaultProps?: Partial<TypedRiverLinkProps<F, F["pattern"]>>,
-): ComponentType<TypedRiverLinkProps<F, F["pattern"]>> {
-	const TypedLink = (props: TypedRiverLinkProps<F, F["pattern"]>) => {
-		const { pattern, params, splatValues, ...linkProps } = props as any;
+	defaultProps?: Partial<
+		Omit<TypedRiverLinkProps<F>, "pattern" | "params" | "splatValues">
+	>,
+) {
+	const TypedLink = <Pattern extends F["pattern"]>(
+		props: TypedRiverLinkProps<F, Pattern>,
+	) => {
+		const { pattern, params, splatValues, options, ...linkProps } =
+			props as any;
 
-		const pathProps: SharedBase<F["pattern"], F> = {
+		const pathProps: SharedBase<Pattern, F> = {
 			pattern,
+			options,
 			...(params && { params }),
 			...(splatValues && { splatValues }),
-		} as SharedBase<F["pattern"], F>;
+		};
 
 		const href = resolvePath({
 			apiConfig,

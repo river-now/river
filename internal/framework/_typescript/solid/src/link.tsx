@@ -6,7 +6,7 @@ import {
 	type RiverLinkPropsBase,
 	type SharedBase,
 } from "river.now/client";
-import { type Component, createMemo, type JSX, mergeProps } from "solid-js";
+import { createMemo, type JSX, mergeProps } from "solid-js";
 
 export function RiverLink(
 	props: JSX.AnchorHTMLAttributes<HTMLAnchorElement> &
@@ -36,7 +36,7 @@ export function RiverLink(
 
 type TypedRiverLinkProps<
 	F extends RiverUntypedFunction,
-	Pattern extends F["pattern"],
+	Pattern extends F["pattern"] = F["pattern"],
 > = Omit<JSX.AnchorHTMLAttributes<HTMLAnchorElement>, "href"> &
 	RiverLinkPropsBase<
 		JSX.CustomEventHandlersCamelCase<HTMLAnchorElement>["onClick"]
@@ -45,19 +45,23 @@ type TypedRiverLinkProps<
 
 export function makeTypedLink<F extends RiverUntypedFunction>(
 	apiConfig: APIConfig,
-	defaultProps?: Partial<TypedRiverLinkProps<F, F["pattern"]>>,
-): Component<TypedRiverLinkProps<F, F["pattern"]>> {
-	const TypedLink: Component<TypedRiverLinkProps<F, F["pattern"]>> = (
-		props,
+	defaultProps?: Partial<
+		Omit<TypedRiverLinkProps<F>, "pattern" | "params" | "splatValues">
+	>,
+) {
+	const TypedLink = <Pattern extends F["pattern"]>(
+		props: TypedRiverLinkProps<F, Pattern>,
 	) => {
 		const merged = mergeProps(defaultProps || {}, props);
-		const { pattern, params, splatValues, ...linkProps } = merged as any;
+		const { pattern, params, splatValues, options, ...linkProps } =
+			merged as any;
 
-		const pathProps: SharedBase<F["pattern"], F> = {
+		const pathProps: SharedBase<Pattern, F> = {
 			pattern,
+			options,
 			...(params && { params }),
 			...(splatValues && { splatValues }),
-		} as SharedBase<F["pattern"], F>;
+		};
 
 		const href = resolvePath({
 			apiConfig,

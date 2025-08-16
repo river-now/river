@@ -36,18 +36,12 @@ var mutationMethods = map[string]struct{}{
 const tsTemplate = `
 import type { SharedBase, WithOptionalInput } from "river.now/client";
 
-const ACTIONS_ROUTER_MOUNT_ROOT = "%s";
-const RIVER_LOADERS_DYNAMIC_RUNE = "%s";
-const RIVER_LOADERS_SPLAT_RUNE = "%s";
-const RIVER_ACTIONS_DYNAMIC_RUNE = "%s";
-const RIVER_ACTIONS_SPLAT_RUNE = "%s";
-
 export const apiConfig = {
-	actionsRouterMountRoot: ACTIONS_ROUTER_MOUNT_ROOT,
-	actionsDynamicRune: RIVER_ACTIONS_DYNAMIC_RUNE,
-	actionsSplatRune: RIVER_ACTIONS_SPLAT_RUNE,
-	loadersDynamicRune: RIVER_LOADERS_DYNAMIC_RUNE,
-	loadersSplatRune: RIVER_LOADERS_SPLAT_RUNE,
+	actionsRouterMountRoot: "%s",
+	actionsDynamicRune: "%s",
+	actionsSplatRune: "%s",
+	loadersDynamicRune: "%s",
+	loadersSplatRune: "%s",
 } as const;
 
 export type RiverMutationMethod<T extends RiverMutationPattern> =

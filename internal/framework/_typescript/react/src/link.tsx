@@ -38,7 +38,7 @@ export function RiverLink(
 
 type TypedRiverLinkProps<
 	F extends RiverUntypedFunction,
-	Pattern extends F["pattern"],
+	Pattern extends F["pattern"] = F["pattern"],
 > = Omit<ComponentProps<"a">, "href"> &
 	RiverLinkPropsBase<
 		(
@@ -49,16 +49,22 @@ type TypedRiverLinkProps<
 
 export function makeTypedLink<F extends RiverUntypedFunction>(
 	apiConfig: APIConfig,
-	defaultProps?: Partial<TypedRiverLinkProps<F, F["pattern"]>>,
+	defaultProps?: Partial<
+		Omit<TypedRiverLinkProps<F>, "pattern" | "params" | "splatValues">
+	>,
 ) {
-	const TypedLink = (props: TypedRiverLinkProps<F, F["pattern"]>) => {
-		const { pattern, params, splatValues, ...linkProps } = props as any;
+	const TypedLink = <Pattern extends F["pattern"]>(
+		props: TypedRiverLinkProps<F, Pattern>,
+	) => {
+		const { pattern, params, splatValues, options, ...linkProps } =
+			props as any;
 
-		const pathProps: SharedBase<F["pattern"], F> = {
+		const pathProps: SharedBase<Pattern, F> = {
 			pattern,
+			options,
 			...(params && { params }),
 			...(splatValues && { splatValues }),
-		} as SharedBase<F["pattern"], F>;
+		};
 
 		const href = resolvePath({
 			apiConfig,

@@ -2,8 +2,13 @@
 /////// ROUTE COMPONENTS
 /////////////////////////////////////////////////////////////////////
 
-import { getPrefetchHandlers, makeLinkOnClickFn } from "./client.ts";
-import { type getRouterData, internal_RiverClientGlobal } from "./river_ctx.ts";
+import {
+	resolvePath,
+	type APIConfig,
+	type SharedBase,
+} from "./api_client_helpers.ts";
+import { getPrefetchHandlers, makeLinkOnClickFn, navigate } from "./client.ts";
+import { internal_RiverClientGlobal, type getRouterData } from "./river_ctx.ts";
 
 export type RiverUntypedFunction = {
 	_type: "loader" | "query" | "mutation";
@@ -193,4 +198,37 @@ export function makeFinalLinkProps<LinkOnClickCallback>(
 
 function isFn(fn: any): fn is (...args: Array<any>) => any {
 	return typeof fn === "function";
+}
+
+type TypedNavigateOptions<
+	Pattern extends string,
+	F extends RiverUntypedFunction,
+> = Omit<SharedBase<Pattern, F>, "options"> & {
+	replace?: boolean;
+	scrollToTop?: boolean;
+};
+
+export function makeTypedNavigate<F extends RiverUntypedFunction>(
+	apiConfig: APIConfig,
+) {
+	return async function typedNavigate<Pattern extends F["pattern"]>(
+		options: TypedNavigateOptions<Pattern, F>,
+	): Promise<void> {
+		const { pattern, params, splatValues, replace, scrollToTop } =
+			options as any;
+
+		const pathProps: SharedBase<Pattern, F> = {
+			pattern,
+			...(params && { params }),
+			...(splatValues && { splatValues }),
+		} as SharedBase<Pattern, F>;
+
+		const href = resolvePath({
+			apiConfig,
+			type: "loader",
+			props: pathProps as any,
+		});
+
+		return navigate(href, { replace, scrollToTop });
+	};
 }

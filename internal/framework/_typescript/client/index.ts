@@ -33,6 +33,7 @@ export {
 export { hmrRunClientLoaders } from "./src/hmr.ts";
 export {
 	makeFinalLinkProps,
+	makeTypedNavigate,
 	type ParamsForPattern,
 	type RiverLinkPropsBase,
 	type RiverRouteGeneric,

@@ -1,14 +1,17 @@
+import { makeTypedNavigate } from "river.now/client";
 import {
 	makeTypedAddClientLoader,
+	makeTypedLink,
 	makeTypedUseLoaderData,
 	makeTypedUsePatternLoaderData,
 	makeTypedUseRouterData,
 	type RiverRouteProps,
-} from "river.now/preact";
-import type {
-	RiverLoader,
-	RiverLoaderPattern,
-	RiverRootData,
+} from "river.now/{{.UIVariant}};
+import {
+	apiConfig,
+	type RiverLoader,
+	type RiverLoaderPattern,
+	type RiverRootData,
 } from "./river.gen.ts";
 
 export type RouteProps<P extends RiverLoaderPattern> = RiverRouteProps<
@@ -27,3 +30,9 @@ export const addClientLoader = makeTypedAddClientLoader<
 >();
 export const usePatternLoaderData =
 	makeTypedUsePatternLoaderData<RiverLoader>();
+
+export const AppLink = makeTypedLink<RiverLoader>(apiConfig, {
+	prefetch: "intent", // optional defaults
+});
+
+export const appNavigate = makeTypedNavigate<RiverLoader>(apiConfig);
