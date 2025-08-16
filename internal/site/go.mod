@@ -2,7 +2,7 @@ module site
 
 go 1.24.0
 
-replace github.com/river-now/river => ../../
+// replace github.com/river-now/river => ../../
 
 require (
 	github.com/adrg/frontmatter v0.2.0

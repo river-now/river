@@ -221,7 +221,7 @@ export function makeTypedNavigate<F extends RiverUntypedFunction>(
 			pattern,
 			...(params && { params }),
 			...(splatValues && { splatValues }),
-		} as SharedBase<Pattern, F>;
+		};
 
 		const href = resolvePath({
 			apiConfig,

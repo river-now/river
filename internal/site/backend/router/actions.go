@@ -10,7 +10,7 @@ import (
 
 var ActionsRouter = mux.NewRouter(&mux.Options{
 	MountRoot: "/api/",
-	ParseInput: func(r *http.Request, iPtr any) error {
+	MarshalInput: func(r *http.Request, iPtr any) error {
 		if r.Method == http.MethodGet {
 			return validate.URLSearchParamsInto(r, iPtr)
 		}
