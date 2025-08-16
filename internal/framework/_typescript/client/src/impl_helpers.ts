@@ -5,16 +5,16 @@
 import { getPrefetchHandlers, makeLinkOnClickFn } from "./client.ts";
 import { type getRouterData, internal_RiverClientGlobal } from "./river_ctx.ts";
 
-export type RiverUntypedLoader = {
-	_type: string;
+export type RiverUntypedFunction = {
+	_type: "loader" | "query" | "mutation";
 	pattern: string;
 	phantomOutputType: any;
-	params: ReadonlyArray<string>;
+	params?: ReadonlyArray<string>;
 };
 
 export type RiverRoutePropsGeneric<
 	JSXElement,
-	T extends RiverUntypedLoader,
+	T extends RiverUntypedFunction,
 	Pattern extends T["pattern"] = T["pattern"],
 > = {
 	idx: number;
@@ -24,14 +24,21 @@ export type RiverRoutePropsGeneric<
 
 export type RiverRouteGeneric<
 	JSXElement,
-	T extends RiverUntypedLoader,
+	T extends RiverUntypedFunction,
 	Pattern extends T["pattern"] = T["pattern"],
 > = (props: RiverRoutePropsGeneric<JSXElement, T, Pattern>) => JSXElement;
 
 export type ParamsForPattern<
-	Loader extends RiverUntypedLoader,
+	Loader extends RiverUntypedFunction,
 	Pattern extends Loader["pattern"],
-> = Extract<Loader, { pattern: Pattern }>["params"][number];
+> =
+	Extract<Loader, { pattern: Pattern }> extends {
+		params: ReadonlyArray<infer P>;
+	}
+		? P extends string
+			? P
+			: never
+		: never;
 
 type BaseRouterData<RootData, Params extends string> = ReturnType<
 	typeof getRouterData<RootData, Record<Params, string>>
@@ -42,7 +49,7 @@ type Wrapper<UseAccessor extends boolean, T> = UseAccessor extends false
 	: () => T;
 
 export type UseRouterDataFunction<
-	OuterLoader extends RiverUntypedLoader,
+	OuterLoader extends RiverUntypedFunction,
 	RootData,
 	UseAccessor extends boolean = false,
 > = {

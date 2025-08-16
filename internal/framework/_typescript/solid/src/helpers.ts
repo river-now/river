@@ -1,28 +1,28 @@
 import {
 	type getRouterData,
 	internal_RiverClientGlobal,
+	type ParamsForPattern,
 	type RiverRouteGeneric,
 	type RiverRoutePropsGeneric,
-	type RiverUntypedLoader,
+	type RiverUntypedFunction,
 	type UseRouterDataFunction,
-	type ParamsForPattern,
 } from "river.now/client";
 import { type Accessor, createMemo } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
 import { clientLoadersData, loadersData, routerData } from "./solid.tsx";
 
 export type RiverRouteProps<
-	Loader extends RiverUntypedLoader = RiverUntypedLoader,
+	Loader extends RiverUntypedFunction = RiverUntypedFunction,
 	Pattern extends Loader["pattern"] = string,
 > = RiverRoutePropsGeneric<JSX.Element, Loader, Pattern>;
 
 export type RiverRoute<
-	Loader extends RiverUntypedLoader = RiverUntypedLoader,
+	Loader extends RiverUntypedFunction = RiverUntypedFunction,
 	Pattern extends Loader["pattern"] = string,
 > = RiverRouteGeneric<JSX.Element, Loader, Pattern>;
 
 export function makeTypedUseRouterData<
-	OuterLoader extends RiverUntypedLoader,
+	OuterLoader extends RiverUntypedFunction,
 	RootData,
 >() {
 	return (() => routerData) as UseRouterDataFunction<
@@ -32,7 +32,7 @@ export function makeTypedUseRouterData<
 	>;
 }
 
-export function makeTypedUseLoaderData<Loader extends RiverUntypedLoader>() {
+export function makeTypedUseLoaderData<Loader extends RiverUntypedFunction>() {
 	return function useLoaderData<
 		Props extends RiverRouteProps<Loader>,
 		LoaderData = Extract<
@@ -47,7 +47,7 @@ export function makeTypedUseLoaderData<Loader extends RiverUntypedLoader>() {
 }
 
 export function makeTypedUsePatternLoaderData<
-	Loader extends RiverUntypedLoader,
+	Loader extends RiverUntypedFunction,
 >() {
 	return function usePatternData<Pattern extends string = string>(
 		pattern: Pattern,
@@ -87,7 +87,7 @@ export function usePatternClientLoaderData<
 }
 
 export function makeTypedAddClientLoader<
-	OuterLoader extends RiverUntypedLoader,
+	OuterLoader extends RiverUntypedFunction,
 	RootData,
 >() {
 	const m = internal_RiverClientGlobal.get("patternToWaitFnMap");

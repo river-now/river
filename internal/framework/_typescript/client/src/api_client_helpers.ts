@@ -1,5 +1,6 @@
 import { serializeToSearchParams } from "river.now/kit/json";
 import type { SubmitOptions } from "./client.ts";
+import type { RiverUntypedFunction } from "./impl_helpers.ts";
 
 export const apiHelper = {
 	toQueryOpts,
@@ -9,35 +10,40 @@ export const apiHelper = {
 	resolvePath,
 };
 
-type Props = SharedBase<string> & {
+type Props = SharedBase<string, RiverUntypedFunction> & {
 	input?: any;
 	method?: string;
 };
 
 type APIClientHelperOpts = {
-	actionsRouterMountRoot: string;
+	apiConfig: APIConfig;
 	type: "query" | "mutation";
 	props: Props;
 };
 
-function toQueryOpts(
-	actionsRouterMountRoot: string,
-	props: Props,
-): APIClientHelperOpts {
-	return { actionsRouterMountRoot, props, type: "query" };
+type APIConfig = {
+	actionsRouterMountRoot: string;
+	actionsDynamicRune: string;
+	actionsSplatRune: string;
+	loadersDynamicRune: string;
+	loadersSplatRune: string;
+};
+
+function toQueryOpts(apiConfig: APIConfig, props: Props): APIClientHelperOpts {
+	return { apiConfig, props, type: "query" };
 }
 
 function toMutationOpts(
-	actionsRouterMountRoot: string,
+	apiConfig: APIConfig,
 	props: Props,
 ): APIClientHelperOpts {
-	return { actionsRouterMountRoot, props, type: "mutation" };
+	return { apiConfig, props, type: "mutation" };
 }
 
 function buildURL(opts: APIClientHelperOpts) {
 	const url = new URL(
-		stripTrailingSlash(opts.actionsRouterMountRoot) +
-			resolvePath(opts.props),
+		stripTrailingSlash(opts.apiConfig.actionsRouterMountRoot) +
+			resolvePath(opts),
 		getCurrentOrigin(),
 	);
 	if (opts.type === "query" && opts.props.input) {
@@ -53,31 +59,70 @@ function resolveMethod(opts: APIClientHelperOpts) {
 	return "GET";
 }
 
-type StrIncludesColon<T extends string> =
-	T extends `${infer _pre}:${infer _post}` ? true : false;
+type GetParams<T extends string, F extends RiverUntypedFunction> =
+	Extract<F, { pattern: T }> extends { params: ReadonlyArray<infer P> }
+		? P extends string
+			? P
+			: never
+		: never;
 
-type StrEndsInAsterisk<T extends string> = T extends `${infer _pre}*`
+type HasParams<T extends string, F extends RiverUntypedFunction> =
+	GetParams<T, F> extends never ? false : true;
+
+type IsSplat<T extends string, F extends RiverUntypedFunction> =
+	Extract<F, { pattern: T }> extends { isSplat: true } ? true : false;
+
+export type IsEmptyInput<T> = [T] extends [null | undefined | never]
 	? true
 	: false;
 
-type PatternIsDynamic<T extends string> =
-	StrIncludesColon<T> extends true
-		? true
-		: StrEndsInAsterisk<T> extends true
-			? true
-			: false;
+export type WithOptionalInput<TInput> =
+	IsEmptyInput<TInput> extends true ? { input?: TInput } : { input: TInput };
 
-export type SharedBase<P extends string> = {
+export type SharedBase<P extends string, F extends RiverUntypedFunction> = {
 	pattern: P;
 	options?: SubmitOptions;
-} & (PatternIsDynamic<P> extends true ? { path: string } : { path?: string });
+} & (HasParams<P, F> extends true
+	? IsSplat<P, F> extends true
+		? {
+				params: { [K in GetParams<P, F>]: string };
+				splatValues: Array<string>;
+			}
+		: {
+				params: { [K in GetParams<P, F>]: string };
+			}
+	: IsSplat<P, F> extends true
+		? {
+				splatValues: Array<string>;
+			}
+		: {});
 
-function resolvePath(props: SharedBase<string>) {
-	return props.path || props.pattern;
+function resolvePath(opts: APIClientHelperOpts) {
+	const { props, apiConfig } = opts;
+	const dynamicParamPrefixRune = apiConfig.actionsDynamicRune;
+	const splatSegmentRune = apiConfig.actionsSplatRune;
+	let path = props.pattern;
+
+	// Replace parameter placeholders with actual values
+	if ("params" in props && props.params) {
+		for (const [key, value] of Object.entries(props.params)) {
+			path = path.replace(`${dynamicParamPrefixRune}${key}`, value);
+		}
+	}
+
+	// Replace splat marker with splat values
+	if ("splatValues" in props) {
+		const splatPath = (props.splatValues as Array<string>).join("/");
+		path = path.replace(splatSegmentRune, splatPath);
+	}
+
+	return path;
 }
+
 function getCurrentOrigin() {
 	return new URL(window.location.href).origin;
 }
+
 function stripTrailingSlash(path: string) {
 	if (path.endsWith("/")) {
 		return path.slice(0, -1);

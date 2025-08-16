@@ -1,4 +1,8 @@
-export { apiHelper, type SharedBase } from "./src/api_client_helpers.ts";
+export {
+	apiHelper,
+	type SharedBase,
+	type WithOptionalInput,
+} from "./src/api_client_helpers.ts";
 export {
 	addBuildIDListener,
 	addLocationListener,
@@ -26,12 +30,12 @@ export {
 export { hmrRunClientLoaders } from "./src/hmr.ts";
 export {
 	makeFinalLinkProps,
+	type ParamsForPattern,
 	type RiverLinkPropsBase,
 	type RiverRouteGeneric,
 	type RiverRoutePropsGeneric,
-	type RiverUntypedLoader,
+	type RiverUntypedFunction,
 	type UseRouterDataFunction,
-	type ParamsForPattern,
 } from "./src/impl_helpers.ts";
 export { getRouterData, internal_RiverClientGlobal } from "./src/river_ctx.ts";
 export type { RiverRoutes } from "./src/route_def_helpers.ts";

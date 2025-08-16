@@ -646,3 +646,141 @@ func BenchmarkFindNestedMatches(b *testing.B) {
 		})
 	}
 }
+
+func TestTrailingSlashBehavior(t *testing.T) {
+	patterns := []string{
+		"/",
+		"/_index",
+		"/about",
+		"/about/location",
+		"/about/hobbies",
+		"/about/:id",
+		"/about/*",
+	}
+
+	testCases := []struct {
+		name              string
+		path              string
+		expectedMatches   []string
+		unexpectedMatches []string
+	}{
+		{
+			name: "about with trailing slash",
+			path: "/about/",
+			expectedMatches: []string{
+				"/",
+				"/about",
+			},
+			unexpectedMatches: []string{
+				"/about/:id",
+				"/about/*",
+			},
+		},
+		{
+			name: "about without trailing slash",
+			path: "/about",
+			expectedMatches: []string{
+				"/",
+				"/about",
+			},
+			unexpectedMatches: []string{
+				"/about/:id",
+				"/about/*",
+			},
+		},
+		{
+			name: "about with actual id",
+			path: "/about/123",
+			expectedMatches: []string{
+				"/",
+				"/about/:id",
+			},
+			unexpectedMatches: []string{
+				"/about/*",
+			},
+		},
+		{
+			name: "about location exact match",
+			path: "/about/location",
+			expectedMatches: []string{
+				"/",
+				"/about",
+				"/about/location",
+			},
+			unexpectedMatches: []string{
+				"/_index",
+				"/about/:id", // exact match should take precedence
+				"/about/*",   // exact match should take precedence
+			},
+		},
+		{
+			name: "about with multiple segments",
+			path: "/about/something/else",
+			expectedMatches: []string{
+				"/",
+				"/about/*", // should catch multiple segments
+			},
+			unexpectedMatches: []string{
+				"/about/:id",      // only handles one segment
+				"/about/location", // not an exact match
+			},
+		},
+	}
+
+	m := New(&Options{ExplicitIndexSegment: "_index", Quiet: true})
+	for _, p := range patterns {
+		m.RegisterPattern(p)
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			results, ok := m.FindNestedMatches(tc.path)
+
+			if !ok {
+				t.Errorf("Path %q: expected to find matches, but got none", tc.path)
+			}
+
+			// Extract the patterns from results
+			actualPatterns := make([]*Match, len(results.Matches))
+			copy(actualPatterns, results.Matches)
+
+			// Check for expected patterns
+			for _, expected := range tc.expectedMatches {
+				found := false
+				for _, actual := range actualPatterns {
+					if actual.originalPattern == expected {
+						found = true
+						break
+					}
+				}
+				if !found && expected != "" { // ignore empty string check for now
+					t.Errorf("Path %q: expected pattern %q to match, but it didn't",
+						tc.path, expected)
+				}
+			}
+
+			// Check for unexpected patterns
+			for _, unexpected := range tc.unexpectedMatches {
+				for _, actual := range actualPatterns {
+					if actual.originalPattern == unexpected {
+						t.Errorf("Path %q: pattern %q should NOT match, but it did",
+							tc.path, unexpected)
+					}
+				}
+			}
+
+			// Log actual matches for debugging
+			if t.Failed() {
+				t.Logf("Actual matches for %q:", tc.path)
+				for i, pattern := range actualPatterns {
+					t.Logf("  [%d] %q", i, pattern.originalPattern)
+				}
+
+				// Also log params if this is the trailing slash case
+				if tc.path == "/about/" && results.Params != nil && len(results.Params) > 0 {
+					t.Logf("Params captured: %+v", results.Params)
+				}
+			}
+		})
+	}
+}

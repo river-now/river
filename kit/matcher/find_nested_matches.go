@@ -13,6 +13,10 @@ type FindNestedMatchesResults struct {
 }
 
 func (m *Matcher) FindNestedMatches(realPath string) (*FindNestedMatchesResults, bool) {
+	if realPath != "/" {
+		realPath = StripTrailingSlash(realPath)
+	}
+
 	realSegments := ParseSegments(realPath)
 	matches := make(matchesMap)
 

@@ -133,8 +133,8 @@ var (
 	frontend_app_tsx_tmpl_txt string
 	//go:embed tmpls/frontend_home_tsx_tmpl.txt
 	frontend_home_tsx_tmpl_txt string
-	//go:embed tmpls/frontend_app_utils_ts_tmpl.txt
-	frontend_app_tsx_utils_tmpl_txt string
+	//go:embed tmpls/frontend_app_utils_tsx_tmpl.txt
+	frontend_app_utils_tsx_tmpl_txt string
 	//go:embed tmpls/frontend_api_client_ts_str.txt
 	frontend_api_client_ts_str_txt string
 	//go:embed tmpls/ts_config_json_tmpl.txt
@@ -181,7 +181,7 @@ func Init(o Options) {
 	strWriteMust("frontend/routes.ts", frontend_routes_ts_str_txt)
 	do.tmplWriteMust("frontend/app.tsx", frontend_app_tsx_tmpl_txt)
 	do.tmplWriteMust("frontend/home.tsx", frontend_home_tsx_tmpl_txt)
-	do.tmplWriteMust("frontend/app_utils.ts", frontend_app_tsx_utils_tmpl_txt)
+	do.tmplWriteMust("frontend/app_utils.tsx", frontend_app_utils_tsx_tmpl_txt)
 	strWriteMust("frontend/api_client.ts", frontend_api_client_ts_str_txt)
 	if o.DeploymentTarget == "vercel" {
 		do.tmplWriteMust("vercel.json", vercel_json_tmpl_txt)
