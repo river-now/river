@@ -1,6 +1,6 @@
 {
 	"name": "create-river",
-	"version": "0.54.0-pre.6",
+	"version": "0.54.0",
 	"type": "module",
 	"license": "BSD-3-Clause",
 	"repository": {
