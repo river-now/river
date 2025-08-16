@@ -1,12 +1,15 @@
 import { useLoaderData, type RouteProps } from "./app_utils.ts";
 
 export function Home(props: RouteProps<"/_index">) {
-	const loaderData = useLoaderData(props);
+	const data = useLoaderData(props);
 
 	return (
-		<>
-			<h1>Welcome to River!</h1>
-			<p>{loaderData{{.Accessor}}.Message}</p>
-		</>
+		<div style="background-color: blue; padding: 4px 24px;">
+			<h1>Home</h1>
+			<p>{data{{.Call}}}</p>
+
+			{/* RENDERS CHILDREN */}
+			<props.Outlet />
+		</div>
 	);
 }

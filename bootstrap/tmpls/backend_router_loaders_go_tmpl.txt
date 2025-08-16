@@ -23,11 +23,34 @@ func NewLoader[O any](pattern string, f func(c *LoaderCtx) (O, error)) *mux.Task
 	return loaderTask
 }
 
+/////// EXAMPLES
+
 type RootData struct {
-	Message string
+	Message  string
+	Count    int
+	Username string
 }
 
-// Example loader
-var _ = NewLoader("/_index", func(c *LoaderCtx) (*RootData, error) {
-	return &RootData{Message: "Hello from a River loader!"}, nil
+var _ = NewLoader("/", func(c *LoaderCtx) (*RootData, error) {
+	return &RootData{
+		Message:  "Hello from a River loader!",
+		Count:    count,
+		Username: username,
+	}, nil
+})
+
+var _ = NewLoader("/_index", func(c *LoaderCtx) (string, error) {
+	return "This is the home page.", nil
+})
+
+var _ = NewLoader("/about", func(c *LoaderCtx) (string, error) {
+	return "This is the about page.", nil
+})
+
+var _ = NewLoader("/about/location", func(c *LoaderCtx) (string, error) {
+	return "Location: Internet", nil
+})
+
+var _ = NewLoader("/about/hobbies", func(c *LoaderCtx) (string, error) {
+	return "Hobbies: Gardening, Cooking, Basketball", nil
 })

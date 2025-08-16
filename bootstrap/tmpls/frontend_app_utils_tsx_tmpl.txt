@@ -6,7 +6,7 @@ import {
 	makeTypedUsePatternLoaderData,
 	makeTypedUseRouterData,
 	type RiverRouteProps,
-} from "river.now/{{.UIVariant}};
+} from "river.now/{{.UIVariant}}";
 import {
 	apiConfig,
 	type RiverLoader,

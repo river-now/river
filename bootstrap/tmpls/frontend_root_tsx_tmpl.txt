@@ -1,0 +1,62 @@
+import { api } from "./api_client.ts";
+import { AppLink, useRouterData, type RouteProps } from "./app_utils.ts";
+
+export function Root(props: RouteProps<"/">) {
+	const routerData = useRouterData(props);
+
+	return (
+		<>
+			<nav>
+				<AppLink pattern="/">Home</AppLink>
+				<AppLink pattern="/about">About</AppLink>
+				<AppLink pattern="/about/location">About | Location</AppLink>
+				<AppLink pattern="/about/hobbies">About | Hobbies</AppLink>
+				<AppLink pattern="/about/:id" params={{ id: "hi" }}>
+					About | Dynamic
+				</AppLink>
+				<AppLink
+					pattern="/about/*"
+					splatValues={["some", "random", "route", "segments"]}
+				>
+					About | Splat
+				</AppLink>
+			</nav>
+			<hr />
+			<h2>Router Data:</h2>
+			<p>buildID: {routerData{{.Call}}.buildID}</p>
+			<p>
+				matchedPatterns: {JSON.stringify(routerData{{.Call}}.matchedPatterns)}
+			</p>{" "}
+			<p>splatValues: {JSON.stringify(routerData{{.Call}}.splatValues)}</p>{" "}
+			<p>params: {JSON.stringify(routerData{{.Call}}.params)}</p>{" "}
+			<p>rootData.Message: {routerData{{.Call}}.rootData.Message}</p>
+			<p>rootData.Count: {routerData{{.Call}}.rootData.Count}</p>
+			<p>rootData.Username: {routerData{{.Call}}.rootData.Username}</p>
+			<button
+				onClick={() => {
+					api.mutate({
+						pattern: "/increment-count",
+					});
+				}}
+			>
+				Increment count
+			</button>
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					const formData = new FormData(e.currentTarget);
+					const username = formData.get("username") as string;
+					api.mutate({
+						pattern: "/set-username",
+						input: { username },
+					});
+				}}
+			>
+				<input name="username" placeholder="New username" />
+				<button type="submit">Update username</button>
+			</form>
+			<hr />
+			<props.Outlet />
+		</>
+	);
+}

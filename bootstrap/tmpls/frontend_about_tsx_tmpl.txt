@@ -1,0 +1,57 @@
+import { useLoaderData, useRouterData, type RouteProps } from "./app_utils";
+
+export function About(props: RouteProps<"/about">) {
+	const data = useLoaderData(props);
+
+	return (
+		<div style="background-color: indigo; padding: 4px 24px;">
+			<h1>About</h1>
+			<p>{data{{.Call}}}</p>
+
+			{/* RENDERS CHILDREN */}
+			<props.Outlet />
+		</div>
+	);
+}
+
+export function Location(props: RouteProps<"/about/location">) {
+	const data = useLoaderData(props);
+	return (
+		<div style="background-color: #003; padding: 4px 24px;">
+			<h2>Location</h2>
+			<p>{data{{.Call}}}</p>
+		</div>
+	);
+}
+
+export function Hobbies(props: RouteProps<"/about/hobbies">) {
+	const data = useLoaderData(props);
+	return (
+		<div style="background-color: #030; padding: 4px 24px;">
+			<h2>Hobbies</h2>
+			<p>{data{{.Call}}}</p>
+		</div>
+	);
+}
+
+export function Dynamic(props: RouteProps<"/about/:id">) {
+	const data = useRouterData(props);
+
+	return (
+		<div style="background-color: #300; padding: 4px 24px;">
+			<h2>Dynamic</h2>
+			<p>ID: {data{{.Call}}.params.id}</p>
+		</div>
+	);
+}
+
+export function Splat(props: RouteProps<"/about/*">) {
+	const data = useRouterData(props);
+
+	return (
+		<div style="background-color: #520; padding: 4px 24px;">
+			<h2>Splat</h2>
+			<p>Splat Values: {JSON.stringify(data{{.Call}}.splatValues)}</p>
+		</div>
+	);
+}
