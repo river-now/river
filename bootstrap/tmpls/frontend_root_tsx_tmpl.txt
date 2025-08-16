@@ -1,5 +1,5 @@
 import { api } from "./api_client.ts";
-import { AppLink, useRouterData, type RouteProps } from "./app_utils.ts";
+import { AppLink, useRouterData, type RouteProps } from "./app_utils.tsx";
 
 export function Root(props: RouteProps<"/">) {
 	const routerData = useRouterData(props);
