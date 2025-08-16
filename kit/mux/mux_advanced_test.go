@@ -453,9 +453,9 @@ func TestServeHTTP_ErrorHandling(t *testing.T) {
 	})
 }
 
-// --- TestMarshalInputEdgeCases ---
+// --- TestParseInputEdgeCases ---
 // These tests should remain valid.
-func TestMarshalInputEdgeCases(t *testing.T) {
+func TestParseInputEdgeCases(t *testing.T) {
 	type MyInput struct {
 		Field string `json:"field"`
 	}
@@ -463,8 +463,8 @@ func TestMarshalInputEdgeCases(t *testing.T) {
 		OutputField string `json:"outputField"`
 	}
 
-	t.Run("NilMarshalInputWithTaskExpectingInput", func(t *testing.T) {
-		r := NewRouter(&Options{MarshalInput: nil})
+	t.Run("NilParseInputWithTaskExpectingInput", func(t *testing.T) {
+		r := NewRouter(&Options{ParseInput: nil})
 		var receivedInput MyInput
 		RegisterTaskHandler(r, http.MethodPost, "/test", TaskHandlerFromFunc(func(rd *ReqData[MyInput]) (MyOutput, error) {
 			receivedInput = rd.Input()
@@ -482,9 +482,9 @@ func TestMarshalInputEdgeCases(t *testing.T) {
 		}
 	})
 
-	t.Run("MarshalInputMutatesInputPtr", func(t *testing.T) {
+	t.Run("ParseInputMutatesInputPtr", func(t *testing.T) {
 		r := NewRouter(&Options{
-			MarshalInput: func(req *http.Request, inputPtr any) error {
+			ParseInput: func(req *http.Request, inputPtr any) error {
 				if err := json.NewDecoder(req.Body).Decode(inputPtr); err != nil {
 					return err
 				}

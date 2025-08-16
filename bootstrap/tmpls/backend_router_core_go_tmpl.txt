@@ -26,6 +26,7 @@ func Core() *mux.Router {
 
 	// river API routes
 	actionsHandler := app.River.GetActionsHandler(ActionsRouter)
+	// include other methods as needed
 	mux.RegisterHandler(r, "GET", ActionsRouter.MountRoot("*"), actionsHandler)
 	mux.RegisterHandler(r, "POST", ActionsRouter.MountRoot("*"), actionsHandler)
 

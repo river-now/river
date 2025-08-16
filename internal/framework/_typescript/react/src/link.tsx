@@ -1,5 +1,12 @@
 import { type ComponentProps, useMemo } from "react";
-import { makeFinalLinkProps, type RiverLinkPropsBase } from "river.now/client";
+import type { RiverUntypedFunction } from "river.now/client";
+import {
+	type APIConfig,
+	makeFinalLinkProps,
+	resolvePath,
+	type RiverLinkPropsBase,
+	type SharedBase,
+} from "river.now/client";
 
 export function RiverLink(
 	props: ComponentProps<"a"> &
@@ -27,4 +34,48 @@ export function RiverLink(
 			{props.children}
 		</a>
 	);
+}
+
+type TypedRiverLinkProps<
+	F extends RiverUntypedFunction,
+	Pattern extends F["pattern"] = F["pattern"],
+> = Omit<ComponentProps<"a">, "href"> &
+	RiverLinkPropsBase<
+		(
+			e: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
+		) => void | Promise<void>
+	> &
+	Omit<SharedBase<Pattern, F>, "options">;
+
+export function makeTypedLink<F extends RiverUntypedFunction>(
+	apiConfig: APIConfig,
+	defaultProps?: Partial<
+		Omit<TypedRiverLinkProps<F>, "pattern" | "params" | "splatValues">
+	>,
+) {
+	const TypedLink = <Pattern extends F["pattern"]>(
+		props: TypedRiverLinkProps<F, Pattern>,
+	) => {
+		const { pattern, params, splatValues, options, ...linkProps } =
+			props as any;
+
+		const pathProps: SharedBase<Pattern, F> = {
+			pattern,
+			options,
+			...(params && { params }),
+			...(splatValues && { splatValues }),
+		};
+
+		const href = resolvePath({
+			apiConfig,
+			type: "loader",
+			props: pathProps as any,
+		});
+
+		const finalProps = { ...defaultProps, ...linkProps, href };
+		return <RiverLink {...finalProps} />;
+	};
+
+	TypedLink.displayName = `TypedLink(${Object.keys(defaultProps || {}).join(", ")})`;
+	return TypedLink;
 }

@@ -1,6 +1,6 @@
 import { apiHelper, submit } from "river.now/client";
 import {
-	ACTIONS_ROUTER_MOUNT_ROOT,
+	apiConfig,
 	type BaseMutationPropsWithInput,
 	type BaseQueryPropsWithInput,
 	type RiverMutationOutput,
@@ -14,7 +14,7 @@ export const api = { query, mutate };
 async function query<P extends RiverQueryPattern>(
 	props: BaseQueryPropsWithInput<P>,
 ) {
-	const opts = apiHelper.toQueryOpts(ACTIONS_ROUTER_MOUNT_ROOT, props);
+	const opts = apiHelper.toQueryOpts(apiConfig, props);
 	return await submit<RiverQueryOutput<P>>(
 		apiHelper.buildURL(opts),
 		{
@@ -27,7 +27,7 @@ async function query<P extends RiverQueryPattern>(
 async function mutate<P extends RiverMutationPattern>(
 	props: BaseMutationPropsWithInput<P>,
 ) {
-	const opts = apiHelper.toMutationOpts(ACTIONS_ROUTER_MOUNT_ROOT, props);
+	const opts = apiHelper.toMutationOpts(apiConfig, props);
 	return await submit<RiverMutationOutput<P>>(
 		apiHelper.buildURL(opts),
 		{

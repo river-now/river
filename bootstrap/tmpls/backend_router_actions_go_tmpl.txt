@@ -2,6 +2,7 @@ package router
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/river-now/river/kit/mux"
@@ -9,8 +10,9 @@ import (
 )
 
 var ActionsRouter = mux.NewRouter(&mux.Options{
-	MountRoot:     "/api/",
-	MarshalInput: func(r *http.Request, iPtr any) error {
+	MountRoot: "/api/",
+	ParseInput: func(r *http.Request, iPtr any) error {
+		// include other methods as needed
 		if r.Method == http.MethodGet {
 			return validate.URLSearchParamsInto(r, iPtr)
 		}
@@ -37,3 +39,34 @@ func NewAction[I any, O any](method, pattern string, f func(c *ActionCtx[I]) (O,
 	mux.RegisterTaskHandler(ActionsRouter, method, pattern, actionTask)
 	return actionTask
 }
+
+/////// EXAMPLES
+
+const UsernameMaxLen = 42
+
+var count = 0
+var username = "guest"
+
+var _ = NewAction("POST", "/increment-count", func(c *ActionCtx[mux.None]) (int, error) {
+	count++
+	return count, nil
+})
+
+type UsernameInput struct {
+	Username string `json:"username"`
+}
+
+func (i *UsernameInput) Validate() error {
+	if i.Username == "" {
+		return errors.New("username is required")
+	}
+	if len(i.Username) > UsernameMaxLen {
+		return fmt.Errorf("username must be at most %d characters", UsernameMaxLen)
+	}
+	return nil
+}
+
+var _ = NewAction("POST", "/set-username", func(c *ActionCtx[UsernameInput]) (string, error) {
+	username = c.Input().Username
+	return username, nil
+})

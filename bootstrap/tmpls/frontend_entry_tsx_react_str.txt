@@ -1,5 +1,11 @@
+import { done, isStarted, start } from "nprogress";
 import { createRoot } from "react-dom/client";
-import { getRootEl, initClient } from "river.now/client";
+import {
+	getRootEl,
+	initClient,
+	revalidateOnWindowFocus,
+	setupGlobalLoadingIndicator,
+} from "river.now/client";
 import { RiverProvider } from "river.now/react";
 import { App } from "./app.tsx";
 
@@ -10,3 +16,6 @@ await initClient(() => {
 		</RiverProvider>,
 	);
 });
+
+setupGlobalLoadingIndicator({ start, stop: done, isRunning: isStarted });
+revalidateOnWindowFocus({ staleTimeMS: 10_000 });

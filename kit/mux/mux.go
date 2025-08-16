@@ -66,7 +66,7 @@ type (
 )
 
 type Router struct {
-	marshalInput       func(r *http.Request, iPtr any) error
+	parseInput         func(r *http.Request, iPtr any) error
 	httpMws            []httpMiddlewareWithOptions
 	taskMws            []taskMiddlewareWithOptions
 	methodToMatcherMap map[string]*methodMatcher
@@ -124,10 +124,12 @@ type Options struct {
 	MountRoot              string
 	DynamicParamPrefixRune rune // Optional. Defaults to ':'.
 	SplatSegmentRune       rune // Optional. Defaults to '*'.
+	// Deprecated: Please use ParseInput instead.
+	MarshalInput func(r *http.Request, inputPtr any) error
 	// Required if using task handlers. Do validation or whatever you want here,
 	// and mutate the input ptr to the desired value (this is what will ultimately
 	// be returned by c.Input()).
-	MarshalInput func(r *http.Request, inputPtr any) error
+	ParseInput func(r *http.Request, inputPtr any) error
 	// If true, automatically injects a TasksCtx into the request context.
 	InjectTasksCtx bool
 }
@@ -151,8 +153,12 @@ func NewRouter(opts *Options) *Router {
 			mountRootToUse = mountRootToUse + "/"
 		}
 	}
+	parseInput := opts.ParseInput
+	if parseInput == nil && opts.MarshalInput != nil {
+		parseInput = opts.MarshalInput
+	}
 	return &Router{
-		marshalInput:       opts.MarshalInput,
+		parseInput:         parseInput,
 		methodToMatcherMap: make(map[string]*methodMatcher),
 		matcherOpts:        matcherOpts,
 		mountRoot:          mountRootToUse,
@@ -580,8 +586,8 @@ func createReqDataGetter[I any, O any](route *Route[I, O]) reqDataGetter {
 			reqData.req = r
 			reqData.responseProxy = response.NewProxy()
 			inputPtr := route.IPtr()
-			if route.router.marshalInput != nil && !genericsutil.IsNone(route.I()) {
-				if err := route.router.marshalInput(reqData.Request(), inputPtr); err != nil {
+			if route.router.parseInput != nil && !genericsutil.IsNone(route.I()) {
+				if err := route.router.parseInput(reqData.Request(), inputPtr); err != nil {
 					return nil, err
 				}
 			}

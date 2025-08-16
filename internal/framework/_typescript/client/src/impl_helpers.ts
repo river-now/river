@@ -2,19 +2,24 @@
 /////// ROUTE COMPONENTS
 /////////////////////////////////////////////////////////////////////
 
-import { getPrefetchHandlers, makeLinkOnClickFn } from "./client.ts";
-import { type getRouterData, internal_RiverClientGlobal } from "./river_ctx.ts";
+import {
+	resolvePath,
+	type APIConfig,
+	type SharedBase,
+} from "./api_client_helpers.ts";
+import { getPrefetchHandlers, makeLinkOnClickFn, navigate } from "./client.ts";
+import { internal_RiverClientGlobal, type getRouterData } from "./river_ctx.ts";
 
-export type RiverUntypedLoader = {
-	_type: string;
+export type RiverUntypedFunction = {
+	_type: "loader" | "query" | "mutation";
 	pattern: string;
 	phantomOutputType: any;
-	params: ReadonlyArray<string>;
+	params?: ReadonlyArray<string>;
 };
 
 export type RiverRoutePropsGeneric<
 	JSXElement,
-	T extends RiverUntypedLoader,
+	T extends RiverUntypedFunction,
 	Pattern extends T["pattern"] = T["pattern"],
 > = {
 	idx: number;
@@ -24,14 +29,21 @@ export type RiverRoutePropsGeneric<
 
 export type RiverRouteGeneric<
 	JSXElement,
-	T extends RiverUntypedLoader,
+	T extends RiverUntypedFunction,
 	Pattern extends T["pattern"] = T["pattern"],
 > = (props: RiverRoutePropsGeneric<JSXElement, T, Pattern>) => JSXElement;
 
 export type ParamsForPattern<
-	Loader extends RiverUntypedLoader,
+	Loader extends RiverUntypedFunction,
 	Pattern extends Loader["pattern"],
-> = Extract<Loader, { pattern: Pattern }>["params"][number];
+> =
+	Extract<Loader, { pattern: Pattern }> extends {
+		params: ReadonlyArray<infer P>;
+	}
+		? P extends string
+			? P
+			: never
+		: never;
 
 type BaseRouterData<RootData, Params extends string> = ReturnType<
 	typeof getRouterData<RootData, Record<Params, string>>
@@ -42,7 +54,7 @@ type Wrapper<UseAccessor extends boolean, T> = UseAccessor extends false
 	: () => T;
 
 export type UseRouterDataFunction<
-	OuterLoader extends RiverUntypedLoader,
+	OuterLoader extends RiverUntypedFunction,
 	RootData,
 	UseAccessor extends boolean = false,
 > = {
@@ -186,4 +198,37 @@ export function makeFinalLinkProps<LinkOnClickCallback>(
 
 function isFn(fn: any): fn is (...args: Array<any>) => any {
 	return typeof fn === "function";
+}
+
+type TypedNavigateOptions<
+	Pattern extends string,
+	F extends RiverUntypedFunction,
+> = Omit<SharedBase<Pattern, F>, "options"> & {
+	replace?: boolean;
+	scrollToTop?: boolean;
+};
+
+export function makeTypedNavigate<F extends RiverUntypedFunction>(
+	apiConfig: APIConfig,
+) {
+	return async function typedNavigate<Pattern extends F["pattern"]>(
+		options: TypedNavigateOptions<Pattern, F>,
+	): Promise<void> {
+		const { pattern, params, splatValues, replace, scrollToTop } =
+			options as any;
+
+		const pathProps: SharedBase<Pattern, F> = {
+			pattern,
+			...(params && { params }),
+			...(splatValues && { splatValues }),
+		};
+
+		const href = resolvePath({
+			apiConfig,
+			type: "loader",
+			props: pathProps as any,
+		});
+
+		return navigate(href, { replace, scrollToTop });
+	};
 }

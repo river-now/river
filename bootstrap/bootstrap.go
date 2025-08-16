@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/river-now/river"
 	"github.com/river-now/river/kit/executil"
 	"github.com/river-now/river/kit/fsutil"
 )
@@ -21,6 +22,7 @@ type Options struct {
 	JSPackageManager string
 	// "generic" or "vercel" (defaults to "generic")
 	DeploymentTarget string
+	IncludeTailwind  bool
 }
 
 type derivedOptions struct {
@@ -29,9 +31,21 @@ type derivedOptions struct {
 	TSConfigJSXImportSourceVal string
 	UIVitePlugin               string
 	JSPackageManagerBaseCmd    string // "npx", "pnpm", "yarn", or "bunx"
-	Accessor                   string
+	Call                       string
 	VercelPackageJSONExtras    string
+	TailwindViteImport         string
+	TailwindViteCall           string
+	TailwindFileImport         string
+	DynamicLinkParamsProp      string
+	BackgroundColorKey         string
+	StylePropOpen              string // "{{"
+	StylePropClose             string // "}}"
 }
+
+const tw_vite_import = "import tailwindcss from \"@tailwindcss/vite\";\n"
+const tw_vite_call = ", tailwindcss()"
+const tw_file_import = "import \"./css/tailwind.css\";\n"
+const dynamic_link_params_prop = `{{ id: "42790214" }}`
 
 func (o Options) derived() derivedOptions {
 	if o.UIVariant == "" {
@@ -56,6 +70,8 @@ func (o Options) derived() derivedOptions {
 		do.JSPackageManagerBaseCmd = "bunx"
 	}
 
+	do.BackgroundColorKey = "backgroundColor"
+
 	switch o.UIVariant {
 	case "react":
 		do.TSConfigJSXVal = "react-jsx"
@@ -63,7 +79,8 @@ func (o Options) derived() derivedOptions {
 	case "solid":
 		do.TSConfigJSXVal = "preserve"
 		do.TSConfigJSXImportSourceVal = "solid-js"
-		do.Accessor = "()"
+		do.Call = "()"
+		do.BackgroundColorKey = `"background-color"`
 	case "preact":
 		do.TSConfigJSXVal = "react-jsx"
 		do.TSConfigJSXImportSourceVal = "preact"
@@ -86,6 +103,17 @@ func (o Options) derived() derivedOptions {
 	}
 
 	do.UIVitePlugin = resolveUIVitePlugin(do)
+
+	do.DynamicLinkParamsProp = dynamic_link_params_prop
+
+	do.StylePropOpen = "{{"
+	do.StylePropClose = "}}"
+
+	if o.IncludeTailwind {
+		do.TailwindViteImport = tw_vite_import
+		do.TailwindViteCall = tw_vite_call
+		do.TailwindFileImport = tw_file_import
+	}
 
 	return do
 }
@@ -131,10 +159,14 @@ var (
 	frontend_entry_tsx_preact_str_txt string
 	//go:embed tmpls/frontend_app_tsx_tmpl.txt
 	frontend_app_tsx_tmpl_txt string
+	//go:embed tmpls/frontend_root_tsx_tmpl.txt
+	frontend_root_tsx_tmpl_txt string
 	//go:embed tmpls/frontend_home_tsx_tmpl.txt
 	frontend_home_tsx_tmpl_txt string
-	//go:embed tmpls/frontend_app_utils_ts_tmpl.txt
-	frontend_app_tsx_utils_tmpl_txt string
+	//go:embed tmpls/frontend_about_tsx_tmpl.txt
+	frontend_about_tsx_tmpl_txt string
+	//go:embed tmpls/frontend_app_utils_tsx_tmpl.txt
+	frontend_app_utils_tsx_tmpl_txt string
 	//go:embed tmpls/frontend_api_client_ts_str.txt
 	frontend_api_client_ts_str_txt string
 	//go:embed tmpls/ts_config_json_tmpl.txt
@@ -143,6 +175,10 @@ var (
 	vercel_json_tmpl_txt string
 	//go:embed tmpls/api_proxy_ts_str.txt
 	api_proxy_ts_str string
+	//go:embed tmpls/frontend_css_tailwind_css_str.txt
+	frontend_css_tailwind_css_str_txt string
+	//go:embed tmpls/frontend_css_nprogress_css_str.txt
+	frontend_css_nprogress_css_str_txt string
 )
 
 func Init(o Options) {
@@ -180,9 +216,12 @@ func Init(o Options) {
 	strWriteMust("frontend/css/main.critical.css", main_critical_css_str_txt)
 	strWriteMust("frontend/routes.ts", frontend_routes_ts_str_txt)
 	do.tmplWriteMust("frontend/app.tsx", frontend_app_tsx_tmpl_txt)
+	do.tmplWriteMust("frontend/root.tsx", frontend_root_tsx_tmpl_txt)
 	do.tmplWriteMust("frontend/home.tsx", frontend_home_tsx_tmpl_txt)
-	do.tmplWriteMust("frontend/app_utils.ts", frontend_app_tsx_utils_tmpl_txt)
+	do.tmplWriteMust("frontend/about.tsx", frontend_about_tsx_tmpl_txt)
+	do.tmplWriteMust("frontend/app_utils.tsx", frontend_app_utils_tsx_tmpl_txt)
 	strWriteMust("frontend/api_client.ts", frontend_api_client_ts_str_txt)
+	strWriteMust("frontend/css/nprogress.css", frontend_css_nprogress_css_str_txt)
 	if o.DeploymentTarget == "vercel" {
 		do.tmplWriteMust("vercel.json", vercel_json_tmpl_txt)
 		do.tmplWriteMust("api/proxy.ts", api_proxy_ts_str)
@@ -193,8 +232,10 @@ func Init(o Options) {
 
 	installJSPkg(do, "typescript")
 	installJSPkg(do, "vite")
-	installJSPkg(do, "river.now")
+	installJSPkg(do, fmt.Sprintf("river.now@%s", river.Internal__GetCurrentNPMVersion()))
 	installJSPkg(do, resolveUIVitePlugin(do))
+	installJSPkg(do, "nprogress")
+	installJSPkg(do, "@types/nprogress")
 
 	if do.UIVariant == "react" {
 		strWriteMust("frontend/entry.tsx", frontend_entry_tsx_react_str_txt)
@@ -222,6 +263,12 @@ func Init(o Options) {
 	if do.DeploymentTarget == "vercel" {
 		installJSPkg(do, "@types/node")
 		installJSPkg(do, "@vercel/node")
+	}
+
+	if do.IncludeTailwind {
+		installJSPkg(do, "@tailwindcss/vite")
+		installJSPkg(do, "tailwindcss")
+		strWriteMust("frontend/css/tailwind.css", frontend_css_tailwind_css_str_txt)
 	}
 
 	// install chi (some chi middleware is used in the template)

@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 
-import { cancel, intro, isCancel, select, spinner, text } from "@clack/prompts";
+import {
+	cancel,
+	confirm,
+	intro,
+	isCancel,
+	select,
+	spinner,
+	text,
+} from "@clack/prompts";
 import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -210,6 +218,17 @@ async function main() {
 		process.exit(0);
 	}
 
+	// Ask about Tailwind CSS
+	const includeTailwind = await confirm({
+		message: "Include Tailwind CSS?",
+		initialValue: true,
+	});
+
+	if (isCancel(includeTailwind)) {
+		cancel("Operation cancelled");
+		process.exit(0);
+	}
+
 	// Create temporary directory
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-river-"));
 	const bootstrapFile = path.join(tempDir, "main.go");
@@ -226,6 +245,7 @@ func main() {
 		UIVariant:        "${uiVariant}",
 		JSPackageManager: "${packageManager}",
 		DeploymentTarget: "${deploymentTarget}",
+		IncludeTailwind:  ${includeTailwind},
 	})
 }
 `;

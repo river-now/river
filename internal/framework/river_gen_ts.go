@@ -1,7 +1,9 @@
 package framework
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/river-now/river/kit/matcher"
 	"github.com/river-now/river/kit/mux"
@@ -31,6 +33,44 @@ var mutationMethods = map[string]struct{}{
 	http.MethodPost: {}, http.MethodPut: {}, http.MethodPatch: {}, http.MethodDelete: {},
 }
 
+const tsTemplate = `
+import type { SharedBase, WithOptionalInput } from "river.now/client";
+
+export const apiConfig = {
+	actionsRouterMountRoot: "%s",
+	actionsDynamicRune: "%s",
+	actionsSplatRune: "%s",
+	loadersDynamicRune: "%s",
+	loadersSplatRune: "%s",
+} as const;
+
+export type RiverMutationMethod<T extends RiverMutationPattern> =
+	Extract<RiverMutation, { pattern: T }> extends { method: infer M }
+		? M extends string
+			? M
+			: "POST"
+		: "POST";
+
+export type BaseQueryProps<P extends RiverQueryPattern> = SharedBase<
+	P,
+	RiverFunction
+>;
+
+export type BaseMutationProps<P extends RiverMutationPattern> = SharedBase<
+	P,
+	RiverFunction
+> &
+	(RiverMutationMethod<P> extends "POST"
+		? { method?: "POST" }
+		: { method: RiverMutationMethod<P> });
+
+export type BaseQueryPropsWithInput<P extends RiverQueryPattern> =
+	BaseQueryProps<P> & WithOptionalInput<RiverQueryInput<P>>;
+
+export type BaseMutationPropsWithInput<P extends RiverMutationPattern> =
+	BaseMutationProps<P> & WithOptionalInput<RiverMutationInput<P>>;
+`
+
 func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 	var collection []tsgen.CollectionItem
 
@@ -38,7 +78,9 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 	allActions := opts.ActionsRouter.AllRoutes()
 
 	loadersDynamicRune := opts.LoadersRouter.GetDynamicParamPrefixRune()
+	loadersSplatRune := opts.LoadersRouter.GetSplatSegmentRune()
 	actionsDynamicRune := opts.ActionsRouter.GetDynamicParamPrefixRune()
+	actionsSplatRune := opts.ActionsRouter.GetSplatSegmentRune()
 
 	expectedRootDataPattern := ""
 	if opts.LoadersRouter.GetExplicitIndexSegment() != "" {
@@ -57,7 +99,12 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 			},
 		}
 		params := extractDynamicParamsFromPattern(pattern, loadersDynamicRune)
-		item.ArbitraryProperties["params"] = params
+		if len(params) > 0 {
+			item.ArbitraryProperties["params"] = params
+		}
+		if isSplat(pattern, loadersSplatRune) {
+			item.ArbitraryProperties["isSplat"] = true
+		}
 		if loader != nil {
 			item.PhantomTypes = map[string]AdHocType{
 				"phantomOutputType": {TypeInstance: loader.O()},
@@ -88,7 +135,12 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 			},
 		}
 		params := extractDynamicParamsFromPattern(path.OriginalPattern, actionsDynamicRune)
-		item.ArbitraryProperties["params"] = params
+		if len(params) > 0 {
+			item.ArbitraryProperties["params"] = params
+		}
+		if isSplat(path.OriginalPattern, actionsSplatRune) {
+			item.ArbitraryProperties["isSplat"] = true
+		}
 		collection = append(collection, item)
 		seen[path.OriginalPattern] = struct{}{}
 	}
@@ -114,7 +166,12 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 			item.ArbitraryProperties["method"] = method
 		}
 		params := extractDynamicParamsFromPattern(pattern, actionsDynamicRune)
-		item.ArbitraryProperties["params"] = params
+		if len(params) > 0 {
+			item.ArbitraryProperties["params"] = params
+		}
+		if isSplat(pattern, actionsSplatRune) {
+			item.ArbitraryProperties["isSplat"] = true
+		}
 		if action != nil {
 			item.PhantomTypes = map[string]AdHocType{
 				"phantomInputType":  {TypeInstance: action.I()},
@@ -156,41 +213,30 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 
 	extraTSToUse := rpc.BuildFromCategories(categories)
 
-	extraTSToUse += `export type RiverMutationMethod<T extends RiverMutationPattern> = Extract<
-	RiverMutation,
-	{ pattern: T }
-> extends { method: infer M }
-	? M extends string
-		? M
-		: "POST"
-	: "POST";
-
-import type { SharedBase } from "river.now/client";
-
-export type BaseQueryProps<P extends RiverQueryPattern> = SharedBase<P>;
-export type BaseMutationProps<P extends RiverMutationPattern> = SharedBase<P> &
-	(RiverMutationMethod<P> extends "POST"
-		? { method?: "POST" }
-		: { method: RiverMutationMethod<P> });
-export type BaseQueryPropsWithInput<P extends RiverQueryPattern> = BaseQueryProps<P> & {
-	input: RiverQueryInput<P>;
-};
-export type BaseMutationPropsWithInput<P extends RiverMutationPattern> = BaseMutationProps<P> & {
-	input: RiverMutationInput<P>;
-};
-`
+	extraTSToUse += fmt.Sprintf(tsTemplate,
+		opts.ActionsRouter.MountRoot(),
+		string(loadersDynamicRune),
+		string(loadersSplatRune),
+		string(actionsDynamicRune),
+		string(actionsSplatRune),
+	)
 
 	if foundRootData {
-		extraTSToUse += "\nexport type RiverRootData = Extract<(typeof routes)[number], { isRootData: true }>[\"phantomOutputType\"];\n"
+		extraTSToUse += "\nexport type RiverRootData = Extract<(typeof routes)[number], { isRootData: true }>[\"phantomOutputType\"];\n\n"
 	} else {
-		extraTSToUse += "export type RiverRootData = null;\n"
+		extraTSToUse += "export type RiverRootData = null;\n\n"
 	}
 
 	fTypeIn := []string{"RiverLoader", "RiverQuery", "RiverMutation"}
 	pTypeIn := []string{"RiverLoaderPattern", "RiverQueryPattern", "RiverMutationPattern"}
-	extraTSToUse += "type RiverFunction = " + tsgen.TypeUnion(fTypeIn) + ";\n"
-	extraTSToUse += "type RiverPattern = " + tsgen.TypeUnion(pTypeIn) + ";\n"
-	extraTSToUse += `export type RiverRouteParams<T extends RiverPattern> = (Extract<RiverFunction, { pattern: T }>["params"])[number];` + "\n"
+	extraTSToUse += "type RiverFunction = " + tsgen.TypeUnion(fTypeIn) + ";\n\n"
+	extraTSToUse += "type RiverPattern = " + tsgen.TypeUnion(pTypeIn) + ";\n\n"
+	extraTSToUse += `export type RiverRouteParams<T extends RiverPattern> =
+	Extract<RiverFunction, { pattern: T }> extends { params: infer P }
+		? P extends ReadonlyArray<string>
+			? P[number]
+			: never
+		: never;` + "\n"
 
 	if opts.ExtraTSCode != "" {
 		extraTSToUse += "\n" + opts.ExtraTSCode
@@ -213,4 +259,8 @@ func extractDynamicParamsFromPattern(pattern string, dynamicRune rune) []string 
 		}
 	}
 	return dynamicParams
+}
+
+func isSplat(pattern string, splatRune rune) bool {
+	return strings.HasSuffix(pattern, "/"+string(splatRune))
 }
