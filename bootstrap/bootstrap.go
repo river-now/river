@@ -38,6 +38,8 @@ type derivedOptions struct {
 	TailwindFileImport         string
 	DynamicLinkParamsProp      string
 	BackgroundColorKey         string
+	StylePropOpen              string // "{{"
+	StylePropClose             string // "}}"
 }
 
 const tw_vite_import = "import tailwindcss from \"@tailwindcss/vite\";\n"
@@ -103,6 +105,9 @@ func (o Options) derived() derivedOptions {
 	do.UIVitePlugin = resolveUIVitePlugin(do)
 
 	do.DynamicLinkParamsProp = dynamic_link_params_prop
+
+	do.StylePropOpen = "{{"
+	do.StylePropClose = "}}"
 
 	if o.IncludeTailwind {
 		do.TailwindViteImport = tw_vite_import

@@ -4,7 +4,7 @@ export function Home(props: RouteProps<"/_index">) {
 	const data = useLoaderData(props);
 
 	return (
-		<div style={{ {{.BackgroundColorKey}}: "blue", padding: "4px 24px" }}>
+		<div style={{.StylePropOpen}} {{.BackgroundColorKey}}: "blue", padding: "4px 24px" {{.StylePropClose}}>
 			<h1>Home</h1>
 			<p>{data{{.Call}}}</p>
 
