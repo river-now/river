@@ -1,3 +1,5 @@
+import type { APIConfig } from "./api_client_helpers.ts";
+
 export type HeadEl = {
 	tag?: string;
 	attributesKnownSafe?: Record<string, string>;
@@ -66,6 +68,7 @@ export type RiverClientGlobal = shared & {
 	defaultErrorBoundary: RouteErrorComponent;
 	useViewTransitions: boolean;
 	deploymentID: string;
+	apiConfig: APIConfig;
 };
 
 export function __getRiverClientGlobal() {

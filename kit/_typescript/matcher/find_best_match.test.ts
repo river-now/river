@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { findBestMatch } from "./find_best_match";
 import {
 	createPatternRegistry,
-	findBestMatch,
+	RegisteredPattern,
 	registerPattern,
+	RegistrationOptions,
 	type Params,
-	type RegisteredPattern,
-	type RegistrationOptions,
-} from "./matcher";
+} from "./register";
 
 const NOT_FOUND = "NOT FOUND";
 

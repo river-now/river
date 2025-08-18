@@ -3,12 +3,7 @@
 import { createBrowserHistory, type Update } from "history";
 import { debounce } from "river.now/kit/debounce";
 import { jsonDeepEquals } from "river.now/kit/json";
-import {
-	createPatternRegistry,
-	findNestedMatches,
-	type PatternRegistry,
-	registerPattern,
-} from "river.now/kit/matcher";
+import type { PatternRegistry } from "river.now/kit/matcher/register";
 import {
 	getAnchorDetailsFromEvent,
 	getHrefDetails,
@@ -30,18 +25,52 @@ import {
 } from "./river_ctx.ts";
 import { isAbortError, LogError } from "./utils.ts";
 
-let clientPatternRegistry: PatternRegistry = createPatternRegistry();
+// The client loaders matcher system is imported dynamically,
+// so it will only increase your bundle size if you actually
+// use them. If you do use them, however, this unlocks loading
+// discovered client loaders in parallel with the server loaders.
+// The first time any client loader is discovered, it will
+// necessarily be serial (it wasn't discovered before). But all
+// subsequent runs will be parallel. This pattern means we do not
+// need to ship a (potentially massive) routes manifest to the client.
 
-function initializeClientRegistry(config: APIConfig) {
-	clientPatternRegistry = createPatternRegistry({
-		dynamicParamPrefixRune: config.loadersDynamicRune,
-		splatSegmentRune: config.loadersSplatRune,
-		explicitIndexSegment: config.loadersExplicitIndexSegment,
-	});
+let clientPatternRegistry: PatternRegistry | undefined;
+let matcherModules:
+	| {
+			register: typeof import("river.now/kit/matcher/register");
+			findNested: typeof import("river.now/kit/matcher/find-nested");
+	  }
+	| undefined;
+
+async function ensureMatcherLoaded(config: APIConfig) {
+	if (!matcherModules) {
+		const [registerModule, findNestedModule] = await Promise.all([
+			import("river.now/kit/matcher/register"),
+			import("river.now/kit/matcher/find-nested"),
+		]);
+		matcherModules = {
+			register: registerModule,
+			findNested: findNestedModule,
+		};
+		const { createPatternRegistry } = registerModule;
+		clientPatternRegistry = createPatternRegistry({
+			dynamicParamPrefixRune: config.loadersDynamicRune,
+			splatSegmentRune: config.loadersSplatRune,
+			explicitIndexSegment: config.loadersExplicitIndexSegment,
+		});
+	}
+	return { matcherModules, clientPatternRegistry: clientPatternRegistry! };
 }
 
-export function registerClientLoaderPattern(pattern: string): void {
-	registerPattern(clientPatternRegistry, pattern);
+export async function registerClientLoaderPattern(
+	pattern: string,
+): Promise<void> {
+	// This is called when a client loader is discovered.
+	// Load both matcher modules on first use.
+	const config = internal_RiverClientGlobal.get("apiConfig");
+	const { matcherModules, clientPatternRegistry } =
+		await ensureMatcherLoaded(config);
+	matcherModules.register.registerPattern(clientPatternRegistry, pattern);
 }
 
 // This is needed because the matcher, by definition, will only
@@ -49,7 +78,21 @@ export function registerClientLoaderPattern(pattern: string): void {
 // testing is longer than the registered patterns, you will get
 // no match, even if some registered patterns would potentially
 // be in the parent segments. This fixes that.
-function findPartialMatchesOnClient(pathname: string) {
+async function findPartialMatchesOnClient(pathname: string) {
+	// Only try to match if we have client loaders
+	const patternToWaitFnMap =
+		internal_RiverClientGlobal.get("patternToWaitFnMap") || {};
+	if (Object.keys(patternToWaitFnMap).length === 0) {
+		return null;
+	}
+
+	// If we have patterns registered, the modules should already be loaded
+	if (!matcherModules || !clientPatternRegistry) {
+		return null;
+	}
+
+	const { findNestedMatches } = matcherModules.findNested;
+
 	// First try the full path
 	const fullResult = findNestedMatches(clientPatternRegistry, pathname);
 	if (fullResult) {
@@ -457,7 +500,7 @@ class NavigationStateManager {
 
 			// Try to match routes on the client and start parallel loaders
 			const pathname = url.pathname;
-			const matchResult = findPartialMatchesOnClient(pathname);
+			const matchResult = await findPartialMatchesOnClient(pathname);
 			const patternToWaitFnMap =
 				internal_RiverClientGlobal.get("patternToWaitFnMap") || {};
 			const runningLoaders = new Map<string, Promise<any>>();
@@ -1432,8 +1475,7 @@ export async function initClient(
 		useViewTransitions?: boolean;
 	},
 ): Promise<void> {
-	// Initialize the client pattern registry with the config
-	initializeClientRegistry(options.apiConfig);
+	internal_RiverClientGlobal.set("apiConfig", options.apiConfig);
 
 	// Set options
 	if (options.defaultErrorBoundary) {

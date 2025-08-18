@@ -102,7 +102,9 @@ export function makeTypedAddClientLoader<
 			signal: AbortSignal;
 		}) => Promise<T>,
 	) {
-		registerClientLoaderPattern(p as string);
+		registerClientLoaderPattern(p as string).catch((error) => {
+			console.error("Failed to register client loader pattern:", error);
+		});
 		(m as any)[p] = fn;
 
 		return function useClientLoaderData(
