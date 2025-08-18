@@ -224,7 +224,7 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 	)
 
 	if foundRootData {
-		extraTSToUse += "\nexport type RiverRootData = Extract<(typeof routes)[number], { isRootData: true }>[\"phantomOutputType\"];\n\n"
+		extraTSToUse += "\nexport type RiverRootData = Extract<\n\t(typeof routes)[number],\n\t{ isRootData: true }\n>[\"phantomOutputType\"];\n\n"
 	} else {
 		extraTSToUse += "export type RiverRootData = null;\n\n"
 	}

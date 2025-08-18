@@ -118,7 +118,10 @@ export type BaseQueryPropsWithInput<P extends RiverQueryPattern> =
 export type BaseMutationPropsWithInput<P extends RiverMutationPattern> =
 	BaseMutationProps<P> & WithOptionalInput<RiverMutationInput<P>>;
 
-export type RiverRootData = Extract<(typeof routes)[number], { isRootData: true }>["phantomOutputType"];
+export type RiverRootData = Extract<
+	(typeof routes)[number],
+	{ isRootData: true }
+>["phantomOutputType"];
 
 type RiverFunction = RiverLoader | RiverQuery | RiverMutation;
 
@@ -176,7 +179,9 @@ declare global {
 
 export const publicPathPrefix = "/";
 
-export function waveRuntimeURL(originalPublicURL: keyof typeof staticPublicAssetMap) {
+export function waveRuntimeURL(
+	originalPublicURL: keyof typeof staticPublicAssetMap,
+) {
 	const url = staticPublicAssetMap[originalPublicURL] ?? originalPublicURL;
 	return publicPathPrefix + url;
 }
@@ -193,12 +198,11 @@ export function riverVitePlugin(): Plugin {
 			const isDev = command === "serve";
 
 			return {
-				...c,
 				base: isDev ? "/" : "/",
 				build: {
 					target: "es2022",
 					emptyOutDir: false,
-					modulePreload: { 
+					modulePreload: {
 						polyfill: false,
 						...(typeof mp === "object" ? mp : {}),
 					},
@@ -212,7 +216,6 @@ export function riverVitePlugin(): Plugin {
 					},
 				},
 				server: {
-					...c.server,
 					headers: {
 						...c.server?.headers,
 						// ensure versions of dynamic imports without the latest
@@ -223,22 +226,20 @@ export function riverVitePlugin(): Plugin {
 						...c.server?.watch,
 						ignored: [
 							...(Array.isArray(ign) ? ign : []),
-							...[
-								"**/*.go",
-								"**/app/__dist/**/*",
-								"**/backend/__static/**/*",
-								"**/wave.config.json",
-								"**/frontend/river.gen.ts",
-								"**/frontend/routes.ts"
-							],
+							"**/*.go",
+							"**/app/__dist/**/*",
+							"**/backend/__static/**/*",
+							"**/wave.config.json",
+							"**/frontend/river.gen.ts",
+							"**/frontend/routes.ts",
 						],
 					},
 				},
 				resolve: {
-					...c.resolve,
 					dedupe: [
 						...(Array.isArray(dedupe) ? dedupe : []),
-						...["solid-js","solid-js/web"]
+						"solid-js",
+						"solid-js/web",
 					],
 				},
 			};
@@ -252,7 +253,9 @@ export function riverVitePlugin(): Plugin {
 			const replacedCode = code.replace(
 				assetRegex,
 				(_, __, assetPath) => {
-					const hashed = (staticPublicAssetMap as Record<string, string>)[assetPath];
+					const hashed = (
+						staticPublicAssetMap as Record<string, string>
+					)[assetPath];
 					if (!hashed) return `"${assetPath}"`;
 					return `"/${hashed}"`;
 				},
