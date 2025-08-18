@@ -1290,7 +1290,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				// Optionally, verify the promise resolves to the correct data
+				// Verify the promise resolves to the correct data
 				const call = waitFn.mock.calls[0][0];
 				const serverData = await call.serverDataPromise;
 				expect(serverData).toEqual({

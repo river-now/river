@@ -23,6 +23,9 @@ export const NestedPatterns = [
 	"/tiger/:tiger_id/_index", // Index
 
 	// NOTE: This will evaluate to an empty string -- should match to everything
+	// __TODO modify this to run tests both with and without this absolute root ("") pattern
+	// as well as with and without the catch-all ("/*") pattern. If you don't have the catch-all
+	// and you only match the absolute root, it should not be a match at all
 	"/",
 
 	"/*",

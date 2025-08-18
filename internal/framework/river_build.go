@@ -88,10 +88,6 @@ var (
 	}
 )
 
-// __TODO confirm whether Vite will do config merging in all cases for you.
-// If so, we can skip the manual merging below.
-// See https://github.com/vitejs/rolldown-vite/issues/371#issuecomment-3194955428
-
 // 0 = func name, 1,2 = backtick literal, 3 = public dir, 4 = backtick literal
 const vitePluginTemplateStr = `
 export function riverVitePlugin(): Plugin {
