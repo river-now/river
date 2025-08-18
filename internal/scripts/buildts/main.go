@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	esbuild "github.com/evanw/esbuild/pkg/api"
@@ -28,6 +29,8 @@ func main() {
 	buildSolid()
 	buildPreact()
 	buildCreate()
+
+	removeTestFiles()
 }
 
 func buildKit() {
@@ -210,4 +213,27 @@ func build(label string, opts esbuild.BuildOptions) {
 	}
 
 	log.Printf("%s: esbuild succeeded\n", label)
+}
+
+func removeTestFiles() {
+	err := filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Remove test files and their source maps
+		if strings.Contains(path, ".test.") ||
+			strings.Contains(path, ".bench.") {
+			log.Printf("Removing test file: %s", path)
+			return os.Remove(path)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		log.Fatalf("failed to remove test files: %v", err)
+	}
+
+	log.Println("Test files removed successfully")
 }
