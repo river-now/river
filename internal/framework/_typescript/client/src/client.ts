@@ -4,10 +4,17 @@ import { createBrowserHistory, type Update } from "history";
 import { debounce } from "river.now/kit/debounce";
 import { jsonDeepEquals } from "river.now/kit/json";
 import {
+	createPatternRegistry,
+	findNestedMatches,
+	type PatternRegistry,
+	registerPattern,
+} from "river.now/kit/matcher";
+import {
 	getAnchorDetailsFromEvent,
 	getHrefDetails,
 	getIsGETRequest,
 } from "river.now/kit/url";
+import type { APIConfig } from "./api_client_helpers.ts";
 import { updateHeadEls } from "./head.ts";
 import type { historyInstance, historyListener } from "./history_types.ts";
 import {
@@ -16,11 +23,55 @@ import {
 	type RedirectData,
 } from "./redirects.ts";
 import {
+	type ClientLoaderAwaitedServerData,
 	type GetRouteDataOutput,
 	internal_RiverClientGlobal,
 	type RouteErrorComponent,
 } from "./river_ctx.ts";
 import { isAbortError, LogError } from "./utils.ts";
+
+let clientPatternRegistry: PatternRegistry = createPatternRegistry();
+
+function initializeClientRegistry(config: APIConfig) {
+	clientPatternRegistry = createPatternRegistry({
+		dynamicParamPrefixRune: config.loadersDynamicRune,
+		splatSegmentRune: config.loadersSplatRune,
+		explicitIndexSegment: config.loadersExplicitIndexSegment,
+	});
+}
+
+export function registerClientLoaderPattern(pattern: string): void {
+	registerPattern(clientPatternRegistry, pattern);
+}
+
+// This is needed because the matcher, by definition, will only
+// match when you have a full path match. If the path you are
+// testing is longer than the registered patterns, you will get
+// no match, even if some registered patterns would potentially
+// be in the parent segments. This fixes that.
+function findPartialMatchesOnClient(pathname: string) {
+	// First try the full path
+	const fullResult = findNestedMatches(clientPatternRegistry, pathname);
+	if (fullResult) {
+		// If we get a full match, we have everything we need
+		return fullResult;
+	}
+
+	// If no full match, try progressively shorter paths to find partial matches
+	const segments = pathname.split("/").filter(Boolean);
+
+	// Try from longest to shortest
+	for (let i = segments.length; i >= 0; i--) {
+		const partialPath =
+			i === 0 ? "/" : "/" + segments.slice(0, i).join("/");
+		const result = findNestedMatches(clientPatternRegistry, partialPath);
+		if (result) {
+			return result; // First match is the longest
+		}
+	}
+
+	return null;
+}
 
 /////////////////////////////////////////////////////////////////////
 // TYPES
@@ -389,12 +440,105 @@ class NavigationStateManager {
 				}
 			}
 
-			const { redirectData, response } = await handleRedirects({
+			// Start server fetch and immediately process the response to JSON
+			const serverPromise = handleRedirects({
 				abortController: controller,
 				url,
 				isPrefetch: props.navigationType === "prefetch",
 				redirectCount: props.redirectCount,
+			}).then(async (result) => {
+				// Read the response body once and return both the original result and parsed JSON
+				if (result.response && result.response.ok) {
+					const json = await result.response.json();
+					return { ...result, json };
+				}
+				return { ...result, json: undefined };
 			});
+
+			// Try to match routes on the client and start parallel loaders
+			const pathname = url.pathname;
+			const matchResult = findPartialMatchesOnClient(pathname);
+			const patternToWaitFnMap =
+				internal_RiverClientGlobal.get("patternToWaitFnMap") || {};
+			const runningLoaders = new Map<string, Promise<any>>();
+
+			// Start client loaders for already-registered patterns
+			if (matchResult) {
+				const { params, splatValues, matches } = matchResult;
+
+				for (let i = 0; i < matches.length; i++) {
+					const match = matches[i];
+					if (!match) continue;
+
+					const pattern = match.registeredPattern.originalPattern;
+					const loaderFn = patternToWaitFnMap[pattern];
+
+					if (loaderFn) {
+						// Create a promise for this pattern's server data
+						const serverDataPromise = serverPromise
+							.then(
+								({
+									response,
+									json,
+								}): ClientLoaderAwaitedServerData<any, any> => {
+									if (!response || !response.ok || !json) {
+										return {
+											matchedPatterns: [],
+											loaderData: undefined,
+											rootData: null,
+											buildID: "1",
+										};
+									}
+									const serverIdx =
+										json.matchedPatterns?.indexOf(pattern);
+									const loaderData =
+										serverIdx !== -1 &&
+										serverIdx !== undefined
+											? json.loadersData[serverIdx]
+											: undefined;
+									const rootData = json.hasRootData
+										? json.loadersData[0]
+										: null;
+									const buildID =
+										getBuildIDFromResponse(response) || "1";
+									return {
+										matchedPatterns:
+											json.matchedPatterns || [],
+										loaderData,
+										rootData,
+										buildID,
+									};
+								},
+							)
+							.catch(() => ({
+								matchedPatterns: [],
+								loaderData: undefined,
+								rootData: null,
+								buildID: "1",
+							}));
+
+						const loaderPromise = loaderFn({
+							params,
+							splatValues,
+							serverDataPromise,
+							signal: controller.signal,
+						}).catch((error: any) => {
+							if (!isAbortError(error)) {
+								LogError(
+									`Client loader error for pattern ${pattern}:`,
+									error,
+								);
+							}
+							return undefined;
+						});
+
+						runningLoaders.set(pattern, loaderPromise);
+					}
+				}
+			}
+
+			// Wait for server response
+			const { redirectData, response, json } = await serverPromise;
 
 			const redirected = redirectData?.status === "did";
 			const responseNotOK = !response?.ok && response?.status !== 304;
@@ -402,23 +546,24 @@ class NavigationStateManager {
 			if (redirected || !response) {
 				// This is a valid end to a navigation attempt (e.g., a redirect occurred
 				// or the request was aborted). It's not an error.
+				controller.abort();
 				return undefined;
 			}
 
 			if (responseNotOK) {
 				// This is a server error. Throwing an exception allows our .catch()
 				// blocks to handle cleanup and reset the loading state.
+				controller.abort();
 				throw new Error(`Fetch failed with status ${response.status}`);
 			}
 
 			if (redirectData?.status === "should") {
+				controller.abort();
 				return { response, redirectData, props };
 			}
 
-			const json = (await response.json()) as
-				| GetRouteDataOutput
-				| undefined;
 			if (!json) {
+				controller.abort();
 				throw new Error("No JSON response");
 			}
 
@@ -434,7 +579,15 @@ class NavigationStateManager {
 			}
 
 			const buildID = getBuildIDFromResponse(response);
-			const waitFnPromise = runWaitFns(json, buildID);
+
+			// Complete client loader execution
+			const waitFnPromise = completeClientLoaders(
+				json,
+				buildID,
+				runningLoaders,
+				controller.signal,
+			);
+
 			const cssBundlePromises: Array<Promise<any>> = [];
 			for (const bundle of json.cssBundles ?? []) {
 				cssBundlePromises.push(AssetManager.preloadCSS(bundle));
@@ -1273,13 +1426,17 @@ function makeListenerAdder<T>(key: string) {
 
 export async function initClient(
 	renderFn: () => void,
-	options?: {
+	options: {
+		apiConfig: APIConfig;
 		defaultErrorBoundary?: RouteErrorComponent;
 		useViewTransitions?: boolean;
 	},
 ): Promise<void> {
+	// Initialize the client pattern registry with the config
+	initializeClientRegistry(options.apiConfig);
+
 	// Set options
-	if (options?.defaultErrorBoundary) {
+	if (options.defaultErrorBoundary) {
 		internal_RiverClientGlobal.set(
 			"defaultErrorBoundary",
 			options.defaultErrorBoundary,
@@ -1291,7 +1448,7 @@ export async function initClient(
 		);
 	}
 
-	if (options?.useViewTransitions) {
+	if (options.useViewTransitions) {
 		internal_RiverClientGlobal.set("useViewTransitions", true);
 	}
 
@@ -1621,6 +1778,7 @@ export async function setupClientLoaders(): Promise<void> {
 			splatValues: internal_RiverClientGlobal.get("splatValues"),
 		},
 		internal_RiverClientGlobal.get("buildID"),
+		new AbortController().signal,
 	);
 
 	internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
@@ -1629,6 +1787,7 @@ export async function setupClientLoaders(): Promise<void> {
 async function runWaitFns(
 	json: PartialWaitFnJSON,
 	buildID: string,
+	signal: AbortSignal,
 ): Promise<Array<any>> {
 	await ComponentLoader.loadComponents(json.importURLs);
 
@@ -1640,10 +1799,20 @@ async function runWaitFns(
 	let i = 0;
 	for (const pattern of matchedPatterns) {
 		if (patternToWaitFnMap[pattern]) {
+			const serverDataPromise = Promise.resolve({
+				matchedPatterns: json.matchedPatterns,
+				loaderData: json.loadersData[i],
+				rootData: json.hasRootData ? json.loadersData[0] : null,
+				buildID: buildID,
+			});
+
 			waitFnPromises.push(
-				patternToWaitFnMap[pattern](
-					resolveWaitFnPropsFromJSON(json, buildID, i),
-				),
+				patternToWaitFnMap[pattern]({
+					params: json.params || {},
+					splatValues: json.splatValues || [],
+					serverDataPromise,
+					signal,
+				}),
 			);
 		} else {
 			waitFnPromises.push(Promise.resolve());
@@ -1654,19 +1823,53 @@ async function runWaitFns(
 	return Promise.all(waitFnPromises);
 }
 
-function resolveWaitFnPropsFromJSON(
+async function completeClientLoaders(
 	json: PartialWaitFnJSON,
 	buildID: string,
-	idx: number,
-) {
-	return {
-		buildID: buildID,
-		matchedPatterns: json.matchedPatterns || [],
-		splatValues: json.splatValues || [],
-		params: json.params || {},
-		rootData: json.hasRootData ? json.loadersData[0] : null,
-		loaderData: json.loadersData[idx],
-	};
+	runningLoaders: Map<string, Promise<any>>,
+	signal: AbortSignal,
+): Promise<Array<any>> {
+	await ComponentLoader.loadComponents(json.importURLs);
+
+	const matchedPatterns = json.matchedPatterns ?? [];
+	const patternToWaitFnMap =
+		internal_RiverClientGlobal.get("patternToWaitFnMap") || {};
+	const finalPromises: Array<Promise<any>> = [];
+
+	let i = 0;
+	for (const pattern of matchedPatterns) {
+		if (runningLoaders.has(pattern)) {
+			finalPromises.push(runningLoaders.get(pattern)!);
+		} else if (patternToWaitFnMap[pattern]) {
+			const serverDataPromise = Promise.resolve({
+				matchedPatterns: json.matchedPatterns,
+				loaderData: json.loadersData[i],
+				rootData: json.hasRootData ? json.loadersData[0] : null,
+				buildID: buildID,
+			});
+
+			const loaderPromise = patternToWaitFnMap[pattern]({
+				splatValues: json.splatValues || [],
+				params: json.params || {},
+				serverDataPromise,
+				signal,
+			}).catch((error: any) => {
+				if (!isAbortError(error)) {
+					LogError(
+						`Client loader error for pattern ${pattern}:`,
+						error,
+					);
+				}
+				return undefined;
+			});
+			finalPromises.push(loaderPromise);
+		} else {
+			finalPromises.push(Promise.resolve());
+		}
+		i++;
+	}
+
+	return Promise.all(finalPromises);
 }
 
 function resolvePublicHref(relativeHref: string): string {

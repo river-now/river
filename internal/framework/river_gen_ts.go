@@ -42,6 +42,7 @@ export const apiConfig = {
 	actionsSplatRune: "%s",
 	loadersDynamicRune: "%s",
 	loadersSplatRune: "%s",
+	loadersExplicitIndexSegment: "%s",
 } as const;
 
 export type RiverMutationMethod<T extends RiverMutationPattern> =
@@ -219,6 +220,7 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 		string(loadersSplatRune),
 		string(actionsDynamicRune),
 		string(actionsSplatRune),
+		opts.LoadersRouter.GetExplicitIndexSegment(),
 	)
 
 	if foundRootData {

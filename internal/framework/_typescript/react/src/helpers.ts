@@ -1,9 +1,10 @@
 import { useAtomValue } from "jotai";
 import { type JSX, useMemo } from "react";
 import {
-	type getRouterData,
+	type ClientLoaderAwaitedServerData,
 	internal_RiverClientGlobal,
 	type ParamsForPattern,
+	registerClientLoaderPattern,
 	type RiverRouteGeneric,
 	type RiverRoutePropsGeneric,
 	type RiverUntypedFunction,
@@ -87,18 +88,21 @@ export function makeTypedAddClientLoader<
 	return function addClientLoader<
 		Pattern extends OuterLoader["pattern"],
 		Loader extends Extract<OuterLoader, { pattern: Pattern }>,
-		RouterData = ReturnType<
-			typeof getRouterData<
-				RootData,
-				Record<ParamsForPattern<OuterLoader, Pattern>, string>
-			>
-		>,
 		LoaderData = Loader["phantomOutputType"],
 		T = any,
 	>(
 		p: Pattern,
-		fn: (props: RouterData & { loaderData: LoaderData }) => Promise<T>,
+		fn: (props: {
+			params: Record<ParamsForPattern<OuterLoader, Pattern>, string>;
+			splatValues: string[];
+			serverDataPromise: ClientLoaderAwaitedServerData<
+				RootData,
+				LoaderData
+			>;
+			signal: AbortSignal;
+		}) => Promise<T>,
 	) {
+		registerClientLoaderPattern(p as string);
 		(m as any)[p] = fn;
 
 		return function useClientLoaderData(

@@ -784,3 +784,92 @@ func TestTrailingSlashBehavior(t *testing.T) {
 		})
 	}
 }
+
+func TestOldBugLoaderPatternMatching(t *testing.T) {
+	m := New(&Options{ExplicitIndexSegment: "_index"})
+
+	m.RegisterPattern("/")
+	m.RegisterPattern("/*")
+
+	// "/" -- should match "/"
+	results, ok := m.FindNestedMatches("/")
+	if !ok {
+		t.Errorf("Expected to find matches for '/', but got none")
+	} else if len(results.Matches) != 1 ||
+		results.Matches[0].originalPattern != "/" {
+		t.Errorf("Expected to match '/', got %v", results.Matches)
+	}
+
+	// "/docs" -- should match "/" and "/*"
+	results, ok = m.FindNestedMatches("/docs")
+	if !ok {
+		t.Fatal("Expected to find matches for '/docs', but got none")
+	} else if len(results.Matches) != 2 ||
+		results.Matches[0].originalPattern != "/" ||
+		results.Matches[1].originalPattern != "/*" {
+		t.Errorf("Expected to match '/' and '/*', got %v", results.Matches)
+	}
+}
+
+func TestPartialMatchingWithGaps(t *testing.T) {
+	t.Run("should match parent and deeply nested route without intermediate routes", func(t *testing.T) {
+		m := New(&Options{ExplicitIndexSegment: "_index"})
+
+		// Register only the parent and the deeply nested route
+		// NOT registering /bob/larry or /bob/larry/susan
+		m.RegisterPattern("/bob")
+		m.RegisterPattern("/bob/larry/susan/jeff")
+
+		// Try to match the full path
+		results, ok := m.FindNestedMatches("/bob/larry/susan/jeff")
+
+		if !ok {
+			t.Fatal("Expected to find matches for /bob/larry/susan/jeff")
+		}
+
+		if len(results.Matches) != 2 {
+			t.Errorf("Expected 2 matches, got %d", len(results.Matches))
+			for i, match := range results.Matches {
+				t.Logf("  [%d] %q", i, match.originalPattern)
+			}
+		}
+
+		// Check that we got the right patterns
+		foundBob := false
+		foundJeff := false
+		for _, match := range results.Matches {
+			if match.originalPattern == "/bob" {
+				foundBob = true
+			}
+			if match.originalPattern == "/bob/larry/susan/jeff" {
+				foundJeff = true
+			}
+		}
+
+		if !foundBob {
+			t.Error("Expected /bob to match")
+		}
+		if !foundJeff {
+			t.Error("Expected /bob/larry/susan/jeff to match")
+		}
+	})
+
+	t.Run("should not match intermediate paths that aren't registered", func(t *testing.T) {
+		m := New(&Options{ExplicitIndexSegment: "_index"})
+
+		m.RegisterPattern("/bob")
+		m.RegisterPattern("/bob/larry/susan/jeff")
+
+		// Try to match an intermediate path
+		results, ok := m.FindNestedMatches("/bob/larry")
+
+		// This should NOT find a match because /bob/larry isn't registered
+		// and /bob/larry/susan/jeff doesn't match
+		if ok {
+			t.Error("Should not find matches for /bob/larry when only /bob and /bob/larry/susan/jeff are registered")
+			for i, match := range results.Matches {
+				t.Logf("  Found unexpected match [%d] %q", i, match.originalPattern)
+			}
+		}
+	})
+}

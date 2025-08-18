@@ -25,6 +25,9 @@ tstest:
 tstestwatch:
 	@pnpm vitest
 
+tsbench:
+	@npx vitest bench
+
 tsreset:
 	@rm -rf node_modules 2>/dev/null || true
 	@find . -path "*/node_modules" -type d -exec rm -rf {} \; 2>/dev/null || true

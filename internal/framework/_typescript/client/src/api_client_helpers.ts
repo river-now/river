@@ -27,6 +27,7 @@ export type APIConfig = {
 	actionsSplatRune: string;
 	loadersDynamicRune: string;
 	loadersSplatRune: string;
+	loadersExplicitIndexSegment: string;
 };
 
 function toQueryOpts(apiConfig: APIConfig, props: Props): APIClientHelperOpts {

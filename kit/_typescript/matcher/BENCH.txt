@@ -1,0 +1,24 @@
+✓ kit/_typescript/matcher/matcher.bench.ts > FindBestMatch Benchmarks > FindBestMatchSimple 6647ms
+     name                      hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · StaticPattern   6,332,066.66  0.0001  0.5334  0.0002  0.0002  0.0002  0.0003  0.0005  ±0.33%  6332067
+   · DynamicPattern  3,165,002.38  0.0002  0.5127  0.0003  0.0003  0.0004  0.0005  0.0006  ±0.31%  3165003
+   · SplatPattern    3,310,447.93  0.0002  4.6316  0.0003  0.0003  0.0004  0.0005  0.0007  ±1.02%  3310448
+
+ ✓ kit/_typescript/matcher/matcher.bench.ts > FindBestMatch Benchmarks > FindBestMatchAtScale 9508ms
+     name                            hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · Scale_small           6,002,556.00  0.0000  0.3467  0.0002  0.0002  0.0003  0.0004  0.0004  ±0.27%  6002556
+   · Scale_medium          4,214,096.39  0.0000  0.4961  0.0002  0.0003  0.0005  0.0006  0.0007  ±0.38%  4214097
+   · Scale_large           5,362,924.80  0.0000  0.3511  0.0002  0.0003  0.0005  0.0006  0.0006  ±0.26%  5362925
+   · WorstCase_DeepNested  2,552,089.12  0.0002  0.0789  0.0004  0.0004  0.0005  0.0005  0.0006  ±0.05%  2552090
+
+ ✓ kit/_typescript/matcher/matcher.bench.ts > FindNestedMatches Benchmarks 8064ms
+     name                                            hz     min      max    mean     p75     p99    p995    p999     rme  samples
+   · FindNestedMatches/StaticPatterns      4,403,372.97  0.0000  19.1539  0.0002  0.0002  0.0005  0.0006  0.0009  ±3.80%  4403524
+   · FindNestedMatches/DynamicPatterns     1,023,858.21  0.0005   0.4186  0.0010  0.0013  0.0017  0.0018  0.0050  ±0.48%  1023859
+   · FindNestedMatches/DeepNestedPatterns    853,029.05  0.0004   2.3092  0.0012  0.0015  0.0022  0.0032  0.0091  ±0.79%   853030
+   · FindNestedMatches/SplatPatterns       1,121,804.09  0.0002   8.3814  0.0009  0.0013  0.0018  0.0019  0.0049  ±1.69%  1121805
+   · FindNestedMatches/MixedPatterns       1,222,523.96  0.0000   3.9000  0.0008  0.0013  0.0018  0.0021  0.0050  ±0.87%  1222524
+
+ ✓ kit/_typescript/matcher/matcher.bench.ts > ParseSegments Benchmarks 2863ms
+     name                                   hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · ParseSegments/ParseSegments  6,271,325.71  0.0000  0.5518  0.0002  0.0002  0.0003  0.0003  0.0004  ±0.25%  6271326

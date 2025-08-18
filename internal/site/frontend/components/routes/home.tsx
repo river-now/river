@@ -9,8 +9,10 @@ import {
 const useClientLoaderData = addClientLoader("/", async (props) => {
 	// This is pointless -- just an example of how to use a client loader
 	// await new Promise((r) => setTimeout(r, 1_000));
-	console.log("Client loader running");
-	return props.loaderData.LatestVersion;
+	console.log("Client loader running (/)");
+	const { loaderData } = await props.serverDataPromise;
+	console.log("Server data promise resolved", loaderData);
+	return loaderData.LatestVersion;
 });
 
 type RootCLD = ReturnType<typeof useClientLoaderData>;

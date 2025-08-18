@@ -54,6 +54,10 @@
 			"import": "./npm_dist/kit/_typescript/listeners/listeners.js",
 			"types": "./npm_dist/kit/_typescript/listeners/listeners.d.ts"
 		},
+		"./kit/matcher": {
+			"import": "./npm_dist/kit/_typescript/matcher/matcher.js",
+			"types": "./npm_dist/kit/_typescript/matcher/matcher.d.ts"
+		},
 		"./kit/theme": {
 			"import": "./npm_dist/kit/_typescript/theme/theme.js",
 			"types": "./npm_dist/kit/_typescript/theme/theme.d.ts"

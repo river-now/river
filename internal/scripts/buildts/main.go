@@ -49,6 +49,7 @@ func buildKit() {
 			"./kit/_typescript/fmt/fmt.ts",
 			"./kit/_typescript/json/json.ts",
 			"./kit/_typescript/listeners/listeners.ts",
+			"./kit/_typescript/matcher/matcher.ts",
 			"./kit/_typescript/theme/theme.ts",
 			"./kit/_typescript/url/url.ts",
 		},

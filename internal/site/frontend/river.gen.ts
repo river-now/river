@@ -10,9 +10,14 @@ const routes = [
 	{
 		_type: "loader",
 		isRootData: true,
-		params: [],
 		pattern: "/",
 		phantomOutputType: null as unknown as RootData,
+	},
+	{
+		_type: "loader",
+		isSplat: true,
+		pattern: "/*",
+		phantomOutputType: null as unknown as DetailedPage,
 	},
 	{
 		_type: "loader",
@@ -22,13 +27,6 @@ const routes = [
 	},
 	{
 		_type: "loader",
-		params: [],
-		pattern: "/*",
-		phantomOutputType: null as unknown as DetailedPage,
-	},
-	{
-		_type: "loader",
-		params: [],
 		pattern: "/_index",
 		phantomOutputType: null as unknown as string,
 	},
@@ -82,33 +80,56 @@ export type RiverMutations = { [K in RiverMutationPattern]: Extract<RiverMutatio
 export type RiverMutationPattern = RiverMutation["pattern"];
 export type RiverMutationInput<T extends RiverMutationPattern> = Extract<RiverMutation, { pattern: T }>["phantomInputType"];
 export type RiverMutationOutput<T extends RiverMutationPattern> = Extract<RiverMutation, { pattern: T }>["phantomOutputType"];
-export type RiverMutationMethod<T extends RiverMutationPattern> = Extract<
-	RiverMutation,
-	{ pattern: T }
-> extends { method: infer M }
-	? M extends string
-		? M
-		: "POST"
-	: "POST";
 
-import type { SharedBase } from "river.now/client";
+import type { SharedBase, WithOptionalInput } from "river.now/client";
 
-export type BaseQueryProps<P extends RiverQueryPattern> = SharedBase<P>;
-export type BaseMutationProps<P extends RiverMutationPattern> = SharedBase<P> &
+export const apiConfig = {
+	actionsRouterMountRoot: "/api/",
+	actionsDynamicRune: ":",
+	actionsSplatRune: "*",
+	loadersDynamicRune: ":",
+	loadersSplatRune: "*",
+	loadersExplicitIndexSegment: "_index",
+} as const;
+
+export type RiverMutationMethod<T extends RiverMutationPattern> =
+	Extract<RiverMutation, { pattern: T }> extends { method: infer M }
+		? M extends string
+			? M
+			: "POST"
+		: "POST";
+
+export type BaseQueryProps<P extends RiverQueryPattern> = SharedBase<
+	P,
+	RiverFunction
+>;
+
+export type BaseMutationProps<P extends RiverMutationPattern> = SharedBase<
+	P,
+	RiverFunction
+> &
 	(RiverMutationMethod<P> extends "POST"
 		? { method?: "POST" }
 		: { method: RiverMutationMethod<P> });
-export type BaseQueryPropsWithInput<P extends RiverQueryPattern> = BaseQueryProps<P> & {
-	input: RiverQueryInput<P>;
-};
-export type BaseMutationPropsWithInput<P extends RiverMutationPattern> = BaseMutationProps<P> & {
-	input: RiverMutationInput<P>;
-};
+
+export type BaseQueryPropsWithInput<P extends RiverQueryPattern> =
+	BaseQueryProps<P> & WithOptionalInput<RiverQueryInput<P>>;
+
+export type BaseMutationPropsWithInput<P extends RiverMutationPattern> =
+	BaseMutationProps<P> & WithOptionalInput<RiverMutationInput<P>>;
 
 export type RiverRootData = Extract<(typeof routes)[number], { isRootData: true }>["phantomOutputType"];
+
 type RiverFunction = RiverLoader | RiverQuery | RiverMutation;
+
 type RiverPattern = RiverLoaderPattern | RiverQueryPattern | RiverMutationPattern;
-export type RiverRouteParams<T extends RiverPattern> = (Extract<RiverFunction, { pattern: T }>["params"])[number];
+
+export type RiverRouteParams<T extends RiverPattern> =
+	Extract<RiverFunction, { pattern: T }> extends { params: infer P }
+		? P extends ReadonlyArray<string>
+			? P[number]
+			: never
+		: never;
 
 export const ACTIONS_ROUTER_MOUNT_ROOT = "/api/";
 

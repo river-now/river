@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ParseSegments } from "./matcher";
+import { parseSegments } from "./matcher";
 
 describe("ParseSegments", () => {
 	const tests = [
@@ -55,7 +55,7 @@ describe("ParseSegments", () => {
 
 	for (const tt of tests) {
 		it(tt.name, () => {
-			const result = ParseSegments(tt.path);
+			const result = parseSegments(tt.path);
 			expect(result).toEqual(tt.expected);
 		});
 	}

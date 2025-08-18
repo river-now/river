@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { Matcher, type Options, type Params } from "./matcher";
+import {
+	createPatternRegistry,
+	findBestMatch,
+	registerPattern,
+	type Params,
+	type RegisteredPattern,
+	type RegistrationOptions,
+} from "./matcher";
 
 const NOT_FOUND = "NOT FOUND";
 
-interface testCase {
+interface TestCase {
 	name: string;
 	patterns: string[];
 	path: string;
@@ -12,7 +19,7 @@ interface testCase {
 	wantSplatSegments: string[] | null;
 }
 
-function getTestCases(): testCase[] {
+function getTestCases(): TestCase[] {
 	return [
 		// empty-str cases
 		{
@@ -285,35 +292,46 @@ function getTestCases(): testCase[] {
 	];
 }
 
-const differentOptsToTest: (Options | undefined)[] = [
+const differentOptsToTest: (RegistrationOptions | undefined)[] = [
 	undefined,
-	{ ExplicitIndexSegment: "_index" },
-	{ DynamicParamPrefixRune: "$" },
-	{ SplatSegmentRune: "#" },
+	{ explicitIndexSegment: "_index" },
+	{ dynamicParamPrefixRune: "$" },
+	{ splatSegmentRune: "#" },
 	{
-		ExplicitIndexSegment: "_______",
-		DynamicParamPrefixRune: "<",
-		SplatSegmentRune: ">",
+		explicitIndexSegment: "_______",
+		dynamicParamPrefixRune: "<",
+		splatSegmentRune: ">",
 	},
 	{
-		ExplicitIndexSegment: "",
-		DynamicParamPrefixRune: "<",
-		SplatSegmentRune: ">",
+		explicitIndexSegment: "",
+		dynamicParamPrefixRune: "<",
+		splatSegmentRune: ">",
 	},
 ];
+
+// Helper function to normalize a pattern for testing
+function normalizePatternForTesting(
+	pattern: string,
+	incomingIndexSegment: string,
+): RegisteredPattern {
+	// Create a temporary registry just for normalization
+	const tempRegistry = createPatternRegistry({
+		explicitIndexSegment: incomingIndexSegment,
+	});
+
+	// We need to access the normalized pattern, so we'll register it and return
+	return registerPattern(tempRegistry, pattern);
+}
 
 // Helper function to modify patterns based on options
 function modifyPatternsToOpts(
 	incomingPatterns: string[],
 	incomingIndexSegment: string,
-	opts?: Options,
+	opts?: RegistrationOptions,
 ): string[] {
-	const m = new Matcher({
-		ExplicitIndexSegment: incomingIndexSegment,
-		Quiet: true,
-	});
-
-	const rps = incomingPatterns.map((p) => m.NormalizePattern(p));
+	const rps = incomingPatterns.map((p) =>
+		normalizePatternForTesting(p, incomingIndexSegment),
+	);
 	const newPatterns: string[] = [];
 
 	for (const rp of rps) {
@@ -326,14 +344,14 @@ function modifyPatternsToOpts(
 					break;
 				case "dynamic":
 					pattern +=
-						(opts?.DynamicParamPrefixRune || ":") +
+						(opts?.dynamicParamPrefixRune || ":") +
 						seg.normalizedVal.substring(1);
 					break;
 				case "splat":
-					pattern += opts?.SplatSegmentRune || "*";
+					pattern += opts?.splatSegmentRune || "*";
 					break;
 				case "index":
-					pattern += opts?.ExplicitIndexSegment || "";
+					pattern += opts?.explicitIndexSegment || "";
 					break;
 			}
 		}
@@ -348,16 +366,16 @@ describe("FindBestMatch", () => {
 		for (const tt of getTestCases()) {
 			describe(`with options ${JSON.stringify(opts)}`, () => {
 				it(tt.name, () => {
-					const m = new Matcher(opts);
+					const registry = createPatternRegistry(opts);
 					for (const pattern of modifyPatternsToOpts(
 						tt.patterns,
 						"",
 						opts,
 					)) {
-						m.RegisterPattern(pattern);
+						registerPattern(registry, pattern);
 					}
 
-					const [match, _] = m.FindBestMatch(tt.path);
+					const match = findBestMatch(registry, tt.path);
 					const wantMatch = tt.wantPattern !== NOT_FOUND;
 
 					if (wantMatch && match === null) {
@@ -369,31 +387,33 @@ describe("FindBestMatch", () => {
 					if (!wantMatch) {
 						if (match !== null) {
 							throw new Error(
-								`FindBestMatch() match for ${tt.path} = ${match.RegisteredPattern?.normalizedPattern} -- want null`,
+								`FindBestMatch() match for ${tt.path} = ${match.registeredPattern?.normalizedPattern} -- want null`,
 							);
 						}
 						return;
 					}
 
-					expect(match!.normalizedPattern).toBe(tt.wantPattern);
+					expect(match!.registeredPattern!.normalizedPattern).toBe(
+						tt.wantPattern,
+					);
 
 					// Compare params, allowing null == empty map
 					if (
 						tt.wantParams === null &&
-						Object.keys(match!.Params).length > 0
+						Object.keys(match!.params).length > 0
 					) {
 						throw new Error(
-							`FindBestMatch() params = ${JSON.stringify(match!.Params)}, want null`,
+							`FindBestMatch() params = ${JSON.stringify(match!.params)}, want null`,
 						);
 					} else if (tt.wantParams !== null) {
-						expect(match!.Params).toEqual(tt.wantParams);
+						expect(match!.params).toEqual(tt.wantParams);
 					}
 
 					// Compare splat segments
 					if (tt.wantSplatSegments === null) {
-						expect(match!.SplatValues).toEqual([]);
+						expect(match!.splatValues).toEqual([]);
 					} else {
-						expect(match!.SplatValues).toEqual(
+						expect(match!.splatValues).toEqual(
 							tt.wantSplatSegments,
 						);
 					}
@@ -401,4 +421,22 @@ describe("FindBestMatch", () => {
 			});
 		}
 	}
+});
+
+describe("FindBestMatchAdditionalScenarios", () => {
+	it("should not match /settings/account with registered patterns", () => {
+		const registry = createPatternRegistry({
+			explicitIndexSegment: "_index",
+		});
+
+		registerPattern(registry, "/");
+		registerPattern(registry, "/:slug");
+		registerPattern(registry, "/_index");
+		registerPattern(registry, "/app");
+
+		const path = "/settings/account";
+		const match = findBestMatch(registry, path);
+
+		expect(match).toBe(null);
+	});
 });

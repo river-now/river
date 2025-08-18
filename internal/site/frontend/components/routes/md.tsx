@@ -14,11 +14,11 @@ hmrRunClientLoaders(import.meta);
 const useClientLoaderData = addClientLoader("/*", async (props) => {
 	// This is pointless -- just an example of how to use a client loader
 	// await new Promise((r) => setTimeout(r, 1_000));
-	console.log("Client loader running");
-	return props.loaderData.Title;
+	console.log("Client loader running (/*)");
+	const { loaderData } = await props.serverDataPromise;
+	console.log("Server data promise resolved", loaderData);
+	return loaderData.Title;
 });
-
-export type CatchAllCLD = ReturnType<typeof useClientLoaderData>;
 
 export function MD(props: RouteProps<"/*">) {
 	const loaderData = useLoaderData(props);
