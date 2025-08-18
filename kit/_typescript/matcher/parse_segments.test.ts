@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSegments } from "./parse_segments";
+import { parseSegments } from "./parse_segments.ts";
 
 describe("ParseSegments", () => {
 	const tests = [

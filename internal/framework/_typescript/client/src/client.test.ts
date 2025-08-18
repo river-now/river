@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { APIConfig } from "./api_client_helpers.ts";
+import { type APIConfig } from "./api_client_helpers.ts";
 import {
 	addBuildIDListener,
 	addLocationListener,
@@ -23,8 +23,8 @@ import {
 	type ScrollState,
 	type StatusEventDetail,
 	submit,
-} from "./client.ts";
-import { internal_RiverClientGlobal } from "./river_ctx.ts";
+} from "./client";
+import { internal_RiverClientGlobal } from "./river_ctx";
 
 const apiConfig: APIConfig = {
 	actionsRouterMountRoot: "/api/",
@@ -1291,7 +1291,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				// Verify the promise resolves to the correct data
-				const call = waitFn.mock.calls[0][0];
+				const call = waitFn.mock.calls[0]?.[0];
 				const serverData = await call.serverDataPromise;
 				expect(serverData).toEqual({
 					matchedPatterns: ["/pattern"],

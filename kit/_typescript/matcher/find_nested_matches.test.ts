@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { findNestedMatches } from "./find_nested_matches";
+import { findNestedMatches } from "./find_nested_matches.ts";
 import {
 	createPatternRegistry,
-	Params,
-	RegisteredPattern,
+	type Params,
+	type RegisteredPattern,
 	registerPattern,
-	RegistrationOptions,
-} from "./register";
+	type RegistrationOptions,
+} from "./register.ts";
 
 export const NestedPatterns = [
 	"/_index", // Index
