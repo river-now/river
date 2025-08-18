@@ -102,13 +102,11 @@ export function riverVitePlugin(): Plugin {
 			const isDev = command === "serve";
 
 			return {
-				...c,
 				base: isDev ? "/" : "{{.PublicPathPrefix}}",
 				build: {
 					target: "es2022",
-					...c.build,
 					emptyOutDir: false,
-					modulePreload: { 
+					modulePreload: {
 						polyfill: false,
 						...(typeof mp === "object" ? mp : {}),
 					},
@@ -122,7 +120,6 @@ export function riverVitePlugin(): Plugin {
 					},
 				},
 				server: {
-					...c.server,
 					headers: {
 						...c.server?.headers,
 						// ensure versions of dynamic imports without the latest
@@ -133,15 +130,14 @@ export function riverVitePlugin(): Plugin {
 						...c.server?.watch,
 						ignored: [
 							...(Array.isArray(ign) ? ign : []),
-							...{{.IgnoredList}},
+{{.IgnoredList}},
 						],
 					},
 				},
 				resolve: {
-					...c.resolve,
 					dedupe: [
 						...(Array.isArray(dedupe) ? dedupe : []),
-						...{{.DedupeList}}
+{{.DedupeList}},
 					],
 				},
 			};
@@ -155,7 +151,9 @@ export function riverVitePlugin(): Plugin {
 			const replacedCode = code.replace(
 				assetRegex,
 				(_, __, assetPath) => {
-					const hashed = (staticPublicAssetMap as Record<string, string>)[assetPath];
+					const hashed = (
+						staticPublicAssetMap as Record<string, string>
+					)[assetPath];
 					if (!hashed) return {{.Tick}}"${assetPath}"{{.Tick}};
 					return {{.Tick}}"{{.PublicPathPrefix}}${hashed}"{{.Tick}};
 				},
@@ -223,7 +221,9 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 
 	sb.Return()
 
-	sb.Line(`export function waveRuntimeURL(originalPublicURL: keyof typeof staticPublicAssetMap) {
+	sb.Line(`export function waveRuntimeURL(
+	originalPublicURL: keyof typeof staticPublicAssetMap,
+) {
 	const url = staticPublicAssetMap[originalPublicURL] ?? originalPublicURL;
 	return publicPathPrefix + url;
 }`)
@@ -251,27 +251,40 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 		path.Join("**", h.Wave.GetRiverClientRouteDefsFile()),
 	}
 
-	ignoreTabs := strings.Repeat("\t", 7)
-	stringifiedIgnoreBytes, err := json.MarshalIndent(ignoredList, "", ignoreTabs+"\t")
+	// Format ignored list with proper indentation
+	ignoreTabs := strings.Repeat("\t", 6)
+	stringifiedIgnoreBytes, err := json.MarshalIndent(ignoredList, ignoreTabs, "\t")
 	if err != nil {
 		return "", fmt.Errorf("error marshalling ignored list to JSON: %w", err)
 	}
 
-	stringifiedDedupeBytes, err := json.Marshal(dedupeList)
+	// Remove opening and closing brackets
+	stringifiedIgnore := string(stringifiedIgnoreBytes)
+	stringifiedIgnore = strings.TrimPrefix(stringifiedIgnore, "[")
+	stringifiedIgnore = strings.TrimSuffix(stringifiedIgnore, "]")
+	stringifiedIgnore = strings.TrimPrefix(stringifiedIgnore, "\n")
+	stringifiedIgnore = strings.TrimSuffix(stringifiedIgnore, "\n"+ignoreTabs)
+
+	// Format dedupe list with proper indentation
+	dedupeTabs := strings.Repeat("\t", 5)
+	stringifiedDedupeBytes, err := json.MarshalIndent(dedupeList, dedupeTabs, "\t")
 	if err != nil {
 		return "", fmt.Errorf("error marshalling dedupe list to JSON: %w", err)
 	}
 
-	stringifiedIgnore := string(stringifiedIgnoreBytes)
-	stringifiedIgnore = strings.TrimSuffix(stringifiedIgnore, "]")
-	stringifiedIgnore += ignoreTabs + "]"
+	// Remove opening and closing brackets
+	stringifiedDedupe := string(stringifiedDedupeBytes)
+	stringifiedDedupe = strings.TrimPrefix(stringifiedDedupe, "[")
+	stringifiedDedupe = strings.TrimSuffix(stringifiedDedupe, "]")
+	stringifiedDedupe = strings.TrimPrefix(stringifiedDedupe, "\n")
+	stringifiedDedupe = strings.TrimSuffix(stringifiedDedupe, "\n"+dedupeTabs)
 
 	err = vitePluginTemplate.Execute(&buf, map[string]any{
 		"FuncName":         h.Wave.GetRiverBuildtimePublicURLFuncName(),
 		"PublicPathPrefix": h.Wave.GetPublicPathPrefix(),
 		"Tick":             tick,
 		"IgnoredList":      template.HTML(stringifiedIgnore),
-		"DedupeList":       template.HTML(stringifiedDedupeBytes),
+		"DedupeList":       template.HTML(stringifiedDedupe),
 	})
 	if err != nil {
 		return "", fmt.Errorf("error executing template: %w", err)

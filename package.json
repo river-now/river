@@ -1,6 +1,6 @@
 {
 	"name": "river.now",
-	"version": "0.54.0",
+	"version": "0.54.1",
 	"type": "module",
 	"license": "BSD-3-Clause",
 	"repository": {
@@ -53,6 +53,18 @@
 		"./kit/listeners": {
 			"import": "./npm_dist/kit/_typescript/listeners/listeners.js",
 			"types": "./npm_dist/kit/_typescript/listeners/listeners.d.ts"
+		},
+		"./kit/matcher/register": {
+			"import": "./npm_dist/kit/_typescript/matcher/register.js",
+			"types": "./npm_dist/kit/_typescript/matcher/register.d.ts"
+		},
+		"./kit/matcher/find-best": {
+			"import": "./npm_dist/kit/_typescript/matcher/find_best_match.js",
+			"types": "./npm_dist/kit/_typescript/matcher/find_best_match.d.ts"
+		},
+		"./kit/matcher/find-nested": {
+			"import": "./npm_dist/kit/_typescript/matcher/find_nested_matches.js",
+			"types": "./npm_dist/kit/_typescript/matcher/find_nested_matches.d.ts"
 		},
 		"./kit/theme": {
 			"import": "./npm_dist/kit/_typescript/theme/theme.js",

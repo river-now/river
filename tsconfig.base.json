@@ -13,5 +13,12 @@
 		"verbatimModuleSyntax": true,
 		"allowImportingTsExtensions": true
 	},
-	"exclude": ["**/node_modules", "npm_dist"]
+	"exclude": [
+		"**/node_modules",
+		"npm_dist",
+		"**/*.test.ts",
+		"**/*.test.tsx",
+		"**/*.bench.ts",
+		"**/*.bench.tsx"
+	]
 }
