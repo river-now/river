@@ -197,7 +197,6 @@ export function riverVitePlugin(): Plugin {
 				base: isDev ? "/" : "/",
 				build: {
 					target: "es2022",
-					...c.build,
 					emptyOutDir: false,
 					modulePreload: { 
 						polyfill: false,

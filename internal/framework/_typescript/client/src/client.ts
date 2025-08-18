@@ -81,7 +81,7 @@ export async function registerClientLoaderPattern(
 async function findPartialMatchesOnClient(pathname: string) {
 	// Only try to match if we have client loaders
 	const patternToWaitFnMap =
-		internal_RiverClientGlobal.get("patternToWaitFnMap") || {};
+		internal_RiverClientGlobal.get("patternToWaitFnMap");
 	if (Object.keys(patternToWaitFnMap).length === 0) {
 		return null;
 	}
@@ -502,7 +502,7 @@ class NavigationStateManager {
 			const pathname = url.pathname;
 			const matchResult = await findPartialMatchesOnClient(pathname);
 			const patternToWaitFnMap =
-				internal_RiverClientGlobal.get("patternToWaitFnMap") || {};
+				internal_RiverClientGlobal.get("patternToWaitFnMap");
 			const runningLoaders = new Map<string, Promise<any>>();
 
 			// Start client loaders for already-registered patterns
@@ -1875,7 +1875,7 @@ async function completeClientLoaders(
 
 	const matchedPatterns = json.matchedPatterns ?? [];
 	const patternToWaitFnMap =
-		internal_RiverClientGlobal.get("patternToWaitFnMap") || {};
+		internal_RiverClientGlobal.get("patternToWaitFnMap");
 	const finalPromises: Array<Promise<any>> = [];
 
 	let i = 0;
