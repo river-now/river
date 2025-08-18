@@ -194,7 +194,7 @@ export function findNestedMatches(
 	const realSegmentsLen = realSegments.length;
 
 	// Handle root path
-	if (realPath === "" || realPath === "/") {
+	if (realPath === "") {
 		const rr = registry.staticPatterns.get("/");
 		if (rr) {
 			matches.set(rr.normalizedPattern, {
