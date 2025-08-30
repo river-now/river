@@ -9,9 +9,9 @@ import { useSplatClientLoaderData } from "./md.tsx";
 const useRootClientLoaderData = addClientLoader("/", async (props) => {
 	// This is pointless -- just an example of how to use a client loader
 	// await new Promise((r) => setTimeout(r, 1_000));
-	console.log(`Client loader '/' started at ${Date.now()}`);
+	// console.log(`Client loader '/' started at ${Date.now()}`);
 	const { loaderData } = await props.serverDataPromise;
-	console.log("Server data promise resolved at ", Date.now(), loaderData);
+	// console.log("Server data promise resolved at ", Date.now(), loaderData);
 	return loaderData.LatestVersion;
 });
 
@@ -23,10 +23,9 @@ export function Home(_props: RouteProps<"/_index">) {
 	const _x = usePatternLoaderData("/");
 	const _y = useRootClientLoaderData();
 	const _z = useSplatClientLoaderData();
-
-	console.log("_x", _x());
-	console.log("_y", _y());
-	console.log("_z", _z()); // should be undefined on this page
+	// console.log("_x", _x());
+	// console.log("_y", _y());
+	// console.log("_z", _z()); // should be undefined on this page
 
 	return (
 		<>
