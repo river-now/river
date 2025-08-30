@@ -70,9 +70,6 @@ npmbuild:
 npmbump:
 	@go run ./internal/scripts/npm_bumper
 
-sitebump:
-	@go run ./internal/scripts/site_bumper
-
 docker-site:
 	@docker build -t river-site -f Dockerfile.site .
 

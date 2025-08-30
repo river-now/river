@@ -18,18 +18,4 @@ git push
 make gobump
 ```
 
-4. bump the site
-
-```sh
-make sitebump
-```
-
-5. push to github again
-
-```sh
-git add .
-git commit -m 'sitebump'
-git push
-```
-
-6. profit
+4. profit

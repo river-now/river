@@ -14,9 +14,9 @@ hmrRunClientLoaders(import.meta);
 export const useSplatClientLoaderData = addClientLoader("/*", async (props) => {
 	// This is pointless -- just an example of how to use a client loader
 	// await new Promise((r) => setTimeout(r, 1_000));
-	console.log("Client loader running (/*)");
+	console.log(`Client loader '/*' started at ${Date.now()}`);
 	const { loaderData } = await props.serverDataPromise;
-	console.log("Server data promise resolved", loaderData);
+	console.log("Server data promise resolved at ", Date.now(), loaderData);
 
 	// This is how you pass an abort signal to your API calls,
 	// so that if the navigation aborts, the downstream requests
