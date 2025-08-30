@@ -75,7 +75,11 @@ export function RenderedMarkdown(props: { markdown: string }) {
 				link.parentNode?.replaceChild(placeholder, link);
 
 				const dispose = render(
-					() => <RiverLink href={href}>{label}</RiverLink>,
+					() => (
+						<RiverLink prefetch="intent" href={href}>
+							{label}
+						</RiverLink>
+					),
 					placeholder,
 				);
 				disposers.push(dispose);
