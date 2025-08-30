@@ -6,7 +6,7 @@ import {
 } from "../app_utils.ts";
 import { useSplatClientLoaderData } from "./md.tsx";
 
-const useRootClientLoaderData = addClientLoader("/", async (props) => {
+export const useRootClientLoaderData = addClientLoader("/", async (props) => {
 	// This is pointless -- just an example of how to use a client loader
 	// await new Promise((r) => setTimeout(r, 1_000));
 	// console.log(`Client loader '/' started at ${Date.now()}`);

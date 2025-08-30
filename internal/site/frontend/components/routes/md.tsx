@@ -7,6 +7,7 @@ import {
 	type RouteProps,
 } from "../app_utils.ts";
 import { RenderedMarkdown } from "../rendered-markdown.tsx";
+import { useRootClientLoaderData } from "./home.tsx";
 
 // Use this if you want your client loaders to re-run when you save this file
 hmrRunClientLoaders(import.meta);
@@ -33,6 +34,8 @@ export function MD(props: RouteProps<"/*">) {
 	const loaderData = useLoaderData(props);
 
 	const splatClientLoaderData = useSplatClientLoaderData(props);
+	const _y = useRootClientLoaderData();
+	// console.log("_y", _y());
 
 	return (
 		<div class="content">

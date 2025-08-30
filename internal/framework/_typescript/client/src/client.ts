@@ -1160,15 +1160,27 @@ class ComponentLoader {
 		const originalImportURLs = internal_RiverClientGlobal.get("importURLs");
 		const exportKeys = internal_RiverClientGlobal.get("exportKeys") ?? [];
 
-		// Set active components
-		const activeComponents = originalImportURLs.map(
+		// Build new components array
+		const newActiveComponents = originalImportURLs.map(
 			(url: string, i: number) => {
 				const module = modulesMap.get(url);
 				const key = exportKeys[i] ?? "default";
 				return module?.[key] ?? null;
 			},
 		);
-		internal_RiverClientGlobal.set("activeComponents", activeComponents);
+
+		// Only update if components actually changed
+		if (
+			!jsonDeepEquals(
+				newActiveComponents,
+				internal_RiverClientGlobal.get("activeComponents"),
+			)
+		) {
+			internal_RiverClientGlobal.set(
+				"activeComponents",
+				newActiveComponents,
+			);
+		}
 
 		// Handle error boundary
 		const errorIdx = internal_RiverClientGlobal.get("outermostErrorIdx");
@@ -1185,11 +1197,20 @@ class ComponentLoader {
 				}
 			}
 
-			internal_RiverClientGlobal.set(
-				"activeErrorBoundary",
+			const newErrorBoundary =
 				errorComponent ??
-					internal_RiverClientGlobal.get("defaultErrorBoundary"),
+				internal_RiverClientGlobal.get("defaultErrorBoundary");
+
+			// Only update if changed
+			const currentErrorBoundary = internal_RiverClientGlobal.get(
+				"activeErrorBoundary",
 			);
+			if (currentErrorBoundary !== newErrorBoundary) {
+				internal_RiverClientGlobal.set(
+					"activeErrorBoundary",
+					newErrorBoundary,
+				);
+			}
 		}
 	}
 }

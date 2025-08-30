@@ -17,6 +17,7 @@ import {
 	type JSX,
 	Show,
 } from "solid-js";
+import { Dynamic } from "solid-js/web";
 
 /////////////////////////////////////////////////////////////////////
 /////// CORE SETUP
@@ -173,9 +174,10 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 	return (
 		<>
 			<Show when={currentCompMemo()}>
-				{currentCompMemo()({
-					idx: idx,
-					Outlet: (localProps: Record<string, any> | undefined) => {
+				<Dynamic
+					component={currentCompMemo()}
+					idx={idx}
+					Outlet={(localProps: Record<string, any> | undefined) => {
 						return (
 							<RiverRootOutlet
 								{...localProps}
@@ -183,8 +185,8 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 								idx={idx + 1}
 							/>
 						);
-					},
-				})}
+					}}
+				/>
 			</Show>
 
 			<Show when={shouldFallbackOutletMemo()}>
@@ -192,8 +194,15 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 			</Show>
 
 			<Show when={isErrorIdxMemo()}>
-				{errorCompMemo()?.({ error: outermostError() }) ??
-					`Error: ${outermostError() || "unknown"}`}
+				<Show
+					when={errorCompMemo()}
+					fallback={`Error: ${outermostError() || "unknown"}`}
+				>
+					<Dynamic
+						component={errorCompMemo()}
+						error={outermostError()}
+					/>
+				</Show>
 			</Show>
 		</>
 	);
