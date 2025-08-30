@@ -17,7 +17,8 @@ vercel-install-go:
 
 vercel-install: vercel-install-go
 	@export PATH=/tmp/go/bin:$$PATH && \
-		pnpm i
+		cd ../.. && pnpm i && \
+		cd internal/site && pnpm i
 
 outer-npmbuild:
 	@export PATH=/tmp/go/bin:$$PATH && \
