@@ -15,7 +15,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const buildIDHeader = "X-River-Build-Id"
+const RiverBuildIDHeaderKey = "X-River-Build-Id"
 
 var headElsInstance = headels.NewInstance("river")
 
@@ -29,7 +29,7 @@ func (h *River) GetLoadersHandler(nestedRouter *mux.NestedRouter) mux.TasksCtxRe
 
 	handler := mux.TasksCtxRequirerFunc(func(w http.ResponseWriter, r *http.Request) {
 		res := response.New(w)
-		res.SetHeader(buildIDHeader, h._buildID)
+		res.SetHeader(RiverBuildIDHeaderKey, h._buildID)
 
 		isJSON := IsJSONRequest(r)
 		if isJSON && !h.IsCurrentBuildJSONRequest(r) {
@@ -187,10 +187,14 @@ func (h *River) IsCurrentBuildJSONRequest(r *http.Request) bool {
 	return r.URL.Query().Get("river_json") == h._buildID
 }
 
+func (h *River) GetCurrentBuildID() string {
+	return h._buildID
+}
+
 func (h *River) GetActionsHandler(router *mux.Router) mux.TasksCtxRequirerFunc {
 	return mux.TasksCtxRequirerFunc(func(w http.ResponseWriter, r *http.Request) {
 		res := response.New(w)
-		res.SetHeader(buildIDHeader, h._buildID)
+		res.SetHeader(RiverBuildIDHeaderKey, h._buildID)
 		router.ServeHTTP(w, r)
 	})
 }
