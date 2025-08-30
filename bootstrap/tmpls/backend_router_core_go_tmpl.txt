@@ -27,7 +27,7 @@ func Core() *mux.Router {
 	mux.SetGlobalHTTPMiddleware(r, healthcheck.Healthz)
 	mux.SetGlobalHTTPMiddleware(r, robotstxt.Allow)
 	mux.SetGlobalHTTPMiddleware(r, app.Wave.FaviconRedirect())
-	
+
 	mux.RegisterHandler(r, "GET", "/*", app.River.GetLoadersHandler(LoadersRouter))
 
 	for method := range supportedAPIMethods {
