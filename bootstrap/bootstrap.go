@@ -96,7 +96,7 @@ func (o Options) derived() derivedOptions {
 	if o.DeploymentTarget == "vercel" {
 		do.VercelPackageJSONExtras = fmt.Sprintf(`,
 		"vercel-install-go": "curl -L https://go.dev/dl/%s.linux-amd64.tar.gz | tar -C /tmp -xz",
-		"vercel-install": "%s vercel-install-go && export PATH=/tmp/go/bin:$PATH && %s install",
+		"vercel-install": "%s vercel-install-go && %s install",
 		"vercel-build": "export PATH=/tmp/go/bin:$PATH && go run ./__cmd/build"`,
 			goVersion, do.ResolveJSPackageManagerRunScriptPrefix(), do.JSPackageManager,
 		)
