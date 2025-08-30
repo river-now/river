@@ -46,6 +46,50 @@ async function init() {
 	const startTime = performance.now();
 
 	try {
+		// Add extensive debugging here
+		logInfo("Current working directory:", process.cwd());
+		logInfo("GO_APP_LOCATION:", GO_APP_LOCATION);
+		logInfo("waveConfig.Core.DistDir:", waveConfig.Core.DistDir);
+
+		// Check if the file exists and is accessible
+		const fs = await import("node:fs");
+		try {
+			const stats = fs.statSync(GO_APP_LOCATION);
+			logInfo("Binary exists:", stats.isFile());
+			logInfo("Binary size:", stats.size);
+			logInfo("Binary permissions:", stats.mode.toString(8));
+		} catch (err) {
+			logErr("Binary not found at path:", GO_APP_LOCATION);
+			logErr("Error checking binary:", err);
+
+			// List what's actually in the directory
+			const dir = join(process.cwd(), waveConfig.Core.DistDir);
+			try {
+				const files = fs.readdirSync(dir);
+				logInfo("Files in dist directory:", files);
+			} catch (dirErr) {
+				logErr("Cannot read dist directory:", dir, dirErr);
+			}
+
+			// Check parent directories
+			logInfo("Checking parent directories:");
+			const path = await import("node:path");
+			let currentPath = process.cwd();
+			for (let i = 0; i < 3; i++) {
+				try {
+					const contents = fs.readdirSync(currentPath);
+					logInfo(
+						`Contents of ${currentPath}:`,
+						contents.slice(0, 10),
+					); // First 10 items
+				} catch {
+					logErr(`Cannot read ${currentPath}`);
+				}
+				currentPath = path.dirname(currentPath);
+			}
+		}
+
+		logInfo("Spawning Go process with PORT:", PORT);
 		goProcess = spawn(GO_APP_LOCATION, [], {
 			env: { ...process.env, PORT: PORT.toString() },
 			stdio: "pipe",
