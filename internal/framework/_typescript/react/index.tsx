@@ -3,7 +3,6 @@ export {
 	makeTypedUseLoaderData,
 	makeTypedUsePatternLoaderData,
 	makeTypedUseRouterData,
-	usePatternClientLoaderData,
 	type RiverRoute,
 	type RiverRouteProps,
 } from "./src/helpers.ts";

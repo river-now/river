@@ -2,6 +2,11 @@
 @import url("./hljs.css");
 @import url("./nprogress.css");
 
+html,
+body {
+	overscroll-behavior: none;
+}
+
 a,
 button,
 input[type="button"],
@@ -14,6 +19,7 @@ input[type="submit"] {
 	--light-green: #4bba5b;
 	--resolved-green: light-dark(var(--dark-green), var(--light-green));
 	--css1-loaded: 1;
+	--nav-item-x-padding: 0.5rem;
 }
 
 html.light {
@@ -57,9 +63,12 @@ body {
 	display: flex;
 	padding: 1rem;
 }
+.nav-right {
+	margin-right: calc(-1 * var(--nav-item-x-padding));
+}
 @media screen and (max-width: 640px) {
 	body {
-		padding: 0.5;
+		padding: 0.5rem;
 	}
 }
 
@@ -92,7 +101,7 @@ nav .logo:hover {
 	color: #fdba74;
 }
 .nav-item {
-	padding: 0 0.5rem;
+	padding: 0 var(--nav-item-x-padding);
 	border-radius: 0.25rem;
 	text-transform: uppercase;
 	height: 33px;
@@ -272,7 +281,6 @@ ul {
 /* Inline code only (not inside pre) */
 code:not(pre code) {
 	padding: 2px 0.25rem;
-	white-space: nowrap;
 }
 
 code:not(pre code):not(.high-contrast) {

@@ -1,16 +1,11 @@
-import nProgress from "nprogress";
+import { done, isStarted, start } from "nprogress";
 import { setupGlobalLoadingIndicator } from "river.now/client";
 import { setTheme, THEMES } from "river.now/kit/theme";
 import { RiverRootOutlet } from "river.now/solid";
 import "../css/tailwind.css";
-import { Link } from "./app_link.tsx";
-import { theme, useRouterData } from "./app_utils.ts";
+import { AppLink, theme, useRouterData } from "./app_utils.ts";
 
-setupGlobalLoadingIndicator({
-	start: nProgress.start,
-	stop: nProgress.done,
-	isRunning: nProgress.isStarted,
-});
+setupGlobalLoadingIndicator({ start, stop: done, isRunning: isStarted });
 
 const theme_to_label_map = {
 	[THEMES.Light]: hashedURL("sun.svg"),
@@ -39,18 +34,22 @@ export function App() {
 		<>
 			<nav class="w-full flex items-center">
 				<div class="flex items-baseline">
-					<Link href="/">
+					<AppLink pattern="/">
 						<h1 class="logo">River</h1>
-					</Link>
+					</AppLink>
 					<div class="text-xs opacity-70 hidden sm:flex">
 						({routerData().rootData?.LatestVersion})
 					</div>
 				</div>
 
-				<div class="flex">
-					<Link href="/docs" class="nav-item">
+				<div class="flex nav-right">
+					<AppLink
+						pattern="/*"
+						splatValues={["docs"]}
+						class="nav-item"
+					>
 						Docs
-					</Link>
+					</AppLink>
 
 					<button
 						type="button"

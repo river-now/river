@@ -10,11 +10,11 @@ import (
 
 var ActionsRouter = mux.NewRouter(&mux.Options{
 	MountRoot: "/api/",
-	MarshalInput: func(r *http.Request, iPtr any) error {
+	ParseInput: func(r *http.Request, iPtr any) error {
 		if r.Method == http.MethodGet {
 			return validate.URLSearchParamsInto(r, iPtr)
 		}
-		if r.Method == http.MethodPost {
+		if _, ok := supportedAPIMethods[r.Method]; ok {
 			return validate.JSONBodyInto(r, iPtr)
 		}
 		return errors.New("unsupported method")
@@ -37,3 +37,7 @@ func NewAction[I any, O any](method, pattern string, f func(c *ActionCtx[I]) (O,
 	mux.RegisterTaskHandler(ActionsRouter, method, pattern, actionTask)
 	return actionTask
 }
+
+// var _ = NewAction("POST", "/example", func(c *ActionCtx[mux.None]) (map[string]string, error) {
+// 	return map[string]string{"message": "Hello, World!"}, nil
+// })

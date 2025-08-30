@@ -11,6 +11,10 @@ import (
 	"github.com/river-now/river/kit/mux"
 )
 
+var supportedAPIMethods = map[string]struct{}{
+	"GET": {}, "POST": {}, "PUT": {}, "DELETE": {}, "PATCH": {},
+}
+
 func Core() *mux.Router {
 	r := mux.NewRouter(nil)
 
@@ -24,13 +28,13 @@ func Core() *mux.Router {
 	mux.SetGlobalHTTPMiddleware(r, robotstxt.Allow)
 	mux.SetGlobalHTTPMiddleware(r, app.Wave.FaviconRedirect())
 
-	// river UI routes
-	mux.RegisterHandler(r, "GET", "/*", app.River.GetUIHandler(LoadersRouter))
+	mux.RegisterHandler(r, "GET", "/*", app.River.GetLoadersHandler(LoadersRouter))
 
-	// river API routes
-	actionsHandler := app.River.GetActionsHandler(ActionsRouter)
-	mux.RegisterHandler(r, "GET", ActionsRouter.MountRoot("*"), actionsHandler)
-	mux.RegisterHandler(r, "POST", ActionsRouter.MountRoot("*"), actionsHandler)
+	for method := range supportedAPIMethods {
+		mux.RegisterHandler(
+			r, method, ActionsRouter.MountRoot("*"), app.River.GetActionsHandler(ActionsRouter),
+		)
+	}
 
 	return r
 }

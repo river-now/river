@@ -6,13 +6,11 @@ export const apiHelper = {
 	toQueryOpts,
 	toMutationOpts,
 	buildURL,
-	resolveMethod,
 	resolvePath,
 };
 
 type Props = SharedBase<string, RiverUntypedFunction> & {
 	input?: any;
-	method?: string;
 };
 
 type APIClientHelperOpts = {
@@ -51,13 +49,6 @@ function buildURL(opts: APIClientHelperOpts) {
 		url.search = serializeToSearchParams(opts.props.input).toString();
 	}
 	return url;
-}
-
-function resolveMethod(opts: APIClientHelperOpts) {
-	if (opts.type === "mutation") {
-		return opts.props.method || "POST";
-	}
-	return "GET";
 }
 
 export type GetParams<T extends string, F extends RiverUntypedFunction> =
@@ -103,6 +94,7 @@ export type PatternBasedProps<
 export type SharedBase<P extends string, F extends RiverUntypedFunction> = {
 	pattern: P;
 	options?: SubmitOptions;
+	requestInit?: RequestInit;
 } & PatternBasedProps<P, F>;
 
 export function resolvePath(opts: APIClientHelperOpts) {

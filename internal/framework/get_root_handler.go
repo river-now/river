@@ -19,7 +19,12 @@ const buildIDHeader = "X-River-Build-Id"
 
 var headElsInstance = headels.NewInstance("river")
 
+// Deprecated: use GetLoadersHandler instead.
 func (h *River) GetUIHandler(nestedRouter *mux.NestedRouter) mux.TasksCtxRequirerFunc {
+	return h.GetLoadersHandler(nestedRouter)
+}
+
+func (h *River) GetLoadersHandler(nestedRouter *mux.NestedRouter) mux.TasksCtxRequirerFunc {
 	h.validateAndDecorateNestedRouter(nestedRouter)
 
 	handler := mux.TasksCtxRequirerFunc(func(w http.ResponseWriter, r *http.Request) {
