@@ -102,15 +102,17 @@ export type RiverMutationMethod<T extends RiverMutationPattern> =
 export type BaseQueryProps<P extends RiverQueryPattern> = SharedBase<
 	P,
 	RiverFunction
->;
+> & {
+	requestInit?: Omit<RequestInit, "method"> & { method?: "GET" };
+};
 
 export type BaseMutationProps<P extends RiverMutationPattern> = SharedBase<
 	P,
 	RiverFunction
 > &
 	(RiverMutationMethod<P> extends "POST"
-		? { method?: "POST" }
-		: { method: RiverMutationMethod<P> });
+		? { requestInit?: Omit<RequestInit, "method"> & { method?: "POST" } }
+		: { requestInit: RequestInit & { method: RiverMutationMethod<P> } });
 
 export type BaseQueryPropsWithInput<P extends RiverQueryPattern> =
 	BaseQueryProps<P> & WithOptionalInput<RiverQueryInput<P>>;

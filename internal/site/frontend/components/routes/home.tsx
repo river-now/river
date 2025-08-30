@@ -1,12 +1,12 @@
-import { usePatternClientLoaderData } from "river.now/solid";
-import { Link } from "../app_link.tsx";
 import {
 	addClientLoader,
+	AppLink,
 	type RouteProps,
 	usePatternLoaderData,
 } from "../app_utils.ts";
+import { useSplatClientLoaderData } from "./md.tsx";
 
-const useClientLoaderData = addClientLoader("/", async (props) => {
+const useRootClientLoaderData = addClientLoader("/", async (props) => {
 	// This is pointless -- just an example of how to use a client loader
 	// await new Promise((r) => setTimeout(r, 1_000));
 	console.log("Client loader running (/)");
@@ -15,13 +15,14 @@ const useClientLoaderData = addClientLoader("/", async (props) => {
 	return loaderData.LatestVersion;
 });
 
-type RootCLD = ReturnType<typeof useClientLoaderData>;
-
 export function Home(_props: RouteProps<"/_index">) {
-	const _x = usePatternLoaderData("");
-	const _y = usePatternClientLoaderData<RootCLD>("");
+	const _x = usePatternLoaderData("/");
+	const _y = useRootClientLoaderData();
+	const _z = useSplatClientLoaderData();
+
 	// console.log("_x", _x());
 	// console.log("_y", _y());
+	// console.log("_z", _z()); // should be undefined on this page
 
 	return (
 		<>
@@ -164,9 +165,13 @@ export function Home(_props: RouteProps<"/_index">) {
 					</p>
 					<p class="leading-[1.75]">
 						If you'd prefer to read more first, take a peek at{" "}
-						<Link href="/docs" class="underline">
+						<AppLink
+							pattern="/*"
+							splatValues={["docs"]}
+							class="underline"
+						>
 							our docs
-						</Link>
+						</AppLink>
 						.
 					</p>
 				</div>

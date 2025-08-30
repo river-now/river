@@ -46,7 +46,7 @@ export function makeTypedUseLoaderData<Loader extends RiverUntypedFunction>() {
 export function makeTypedUsePatternLoaderData<
 	Loader extends RiverUntypedFunction,
 >() {
-	return function usePatternData<Pattern extends string = string>(
+	return function usePatternData<Pattern extends Loader["pattern"]>(
 		pattern: Pattern,
 	): Extract<Loader, { pattern: Pattern }>["phantomOutputType"] | undefined {
 		const idx = useMemo(() => {
@@ -62,25 +62,11 @@ export function makeTypedUsePatternLoaderData<
 	};
 }
 
-export function usePatternClientLoaderData<ClientLoaderData = any>(
-	pattern: string,
-): ClientLoaderData | undefined {
-	const idx = useMemo(() => {
-		return routerData.value.matchedPatterns.findIndex((p) => p === pattern);
-	}, [pattern]);
-
-	if (idx === -1) {
-		return undefined;
-	}
-	return clientLoadersData.value[idx];
-}
-
 export function makeTypedAddClientLoader<
 	OuterLoader extends RiverUntypedFunction,
 	RootData,
 >() {
 	const m = internal_RiverClientGlobal.get("patternToWaitFnMap");
-
 	return function addClientLoader<
 		Pattern extends OuterLoader["pattern"],
 		Loader extends Extract<OuterLoader, { pattern: Pattern }>,
@@ -91,9 +77,8 @@ export function makeTypedAddClientLoader<
 		fn: (props: {
 			params: Record<ParamsForPattern<OuterLoader, Pattern>, string>;
 			splatValues: string[];
-			serverDataPromise: ClientLoaderAwaitedServerData<
-				RootData,
-				LoaderData
+			serverDataPromise: Promise<
+				ClientLoaderAwaitedServerData<RootData, LoaderData>
 			>;
 			signal: AbortSignal;
 		}) => Promise<T>,
@@ -103,10 +88,26 @@ export function makeTypedAddClientLoader<
 		});
 		(m as any)[p] = fn;
 
-		return function useClientLoaderData(
-			props: RiverRouteProps<Loader>,
-		): Awaited<ReturnType<typeof fn>> {
-			return clientLoadersData.value[props.idx];
+		type Res = Awaited<ReturnType<typeof fn>>;
+
+		const useClientLoaderData = (
+			props?: RiverRouteProps<Loader, Pattern>,
+		): Res | undefined => {
+			const idx = useMemo(() => {
+				if (props) {
+					return props.idx;
+				}
+				const matched = routerData.value.matchedPatterns;
+				return matched.findIndex((pattern) => pattern === p);
+			}, [props]);
+
+			if (idx === -1) return undefined;
+			return clientLoadersData.value[idx];
+		};
+
+		return useClientLoaderData as {
+			(props: RiverRouteProps<Loader, Pattern>): Res;
+			(): Res | undefined;
 		};
 	};
 }

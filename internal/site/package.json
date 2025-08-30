@@ -3,6 +3,7 @@
 	"devDependencies": {
 		"@tailwindcss/vite": "^4.1.11",
 		"@types/nprogress": "^0.2.3",
+		"@vercel/node": "^5.3.17",
 		"highlight.js": "^11.11.1",
 		"nprogress": "^0.2.0",
 		"river.now": "link:../../",

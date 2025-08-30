@@ -2,7 +2,7 @@ import { getHrefDetails } from "river.now/kit/url";
 import { createEffect, onCleanup } from "solid-js";
 import { render } from "solid-js/web";
 import { waveRuntimeURL } from "../river.gen.ts";
-import { Link } from "./app_link.tsx";
+import { AppLink } from "./app_utils.ts";
 import { highlight } from "./highlight.ts";
 
 export function RenderedMarkdown(props: { markdown: string }) {
@@ -75,11 +75,7 @@ export function RenderedMarkdown(props: { markdown: string }) {
 				link.parentNode?.replaceChild(placeholder, link);
 
 				const dispose = render(
-					() => (
-						<Link prefetch="intent" href={href}>
-							{label}
-						</Link>
-					),
+					() => <AppLink pattern={href as any}>{label}</AppLink>,
 					placeholder,
 				);
 				disposers.push(dispose);

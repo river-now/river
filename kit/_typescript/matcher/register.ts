@@ -232,8 +232,9 @@ export function registerPattern(
 	const normalized = normalizePattern(originalPattern, registry.config);
 
 	if (
-		registry.staticPatterns.has(normalized.normalizedPattern) ||
-		registry.dynamicPatterns.has(normalized.normalizedPattern)
+		!(globalThis.window && globalThis.document) &&
+		(registry.staticPatterns.has(normalized.normalizedPattern) ||
+			registry.dynamicPatterns.has(normalized.normalizedPattern))
 	) {
 		console.warn(`already registered: ${originalPattern}`);
 	}

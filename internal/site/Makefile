@@ -12,11 +12,16 @@ build: pre
 run:
 	@PORT=$(port) ./app/__dist/main
 
-vercel-install:
-	@curl -L https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | tar -C /tmp -xz && \
-		export PATH=/tmp/go/bin:$$PATH && \
+vercel-install-go:
+	@curl -L https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | tar -C /tmp -xz
+
+vercel-install: vercel-install-go
+	@export PATH=/tmp/go/bin:$$PATH && \
 		pnpm i
 
-vercel-build:
+outer-npmbuild:
+	@cd ../.. && make npmbuild
+
+vercel-build: outer-npmbuild
 	@export PATH=/tmp/go/bin:$$PATH && \
 		go run ./__cmd/build --no-binary

@@ -60,3 +60,5 @@
 - Skew Protection
 - Input validation
 - Advanced uses of the matcher
+- Advanced tsgen usage (e.g., string enums)
+- Advanced validate usage

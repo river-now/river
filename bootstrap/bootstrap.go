@@ -261,7 +261,6 @@ func Init(o Options) {
 	}
 
 	if do.DeploymentTarget == "vercel" {
-		installJSPkg(do, "@types/node")
 		installJSPkg(do, "@vercel/node")
 	}
 
