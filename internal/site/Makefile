@@ -26,4 +26,5 @@ outer-npmbuild:
 
 vercel-build: outer-npmbuild
 	@export PATH=/tmp/go/bin:$$PATH && \
-		go run ./__cmd/build --no-binary
+		go run ./__cmd/build --no-binary && \
+		ls -la app/__dist/
