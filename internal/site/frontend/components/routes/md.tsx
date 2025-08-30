@@ -1,8 +1,8 @@
 import { hmrRunClientLoaders } from "river.now/client";
+import { RiverLink } from "river.now/solid";
 import { Show } from "solid-js";
 import {
 	addClientLoader,
-	AppLink,
 	useLoaderData,
 	type RouteProps,
 } from "../app_utils.ts";
@@ -48,13 +48,12 @@ export function MD(props: RouteProps<"/*">) {
 							{n().map((x) => {
 								return (
 									<li>
-										<AppLink
-											pattern="/*"
-											splatValues={["docs"]}
+										<RiverLink
 											href={x.url}
+											prefetch="intent"
 										>
 											{x.title}
-										</AppLink>
+										</RiverLink>
 									</li>
 								);
 							})}

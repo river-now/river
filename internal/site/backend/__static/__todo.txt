@@ -1,0 +1,4 @@
+__TODO
+
+- [ ] when you change the file name of a markdown file, both persist in the sitemap until you reload the server
+
