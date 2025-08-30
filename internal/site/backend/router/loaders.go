@@ -34,7 +34,7 @@ var jsonCacheControlVal = strings.Join([]string{
 	"max-age=60",                     // 1 minute in browser cache
 	"s-maxage=86400",                 // 1 day in CDN cache
 	"stale-while-revalidate=2592000", // 30 days stale in CDN while revalidating
-	// "must-revalidate",                // revalidate after 1 minute in browser
+	// skip "must-revalidate", as browsers seem to interpret it as though max-age=0
 }, ", ")
 
 var htmlCacheControlVal = strings.Join([]string{
