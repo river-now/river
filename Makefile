@@ -28,11 +28,15 @@ tstestwatch:
 tsbench:
 	@npx vitest bench
 
-tsreset:
+nuke-node-modules:
 	@rm -rf node_modules 2>/dev/null || true
 	@find . -path "*/node_modules" -type d -exec rm -rf {} \; 2>/dev/null || true
+
+tsinstall:
 	@pnpm i
 	@cd internal/framework/_typescript/create && pnpm i
+
+tsreset: nuke-node-modules tsinstall
 
 tslint:
 	@pnpm oxlint

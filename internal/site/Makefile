@@ -16,8 +16,7 @@ vercel-install-go:
 	@curl -L https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | tar -C /tmp -xz
 
 vercel-install: vercel-install-go
-	@cd ../.. && pnpm i
-	@cd ../framework/_typescript/create && pnpm i
+	@cd ../.. && make tsinstall
 	@pnpm i
 
 outer-npmbuild:

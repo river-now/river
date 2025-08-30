@@ -96,9 +96,9 @@ func (o Options) derived() derivedOptions {
 	if o.DeploymentTarget == "vercel" {
 		do.VercelPackageJSONExtras = fmt.Sprintf(`,
 		"vercel-install-go": "curl -L https://go.dev/dl/%s.linux-amd64.tar.gz | tar -C /tmp -xz",
-		"vercel-install": "%s vercel-install-go && %s install",
+		"vercel-install": "%s vercel-install-go && %s",
 		"vercel-build": "export PATH=/tmp/go/bin:$PATH && go run ./__cmd/build"`,
-			goVersion, do.ResolveJSPackageManagerRunScriptPrefix(), do.JSPackageManager,
+			goVersion, do.ResolveJSPackageManagerRunScriptPrefix(), do.ResolveJSPackageManagerInstallCmd(),
 		)
 	}
 
@@ -301,6 +301,21 @@ func (do derivedOptions) ResolveJSPackageManagerRunScriptPrefix() string {
 		cmd = do.JSPackageManager
 	}
 	return cmd
+}
+
+func (do derivedOptions) ResolveJSPackageManagerInstallCmd() string {
+	pm := do.JSPackageManager
+	switch pm {
+	case "npm":
+		return "npm i"
+	case "pnpm":
+		return "pnpm i"
+	case "yarn":
+		return "yarn"
+	case "bun":
+		return "bun i"
+	}
+	panic("unknown JSPackageManager: " + pm)
 }
 
 func installJSPkg(do derivedOptions, pkg string) {
