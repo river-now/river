@@ -41,25 +41,36 @@ let matcherModules:
 			findNested: typeof import("river.now/kit/matcher/find-nested");
 	  }
 	| undefined;
+let initializationPromise: Promise<void> | undefined;
 
 async function ensureMatcherLoaded(config: APIConfig) {
-	if (!matcherModules) {
-		const [registerModule, findNestedModule] = await Promise.all([
-			import("river.now/kit/matcher/register"),
-			import("river.now/kit/matcher/find-nested"),
-		]);
-		matcherModules = {
-			register: registerModule,
-			findNested: findNestedModule,
-		};
-		const { createPatternRegistry } = registerModule;
-		clientPatternRegistry = createPatternRegistry({
-			dynamicParamPrefixRune: config.loadersDynamicRune,
-			splatSegmentRune: config.loadersSplatRune,
-			explicitIndexSegment: config.loadersExplicitIndexSegment,
-		});
+	if (!initializationPromise) {
+		initializationPromise = (async () => {
+			if (!matcherModules) {
+				const [registerModule, findNestedModule] = await Promise.all([
+					import("river.now/kit/matcher/register"),
+					import("river.now/kit/matcher/find-nested"),
+				]);
+				matcherModules = {
+					register: registerModule,
+					findNested: findNestedModule,
+				};
+				const { createPatternRegistry } = registerModule;
+				clientPatternRegistry = createPatternRegistry({
+					dynamicParamPrefixRune: config.loadersDynamicRune,
+					splatSegmentRune: config.loadersSplatRune,
+					explicitIndexSegment: config.loadersExplicitIndexSegment,
+				});
+			}
+		})();
 	}
-	return { matcherModules, clientPatternRegistry: clientPatternRegistry! };
+
+	await initializationPromise;
+
+	return {
+		matcherModules: matcherModules!,
+		clientPatternRegistry: clientPatternRegistry!,
+	};
 }
 
 export async function registerClientLoaderPattern(

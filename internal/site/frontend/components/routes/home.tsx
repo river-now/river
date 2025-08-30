@@ -15,14 +15,18 @@ const useRootClientLoaderData = addClientLoader("/", async (props) => {
 	return loaderData.LatestVersion;
 });
 
+export function RootLayout(props: RouteProps<"/">) {
+	return props.Outlet;
+}
+
 export function Home(_props: RouteProps<"/_index">) {
 	const _x = usePatternLoaderData("/");
 	const _y = useRootClientLoaderData();
 	const _z = useSplatClientLoaderData();
 
-	// console.log("_x", _x());
-	// console.log("_y", _y());
-	// console.log("_z", _z()); // should be undefined on this page
+	console.log("_x", _x());
+	console.log("_y", _y());
+	console.log("_z", _z()); // should be undefined on this page
 
 	return (
 		<>
