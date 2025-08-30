@@ -20,6 +20,7 @@ vercel-install: vercel-install-go
 		pnpm i
 
 outer-npmbuild:
+	@echo "outer-npmbuild"
 	@cd ../.. && make npmbuild
 
 vercel-build: outer-npmbuild
