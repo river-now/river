@@ -37,7 +37,3 @@ func NewAction[I any, O any](method, pattern string, f func(c *ActionCtx[I]) (O,
 	mux.RegisterTaskHandler(ActionsRouter, method, pattern, actionTask)
 	return actionTask
 }
-
-// var _ = NewAction("POST", "/example", func(c *ActionCtx[mux.None]) (map[string]string, error) {
-// 	return map[string]string{"message": "Hello, World!"}, nil
-// })

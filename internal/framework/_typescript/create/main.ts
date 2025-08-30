@@ -16,6 +16,10 @@ import * as path from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// __TODO:
+// 1 -- add option to create a new directory at start if not already in desired location
+// 2 -- add some feedback that the process has started after all prompts are done
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
