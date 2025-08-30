@@ -6,7 +6,12 @@ import waveConfig from "../app/wave.config.json" with { type: "json" };
 
 logInfo("Initializing proxy...");
 
-const GO_APP_LOCATION = join(process.cwd(), waveConfig.Core.DistDir, "main");
+const GO_APP_LOCATION = join(
+	process.cwd(),
+	"internal/site",
+	waveConfig.Core.DistDir,
+	"main",
+);
 const GO_APP_HEALTH_CHECK_ENDPOINT = waveConfig.Watch.HealthcheckEndpoint;
 const GO_APP_STARTUP_TIMEOUT_IN_MS = 10_000; // 10s
 const PORT = 8080;
