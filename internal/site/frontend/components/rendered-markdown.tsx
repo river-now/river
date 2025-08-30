@@ -1,8 +1,8 @@
 import { getHrefDetails } from "river.now/kit/url";
+import { RiverLink } from "river.now/solid";
 import { createEffect, onCleanup } from "solid-js";
 import { render } from "solid-js/web";
 import { waveRuntimeURL } from "../river.gen.ts";
-import { AppLink } from "./app_utils.ts";
 import { highlight } from "./highlight.ts";
 
 export function RenderedMarkdown(props: { markdown: string }) {
@@ -75,7 +75,7 @@ export function RenderedMarkdown(props: { markdown: string }) {
 				link.parentNode?.replaceChild(placeholder, link);
 
 				const dispose = render(
-					() => <AppLink pattern={href as any}>{label}</AppLink>,
+					() => <RiverLink href={href}>{label}</RiverLink>,
 					placeholder,
 				);
 				disposers.push(dispose);
