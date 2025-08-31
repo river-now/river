@@ -1,4 +1,9 @@
-import { useLoaderData, useRouterData, type RouteProps } from "./app_utils";
+import {
+	useLoaderData,
+	usePatternLoaderData,
+	useRouterData,
+	type RouteProps,
+} from "./app_utils";
 
 export function About(props: RouteProps<"/about">) {
 	const data = useLoaderData(props);
@@ -16,6 +21,12 @@ export function About(props: RouteProps<"/about">) {
 
 export function Location(props: RouteProps<"/about/location">) {
 	const data = useLoaderData(props);
+
+	// If you need to load data from a parent's loader, you can use this hook.
+	// Usually, this is a bit of a hack, but it's there if you need it.
+	const patternData = usePatternLoaderData("/about");
+	console.log("This is from a parent loader: ", patternData{{.Call}});
+
 	return (
 		<div style={{.StylePropOpen}} {{.BackgroundColorKey}}: "#003", padding: "4px 24px" {{.StylePropClose}}>
 			<h2>Location</h2>

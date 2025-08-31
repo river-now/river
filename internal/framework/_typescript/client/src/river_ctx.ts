@@ -1,3 +1,5 @@
+import type { APIConfig } from "./api_client_helpers.ts";
+
 export type HeadEl = {
 	tag?: string;
 	attributesKnownSafe?: Record<string, string>;
@@ -41,6 +43,13 @@ export const RIVER_SYMBOL = Symbol.for("__river_internal__");
 
 export type RouteErrorComponent = (props: { error: string }) => any;
 
+export type ClientLoaderAwaitedServerData<RD, LD> = {
+	matchedPatterns: string[];
+	loaderData: LD;
+	rootData: RD;
+	buildID: string;
+};
+
 export type RiverClientGlobal = shared & {
 	isDev: boolean;
 	viteDevURL: string;
@@ -48,14 +57,18 @@ export type RiverClientGlobal = shared & {
 	isTouchDevice: boolean;
 	patternToWaitFnMap: Record<
 		string,
-		(
-			props: ReturnType<typeof getRouterData> & { loaderData: any },
-		) => Promise<any>
+		(props: {
+			params: Record<string, string>;
+			splatValues: string[];
+			serverDataPromise: Promise<ClientLoaderAwaitedServerData<any, any>>;
+			signal: AbortSignal;
+		}) => Promise<any>
 	>;
 	clientLoadersData: Array<any>;
 	defaultErrorBoundary: RouteErrorComponent;
 	useViewTransitions: boolean;
 	deploymentID: string;
+	apiConfig: APIConfig;
 };
 
 export function __getRiverClientGlobal() {

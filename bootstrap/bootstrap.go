@@ -23,6 +23,7 @@ type Options struct {
 	// "generic" or "vercel" (defaults to "generic")
 	DeploymentTarget string
 	IncludeTailwind  bool
+	CreatedInDir     string // Empty if not created in a new directory
 }
 
 type derivedOptions struct {
@@ -96,9 +97,9 @@ func (o Options) derived() derivedOptions {
 	if o.DeploymentTarget == "vercel" {
 		do.VercelPackageJSONExtras = fmt.Sprintf(`,
 		"vercel-install-go": "curl -L https://go.dev/dl/%s.linux-amd64.tar.gz | tar -C /tmp -xz",
-		"vercel-install": "%s vercel-install-go && export PATH=/tmp/go/bin:$PATH && %s install",
+		"vercel-install": "%s vercel-install-go && %s",
 		"vercel-build": "export PATH=/tmp/go/bin:$PATH && go run ./__cmd/build"`,
-			goVersion, do.ResolveJSPackageManagerRunScriptPrefix(), do.JSPackageManager,
+			goVersion, do.ResolveJSPackageManagerRunScriptPrefix(), do.ResolveJSPackageManagerInstallCmd(),
 		)
 	}
 
@@ -261,7 +262,6 @@ func Init(o Options) {
 	}
 
 	if do.DeploymentTarget == "vercel" {
-		installJSPkg(do, "@types/node")
 		installJSPkg(do, "@vercel/node")
 	}
 
@@ -289,10 +289,16 @@ func Init(o Options) {
 	fmt.Println()
 	fmt.Println("✨ SUCCESS! Your River app is ready.")
 	fmt.Println()
-	fmt.Printf(
-		"💻 Run `%s dev` to start the development server.\n",
-		do.ResolveJSPackageManagerRunScriptPrefix(),
-	)
+	if o.CreatedInDir != "" {
+		fmt.Printf("💻 Run `cd %s && %s dev` to start the development server.\n",
+			o.CreatedInDir,
+			do.ResolveJSPackageManagerRunScriptPrefix(),
+		)
+	} else {
+		fmt.Printf("💻 Run `%s dev` to start the development server.\n",
+			do.ResolveJSPackageManagerRunScriptPrefix(),
+		)
+	}
 	fmt.Println()
 }
 
@@ -302,6 +308,21 @@ func (do derivedOptions) ResolveJSPackageManagerRunScriptPrefix() string {
 		cmd = do.JSPackageManager
 	}
 	return cmd
+}
+
+func (do derivedOptions) ResolveJSPackageManagerInstallCmd() string {
+	pm := do.JSPackageManager
+	switch pm {
+	case "npm":
+		return "npm i"
+	case "pnpm":
+		return "pnpm i"
+	case "yarn":
+		return "yarn"
+	case "bun":
+		return "bun i"
+	}
+	panic("unknown JSPackageManager: " + pm)
 }
 
 func installJSPkg(do derivedOptions, pkg string) {

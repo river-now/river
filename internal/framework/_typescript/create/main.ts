@@ -5,6 +5,7 @@ import {
 	confirm,
 	intro,
 	isCancel,
+	log,
 	select,
 	spinner,
 	text,
@@ -36,12 +37,16 @@ async function main() {
 			const major = parseInt(versionMatch[1]);
 			const minor = parseInt(versionMatch[2]);
 			if (major < 1 || (major === 1 && minor < 24)) {
-				cancel("Go version 1.24 or higher is required");
+				cancel(
+					"Go version 1.24 or higher is required. See https://go.dev/doc/install for installation instructions.",
+				);
 				process.exit(1);
 			}
 		}
 	} catch {
-		cancel("Go is not installed. Please install Go 1.24 or higher");
+		cancel(
+			"Go is not installed. See https://go.dev/doc/install for installation instructions.",
+		);
 		process.exit(1);
 	}
 
@@ -58,6 +63,50 @@ async function main() {
 	if (nodeMajor < 22) {
 		cancel("Node.js version 22.11 or higher is required");
 		process.exit(1);
+	}
+
+	// Option to create a new directory at start if not already in desired location
+	const createNewDir = await confirm({
+		message: "Create a new directory for your River app?",
+		initialValue: false,
+	});
+
+	if (isCancel(createNewDir)) {
+		cancel("Operation cancelled");
+		process.exit(0);
+	}
+
+	let targetDir = process.cwd();
+
+	if (createNewDir) {
+		const dirName = await text({
+			message: "Enter directory name:",
+			validate: (value) => {
+				if (!value || value.trim() === "")
+					return "Directory name is required";
+				// Check for invalid characters in directory name
+				if (!/^[a-zA-Z0-9-_]+$/.test(value)) {
+					return "Directory name can only contain letters, numbers, hyphens, and underscores";
+				}
+				// Check if directory already exists
+				const proposedPath = path.join(process.cwd(), value);
+				if (fs.existsSync(proposedPath)) {
+					return `Directory "${value}" already exists`;
+				}
+				return undefined;
+			},
+		});
+
+		if (isCancel(dirName)) {
+			cancel("Operation cancelled");
+			process.exit(0);
+		}
+
+		// Create the directory and change to it
+		targetDir = path.join(process.cwd(), dirName as string);
+		fs.mkdirSync(targetDir, { recursive: true });
+		process.chdir(targetDir);
+		log.success(`Created directory: ${dirName}`);
 	}
 
 	// Find go.mod and determine import path
@@ -229,6 +278,9 @@ async function main() {
 		process.exit(0);
 	}
 
+	console.log();
+	console.log("🛠️  Preparing bootstrapper...");
+
 	// Create temporary directory
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-river-"));
 	const bootstrapFile = path.join(tempDir, "main.go");
@@ -246,6 +298,7 @@ func main() {
 		JSPackageManager: "${packageManager}",
 		DeploymentTarget: "${deploymentTarget}",
 		IncludeTailwind:  ${includeTailwind},
+		${createNewDir ? `CreatedInDir:     "${path.basename(targetDir)}",` : ""}
 	})
 }
 `;
@@ -257,21 +310,13 @@ func main() {
 			fs.readFileSync(packageJsonPath, "utf8"),
 		);
 		const version = packageJson.version;
-		const s1 = spinner();
-		s1.start("Installing River dependency");
-		try {
-			execSync(`go get github.com/river-now/river@v${version}`, {
-				cwd: process.cwd(),
-				stdio: "pipe",
-			});
-			s1.stop("River dependency installed");
-		} catch (error) {
-			s1.stop("Failed to install River");
-			throw error;
-		}
+		execSync(`go get github.com/river-now/river@v${version}`, {
+			cwd: process.cwd(),
+			stdio: "pipe",
+		});
 
 		// Run bootstrap
-		console.log("Creating River app...");
+		console.log("🛠️  Running bootstrapper...");
 		try {
 			execSync(`go run ${bootstrapFile}`, {
 				cwd: process.cwd(),

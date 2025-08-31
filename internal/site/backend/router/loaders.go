@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	"strings"
 
 	"site/app"
 	"site/backend/markdown"
@@ -28,17 +29,36 @@ type RootData struct {
 
 var currentNPMVersion = "v" + river.Internal__GetCurrentNPMVersion()
 
+var jsonCacheControlVal = strings.Join([]string{
+	"public",
+	"max-age=60",                     // 1 minute in browser cache
+	"s-maxage=86400",                 // 1 day in CDN cache
+	"stale-while-revalidate=2592000", // 30 days stale in CDN while revalidating
+	// skip "must-revalidate", as browsers seem to interpret it as though max-age=0
+}, ", ")
+
+var htmlCacheControlVal = strings.Join([]string{
+	"public",
+	"max-age=0",                      // no browser cache
+	"s-maxage=86400",                 // 1 day in CDN cache
+	"stale-while-revalidate=2592000", // 30 days stale in CDN while revalidating
+	"must-revalidate",                // revalidate after 1 day in CDN
+}, ", ")
+
 var _ = newLoader("/", func(c *mux.NestedReqData) (*RootData, error) {
 	r, rp := c.Request(), c.ResponseProxy()
 
 	if !wave.GetIsDev() {
+		// Because this app has no user-specific data, we can cache the responses
+		// pretty aggressively.
+		// Vercel purges the CDN on new deployments, so we don't need to worry about
+		// build ID mismatches.
 		if river.IsJSONRequest(r) {
-			// Because this app has no user-specific data, we can cache the JSON response
-			// pretty aggressively.
-			rp.SetHeader("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400, must-revalidate")
+			rp.SetHeader("Cache-Control", jsonCacheControlVal)
 		} else {
-			// Don't cache HTML, but stop short of "no-store" so it's still eligible for ETag revalidation
-			rp.SetHeader("Cache-Control", "no-cache")
+			// Vary the HTML response by cookie to account for theme
+			rp.SetHeader("Vary", "Cookie")
+			rp.SetHeader("Cache-Control", htmlCacheControlVal)
 		}
 	}
 

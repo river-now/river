@@ -13,7 +13,8 @@
 		"CSSEntryFiles": {
 			"Critical": "frontend/css/main.critical.css",
 			"NonCritical": "frontend/css/main.css"
-		}
+		},
+		"PublicPathPrefix": "/"
 	},
 	"River": {
 		"UIVariant": "solid",

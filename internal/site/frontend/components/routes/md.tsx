@@ -1,32 +1,45 @@
 import { hmrRunClientLoaders } from "river.now/client";
+import { RiverLink } from "river.now/solid";
 import { Show } from "solid-js";
-import { Link } from "../app_link.tsx";
 import {
 	addClientLoader,
-	type RouteProps,
 	useLoaderData,
+	type RouteProps,
 } from "../app_utils.ts";
 import { RenderedMarkdown } from "../rendered-markdown.tsx";
+import { useRootClientLoaderData } from "./home.tsx";
 
 // Use this if you want your client loaders to re-run when you save this file
 hmrRunClientLoaders(import.meta);
 
-const useClientLoaderData = addClientLoader("/*", async (props) => {
+export const useSplatClientLoaderData = addClientLoader("/*", async (props) => {
 	// This is pointless -- just an example of how to use a client loader
 	// await new Promise((r) => setTimeout(r, 1_000));
-	console.log("Client loader running");
-	return props.loaderData.Title;
-});
+	// console.log(`Client loader '/*' started at ${Date.now()}`);
+	const { loaderData } = await props.serverDataPromise;
+	// console.log("Server data promise resolved at ", Date.now(), loaderData);
 
-export type CatchAllCLD = ReturnType<typeof useClientLoaderData>;
+	// This is how you pass an abort signal to your API calls,
+	// so that if the navigation aborts, the downstream requests
+	// also abort:
+	// const res = await api.mutate({
+	// 	pattern: "/example",
+	// 	requestInit: { signal: props.signal },
+	// });
+
+	return loaderData.Title as string;
+});
 
 export function MD(props: RouteProps<"/*">) {
 	const loaderData = useLoaderData(props);
-	const clientLoaderData = useClientLoaderData(props);
+
+	const splatClientLoaderData = useSplatClientLoaderData(props);
+	const _y = useRootClientLoaderData();
+	// console.log("_y", _y());
 
 	return (
 		<div class="content">
-			<Show when={clientLoaderData()}>{(n) => <h1>{n()}</h1>}</Show>
+			<Show when={splatClientLoaderData()}>{(n) => <h1>{n()}</h1>}</Show>
 			<Show when={loaderData()?.Date}>{(n) => <i>{n()}</i>}</Show>
 			<Show when={loaderData()?.Content}>
 				{(n) => <RenderedMarkdown markdown={n()} />}
@@ -38,9 +51,12 @@ export function MD(props: RouteProps<"/*">) {
 							{n().map((x) => {
 								return (
 									<li>
-										<Link prefetch="intent" href={x.url}>
+										<RiverLink
+											href={x.url}
+											prefetch="intent"
+										>
 											{x.title}
-										</Link>
+										</RiverLink>
 									</li>
 								);
 							})}

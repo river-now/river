@@ -10,9 +10,14 @@ const routes = [
 	{
 		_type: "loader",
 		isRootData: true,
-		params: [],
 		pattern: "/",
 		phantomOutputType: null as unknown as RootData,
+	},
+	{
+		_type: "loader",
+		isSplat: true,
+		pattern: "/*",
+		phantomOutputType: null as unknown as DetailedPage,
 	},
 	{
 		_type: "loader",
@@ -22,13 +27,6 @@ const routes = [
 	},
 	{
 		_type: "loader",
-		params: [],
-		pattern: "/*",
-		phantomOutputType: null as unknown as DetailedPage,
-	},
-	{
-		_type: "loader",
-		params: [],
 		pattern: "/_index",
 		phantomOutputType: null as unknown as string,
 	},
@@ -82,33 +80,61 @@ export type RiverMutations = { [K in RiverMutationPattern]: Extract<RiverMutatio
 export type RiverMutationPattern = RiverMutation["pattern"];
 export type RiverMutationInput<T extends RiverMutationPattern> = Extract<RiverMutation, { pattern: T }>["phantomInputType"];
 export type RiverMutationOutput<T extends RiverMutationPattern> = Extract<RiverMutation, { pattern: T }>["phantomOutputType"];
-export type RiverMutationMethod<T extends RiverMutationPattern> = Extract<
-	RiverMutation,
-	{ pattern: T }
-> extends { method: infer M }
-	? M extends string
-		? M
-		: "POST"
-	: "POST";
 
-import type { SharedBase } from "river.now/client";
+import type { SharedBase, WithOptionalInput } from "river.now/client";
 
-export type BaseQueryProps<P extends RiverQueryPattern> = SharedBase<P>;
-export type BaseMutationProps<P extends RiverMutationPattern> = SharedBase<P> &
+export const apiConfig = {
+	actionsRouterMountRoot: "/api/",
+	actionsDynamicRune: ":",
+	actionsSplatRune: "*",
+	loadersDynamicRune: ":",
+	loadersSplatRune: "*",
+	loadersExplicitIndexSegment: "_index",
+} as const;
+
+export type RiverMutationMethod<T extends RiverMutationPattern> =
+	Extract<RiverMutation, { pattern: T }> extends { method: infer M }
+		? M extends string
+			? M
+			: "POST"
+		: "POST";
+
+export type BaseQueryProps<P extends RiverQueryPattern> = SharedBase<
+	P,
+	RiverFunction
+> & {
+	requestInit?: Omit<RequestInit, "method"> & { method?: "GET" };
+};
+
+export type BaseMutationProps<P extends RiverMutationPattern> = SharedBase<
+	P,
+	RiverFunction
+> &
 	(RiverMutationMethod<P> extends "POST"
-		? { method?: "POST" }
-		: { method: RiverMutationMethod<P> });
-export type BaseQueryPropsWithInput<P extends RiverQueryPattern> = BaseQueryProps<P> & {
-	input: RiverQueryInput<P>;
-};
-export type BaseMutationPropsWithInput<P extends RiverMutationPattern> = BaseMutationProps<P> & {
-	input: RiverMutationInput<P>;
-};
+		? { requestInit?: Omit<RequestInit, "method"> & { method?: "POST" } }
+		: { requestInit: RequestInit & { method: RiverMutationMethod<P> } });
 
-export type RiverRootData = Extract<(typeof routes)[number], { isRootData: true }>["phantomOutputType"];
+export type BaseQueryPropsWithInput<P extends RiverQueryPattern> =
+	BaseQueryProps<P> & WithOptionalInput<RiverQueryInput<P>>;
+
+export type BaseMutationPropsWithInput<P extends RiverMutationPattern> =
+	BaseMutationProps<P> & WithOptionalInput<RiverMutationInput<P>>;
+
+export type RiverRootData = Extract<
+	(typeof routes)[number],
+	{ isRootData: true }
+>["phantomOutputType"];
+
 type RiverFunction = RiverLoader | RiverQuery | RiverMutation;
+
 type RiverPattern = RiverLoaderPattern | RiverQueryPattern | RiverMutationPattern;
-export type RiverRouteParams<T extends RiverPattern> = (Extract<RiverFunction, { pattern: T }>["params"])[number];
+
+export type RiverRouteParams<T extends RiverPattern> =
+	Extract<RiverFunction, { pattern: T }> extends { params: infer P }
+		? P extends ReadonlyArray<string>
+			? P[number]
+			: never
+		: never;
 
 export const ACTIONS_ROUTER_MOUNT_ROOT = "/api/";
 
@@ -155,7 +181,9 @@ declare global {
 
 export const publicPathPrefix = "/";
 
-export function waveRuntimeURL(originalPublicURL: keyof typeof staticPublicAssetMap) {
+export function waveRuntimeURL(
+	originalPublicURL: keyof typeof staticPublicAssetMap,
+) {
 	const url = staticPublicAssetMap[originalPublicURL] ?? originalPublicURL;
 	return publicPathPrefix + url;
 }
@@ -172,13 +200,11 @@ export function riverVitePlugin(): Plugin {
 			const isDev = command === "serve";
 
 			return {
-				...c,
 				base: isDev ? "/" : "/",
 				build: {
 					target: "es2022",
-					...c.build,
 					emptyOutDir: false,
-					modulePreload: { 
+					modulePreload: {
 						polyfill: false,
 						...(typeof mp === "object" ? mp : {}),
 					},
@@ -192,7 +218,6 @@ export function riverVitePlugin(): Plugin {
 					},
 				},
 				server: {
-					...c.server,
 					headers: {
 						...c.server?.headers,
 						// ensure versions of dynamic imports without the latest
@@ -203,22 +228,20 @@ export function riverVitePlugin(): Plugin {
 						...c.server?.watch,
 						ignored: [
 							...(Array.isArray(ign) ? ign : []),
-							...[
-								"**/*.go",
-								"**/app/__dist/**/*",
-								"**/backend/__static/**/*",
-								"**/wave.config.json",
-								"**/frontend/river.gen.ts",
-								"**/frontend/routes.ts"
-							],
+							"**/*.go",
+							"**/app/__dist/**/*",
+							"**/backend/__static/**/*",
+							"**/wave.config.json",
+							"**/frontend/river.gen.ts",
+							"**/frontend/routes.ts",
 						],
 					},
 				},
 				resolve: {
-					...c.resolve,
 					dedupe: [
 						...(Array.isArray(dedupe) ? dedupe : []),
-						...["solid-js","solid-js/web"]
+						"solid-js",
+						"solid-js/web",
 					],
 				},
 			};
@@ -232,7 +255,9 @@ export function riverVitePlugin(): Plugin {
 			const replacedCode = code.replace(
 				assetRegex,
 				(_, __, assetPath) => {
-					const hashed = (staticPublicAssetMap as Record<string, string>)[assetPath];
+					const hashed = (
+						staticPublicAssetMap as Record<string, string>
+					)[assetPath];
 					if (!hashed) return `"${assetPath}"`;
 					return `"/${hashed}"`;
 				},

@@ -10,11 +10,11 @@ import (
 
 var ActionsRouter = mux.NewRouter(&mux.Options{
 	MountRoot: "/api/",
-	MarshalInput: func(r *http.Request, iPtr any) error {
+	ParseInput: func(r *http.Request, iPtr any) error {
 		if r.Method == http.MethodGet {
 			return validate.URLSearchParamsInto(r, iPtr)
 		}
-		if r.Method == http.MethodPost {
+		if _, ok := supportedAPIMethods[r.Method]; ok {
 			return validate.JSONBodyInto(r, iPtr)
 		}
 		return errors.New("unsupported method")

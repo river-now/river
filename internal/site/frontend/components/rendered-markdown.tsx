@@ -1,8 +1,8 @@
 import { getHrefDetails } from "river.now/kit/url";
+import { RiverLink } from "river.now/solid";
 import { createEffect, onCleanup } from "solid-js";
 import { render } from "solid-js/web";
 import { waveRuntimeURL } from "../river.gen.ts";
-import { Link } from "./app_link.tsx";
 import { highlight } from "./highlight.ts";
 
 export function RenderedMarkdown(props: { markdown: string }) {
@@ -76,9 +76,9 @@ export function RenderedMarkdown(props: { markdown: string }) {
 
 				const dispose = render(
 					() => (
-						<Link prefetch="intent" href={href}>
+						<RiverLink prefetch="intent" href={href}>
 							{label}
-						</Link>
+						</RiverLink>
 					),
 					placeholder,
 				);

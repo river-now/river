@@ -12,11 +12,10 @@ import (
 var ActionsRouter = mux.NewRouter(&mux.Options{
 	MountRoot: "/api/",
 	ParseInput: func(r *http.Request, iPtr any) error {
-		// include other methods as needed
 		if r.Method == http.MethodGet {
 			return validate.URLSearchParamsInto(r, iPtr)
 		}
-		if r.Method == http.MethodPost {
+		if _, ok := supportedAPIMethods[r.Method]; ok {
 			return validate.JSONBodyInto(r, iPtr)
 		}
 		return errors.New("unsupported method")
@@ -50,6 +49,10 @@ var username = "guest"
 var _ = NewAction("POST", "/increment-count", func(c *ActionCtx[mux.None]) (int, error) {
 	count++
 	return count, nil
+})
+
+var _ = NewAction("GET", "/get-username", func(c *ActionCtx[mux.None]) (string, error) {
+	return username, nil
 })
 
 type UsernameInput struct {

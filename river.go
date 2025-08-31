@@ -21,8 +21,9 @@ type (
 )
 
 var (
-	IsJSONRequest = framework.IsJSONRequest
-	NewHeadEls    = headels.New
+	IsJSONRequest         = framework.IsJSONRequest
+	NewHeadEls            = headels.New
+	RiverBuildIDHeaderKey = framework.RiverBuildIDHeaderKey
 )
 
 //go:embed package.json

@@ -89,7 +89,7 @@ func Run() {
 	// Push new tag
 	t.Plain("pushing new tag")
 	t.NewLine()
-	cmd = t.Cmd("git", "push", "origin", bumpedVersion)
+	cmd = t.Cmd("git", "push", "origin", "refs/tags/"+bumpedVersion)
 	t.MustRun(cmd, "tag push failed")
 
 	// Update go proxy

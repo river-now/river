@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type APIConfig } from "./api_client_helpers.ts";
 import {
 	addBuildIDListener,
 	addLocationListener,
@@ -22,8 +23,17 @@ import {
 	type ScrollState,
 	type StatusEventDetail,
 	submit,
-} from "./client.ts";
-import { internal_RiverClientGlobal } from "./river_ctx.ts";
+} from "./client";
+import { internal_RiverClientGlobal } from "./river_ctx";
+
+const apiConfig: APIConfig = {
+	actionsRouterMountRoot: "/api/",
+	actionsDynamicRune: ":",
+	actionsSplatRune: "*",
+	loadersDynamicRune: ":",
+	loadersSplatRune: "*",
+	loadersExplicitIndexSegment: "_index",
+};
 
 // Mock only what's necessary for testing
 const mockSessionStorage = (() => {
@@ -1273,12 +1283,22 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				expect(waitFn).toHaveBeenCalledWith(
 					expect.objectContaining({
-						buildID: "1",
-						matchedPatterns: ["/pattern"],
-						rootData: { serverData: "test" },
-						loaderData: { serverData: "test" },
+						params: expect.any(Object),
+						splatValues: expect.any(Array),
+						serverDataPromise: expect.any(Promise),
+						signal: expect.any(AbortSignal),
 					}),
 				);
+
+				// Verify the promise resolves to the correct data
+				const call = waitFn.mock.calls[0]?.[0];
+				const serverData = await call.serverDataPromise;
+				expect(serverData).toEqual({
+					matchedPatterns: ["/pattern"],
+					loaderData: { serverData: "test" },
+					rootData: { serverData: "test" },
+					buildID: "1",
+				});
 			});
 
 			it("should cleanup navigation on completion", async () => {
@@ -2292,7 +2312,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					return 0;
 				});
 
-				await initClient(() => {});
+				await initClient(() => {}, { apiConfig });
 
 				expect(window.scrollTo).toHaveBeenCalledWith(250, 500);
 				expect(
@@ -2313,7 +2333,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					JSON.stringify(scrollState),
 				);
 
-				await initClient(() => {});
+				await initClient(() => {}, { apiConfig });
 
 				expect(window.scrollTo).not.toHaveBeenCalledWith(250, 500);
 			});
@@ -2331,7 +2351,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					JSON.stringify(scrollState),
 				);
 
-				await initClient(() => {});
+				await initClient(() => {}, { apiConfig });
 
 				expect(window.scrollTo).not.toHaveBeenCalledWith(250, 500);
 			});
@@ -4031,6 +4051,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 			const customErrorBoundary = () => "Custom Error";
 
 			await initClient(() => {}, {
+				apiConfig,
 				defaultErrorBoundary: customErrorBoundary,
 				useViewTransitions: true,
 			});
@@ -4046,7 +4067,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		it("should initialize history with POP listener", async () => {
 			const listenSpy = vi.spyOn(getHistoryInstance(), "listen");
 
-			await initClient(() => {});
+			await initClient(() => {}, { apiConfig });
 
 			expect(listenSpy).toHaveBeenCalled();
 		});
@@ -4060,7 +4081,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				configurable: true,
 			});
 
-			await initClient(() => {});
+			await initClient(() => {}, { apiConfig });
 
 			expect(setterSpy).toHaveBeenCalledWith("manual");
 		});
@@ -4074,7 +4095,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 			const replaceSpy = vi.spyOn(getHistoryInstance(), "replace");
 
-			await initClient(() => {});
+			await initClient(() => {}, { apiConfig });
 
 			expect(replaceSpy).toHaveBeenCalledWith(
 				"http://localhost:3000/?keep=this",
@@ -4091,7 +4112,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				default: () => "Initial Component",
 			}));
 
-			await initClient(() => {});
+			await initClient(() => {}, { apiConfig });
 
 			expect(
 				internal_RiverClientGlobal.get("activeComponents"),
@@ -4107,7 +4128,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				loadersData: [{ initial: "data" }],
 			});
 
-			await initClient(() => {});
+			await initClient(() => {}, { apiConfig });
 
 			expect(waitFn).toHaveBeenCalled();
 			expect(internal_RiverClientGlobal.get("clientLoadersData")).toEqual(
@@ -4118,7 +4139,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		it("should execute user render function", async () => {
 			const renderFn = vi.fn();
 
-			await initClient(renderFn);
+			await initClient(renderFn, { apiConfig });
 
 			expect(renderFn).toHaveBeenCalled();
 		});
@@ -4143,7 +4164,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					return 0;
 				});
 
-			await initClient(() => {});
+			await initClient(() => {}, { apiConfig });
 
 			expect(window.scrollTo).toHaveBeenCalledWith(300, 600);
 			expect(
@@ -4154,7 +4175,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		});
 
 		it("should detect touch devices on first touch", async () => {
-			await initClient(() => {});
+			await initClient(() => {}, { apiConfig });
 
 			expect(
 				internal_RiverClientGlobal.get("isTouchDevice"),
