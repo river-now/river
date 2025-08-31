@@ -293,6 +293,7 @@ func main() {
 		JSPackageManager: "${packageManager}",
 		DeploymentTarget: "${deploymentTarget}",
 		IncludeTailwind:  ${includeTailwind},
+		${createNewDir ? `CreatedInDir:     "${path.basename(targetDir)}",` : ""}
 	})
 }
 `;

@@ -23,6 +23,7 @@ type Options struct {
 	// "generic" or "vercel" (defaults to "generic")
 	DeploymentTarget string
 	IncludeTailwind  bool
+	CreatedInDir     string // Empty if not created in a new directory
 }
 
 type derivedOptions struct {
@@ -288,10 +289,16 @@ func Init(o Options) {
 	fmt.Println()
 	fmt.Println("✨ SUCCESS! Your River app is ready.")
 	fmt.Println()
-	fmt.Printf(
-		"💻 Run `%s dev` to start the development server.\n",
-		do.ResolveJSPackageManagerRunScriptPrefix(),
-	)
+	if o.CreatedInDir != "" {
+		fmt.Printf("💻 Run `cd %s && %s dev` to start the development server.\n",
+			o.CreatedInDir,
+			do.ResolveJSPackageManagerRunScriptPrefix(),
+		)
+	} else {
+		fmt.Printf("💻 Run `%s dev` to start the development server.\n",
+			do.ResolveJSPackageManagerRunScriptPrefix(),
+		)
+	}
 	fmt.Println()
 }
 
