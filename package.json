@@ -1,6 +1,6 @@
 {
 	"name": "river.now",
-	"version": "0.55.0",
+	"version": "0.55.1",
 	"type": "module",
 	"license": "BSD-3-Clause",
 	"repository": {
@@ -82,7 +82,8 @@
 		"internal/site/frontend/__static/river-banner.webp",
 		"tsconfig.base.json",
 		"internal/framework/_typescript/",
-		"kit/_typescript/"
+		"kit/_typescript/",
+		"!node_modules"
 	],
 	"devDependencies": {
 		"@preact/signals": "^2.2.1",
