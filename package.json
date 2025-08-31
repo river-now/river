@@ -1,6 +1,6 @@
 {
 	"name": "river.now",
-	"version": "0.55.1",
+	"version": "0.55.2",
 	"type": "module",
 	"license": "BSD-3-Clause",
 	"repository": {
@@ -83,7 +83,9 @@
 		"tsconfig.base.json",
 		"internal/framework/_typescript/",
 		"kit/_typescript/",
-		"!node_modules"
+		"!node_modules",
+		"!**/*.test.*",
+		"!**/*.bench.*"
 	],
 	"devDependencies": {
 		"@preact/signals": "^2.2.1",
