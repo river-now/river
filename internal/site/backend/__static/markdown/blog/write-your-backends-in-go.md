@@ -61,6 +61,15 @@ churn goes away. And to the extent it's still there, it's much more manageable
 (and sometimes even... _fun_). All the while, Go is there handling your backend
 in a UI-agnostic way, stable as a rock. It's great.
 
+## Reason 8: Offload the TypeScript LSP 😅
+
+When you have a large fullstack application written all in TypeScript, it can
+start to really weigh down the TypeScript LSP. It gets slow, and you need to
+restart a lot. Perhaps ironically, the re-write of the TypeScript compiler to Go
+will certainly help here, it also won't be a silver bullet. Having your backend
+in Go makes the TypeScript side of your application much more lightweight, and
+the TypeScript LSP will thank you for it.
+
 ---
 
 [River](/) makes writing fullstack, dynamic, type-safe applications with Go

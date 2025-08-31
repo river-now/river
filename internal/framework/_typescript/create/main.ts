@@ -5,6 +5,7 @@ import {
 	confirm,
 	intro,
 	isCancel,
+	log,
 	select,
 	spinner,
 	text,
@@ -15,10 +16,6 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-
-// __TODO:
-// 1 -- add option to create a new directory at start if not already in desired location
-// 2 -- add some feedback that the process has started after all prompts are done
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -62,6 +59,51 @@ async function main() {
 	if (nodeMajor < 22) {
 		cancel("Node.js version 22.11 or higher is required");
 		process.exit(1);
+	}
+
+	// Option to create a new directory at start if not already in desired location
+	const createNewDir = await confirm({
+		message: "Create a new directory for your River app?",
+		initialValue: false,
+	});
+
+	if (isCancel(createNewDir)) {
+		cancel("Operation cancelled");
+		process.exit(0);
+	}
+
+	let targetDir = process.cwd();
+
+	if (createNewDir) {
+		const dirName = await text({
+			message: "Enter directory name:",
+			placeholder: "my-river-app",
+			validate: (value) => {
+				if (!value || value.trim() === "")
+					return "Directory name is required";
+				// Check for invalid characters in directory name
+				if (!/^[a-zA-Z0-9-_]+$/.test(value)) {
+					return "Directory name can only contain letters, numbers, hyphens, and underscores";
+				}
+				// Check if directory already exists
+				const proposedPath = path.join(process.cwd(), value);
+				if (fs.existsSync(proposedPath)) {
+					return `Directory "${value}" already exists`;
+				}
+				return undefined;
+			},
+		});
+
+		if (isCancel(dirName)) {
+			cancel("Operation cancelled");
+			process.exit(0);
+		}
+
+		// Create the directory and change to it
+		targetDir = path.join(process.cwd(), dirName as string);
+		fs.mkdirSync(targetDir, { recursive: true });
+		process.chdir(targetDir);
+		log.success(`Created directory: ${dirName}`);
 	}
 
 	// Find go.mod and determine import path
@@ -233,6 +275,18 @@ async function main() {
 		process.exit(0);
 	}
 
+	// Show feedback that the process has started after all prompts are done
+	log.info(`\n📦 Setting up your River app with:`);
+	log.message(`   • UI Framework: ${uiVariant}`);
+	log.message(`   • Package Manager: ${packageManager}`);
+	log.message(`   • Deployment: ${deploymentTarget}`);
+	log.message(`   • Tailwind CSS: ${includeTailwind ? "Yes" : "No"}`);
+	log.message(`   • Module: ${moduleName}`);
+	if (createNewDir) {
+		log.message(`   • Location: ${targetDir}`);
+	}
+	log.info(`\n🚀 Starting setup process...\n`);
+
 	// Create temporary directory
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-river-"));
 	const bootstrapFile = path.join(tempDir, "main.go");
@@ -275,15 +329,28 @@ func main() {
 		}
 
 		// Run bootstrap
-		console.log("Creating River app...");
+		const s2 = spinner();
+		s2.start("Creating River app structure");
 		try {
 			execSync(`go run ${bootstrapFile}`, {
 				cwd: process.cwd(),
-				stdio: "inherit",
+				stdio: "pipe", // Changed from "inherit" to "pipe" to use spinner
 			});
+			s2.stop("River app created successfully!");
 		} catch (error) {
-			console.error("Failed to create app");
+			s2.stop("Failed to create app");
 			throw error;
+		}
+
+		// Success message
+		log.success(`\n✨ Your River app is ready!`);
+		if (createNewDir) {
+			log.info(`\n📁 Get started with:`);
+			log.message(`   cd ${path.basename(targetDir)}`);
+			log.message(`   ${packageManager} run dev`);
+		} else {
+			log.info(`\n📁 Get started with:`);
+			log.message(`   ${packageManager} run dev`);
 		}
 	} catch (error) {
 		cancel(`Error: ${error}`);
