@@ -37,12 +37,16 @@ async function main() {
 			const major = parseInt(versionMatch[1]);
 			const minor = parseInt(versionMatch[2]);
 			if (major < 1 || (major === 1 && minor < 24)) {
-				cancel("Go version 1.24 or higher is required");
+				cancel(
+					"Go version 1.24 or higher is required. See https://go.dev/doc/install for installation instructions.",
+				);
 				process.exit(1);
 			}
 		}
 	} catch {
-		cancel("Go is not installed. Please install Go 1.24 or higher");
+		cancel(
+			"Go is not installed. See https://go.dev/doc/install for installation instructions.",
+		);
 		process.exit(1);
 	}
 
@@ -274,7 +278,10 @@ async function main() {
 		process.exit(0);
 	}
 
-	console.log("Creating River app...");
+	console.log();
+	console.log("🛠️ Bootstrapping new River app...");
+
+	console.log("🛠️ Creating temporary Go script...");
 
 	// Create temporary directory
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-river-"));
@@ -305,20 +312,14 @@ func main() {
 			fs.readFileSync(packageJsonPath, "utf8"),
 		);
 		const version = packageJson.version;
-		const s1 = spinner();
-		s1.start("Installing River dependency");
-		try {
-			execSync(`go get github.com/river-now/river@v${version}`, {
-				cwd: process.cwd(),
-				stdio: "pipe",
-			});
-			s1.stop("River dependency installed");
-		} catch (error) {
-			s1.stop("Failed to install River");
-			throw error;
-		}
+		console.log("🛠️ Installing River dependency...");
+		execSync(`go get github.com/river-now/river@v${version}`, {
+			cwd: process.cwd(),
+			stdio: "pipe",
+		});
 
 		// Run bootstrap
+		console.log("🛠️ Running Go bootstrapper...");
 		try {
 			execSync(`go run ${bootstrapFile}`, {
 				cwd: process.cwd(),
