@@ -1,16 +1,16 @@
 {
 	"type": "module",
 	"devDependencies": {
-		"@tailwindcss/vite": "^4.1.11",
+		"@tailwindcss/vite": "^4.1.12",
 		"@types/nprogress": "^0.2.3",
 		"@vercel/node": "^5.3.17",
 		"highlight.js": "^11.11.1",
 		"nprogress": "^0.2.0",
-		"river.now": "link:../../",
-		"solid-js": "^1.9.6",
-		"tailwindcss": "^4.1.11",
-		"typescript": "^5.8.3",
+		"river.now": "link:../..",
+		"solid-js": "^1.9.9",
+		"tailwindcss": "^4.1.12",
+		"typescript": "^5.9.2",
 		"vite": "npm:rolldown-vite@latest",
-		"vite-plugin-solid": "^2.11.6"
+		"vite-plugin-solid": "^2.11.8"
 	}
 }
