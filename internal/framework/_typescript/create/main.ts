@@ -279,9 +279,7 @@ async function main() {
 	}
 
 	console.log();
-	console.log("🛠️ Bootstrapping new River app...");
-
-	console.log("🛠️ Creating temporary Go script...");
+	console.log("🛠️  Preparing bootstrapper...");
 
 	// Create temporary directory
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-river-"));
@@ -312,14 +310,13 @@ func main() {
 			fs.readFileSync(packageJsonPath, "utf8"),
 		);
 		const version = packageJson.version;
-		console.log("🛠️ Installing River dependency...");
 		execSync(`go get github.com/river-now/river@v${version}`, {
 			cwd: process.cwd(),
 			stdio: "pipe",
 		});
 
 		// Run bootstrap
-		console.log("🛠️ Running Go bootstrapper...");
+		console.log("🛠️  Running bootstrapper...");
 		try {
 			execSync(`go run ${bootstrapFile}`, {
 				cwd: process.cwd(),
