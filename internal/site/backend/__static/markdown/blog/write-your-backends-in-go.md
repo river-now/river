@@ -65,10 +65,10 @@ in a UI-agnostic way, stable as a rock. It's great.
 
 When you have a large fullstack application written all in TypeScript, it can
 start to really weigh down the TypeScript LSP. It gets slow, and you need to
-restart a lot. Perhaps ironically, the re-write of the TypeScript compiler to Go
-will certainly help here, it also won't be a silver bullet. Having your backend
-in Go makes the TypeScript side of your application much more lightweight, and
-the TypeScript LSP will thank you for it.
+restart it a lot. Perhaps ironically, the re-write of the TypeScript compiler to
+Go will help here, but nothing is a silver bullet. Having your backend in Go
+makes the TypeScript side of your application much more lightweight, and the
+TypeScript LSP will thank you for it.
 
 ---
 
