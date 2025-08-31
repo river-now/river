@@ -77,7 +77,6 @@ async function main() {
 	if (createNewDir) {
 		const dirName = await text({
 			message: "Enter directory name:",
-			placeholder: "my-river-app",
 			validate: (value) => {
 				if (!value || value.trim() === "")
 					return "Directory name is required";
@@ -275,17 +274,7 @@ async function main() {
 		process.exit(0);
 	}
 
-	// Show feedback that the process has started after all prompts are done
-	log.info(`\n📦 Setting up your River app with:`);
-	log.message(`   • UI Framework: ${uiVariant}`);
-	log.message(`   • Package Manager: ${packageManager}`);
-	log.message(`   • Deployment: ${deploymentTarget}`);
-	log.message(`   • Tailwind CSS: ${includeTailwind ? "Yes" : "No"}`);
-	log.message(`   • Module: ${moduleName}`);
-	if (createNewDir) {
-		log.message(`   • Location: ${targetDir}`);
-	}
-	log.info(`\n🚀 Starting setup process...\n`);
+	console.log("Creating River app...");
 
 	// Create temporary directory
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-river-"));
@@ -329,28 +318,14 @@ func main() {
 		}
 
 		// Run bootstrap
-		const s2 = spinner();
-		s2.start("Creating River app structure");
 		try {
 			execSync(`go run ${bootstrapFile}`, {
 				cwd: process.cwd(),
-				stdio: "pipe", // Changed from "inherit" to "pipe" to use spinner
+				stdio: "inherit",
 			});
-			s2.stop("River app created successfully!");
 		} catch (error) {
-			s2.stop("Failed to create app");
+			console.error("Failed to create app");
 			throw error;
-		}
-
-		// Success message
-		log.success(`\n✨ Your River app is ready!`);
-		if (createNewDir) {
-			log.info(`\n📁 Get started with:`);
-			log.message(`   cd ${path.basename(targetDir)}`);
-			log.message(`   ${packageManager} run dev`);
-		} else {
-			log.info(`\n📁 Get started with:`);
-			log.message(`   ${packageManager} run dev`);
 		}
 	} catch (error) {
 		cancel(`Error: ${error}`);
