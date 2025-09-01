@@ -456,7 +456,7 @@ Manage HTML `<head>` elements with deduplication:
 // Define uniqueness rules
 var River = &river.River{
     GetHeadElUniqueRules: func() *headels.HeadEls {
-        e := river.NewHeadEls(2)
+        e := river.NewHeadEls()
         e.Meta(e.Property("og:title"))  // Only one og:title allowed
         return e
     },
