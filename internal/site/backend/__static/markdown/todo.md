@@ -62,3 +62,6 @@
 - Advanced uses of the matcher
 - Advanced tsgen usage (e.g., string enums)
 - Advanced validate usage
+- server vs. client loaders and when exactly they run / what they should be used
+  for
+- the "root" loader / layout, and what it's useful for

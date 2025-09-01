@@ -329,6 +329,7 @@ p {
 /* Links in content need underline */
 p a {
 	text-decoration: underline;
+	text-underline-offset: 0.25rem;
 }
 
 /* But not nav links */

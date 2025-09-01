@@ -95,8 +95,9 @@ type Config struct {
 	// If not nil, the embedded file system will be used in production builds.
 	// If nil, the disk file system will be used in production builds.
 	// Only relevant in prod (in dev mode, the real disk FS is always used).
-	// If nil in prod, you need to make sure that you ship the dist directory
-	// with your binary. For simplicity, we recommend using the embedded FS.
+	// If nil in prod, you need to make sure that you ship the "static" directory
+	// (located in your dist dir) as a sibling to your binary. For simplicity, we
+	// recommend using the embedded FS.
 	StaticFS               fs.FS
 	StaticFSEmbedDirective string
 	ConfigBytes            []byte

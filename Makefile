@@ -78,4 +78,7 @@ docker-site:
 	@docker build -t river-site -f Dockerfile.site .
 
 docker-run-site:
-	docker run -d -p $(PORT):$(PORT) -e PORT=$(PORT) river-site
+	@docker run -d -p $(PORT):$(PORT) -e PORT=$(PORT) river-site
+
+repoconcat:
+	@go run ./internal/scripts/repoconcat
