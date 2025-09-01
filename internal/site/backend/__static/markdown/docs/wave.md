@@ -1,4 +1,7 @@
-# Wave Build System API Documentation
+---
+title: Wave Build Tool API Documentation
+description: API documentation for the Wave build tool
+---
 
 ```
 import "github.com/river-now/river/wave"

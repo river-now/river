@@ -1,4 +1,7 @@
-# River Documentation
+---
+title: Docs
+description: API documentation for the River framework
+---
 
 ## What is River?
 
@@ -810,55 +813,3 @@ import { done, isStarted, start } from "nprogress";
 import { setupGlobalLoadingIndicator } from "river.now/client";
 setupGlobalLoadingIndicator({ start, stop: done, isRunning: isStarted });
 ```
-
-## TypeScript Generation
-
-Running `npm run dev` or `npm run build` generates `frontend/river.gen.ts`:
-
-```typescript
-// Generated from your Go types
-type RootData = {
-  Message: string;
-  Count: number;
-};
-
-// Pattern literals
-type RiverLoaderPattern = "/" | "/_index" | "/users/:id";
-
-// Typed I/O based on pattern
-type RiverLoaderOutput<"/"> = RootData;
-type RiverLoaderOutput<"/users/:id"> = UserData;
-
-// Route params extraction
-type RiverRouteParams<"/users/:id"> = "id";
-```
-
-## Build System
-
-River's build process:
-
-1. Parses Go types → generates TypeScript
-2. Discovers client routes from `routes.ts`
-3. Bundles with Vite
-4. Manages HMR in development
-5. Optimizes for production
-
-Commands:
-
-- `npm run dev` - Development with HMR
-- `npm run build` - Production build
-
-## Important Notes
-
-1. **Validation is not automatic** - It only happens if you use River's validate
-   helpers in your ParseInput
-2. **Loaders are optional** - Client-only routes work fine without server
-   loaders
-3. **Error boundaries only work with 200 OK** - If you set an error status
-   (400+) via ResponseProxy, you get an HTTP error instead
-4. **Client loaders run in parallel** - Once discovered, they run alongside
-   server loaders
-5. **ResponseProxy merging** - First error wins, then first redirect, then last
-   success
-6. **Middleware execution** - HTTP middleware is sequential, task middleware is
-   parallel
