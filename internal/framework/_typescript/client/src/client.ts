@@ -1990,7 +1990,6 @@ function dispatchLocationEvent(): void {
 }
 
 function dispatchBuildIDEvent(detail: BuildIDEvent): void {
-	internal_RiverClientGlobal.set("buildID", detail.newID);
 	window.dispatchEvent(new CustomEvent(BUILD_ID_EVENT_KEY, { detail }));
 }
 

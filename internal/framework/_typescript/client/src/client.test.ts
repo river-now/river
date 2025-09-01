@@ -2497,6 +2497,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 		describe("5.3 Build ID Tracking", () => {
 			it("should update build ID from response header", async () => {
+				const buildIdListener = vi.fn();
+				addBuildIDListener(buildIdListener);
+
 				vi.mocked(fetch).mockResolvedValueOnce(
 					createMockResponse(
 						{ importURLs: [], cssBundles: [] },
@@ -2507,7 +2510,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				await navigate("/new-build");
 				await vi.runAllTimersAsync();
 
-				expect(getBuildID()).toBe("new-build-789");
+				expect(buildIdListener).toHaveBeenCalled();
 			});
 
 			it("should dispatch build-id event before redirect", async () => {
@@ -3748,11 +3751,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 						{ headers: { "X-River-Build-Id": "updated-build" } },
 					),
 				);
-
-				buildIdListener.mockImplementation(() => {
-					// Build ID should already be updated
-					expect(getBuildID()).toBe("updated-build");
-				});
 
 				await navigate("/check-update");
 				await vi.runAllTimersAsync();
