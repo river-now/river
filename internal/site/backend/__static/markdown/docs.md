@@ -584,6 +584,10 @@ export function Dynamic(props: RouteProps<"/users/:id">) {
   // router.matchedPatterns - active patterns
 }
 
+// NOTE: You can call useRouterData() without passing props.
+// In that case, it just won't know how to strongly infer
+// param types.
+
 // usePatternLoaderData - get data from specific pattern
 export function Child(props: RouteProps<"/parent/child">) {
   const childData = useLoaderData(props);
@@ -608,13 +612,13 @@ const useClientData = addClientLoader("/_index", async (props) => {
   return res.json();
 });
 
-// Use with props - data guaranteed
+// Use with props from matching route -- data guaranteed
 export function Home(props: RouteProps<"/_index">) {
   const clientData = useClientData(props); // Never undefined
   return <div>{clientData}</div>;
 }
 
-// Use without props - may be undefined
+// Use without props -- may be undefined
 function OtherComponent() {
   const clientData = useClientData(); // May be undefined
   if (!clientData) return null;
