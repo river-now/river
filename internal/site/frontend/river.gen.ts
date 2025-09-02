@@ -139,25 +139,8 @@ export type RiverRouteParams<T extends RiverPattern> =
 export const ACTIONS_ROUTER_MOUNT_ROOT = "/api/";
 
 /**********************************************************************
-/ River Vite Plugin:
+/ River Vite Config:
 /*********************************************************************/
-
-import type { Plugin } from "vite";
-
-const rollupOptions = {
-	input: [
-		"frontend/components/routes/dyn.tsx",
-		"frontend/components/routes/home.tsx",
-		"frontend/components/routes/md.tsx",
-		"frontend/entry.tsx",
-	] as string[],
-	preserveEntrySignatures: "exports-only",
-	output: {
-		assetFileNames: "river_out_vite_[name]-[hash][extname]",
-		chunkFileNames: "river_out_vite_[name]-[hash].js",
-		entryFileNames: "river_out_vite_[name]-[hash].js",
-	},
-} as const;
 
 export const staticPublicAssetMap = {
 	"desktop.svg": "river_out_desktop_eebc981612eb.svg",
@@ -188,82 +171,26 @@ export function waveRuntimeURL(
 	return publicPathPrefix + url;
 }
 
-export function riverVitePlugin(): Plugin {
-	return {
-		name: "river-vite-plugin",
-		config(c, { command }) {
-			const mp = c.build?.modulePreload;
-			const roi = c.build?.rollupOptions?.input;
-			const ign = c.server?.watch?.ignored;
-			const dedupe = c.resolve?.dedupe;
-
-			const isDev = command === "serve";
-
-			return {
-				base: isDev ? "/" : "/",
-				build: {
-					target: "es2022",
-					emptyOutDir: false,
-					modulePreload: {
-						polyfill: false,
-						...(typeof mp === "object" ? mp : {}),
-					},
-					rollupOptions: {
-						...c.build?.rollupOptions,
-						...rollupOptions,
-						input: [
-							...rollupOptions.input,
-							...(Array.isArray(roi) ? roi : []),
-						],
-					},
-				},
-				server: {
-					headers: {
-						...c.server?.headers,
-						// ensure versions of dynamic imports without the latest
-						// hmr updates are not cached by the browser during dev
-						"cache-control": "no-store",
-					},
-					watch: {
-						...c.server?.watch,
-						ignored: [
-							...(Array.isArray(ign) ? ign : []),
-							"**/*.go",
-							"**/app/__dist/**/*",
-							"**/backend/__static/**/*",
-							"**/wave.config.json",
-							"**/frontend/river.gen.ts",
-							"**/frontend/routes.ts",
-						],
-					},
-				},
-				resolve: {
-					dedupe: [
-						...(Array.isArray(dedupe) ? dedupe : []),
-						"solid-js",
-						"solid-js/web",
-					],
-				},
-			};
-		},
-		transform(code, id) {
-			const isNodeModules = /node_modules/.test(id);
-			if (isNodeModules) return null;
-			const assetRegex = /hashedURL\s*\(\s*(["'`])(.*?)\1\s*\)/g;
-			const needsReplacement = assetRegex.test(code);
-			if (!needsReplacement) return null;
-			const replacedCode = code.replace(
-				assetRegex,
-				(_, __, assetPath) => {
-					const hashed = (
-						staticPublicAssetMap as Record<string, string>
-					)[assetPath];
-					if (!hashed) return `"${assetPath}"`;
-					return `"/${hashed}"`;
-				},
-			);
-			if (replacedCode === code) return null;
-			return replacedCode;
-		},
-	};
-}
+export const riverViteConfig = {
+	rollupInput: [
+		"frontend/components/routes/dyn.tsx",
+		"frontend/components/routes/home.tsx",
+		"frontend/components/routes/md.tsx",
+		"frontend/entry.tsx"
+	],
+	publicPathPrefix,
+	staticPublicAssetMap,
+	buildtimePublicURLFuncName: "hashedURL",
+	ignoredPatterns: [
+		"**/*.go",
+		"**/app/__dist/**/*",
+		"**/backend/__static/**/*",
+		"**/wave.config.json",
+		"**/frontend/river.gen.ts",
+		"**/frontend/routes.ts"
+	],
+	dedupeList: [
+		"solid-js",
+		"solid-js/web"
+	],
+} as const;

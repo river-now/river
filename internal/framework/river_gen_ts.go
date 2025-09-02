@@ -52,26 +52,27 @@ export type RiverMutationMethod<T extends RiverMutationPattern> =
 			: "POST"
 		: "POST";
 
-export type BaseQueryProps<P extends RiverQueryPattern> = SharedBase<
+export type BaseQueryPropsWithInput<P extends RiverQueryPattern> = SharedBase<
 	P,
 	RiverFunction
 > & {
 	requestInit?: Omit<RequestInit, "method"> & { method?: "GET" };
-};
+} & WithOptionalInput<RiverQueryInput<P>>;
 
-export type BaseMutationProps<P extends RiverMutationPattern> = SharedBase<
+export type BaseMutationPropsWithInput<P extends RiverMutationPattern> = SharedBase<
 	P,
 	RiverFunction
 > &
 	(RiverMutationMethod<P> extends "POST"
 		? { requestInit?: Omit<RequestInit, "method"> & { method?: "POST" } }
-		: { requestInit: RequestInit & { method: RiverMutationMethod<P> } });
+		: { requestInit: RequestInit & { method: RiverMutationMethod<P> } })
+	& WithOptionalInput<RiverMutationInput<P>>;
 
-export type BaseQueryPropsWithInput<P extends RiverQueryPattern> =
-	BaseQueryProps<P> & WithOptionalInput<RiverQueryInput<P>>;
+export type BaseQueryProps<P extends RiverQueryPattern> = 
+	Omit<BaseQueryPropsWithInput<P>, 'input'>;
 
-export type BaseMutationPropsWithInput<P extends RiverMutationPattern> =
-	BaseMutationProps<P> & WithOptionalInput<RiverMutationInput<P>>;
+export type BaseMutationProps<P extends RiverMutationPattern> = 
+	Omit<BaseMutationPropsWithInput<P>, 'input'>;
 `
 
 func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {

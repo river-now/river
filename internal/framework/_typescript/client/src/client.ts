@@ -502,7 +502,11 @@ class NavigationStateManager {
 				redirectCount: props.redirectCount,
 			}).then(async (result) => {
 				// Read the response body once and return both the original result and parsed JSON
-				if (result.response && result.response.ok) {
+				if (
+					result.response &&
+					result.response.ok &&
+					!result.redirectData?.status
+				) {
 					const json = await result.response.json();
 					return { ...result, json };
 				}

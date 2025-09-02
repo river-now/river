@@ -26,6 +26,10 @@
 			"import": "./npm_dist/internal/framework/_typescript/preact/index.js",
 			"types": "./npm_dist/internal/framework/_typescript/preact/index.d.ts"
 		},
+		"./vite": {
+			"import": "./npm_dist/internal/framework/_typescript/vite/vite.js",
+			"types": "./npm_dist/internal/framework/_typescript/vite/vite.d.ts"
+		},
 		"./kit/converters": {
 			"import": "./npm_dist/kit/_typescript/converters/converters.js",
 			"types": "./npm_dist/kit/_typescript/converters/converters.d.ts"
