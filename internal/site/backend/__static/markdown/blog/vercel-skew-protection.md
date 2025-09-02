@@ -80,7 +80,7 @@ However, whenever the client makes an API call, it will include the
 `x-deployment-id`). This tells Vercel's infrastructure to route the request to a
 deployment that matches the current client.
 
-Aassuming that (i)&nbsp;you are still within the keep-alive period for Vercel
+Assuming that (i)&nbsp;you are still within the keep-alive period for Vercel
 Skew Protection and (ii)&nbsp;no fundamentally incompatible database or similar
 migrations have occurred, user requests from the outdated client should still
 succeed, even if your application's latest deployment "broke" the previous
@@ -88,18 +88,20 @@ server-client contract.
 
 Further, on route data revalidations, River will include the
 `VERCEL_DEPLOYMENT_ID` as a search param to the request URL (with a search param
-key of `dpl`), so that the revalidation cycle is also processed by a deployment
-that matches the current client. If a redirect happens to occur at this point,
-then that's a great opportunity for a hard reload, and so that's exactly what
-River does.
+key of `dpl`), so that the revalidation cycle is also handled by a Vercel
+deployment that matches the current client. If a redirect happens to occur at
+this point, then that's a great opportunity for a hard reload (and that's
+exactly what River does).
 
 This selective use of Vercel's Skew Protection by River prevents the most
-disruptive reloads (during background operations), while still allowing most
-requests to succeed (even from outdated clients), all while still allowing the
-app to upgrade itself via a hard reload at the earliest non-jarring opportunity.
+disruptive reloads (_e.g._, during background operations), while still allowing
+most user requests to succeed (even from outdated clients), all while still
+allowing the app to upgrade itself via a hard reload at the earliest non-jarring
+opportunity.
 
 In other words, the vast majority of users will experience zero errors and zero
-flow-disrupting reloads or notifications.
+flow-disrupting reloads or notifications while they use your application, even
+across incompatible deployments.
 
 ---
 
