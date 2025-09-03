@@ -1,47 +1,81 @@
 import { serializeToSearchParams } from "river.now/kit/json";
 import type { SubmitOptions } from "./client.ts";
-import type { RiverUntypedFunction } from "./impl_helpers.ts";
+import type {
+	PatternBasedProps,
+	RiverAppBase,
+	RiverMutationInput,
+	RiverMutationMethod,
+	RiverMutationPattern,
+	RiverQueryInput,
+	RiverQueryPattern,
+	WithOptionalInput,
+} from "./river_app_types.ts";
 
-export const apiHelper = {
-	toQueryOpts,
-	toMutationOpts,
-	buildURL,
-	resolvePath,
-};
-
-type Props = SharedBase<string, RiverUntypedFunction> & {
+type Props = PatternBasedProps<any, string> & {
+	options?: SubmitOptions;
+	requestInit?: RequestInit;
 	input?: any;
 };
 
 type APIClientHelperOpts = {
-	apiConfig: APIConfig;
+	riverAppConfig: RiverAppConfig;
 	type: "loader" | "query" | "mutation";
 	props: Props;
 };
 
-export type APIConfig = {
+export type RiverAppConfig = {
 	actionsRouterMountRoot: string;
 	actionsDynamicRune: string;
 	actionsSplatRune: string;
 	loadersDynamicRune: string;
 	loadersSplatRune: string;
 	loadersExplicitIndexSegment: string;
+	__phantom?: any;
 };
 
-function toQueryOpts(apiConfig: APIConfig, props: Props): APIClientHelperOpts {
-	return { apiConfig, props, type: "query" };
+export type QueryProps<
+	App extends RiverAppBase,
+	P extends RiverQueryPattern<App>,
+> = {
+	pattern: P;
+	options?: SubmitOptions;
+	requestInit?: Omit<RequestInit, "method"> & { method?: "GET" };
+} & PatternBasedProps<App, P> &
+	WithOptionalInput<RiverQueryInput<App, P>>;
+
+export type MutationProps<
+	App extends RiverAppBase,
+	P extends RiverMutationPattern<App>,
+> = {
+	pattern: P;
+	options?: SubmitOptions;
+} & PatternBasedProps<App, P> &
+	(RiverMutationMethod<App, P> extends "POST"
+		? { requestInit?: Omit<RequestInit, "method"> & { method?: "POST" } }
+		: {
+				requestInit: RequestInit & {
+					method: RiverMutationMethod<App, P>;
+				};
+			}) &
+	WithOptionalInput<RiverMutationInput<App, P>>;
+
+export function buildQueryURL(
+	riverAppConfig: RiverAppConfig,
+	props: Props,
+): URL {
+	return buildURL({ riverAppConfig, props, type: "query" });
 }
 
-function toMutationOpts(
-	apiConfig: APIConfig,
+export function buildMutationURL(
+	riverAppConfig: RiverAppConfig,
 	props: Props,
-): APIClientHelperOpts {
-	return { apiConfig, props, type: "mutation" };
+): URL {
+	return buildURL({ riverAppConfig, props, type: "mutation" });
 }
 
 function buildURL(opts: APIClientHelperOpts) {
 	const url = new URL(
-		stripTrailingSlash(opts.apiConfig.actionsRouterMountRoot) +
+		stripTrailingSlash(opts.riverAppConfig.actionsRouterMountRoot) +
 			resolvePath(opts),
 		getCurrentOrigin(),
 	);
@@ -51,62 +85,16 @@ function buildURL(opts: APIClientHelperOpts) {
 	return url;
 }
 
-export type GetParams<T extends string, F extends RiverUntypedFunction> =
-	Extract<F, { pattern: T }> extends { params: ReadonlyArray<infer P> }
-		? P extends string
-			? P
-			: never
-		: never;
-
-export type HasParams<T extends string, F extends RiverUntypedFunction> =
-	GetParams<T, F> extends never ? false : true;
-
-export type IsSplat<T extends string, F extends RiverUntypedFunction> =
-	Extract<F, { pattern: T }> extends { isSplat: true } ? true : false;
-
-export type IsEmptyInput<T> = [T] extends [null | undefined | never]
-	? true
-	: false;
-
-export type WithOptionalInput<TInput> =
-	IsEmptyInput<TInput> extends true ? { input?: TInput } : { input: TInput };
-
-export type PatternBasedProps<
-	P extends string,
-	F extends RiverUntypedFunction,
-> = {
-	pattern: P;
-} & (HasParams<P, F> extends true
-	? IsSplat<P, F> extends true
-		? {
-				params: { [K in GetParams<P, F>]: string };
-				splatValues: Array<string>;
-			}
-		: {
-				params: { [K in GetParams<P, F>]: string };
-			}
-	: IsSplat<P, F> extends true
-		? {
-				splatValues: Array<string>;
-			}
-		: {});
-
-export type SharedBase<P extends string, F extends RiverUntypedFunction> = {
-	pattern: P;
-	options?: SubmitOptions;
-	requestInit?: RequestInit;
-} & PatternBasedProps<P, F>;
-
 export function resolvePath(opts: APIClientHelperOpts) {
-	const { props, apiConfig } = opts;
+	const { props, riverAppConfig } = opts;
 	let path = props.pattern;
 
-	let dynamicParamPrefixRune = apiConfig.actionsDynamicRune;
-	let splatSegmentRune = apiConfig.actionsSplatRune;
+	let dynamicParamPrefixRune = riverAppConfig.actionsDynamicRune;
+	let splatSegmentRune = riverAppConfig.actionsSplatRune;
 
 	if (opts.type === "loader") {
-		dynamicParamPrefixRune = apiConfig.loadersDynamicRune;
-		splatSegmentRune = apiConfig.loadersSplatRune;
+		dynamicParamPrefixRune = riverAppConfig.loadersDynamicRune;
+		splatSegmentRune = riverAppConfig.loadersSplatRune;
 	}
 
 	// Replace parameter placeholders with actual values
@@ -117,7 +105,7 @@ export function resolvePath(opts: APIClientHelperOpts) {
 	}
 
 	// Replace splat marker with splat values
-	if ("splatValues" in props) {
+	if ("splatValues" in props && props.splatValues) {
 		const splatPath = (props.splatValues as Array<string>).join("/");
 		path = path.replace(splatSegmentRune, splatPath);
 	}

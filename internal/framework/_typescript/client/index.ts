@@ -1,10 +1,10 @@
 export {
-	apiHelper,
+	buildMutationURL,
+	buildQueryURL,
 	resolvePath,
-	type APIConfig,
-	type PatternBasedProps,
-	type SharedBase,
-	type WithOptionalInput,
+	type MutationProps,
+	type QueryProps,
+	type RiverAppConfig,
 } from "./src/api_client_helpers.ts";
 export {
 	addBuildIDListener,
@@ -26,6 +26,7 @@ export {
 	submit,
 	type RouteChangeEvent,
 	type StatusEvent,
+	type SubmitOptions,
 } from "./src/client.ts";
 export {
 	revalidateOnWindowFocus,
@@ -38,10 +39,23 @@ export {
 	type ParamsForPattern,
 	type RiverLinkPropsBase,
 	type RiverRouteGeneric,
-	type RiverRoutePropsGeneric,
-	type RiverUntypedFunction,
 	type UseRouterDataFunction,
 } from "./src/impl_helpers.ts";
+export {
+	type ExtractApp,
+	type GetParams,
+	type HasParams,
+	type IsSplat,
+	type PatternBasedProps,
+	type RiverAppBase,
+	type RiverLoaderOutput,
+	type RiverLoaderPattern,
+	type RiverMutationOutput,
+	type RiverMutationPattern,
+	type RiverQueryOutput,
+	type RiverQueryPattern,
+	type RiverRoutePropsGeneric,
+} from "./src/river_app_types.ts";
 export {
 	getRouterData,
 	internal_RiverClientGlobal,

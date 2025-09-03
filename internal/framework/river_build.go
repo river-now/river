@@ -94,7 +94,9 @@ export const staticPublicAssetMap = {{.StaticPublicAssetMapJSON}} as const;
 export type StaticPublicAsset = keyof typeof staticPublicAssetMap;
 
 declare global {
-	function {{.FuncName}}(staticPublicAsset: StaticPublicAsset): string;
+	function {{.FuncName}}(
+		staticPublicAsset: StaticPublicAsset,
+	): string;
 }
 
 export const publicPathPrefix = "{{.PublicPathPrefix}}";
