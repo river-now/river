@@ -23,7 +23,6 @@ const routes = [
 		_type: "loader",
 		params: ["dyn"],
 		pattern: "/__/:dyn",
-		phantomOutputType: null,
 	},
 	{
 		_type: "loader",
@@ -151,7 +150,7 @@ declare global {
 export const publicPathPrefix = "/";
 
 export function waveRuntimeURL(
-	originalPublicURL: keyof typeof staticPublicAssetMap,
+	originalPublicURL: StaticPublicAsset,
 ) {
 	const url = staticPublicAssetMap[originalPublicURL] ?? originalPublicURL;
 	return publicPathPrefix + url;
