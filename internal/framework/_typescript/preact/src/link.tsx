@@ -1,12 +1,16 @@
 import { h, type JSX } from "preact";
 import { useMemo } from "preact/hooks";
-import type { RiverUntypedFunction } from "river.now/client";
+import type {
+	ExtractApp,
+	PatternBasedProps,
+	RiverAppBase,
+	RiverLoaderPattern,
+} from "river.now/client";
 import {
 	makeFinalLinkProps,
 	resolvePath,
-	type APIConfig,
+	type RiverAppConfig,
 	type RiverLinkPropsBase,
-	type SharedBase,
 } from "river.now/client";
 
 export function RiverLink(
@@ -38,41 +42,44 @@ export function RiverLink(
 }
 
 type TypedRiverLinkProps<
-	F extends RiverUntypedFunction,
-	Pattern extends F["pattern"] = F["pattern"],
-> = Omit<JSX.HTMLAttributes<HTMLAnchorElement>, "href"> &
+	App extends RiverAppBase,
+	Pattern extends RiverLoaderPattern<App> = RiverLoaderPattern<App>,
+> = Omit<JSX.HTMLAttributes<HTMLAnchorElement>, "href" | "pattern"> &
 	RiverLinkPropsBase<
 		(e: JSX.TargetedMouseEvent<HTMLAnchorElement>) => void | Promise<void>
 	> &
-	Omit<SharedBase<Pattern, F>, "options">;
+	PatternBasedProps<App, Pattern>;
 
-export function makeTypedLink<F extends RiverUntypedFunction>(
-	apiConfig: APIConfig,
+export function makeTypedLink<C extends RiverAppConfig>(
+	riverAppConfig: C,
 	defaultProps?: Partial<
-		Omit<TypedRiverLinkProps<F>, "pattern" | "params" | "splatValues">
+		Omit<
+			TypedRiverLinkProps<ExtractApp<C>>,
+			"pattern" | "params" | "splatValues"
+		>
 	>,
 ) {
-	const TypedLink = <Pattern extends F["pattern"]>(
-		props: TypedRiverLinkProps<F, Pattern>,
-	) => {
-		const { pattern, params, splatValues, options, ...linkProps } =
-			props as any;
+	type App = ExtractApp<C>;
 
-		const pathProps: SharedBase<Pattern, F> = {
+	const TypedLink = <Pattern extends RiverLoaderPattern<App>>(
+		props: TypedRiverLinkProps<App, Pattern>,
+	) => {
+		const { pattern, params, splatValues, ...linkProps } = props as any;
+
+		const pathProps = {
 			pattern,
-			options,
 			...(params && { params }),
 			...(splatValues && { splatValues }),
 		};
 
 		const href = resolvePath({
-			apiConfig,
+			riverAppConfig,
 			type: "loader",
-			props: pathProps as any,
+			props: pathProps,
 		});
 
 		const finalProps = { ...defaultProps, ...linkProps, href };
-		return <RiverLink {...(finalProps as any)} />;
+		return <RiverLink {...finalProps} />;
 	};
 
 	TypedLink.displayName = `TypedLink(${Object.keys(defaultProps || {}).join(", ")})`;

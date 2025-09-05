@@ -109,7 +109,7 @@
 		"react": "^19.1.0",
 		"react-dom": "^19.1.0",
 		"solid-js": "^1.9.7",
-		"typescript": "^5.8.3",
+		"typescript": "^5.9.2",
 		"vite": "npm:rolldown-vite@latest",
 		"vitest": "^3.2.4"
 	},
