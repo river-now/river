@@ -9,7 +9,6 @@ import {
 	getHrefDetails,
 	getIsGETRequest,
 } from "river.now/kit/url";
-import type { APIConfig } from "./api_client_helpers.ts";
 import { updateHeadEls } from "./head.ts";
 import type { historyInstance, historyListener } from "./history_types.ts";
 import {
@@ -17,6 +16,7 @@ import {
 	parseFetchResponseForRedirectData,
 	type RedirectData,
 } from "./redirects.ts";
+import type { RiverAppConfig } from "./river_app_helpers.ts";
 import {
 	type ClientLoaderAwaitedServerData,
 	type GetRouteDataOutput,
@@ -43,7 +43,7 @@ let matcherModules:
 	| undefined;
 let initializationPromise: Promise<void> | undefined;
 
-async function ensureMatcherLoaded(config: APIConfig) {
+async function ensureMatcherLoaded(config: RiverAppConfig) {
 	if (!initializationPromise) {
 		initializationPromise = (async () => {
 			if (!matcherModules) {
@@ -78,7 +78,7 @@ export async function registerClientLoaderPattern(
 ): Promise<void> {
 	// This is called when a client loader is discovered.
 	// Load both matcher modules on first use.
-	const config = internal_RiverClientGlobal.get("apiConfig");
+	const config = internal_RiverClientGlobal.get("riverAppConfig");
 	const { matcherModules, clientPatternRegistry } =
 		await ensureMatcherLoaded(config);
 	matcherModules.register.registerPattern(clientPatternRegistry, pattern);
@@ -502,7 +502,11 @@ class NavigationStateManager {
 				redirectCount: props.redirectCount,
 			}).then(async (result) => {
 				// Read the response body once and return both the original result and parsed JSON
-				if (result.response && result.response.ok) {
+				if (
+					result.response &&
+					result.response.ok &&
+					!result.redirectData?.status
+				) {
 					const json = await result.response.json();
 					return { ...result, json };
 				}
@@ -1502,12 +1506,12 @@ function makeListenerAdder<T>(key: string) {
 export async function initClient(
 	renderFn: () => void,
 	options: {
-		apiConfig: APIConfig;
+		riverAppConfig: RiverAppConfig;
 		defaultErrorBoundary?: RouteErrorComponent;
 		useViewTransitions?: boolean;
 	},
 ): Promise<void> {
-	internal_RiverClientGlobal.set("apiConfig", options.apiConfig);
+	internal_RiverClientGlobal.set("riverAppConfig", options.riverAppConfig);
 
 	// Set options
 	if (options.defaultErrorBoundary) {

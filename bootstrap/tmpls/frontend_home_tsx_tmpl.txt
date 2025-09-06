@@ -1,9 +1,6 @@
 import { api } from "./api_client.ts";
-import {
-	addClientLoader,
-	useLoaderData,
-	type RouteProps,
-} from "./app_utils.tsx";
+import { addClientLoader, useLoaderData } from "./app_utils.tsx";
+import type { RouteProps } from "./river.gen.ts";
 
 // Here's how to use a client loader, if you want to fetch data on the client side.
 // This can be useful when you want to granularly cache data separately from the server loader.

@@ -8,7 +8,7 @@ import {
 } from "river.now/client";
 import { RiverProvider } from "river.now/react";
 import { App } from "./app.tsx";
-import { apiConfig } from "./river.gen.ts";
+import { riverAppConfig } from "./river.gen.ts";
 
 await initClient(
 	() => {
@@ -18,7 +18,7 @@ await initClient(
 			</RiverProvider>,
 		);
 	},
-	{ apiConfig },
+	{ riverAppConfig },
 );
 
 setupGlobalLoadingIndicator({ start, stop: done, isRunning: isStarted });

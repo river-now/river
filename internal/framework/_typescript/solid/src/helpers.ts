@@ -1,60 +1,47 @@
 import {
-	type ClientLoaderAwaitedServerData,
 	internal_RiverClientGlobal,
-	type ParamsForPattern,
 	registerClientLoaderPattern,
+	type ClientLoaderAwaitedServerData,
+	type ParamsForPattern,
+	type RiverAppBase,
+	type RiverLoaderOutput,
+	type RiverLoaderPattern,
 	type RiverRouteGeneric,
 	type RiverRoutePropsGeneric,
-	type RiverUntypedFunction,
 	type UseRouterDataFunction,
 } from "river.now/client";
-import { type Accessor, createMemo } from "solid-js";
+import { createMemo, type Accessor } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
 import { clientLoadersData, loadersData, routerData } from "./solid.tsx";
 
 export type RiverRouteProps<
-	Loader extends RiverUntypedFunction = RiverUntypedFunction,
-	Pattern extends Loader["pattern"] = string,
-> = RiverRoutePropsGeneric<JSX.Element, Loader, Pattern>;
+	App extends RiverAppBase = any,
+	Pattern extends RiverLoaderPattern<App> = string,
+> = RiverRoutePropsGeneric<JSX.Element, App, Pattern>;
 
 export type RiverRoute<
-	Loader extends RiverUntypedFunction = RiverUntypedFunction,
-	Pattern extends Loader["pattern"] = string,
-> = RiverRouteGeneric<JSX.Element, Loader, Pattern>;
+	App extends RiverAppBase = any,
+	Pattern extends RiverLoaderPattern<App> = string,
+> = RiverRouteGeneric<JSX.Element, App, Pattern>;
 
-export function makeTypedUseRouterData<
-	OuterLoader extends RiverUntypedFunction,
-	RootData,
->() {
-	return (() => routerData) as UseRouterDataFunction<
-		OuterLoader,
-		RootData,
-		true
-	>;
+export function makeTypedUseRouterData<App extends RiverAppBase>() {
+	return (() => routerData) as UseRouterDataFunction<App, true>;
 }
 
-export function makeTypedUseLoaderData<Loader extends RiverUntypedFunction>() {
-	return function useLoaderData<
-		Props extends RiverRouteProps<Loader>,
-		LoaderData = Extract<
-			Loader,
-			{ pattern: Props["__phantom_pattern"] }
-		>["phantomOutputType"],
-	>(props: Props): Accessor<LoaderData> {
+export function makeTypedUseLoaderData<App extends RiverAppBase>() {
+	return function useLoaderData<Pattern extends RiverLoaderPattern<App>>(
+		props: RiverRouteProps<App, Pattern>,
+	): Accessor<RiverLoaderOutput<App, Pattern>> {
 		return createMemo(() => {
 			return loadersData()[props.idx];
 		});
 	};
 }
 
-export function makeTypedUsePatternLoaderData<
-	Loader extends RiverUntypedFunction,
->() {
-	return function usePatternData<Pattern extends Loader["pattern"]>(
-		pattern: Pattern,
-	): Accessor<
-		Extract<Loader, { pattern: Pattern }>["phantomOutputType"] | undefined
-	> {
+export function makeTypedUsePatternLoaderData<App extends RiverAppBase>() {
+	return function usePatternLoaderData<
+		Pattern extends RiverLoaderPattern<App>,
+	>(pattern: Pattern): Accessor<RiverLoaderOutput<App, Pattern> | undefined> {
 		const idx = createMemo(() => {
 			const matchedPatterns = routerData().matchedPatterns;
 			return matchedPatterns.findIndex((p) => p === pattern);
@@ -70,23 +57,19 @@ export function makeTypedUsePatternLoaderData<
 	};
 }
 
-export function makeTypedAddClientLoader<
-	OuterLoader extends RiverUntypedFunction,
-	RootData,
->() {
+export function makeTypedAddClientLoader<App extends RiverAppBase>() {
 	const m = internal_RiverClientGlobal.get("patternToWaitFnMap");
 	return function addClientLoader<
-		Pattern extends OuterLoader["pattern"],
-		Loader extends Extract<OuterLoader, { pattern: Pattern }>,
-		LoaderData = Loader["phantomOutputType"],
+		Pattern extends RiverLoaderPattern<App>,
+		LoaderData extends RiverLoaderOutput<App, Pattern>,
 		T = any,
 	>(
 		p: Pattern,
 		fn: (props: {
-			params: Record<ParamsForPattern<OuterLoader, Pattern>, string>;
+			params: Record<ParamsForPattern<App, Pattern>, string>;
 			splatValues: string[];
 			serverDataPromise: Promise<
-				ClientLoaderAwaitedServerData<RootData, LoaderData>
+				ClientLoaderAwaitedServerData<App["rootData"], LoaderData>
 			>;
 			signal: AbortSignal;
 		}) => Promise<T>,
@@ -99,7 +82,7 @@ export function makeTypedAddClientLoader<
 		type Res = Awaited<ReturnType<typeof fn>>;
 
 		const useClientLoaderData = (
-			props?: RiverRouteProps<Loader, Pattern>,
+			props?: RiverRouteProps<App, Pattern>,
 		): Accessor<Res | undefined> => {
 			return createMemo(() => {
 				if (props) {
@@ -113,7 +96,7 @@ export function makeTypedAddClientLoader<
 		};
 
 		return useClientLoaderData as {
-			(props: RiverRouteProps<Loader, Pattern>): Accessor<Res>;
+			(props: RiverRouteProps<App, Pattern>): Accessor<Res>;
 			(): Accessor<Res | undefined>;
 		};
 	};

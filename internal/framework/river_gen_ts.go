@@ -33,47 +33,6 @@ var mutationMethods = map[string]struct{}{
 	http.MethodPost: {}, http.MethodPut: {}, http.MethodPatch: {}, http.MethodDelete: {},
 }
 
-const tsTemplate = `
-import type { SharedBase, WithOptionalInput } from "river.now/client";
-
-export const apiConfig = {
-	actionsRouterMountRoot: "%s",
-	actionsDynamicRune: "%s",
-	actionsSplatRune: "%s",
-	loadersDynamicRune: "%s",
-	loadersSplatRune: "%s",
-	loadersExplicitIndexSegment: "%s",
-} as const;
-
-export type RiverMutationMethod<T extends RiverMutationPattern> =
-	Extract<RiverMutation, { pattern: T }> extends { method: infer M }
-		? M extends string
-			? M
-			: "POST"
-		: "POST";
-
-export type BaseQueryProps<P extends RiverQueryPattern> = SharedBase<
-	P,
-	RiverFunction
-> & {
-	requestInit?: Omit<RequestInit, "method"> & { method?: "GET" };
-};
-
-export type BaseMutationProps<P extends RiverMutationPattern> = SharedBase<
-	P,
-	RiverFunction
-> &
-	(RiverMutationMethod<P> extends "POST"
-		? { requestInit?: Omit<RequestInit, "method"> & { method?: "POST" } }
-		: { requestInit: RequestInit & { method: RiverMutationMethod<P> } });
-
-export type BaseQueryPropsWithInput<P extends RiverQueryPattern> =
-	BaseQueryProps<P> & WithOptionalInput<RiverQueryInput<P>>;
-
-export type BaseMutationPropsWithInput<P extends RiverMutationPattern> =
-	BaseMutationProps<P> & WithOptionalInput<RiverMutationInput<P>>;
-`
-
 func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 	var collection []tsgen.CollectionItem
 
@@ -184,73 +143,91 @@ func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
 		collection = append(collection, item)
 	}
 
-	categories := []rpc.CategorySpecificOptions{}
-	categories = append(categories, rpc.CategorySpecificOptions{
-		BaseOptions:          base,
-		CategoryValue:        "loader",
-		ItemTypeNameSingular: "RiverLoader",
-		ItemTypeNamePlural:   "RiverLoaders",
-		KeyUnionTypeName:     "RiverLoaderPattern",
-		InputUnionTypeName:   "",
-		OutputUnionTypeName:  "RiverLoaderOutput",
-		SkipInput:            true,
-	})
-	categories = append(categories, rpc.CategorySpecificOptions{
-		BaseOptions:          base,
-		CategoryValue:        "query",
-		ItemTypeNameSingular: "RiverQuery",
-		ItemTypeNamePlural:   "RiverQueries",
-		KeyUnionTypeName:     "RiverQueryPattern",
-		InputUnionTypeName:   "RiverQueryInput",
-		OutputUnionTypeName:  "RiverQueryOutput",
-	})
-	categories = append(categories, rpc.CategorySpecificOptions{
-		BaseOptions:          base,
-		CategoryValue:        "mutation",
-		ItemTypeNameSingular: "RiverMutation",
-		ItemTypeNamePlural:   "RiverMutations",
-		KeyUnionTypeName:     "RiverMutationPattern",
-		InputUnionTypeName:   "RiverMutationInput",
-		OutputUnionTypeName:  "RiverMutationOutput",
-	})
+	uiVariant := h.Wave.GetRiverUIVariant()
 
-	extraTSToUse := rpc.BuildFromCategories(categories)
-
-	extraTSToUse += fmt.Sprintf(tsTemplate,
-		opts.ActionsRouter.MountRoot(),
-		string(loadersDynamicRune),
-		string(loadersSplatRune),
-		string(actionsDynamicRune),
-		string(actionsSplatRune),
-		opts.LoadersRouter.GetExplicitIndexSegment(),
-	)
+	var sb strings.Builder
 
 	if foundRootData {
-		extraTSToUse += "\nexport type RiverRootData = Extract<\n\t(typeof routes)[number],\n\t{ isRootData: true }\n>[\"phantomOutputType\"];\n\n"
+		sb.WriteString(`type RiverRootData = Extract<
+	(typeof routes)[number],
+	{ isRootData: true }
+>["phantomOutputType"];`)
 	} else {
-		extraTSToUse += "export type RiverRootData = null;\n\n"
+		sb.WriteString("type RiverRootData = null;")
 	}
 
-	fTypeIn := []string{"RiverLoader", "RiverQuery", "RiverMutation"}
-	pTypeIn := []string{"RiverLoaderPattern", "RiverQueryPattern", "RiverMutationPattern"}
-	extraTSToUse += "type RiverFunction = " + tsgen.TypeUnion(fTypeIn) + ";\n\n"
-	extraTSToUse += "type RiverPattern = " + tsgen.TypeUnion(pTypeIn) + ";\n\n"
-	extraTSToUse += `export type RiverRouteParams<T extends RiverPattern> =
-	Extract<RiverFunction, { pattern: T }> extends { params: infer P }
-		? P extends ReadonlyArray<string>
-			? P[number]
-			: never
-		: never;` + "\n"
+	sb.WriteString("\n\n")
+
+	sb.WriteString(fmt.Sprintf(`export type RiverApp = {
+	routes: typeof routes;
+	appConfig: typeof riverAppConfig;
+	rootData: RiverRootData;
+};
+
+export const riverAppConfig = {
+	actionsRouterMountRoot: "%s",
+	actionsDynamicRune: "%s",
+	actionsSplatRune: "%s",
+	loadersDynamicRune: "%s",
+	loadersSplatRune: "%s",
+	loadersExplicitIndexSegment: "%s",
+	__phantom: null as unknown as RiverApp,
+} as const;
+
+import type {
+	RiverLoaderPattern,
+	RiverMutationInput,
+	RiverMutationOutput,
+	RiverMutationPattern,
+	RiverMutationProps,
+	RiverQueryInput,
+	RiverQueryOutput,
+	RiverQueryPattern,
+	RiverQueryProps,
+} from "river.now/client";
+import type { RiverRouteProps } from "river.now/%s";
+
+export type QueryPattern = RiverQueryPattern<RiverApp>;
+export type QueryProps<P extends QueryPattern> = RiverQueryProps<RiverApp, P>;
+export type QueryInput<P extends QueryPattern> = RiverQueryInput<RiverApp, P>;
+export type QueryOutput<P extends QueryPattern> = RiverQueryOutput<RiverApp, P>;
+
+export type MutationPattern = RiverMutationPattern<RiverApp>;
+export type MutationProps<P extends MutationPattern> = RiverMutationProps<
+	RiverApp,
+	P
+>;
+export type MutationInput<P extends MutationPattern> = RiverMutationInput<
+	RiverApp,
+	P
+>;
+export type MutationOutput<P extends MutationPattern> = RiverMutationOutput<
+	RiverApp,
+	P
+>;
+
+export type RouteProps<P extends RiverLoaderPattern<RiverApp>> =
+	RiverRouteProps<RiverApp, P>;
+`,
+		opts.ActionsRouter.MountRoot(),
+		string(actionsDynamicRune),
+		string(actionsSplatRune),
+		string(loadersDynamicRune),
+		string(loadersSplatRune),
+		opts.LoadersRouter.GetExplicitIndexSegment(),
+		uiVariant,
+	))
 
 	if opts.ExtraTSCode != "" {
-		extraTSToUse += "\n" + opts.ExtraTSCode
+		sb.WriteString("\n")
+		sb.WriteString(opts.ExtraTSCode)
 	}
 
 	return tsgen.GenerateTSContent(tsgen.Opts{
 		Collection:        collection,
 		CollectionVarName: base.CollectionVarName,
 		AdHocTypes:        opts.AdHocTypes,
-		ExtraTSCode:       extraTSToUse,
+		ExtraTSCode:       sb.String(),
 	})
 }
 

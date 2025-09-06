@@ -1,11 +1,15 @@
 import { type ComponentProps, useMemo } from "react";
-import type { RiverUntypedFunction } from "river.now/client";
+import type {
+	ExtractApp,
+	PatternBasedProps,
+	RiverAppBase,
+	RiverLoaderPattern,
+} from "river.now/client";
 import {
-	type APIConfig,
 	makeFinalLinkProps,
 	resolvePath,
+	type RiverAppConfig,
 	type RiverLinkPropsBase,
-	type SharedBase,
 } from "river.now/client";
 
 export function RiverLink(
@@ -37,39 +41,40 @@ export function RiverLink(
 }
 
 type TypedRiverLinkProps<
-	F extends RiverUntypedFunction,
-	Pattern extends F["pattern"] = F["pattern"],
-> = Omit<ComponentProps<"a">, "href"> &
+	App extends RiverAppBase,
+	Pattern extends RiverLoaderPattern<App> = RiverLoaderPattern<App>,
+> = Omit<ComponentProps<"a">, "href" | "pattern"> &
 	RiverLinkPropsBase<
 		(
 			e: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
 		) => void | Promise<void>
 	> &
-	Omit<SharedBase<Pattern, F>, "options">;
+	PatternBasedProps<App, Pattern>;
 
-export function makeTypedLink<F extends RiverUntypedFunction>(
-	apiConfig: APIConfig,
+export function makeTypedLink<C extends RiverAppConfig>(
+	riverAppConfig: C,
 	defaultProps?: Partial<
-		Omit<TypedRiverLinkProps<F>, "pattern" | "params" | "splatValues">
+		Omit<
+			TypedRiverLinkProps<ExtractApp<C>>,
+			"pattern" | "params" | "splatValues"
+		>
 	>,
 ) {
-	const TypedLink = <Pattern extends F["pattern"]>(
-		props: TypedRiverLinkProps<F, Pattern>,
-	) => {
-		const { pattern, params, splatValues, options, ...linkProps } =
-			props as any;
+	type App = ExtractApp<C>;
 
-		const pathProps: SharedBase<Pattern, F> = {
-			pattern,
-			options,
-			...(params && { params }),
-			...(splatValues && { splatValues }),
-		};
+	const TypedLink = <Pattern extends RiverLoaderPattern<App>>(
+		props: TypedRiverLinkProps<App, Pattern>,
+	) => {
+		const { pattern, params, splatValues, ...linkProps } = props as any;
 
 		const href = resolvePath({
-			apiConfig,
+			riverAppConfig,
 			type: "loader",
-			props: pathProps as any,
+			props: {
+				pattern,
+				...(params && { params }),
+				...(splatValues && { splatValues }),
+			},
 		});
 
 		const finalProps = { ...defaultProps, ...linkProps, href };

@@ -290,7 +290,7 @@ What happens:
 
 **IMPORTANT**: Whatever you return as an error from your loader WILL be sent to
 the client. Do not return sensitive info there. The final error that you
-propogate/return from your loader should be client-safe.
+propagate/return from your loader should be client-safe.
 
 **2. Set error status via `ResponseProxy` → Navigation fails**
 

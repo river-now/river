@@ -1,10 +1,14 @@
-import type { RiverUntypedFunction } from "river.now/client";
+import type {
+	ExtractApp,
+	PatternBasedProps,
+	RiverAppBase,
+	RiverLoaderPattern,
+} from "river.now/client";
 import {
-	type APIConfig,
 	makeFinalLinkProps,
 	resolvePath,
+	type RiverAppConfig,
 	type RiverLinkPropsBase,
-	type SharedBase,
 } from "river.now/client";
 import { createMemo, type JSX, mergeProps } from "solid-js";
 
@@ -35,38 +39,39 @@ export function RiverLink(
 }
 
 type TypedRiverLinkProps<
-	F extends RiverUntypedFunction,
-	Pattern extends F["pattern"] = F["pattern"],
-> = Omit<JSX.AnchorHTMLAttributes<HTMLAnchorElement>, "href"> &
+	App extends RiverAppBase,
+	Pattern extends RiverLoaderPattern<App> = RiverLoaderPattern<App>,
+> = Omit<JSX.AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "pattern"> &
 	RiverLinkPropsBase<
 		JSX.CustomEventHandlersCamelCase<HTMLAnchorElement>["onClick"]
 	> &
-	Omit<SharedBase<Pattern, F>, "options">;
+	PatternBasedProps<App, Pattern>;
 
-export function makeTypedLink<F extends RiverUntypedFunction>(
-	apiConfig: APIConfig,
+export function makeTypedLink<C extends RiverAppConfig>(
+	riverAppConfig: C,
 	defaultProps?: Partial<
-		Omit<TypedRiverLinkProps<F>, "pattern" | "params" | "splatValues">
+		Omit<
+			TypedRiverLinkProps<ExtractApp<C>>,
+			"pattern" | "params" | "splatValues"
+		>
 	>,
 ) {
-	const TypedLink = <Pattern extends F["pattern"]>(
-		props: TypedRiverLinkProps<F, Pattern>,
+	type App = ExtractApp<C>;
+
+	const TypedLink = <Pattern extends RiverLoaderPattern<App>>(
+		props: TypedRiverLinkProps<App, Pattern>,
 	) => {
 		const merged = mergeProps(defaultProps || {}, props);
-		const { pattern, params, splatValues, options, ...linkProps } =
-			merged as any;
-
-		const pathProps: SharedBase<Pattern, F> = {
-			pattern,
-			options,
-			...(params && { params }),
-			...(splatValues && { splatValues }),
-		};
+		const { pattern, params, splatValues, ...linkProps } = merged as any;
 
 		const href = resolvePath({
-			apiConfig,
+			riverAppConfig,
 			type: "loader",
-			props: pathProps as any,
+			props: {
+				pattern,
+				...(params && { params }),
+				...(splatValues && { splatValues }),
+			},
 		});
 
 		return <RiverLink {...linkProps} href={href} />;
