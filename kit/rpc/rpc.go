@@ -157,11 +157,22 @@ var (
 )
 
 const (
-	baseTmplStr = `export type {{ .ItemTypeNameSingular }} = Extract<(typeof {{ .CollectionVarName }})[number], { {{ .CategoryPropertyName }}: "{{ .CategoryValue }}" }>;
-export type {{ .ItemTypeNamePlural }} = { [K in {{ .KeyUnionTypeName }}]: Extract<{{ .ItemTypeNameSingular }}, { {{ .DiscriminatorStr }}: K }>; };
+	baseTmplStr = `export type {{ .ItemTypeNameSingular }} = Extract<
+	(typeof {{ .CollectionVarName }})[number],
+	{ {{ .CategoryPropertyName }}: "{{ .CategoryValue }}" }
+>;
+export type {{ .ItemTypeNamePlural }} = {
+	[K in {{ .KeyUnionTypeName }}]: Extract<{{ .ItemTypeNameSingular }}, { {{ .DiscriminatorStr }}: K }>;
+};
 export type {{ .KeyUnionTypeName }} = {{ .ItemTypeNameSingular }}["{{ .DiscriminatorStr }}"];`
 
-	inputTmplStr = `export type {{ .InputUnionTypeName }}<T extends {{ .KeyUnionTypeName }}> = Extract<{{ .ItemTypeNameSingular }}, { {{ .DiscriminatorStr }}: T }>["phantomInputType"];`
+	inputTmplStr = `export type {{ .InputUnionTypeName }}<T extends {{ .KeyUnionTypeName }}> =
+	Extract<{{ .ItemTypeNameSingular }}, { {{ .DiscriminatorStr }}: T }> extends { phantomInputType: infer U }
+		? U
+		: null | undefined;`
 
-	outputTmplStr = `export type {{ .OutputUnionTypeName }}<T extends {{ .KeyUnionTypeName }}> = Extract<{{ .ItemTypeNameSingular }}, { {{ .DiscriminatorStr }}: T }>["phantomOutputType"];`
+	outputTmplStr = `export type {{ .OutputUnionTypeName }}<T extends {{ .KeyUnionTypeName }}> =
+	Extract<{{ .ItemTypeNameSingular }}, { {{ .DiscriminatorStr }}: T }> extends { phantomOutputType: infer U }
+		? U
+		: null | undefined;`
 )
