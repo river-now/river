@@ -64,16 +64,14 @@ export function makeTypedLink<C extends RiverAppConfig>(
 		const merged = mergeProps(defaultProps || {}, props);
 		const { pattern, params, splatValues, ...linkProps } = merged as any;
 
-		const pathProps = {
-			pattern,
-			...(params && { params }),
-			...(splatValues && { splatValues }),
-		};
-
 		const href = resolvePath({
 			riverAppConfig,
 			type: "loader",
-			props: pathProps,
+			props: {
+				pattern,
+				...(params && { params }),
+				...(splatValues && { splatValues }),
+			},
 		});
 
 		return <RiverLink {...linkProps} href={href} />;

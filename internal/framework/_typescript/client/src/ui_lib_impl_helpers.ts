@@ -210,16 +210,14 @@ export function makeTypedNavigate<C extends RiverAppConfig>(riverAppConfig: C) {
 		const { pattern, params, splatValues, replace, scrollToTop } =
 			options as any;
 
-		const pathProps = {
-			pattern,
-			...(params && { params }),
-			...(splatValues && { splatValues }),
-		};
-
 		const href = resolvePath({
 			riverAppConfig,
 			type: "loader",
-			props: pathProps as any,
+			props: {
+				pattern,
+				...(params && { params }),
+				...(splatValues && { splatValues }),
+			},
 		});
 
 		return navigate(href, { replace, scrollToTop });
