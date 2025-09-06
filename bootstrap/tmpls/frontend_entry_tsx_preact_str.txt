@@ -7,13 +7,13 @@ import {
 	setupGlobalLoadingIndicator,
 } from "river.now/client";
 import { App } from "./app.tsx";
-import { apiConfig } from "./river.gen.ts";
+import { riverAppConfig } from "./river.gen.ts";
 
 await initClient(
 	() => {
 		render(<App />, getRootEl());
 	},
-	{ apiConfig },
+	{ riverAppConfig },
 );
 
 setupGlobalLoadingIndicator({ start, stop: done, isRunning: isStarted });

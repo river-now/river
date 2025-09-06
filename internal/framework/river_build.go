@@ -88,81 +88,40 @@ var (
 	}
 )
 
-// 0 = func name, 1,2 = backtick literal, 3 = public dir, 4 = backtick literal
 const vitePluginTemplateStr = `
-export function riverVitePlugin(): Plugin {
-	return {
-		name: "river-vite-plugin",
-		config(c, { command }) {
-			const mp = c.build?.modulePreload;
-			const roi = c.build?.rollupOptions?.input;
-			const ign = c.server?.watch?.ignored;
-			const dedupe = c.resolve?.dedupe;
+export const staticPublicAssetMap = {{.StaticPublicAssetMapJSON}} as const;
 
-			const isDev = command === "serve";
+export type StaticPublicAsset = keyof typeof staticPublicAssetMap;
 
-			return {
-				base: isDev ? "/" : "{{.PublicPathPrefix}}",
-				build: {
-					target: "es2022",
-					emptyOutDir: false,
-					modulePreload: {
-						polyfill: false,
-						...(typeof mp === "object" ? mp : {}),
-					},
-					rollupOptions: {
-						...c.build?.rollupOptions,
-						...rollupOptions,
-						input: [
-							...rollupOptions.input,
-							...(Array.isArray(roi) ? roi : []),
-						],
-					},
-				},
-				server: {
-					headers: {
-						...c.server?.headers,
-						// ensure versions of dynamic imports without the latest
-						// hmr updates are not cached by the browser during dev
-						"cache-control": "no-store",
-					},
-					watch: {
-						...c.server?.watch,
-						ignored: [
-							...(Array.isArray(ign) ? ign : []),
-{{.IgnoredList}},
-						],
-					},
-				},
-				resolve: {
-					dedupe: [
-						...(Array.isArray(dedupe) ? dedupe : []),
-{{.DedupeList}},
-					],
-				},
-			};
-		},
-		transform(code, id) {
-			const isNodeModules = /node_modules/.test(id);
-			if (isNodeModules) return null;
-			const assetRegex = /{{.FuncName}}\s*\(\s*(["'{{.Tick}}])(.*?)\1\s*\)/g;
-			const needsReplacement = assetRegex.test(code);
-			if (!needsReplacement) return null;
-			const replacedCode = code.replace(
-				assetRegex,
-				(_, __, assetPath) => {
-					const hashed = (
-						staticPublicAssetMap as Record<string, string>
-					)[assetPath];
-					if (!hashed) return {{.Tick}}"${assetPath}"{{.Tick}};
-					return {{.Tick}}"{{.PublicPathPrefix}}${hashed}"{{.Tick}};
-				},
-			);
-			if (replacedCode === code) return null;
-			return replacedCode;
-		},
-	};
+declare global {
+	function {{.FuncName}}(
+		staticPublicAsset: StaticPublicAsset,
+	): string;
 }
+
+export const publicPathPrefix = "{{.PublicPathPrefix}}";
+
+export function waveRuntimeURL(
+	originalPublicURL: StaticPublicAsset,
+) {
+	const url = staticPublicAssetMap[originalPublicURL] ?? originalPublicURL;
+	return publicPathPrefix + url;
+}
+
+export const riverViteConfig = {
+	rollupInput: [{{range $i, $e := .Entrypoints}}{{if $i}},{{end}}
+		"{{$e}}"{{end}}
+	],
+	publicPathPrefix,
+	staticPublicAssetMap,
+	buildtimePublicURLFuncName: "{{.FuncName}}",
+	ignoredPatterns: [{{range $i, $e := .IgnoredPatterns}}{{if $i}},{{end}}
+		"{{$e}}"{{end}}
+	],
+	dedupeList: [{{range $i, $e := .DedupeList}}{{if $i}},{{end}}
+		"{{$e}}"{{end}}
+	],
+} as const;
 `
 
 var vitePluginTemplate = template.Must(template.New("vitePlugin").Parse(vitePluginTemplateStr))
@@ -171,66 +130,8 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 	var sb stringsutil.Builder
 
 	sb.Return()
-	sb.Write(tsgen.Comment("River Vite Plugin:"))
-	sb.Return().Return()
-
-	sb.Line("import type { Plugin } from \"vite\";")
+	sb.Write(tsgen.Comment("River Vite Config:"))
 	sb.Return()
-
-	sb.Line("const rollupOptions = {")
-	sb.Tab().Line("input: [")
-	for i, entrypoint := range entrypoints {
-		if i > 0 {
-			sb.Write(",").Return()
-		}
-		sb.Tab().Tab().Writef(`"%s"`, entrypoint)
-	}
-	sb.Line(",")
-	sb.Tab().Line("] as string[],")
-	sb.Tab().Line(`preserveEntrySignatures: "exports-only",`)
-	sb.Tab().Line("output: {")
-	sb.Tab().Tab().Line(`assetFileNames: "` + riverVitePrehashedFilePrefix + `[name]-[hash][extname]",`)
-	sb.Tab().Tab().Line(`chunkFileNames: "` + riverVitePrehashedFilePrefix + `[name]-[hash].js",`)
-	sb.Tab().Tab().Line(`entryFileNames: "` + riverVitePrehashedFilePrefix + `[name]-[hash].js",`)
-	sb.Tab().Line("},")
-	sb.Line("} as const;")
-
-	sb.Return()
-	sb.Write("export const staticPublicAssetMap = ")
-	mapAsJSON, err := json.MarshalIndent(fileMap, "", "\t")
-	if err != nil {
-		return "", fmt.Errorf("error marshalling map to JSON: %w", err)
-	}
-	sb.Line(string(mapAsJSON) + " as const;")
-	sb.Return()
-	sb.Line("export type StaticPublicAsset = keyof typeof staticPublicAssetMap;")
-
-	sb.Return()
-
-	sb.Line(fmt.Sprintf(
-		"declare global {\n\tfunction %s(staticPublicAsset: StaticPublicAsset): string;\n}",
-		h.Wave.GetRiverBuildtimePublicURLFuncName(),
-	))
-
-	sb.Return()
-
-	sb.Line(fmt.Sprintf(
-		"export const publicPathPrefix = \"%s\";",
-		h.Wave.GetPublicPathPrefix(),
-	))
-
-	sb.Return()
-
-	sb.Line(`export function waveRuntimeURL(
-	originalPublicURL: keyof typeof staticPublicAssetMap,
-) {
-	const url = staticPublicAssetMap[originalPublicURL] ?? originalPublicURL;
-	return publicPathPrefix + url;
-}`)
-
-	tick := "`"
-
-	var buf bytes.Buffer
 
 	var dedupeList []string
 	switch UIVariant(h.Wave.GetRiverUIVariant()) {
@@ -251,40 +152,19 @@ func (h *River) toRollupOptions(entrypoints []string, fileMap map[string]string)
 		path.Join("**", h.Wave.GetRiverClientRouteDefsFile()),
 	}
 
-	// Format ignored list with proper indentation
-	ignoreTabs := strings.Repeat("\t", 6)
-	stringifiedIgnoreBytes, err := json.MarshalIndent(ignoredList, ignoreTabs, "\t")
+	mapAsJSON, err := json.MarshalIndent(fileMap, "", "\t") // No initial indent
 	if err != nil {
-		return "", fmt.Errorf("error marshalling ignored list to JSON: %w", err)
+		return "", fmt.Errorf("error marshalling map to JSON: %w", err)
 	}
 
-	// Remove opening and closing brackets
-	stringifiedIgnore := string(stringifiedIgnoreBytes)
-	stringifiedIgnore = strings.TrimPrefix(stringifiedIgnore, "[")
-	stringifiedIgnore = strings.TrimSuffix(stringifiedIgnore, "]")
-	stringifiedIgnore = strings.TrimPrefix(stringifiedIgnore, "\n")
-	stringifiedIgnore = strings.TrimSuffix(stringifiedIgnore, "\n"+ignoreTabs)
-
-	// Format dedupe list with proper indentation
-	dedupeTabs := strings.Repeat("\t", 5)
-	stringifiedDedupeBytes, err := json.MarshalIndent(dedupeList, dedupeTabs, "\t")
-	if err != nil {
-		return "", fmt.Errorf("error marshalling dedupe list to JSON: %w", err)
-	}
-
-	// Remove opening and closing brackets
-	stringifiedDedupe := string(stringifiedDedupeBytes)
-	stringifiedDedupe = strings.TrimPrefix(stringifiedDedupe, "[")
-	stringifiedDedupe = strings.TrimSuffix(stringifiedDedupe, "]")
-	stringifiedDedupe = strings.TrimPrefix(stringifiedDedupe, "\n")
-	stringifiedDedupe = strings.TrimSuffix(stringifiedDedupe, "\n"+dedupeTabs)
-
+	var buf bytes.Buffer
 	err = vitePluginTemplate.Execute(&buf, map[string]any{
-		"FuncName":         h.Wave.GetRiverBuildtimePublicURLFuncName(),
-		"PublicPathPrefix": h.Wave.GetPublicPathPrefix(),
-		"Tick":             tick,
-		"IgnoredList":      template.HTML(stringifiedIgnore),
-		"DedupeList":       template.HTML(stringifiedDedupe),
+		"Entrypoints":              entrypoints,
+		"PublicPathPrefix":         h.Wave.GetPublicPathPrefix(),
+		"StaticPublicAssetMapJSON": template.HTML(mapAsJSON),
+		"FuncName":                 h.Wave.GetRiverBuildtimePublicURLFuncName(),
+		"IgnoredPatterns":          ignoredList,
+		"DedupeList":               dedupeList,
 	})
 	if err != nil {
 		return "", fmt.Errorf("error executing template: %w", err)

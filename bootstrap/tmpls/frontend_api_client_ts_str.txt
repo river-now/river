@@ -1,22 +1,19 @@
-import { apiHelper, submit } from "river.now/client";
+import { buildMutationURL, buildQueryURL, submit } from "river.now/client";
 import {
-	apiConfig,
-	type BaseMutationPropsWithInput,
-	type BaseQueryPropsWithInput,
-	type RiverMutationOutput,
-	type RiverMutationPattern,
-	type RiverQueryOutput,
-	type RiverQueryPattern,
+	riverAppConfig,
+	type MutationOutput,
+	type MutationPattern,
+	type MutationProps,
+	type QueryOutput,
+	type QueryPattern,
+	type QueryProps,
 } from "./river.gen.ts";
 
 export const api = { query, mutate };
 
-async function query<P extends RiverQueryPattern>(
-	props: BaseQueryPropsWithInput<P>,
-) {
-	const opts = apiHelper.toQueryOpts(apiConfig, props);
-	return await submit<RiverQueryOutput<P>>(
-		apiHelper.buildURL(opts),
+async function query<P extends QueryPattern>(props: QueryProps<P>) {
+	return await submit<QueryOutput<P>>(
+		buildQueryURL(riverAppConfig, props),
 		{
 			method: "GET",
 			...props.requestInit,
@@ -25,12 +22,9 @@ async function query<P extends RiverQueryPattern>(
 	);
 }
 
-async function mutate<P extends RiverMutationPattern>(
-	props: BaseMutationPropsWithInput<P>,
-) {
-	const opts = apiHelper.toMutationOpts(apiConfig, props);
-	return await submit<RiverMutationOutput<P>>(
-		apiHelper.buildURL(opts),
+async function mutate<P extends MutationPattern>(props: MutationProps<P>) {
+	return await submit<MutationOutput<P>>(
+		buildMutationURL(riverAppConfig, props),
 		{
 			method: "POST",
 			...props.requestInit,

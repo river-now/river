@@ -23,7 +23,6 @@ const routes = [
 		_type: "loader",
 		params: ["dyn"],
 		pattern: "/__/:dyn",
-		phantomOutputType: null,
 	},
 	{
 		_type: "loader",
@@ -64,100 +63,67 @@ export type SitemapItem = {
 / Extra TS Code:
 /*********************************************************************/
 
-export type RiverLoader = Extract<(typeof routes)[number], { _type: "loader" }>;
-export type RiverLoaders = { [K in RiverLoaderPattern]: Extract<RiverLoader, { pattern: K }>; };
-export type RiverLoaderPattern = RiverLoader["pattern"];
-export type RiverLoaderOutput<T extends RiverLoaderPattern> = Extract<RiverLoader, { pattern: T }>["phantomOutputType"];
+type RiverRootData = Extract<
+	(typeof routes)[number],
+	{ isRootData: true }
+>["phantomOutputType"];
 
-export type RiverQuery = Extract<(typeof routes)[number], { _type: "query" }>;
-export type RiverQueries = { [K in RiverQueryPattern]: Extract<RiverQuery, { pattern: K }>; };
-export type RiverQueryPattern = RiverQuery["pattern"];
-export type RiverQueryInput<T extends RiverQueryPattern> = Extract<RiverQuery, { pattern: T }>["phantomInputType"];
-export type RiverQueryOutput<T extends RiverQueryPattern> = Extract<RiverQuery, { pattern: T }>["phantomOutputType"];
+export type RiverApp = {
+	routes: typeof routes;
+	appConfig: typeof riverAppConfig;
+	rootData: RiverRootData;
+};
 
-export type RiverMutation = Extract<(typeof routes)[number], { _type: "mutation" }>;
-export type RiverMutations = { [K in RiverMutationPattern]: Extract<RiverMutation, { pattern: K }>; };
-export type RiverMutationPattern = RiverMutation["pattern"];
-export type RiverMutationInput<T extends RiverMutationPattern> = Extract<RiverMutation, { pattern: T }>["phantomInputType"];
-export type RiverMutationOutput<T extends RiverMutationPattern> = Extract<RiverMutation, { pattern: T }>["phantomOutputType"];
-
-import type { SharedBase, WithOptionalInput } from "river.now/client";
-
-export const apiConfig = {
+export const riverAppConfig = {
 	actionsRouterMountRoot: "/api/",
 	actionsDynamicRune: ":",
 	actionsSplatRune: "*",
 	loadersDynamicRune: ":",
 	loadersSplatRune: "*",
 	loadersExplicitIndexSegment: "_index",
+	__phantom: null as unknown as RiverApp,
 } as const;
 
-export type RiverMutationMethod<T extends RiverMutationPattern> =
-	Extract<RiverMutation, { pattern: T }> extends { method: infer M }
-		? M extends string
-			? M
-			: "POST"
-		: "POST";
+import type {
+	RiverLoaderPattern,
+	RiverMutationInput,
+	RiverMutationOutput,
+	RiverMutationPattern,
+	RiverMutationProps,
+	RiverQueryInput,
+	RiverQueryOutput,
+	RiverQueryPattern,
+	RiverQueryProps,
+} from "river.now/client";
+import type { RiverRouteProps } from "river.now/solid";
 
-export type BaseQueryProps<P extends RiverQueryPattern> = SharedBase<
-	P,
-	RiverFunction
-> & {
-	requestInit?: Omit<RequestInit, "method"> & { method?: "GET" };
-};
+export type QueryPattern = RiverQueryPattern<RiverApp>;
+export type QueryProps<P extends QueryPattern> = RiverQueryProps<RiverApp, P>;
+export type QueryInput<P extends QueryPattern> = RiverQueryInput<RiverApp, P>;
+export type QueryOutput<P extends QueryPattern> = RiverQueryOutput<RiverApp, P>;
 
-export type BaseMutationProps<P extends RiverMutationPattern> = SharedBase<
-	P,
-	RiverFunction
-> &
-	(RiverMutationMethod<P> extends "POST"
-		? { requestInit?: Omit<RequestInit, "method"> & { method?: "POST" } }
-		: { requestInit: RequestInit & { method: RiverMutationMethod<P> } });
+export type MutationPattern = RiverMutationPattern<RiverApp>;
+export type MutationProps<P extends MutationPattern> = RiverMutationProps<
+	RiverApp,
+	P
+>;
+export type MutationInput<P extends MutationPattern> = RiverMutationInput<
+	RiverApp,
+	P
+>;
+export type MutationOutput<P extends MutationPattern> = RiverMutationOutput<
+	RiverApp,
+	P
+>;
 
-export type BaseQueryPropsWithInput<P extends RiverQueryPattern> =
-	BaseQueryProps<P> & WithOptionalInput<RiverQueryInput<P>>;
-
-export type BaseMutationPropsWithInput<P extends RiverMutationPattern> =
-	BaseMutationProps<P> & WithOptionalInput<RiverMutationInput<P>>;
-
-export type RiverRootData = Extract<
-	(typeof routes)[number],
-	{ isRootData: true }
->["phantomOutputType"];
-
-type RiverFunction = RiverLoader | RiverQuery | RiverMutation;
-
-type RiverPattern = RiverLoaderPattern | RiverQueryPattern | RiverMutationPattern;
-
-export type RiverRouteParams<T extends RiverPattern> =
-	Extract<RiverFunction, { pattern: T }> extends { params: infer P }
-		? P extends ReadonlyArray<string>
-			? P[number]
-			: never
-		: never;
+export type RouteProps<P extends RiverLoaderPattern<RiverApp>> =
+	RiverRouteProps<RiverApp, P>;
 
 export const ACTIONS_ROUTER_MOUNT_ROOT = "/api/";
 
 /**********************************************************************
-/ River Vite Plugin:
+/ River Vite Config:
 /*********************************************************************/
-
-import type { Plugin } from "vite";
-
-const rollupOptions = {
-	input: [
-		"frontend/components/routes/dyn.tsx",
-		"frontend/components/routes/home.tsx",
-		"frontend/components/routes/md.tsx",
-		"frontend/entry.tsx",
-	] as string[],
-	preserveEntrySignatures: "exports-only",
-	output: {
-		assetFileNames: "river_out_vite_[name]-[hash][extname]",
-		chunkFileNames: "river_out_vite_[name]-[hash].js",
-		entryFileNames: "river_out_vite_[name]-[hash].js",
-	},
-} as const;
 
 export const staticPublicAssetMap = {
 	"desktop.svg": "river_out_desktop_eebc981612eb.svg",
@@ -176,94 +142,40 @@ export const staticPublicAssetMap = {
 export type StaticPublicAsset = keyof typeof staticPublicAssetMap;
 
 declare global {
-	function hashedURL(staticPublicAsset: StaticPublicAsset): string;
+	function hashedURL(
+		staticPublicAsset: StaticPublicAsset,
+	): string;
 }
 
 export const publicPathPrefix = "/";
 
 export function waveRuntimeURL(
-	originalPublicURL: keyof typeof staticPublicAssetMap,
+	originalPublicURL: StaticPublicAsset,
 ) {
 	const url = staticPublicAssetMap[originalPublicURL] ?? originalPublicURL;
 	return publicPathPrefix + url;
 }
 
-export function riverVitePlugin(): Plugin {
-	return {
-		name: "river-vite-plugin",
-		config(c, { command }) {
-			const mp = c.build?.modulePreload;
-			const roi = c.build?.rollupOptions?.input;
-			const ign = c.server?.watch?.ignored;
-			const dedupe = c.resolve?.dedupe;
-
-			const isDev = command === "serve";
-
-			return {
-				base: isDev ? "/" : "/",
-				build: {
-					target: "es2022",
-					emptyOutDir: false,
-					modulePreload: {
-						polyfill: false,
-						...(typeof mp === "object" ? mp : {}),
-					},
-					rollupOptions: {
-						...c.build?.rollupOptions,
-						...rollupOptions,
-						input: [
-							...rollupOptions.input,
-							...(Array.isArray(roi) ? roi : []),
-						],
-					},
-				},
-				server: {
-					headers: {
-						...c.server?.headers,
-						// ensure versions of dynamic imports without the latest
-						// hmr updates are not cached by the browser during dev
-						"cache-control": "no-store",
-					},
-					watch: {
-						...c.server?.watch,
-						ignored: [
-							...(Array.isArray(ign) ? ign : []),
-							"**/*.go",
-							"**/app/__dist/**/*",
-							"**/backend/__static/**/*",
-							"**/wave.config.json",
-							"**/frontend/river.gen.ts",
-							"**/frontend/routes.ts",
-						],
-					},
-				},
-				resolve: {
-					dedupe: [
-						...(Array.isArray(dedupe) ? dedupe : []),
-						"solid-js",
-						"solid-js/web",
-					],
-				},
-			};
-		},
-		transform(code, id) {
-			const isNodeModules = /node_modules/.test(id);
-			if (isNodeModules) return null;
-			const assetRegex = /hashedURL\s*\(\s*(["'`])(.*?)\1\s*\)/g;
-			const needsReplacement = assetRegex.test(code);
-			if (!needsReplacement) return null;
-			const replacedCode = code.replace(
-				assetRegex,
-				(_, __, assetPath) => {
-					const hashed = (
-						staticPublicAssetMap as Record<string, string>
-					)[assetPath];
-					if (!hashed) return `"${assetPath}"`;
-					return `"/${hashed}"`;
-				},
-			);
-			if (replacedCode === code) return null;
-			return replacedCode;
-		},
-	};
-}
+export const riverViteConfig = {
+	rollupInput: [
+		"frontend/components/routes/dyn.tsx",
+		"frontend/components/routes/home.tsx",
+		"frontend/components/routes/md.tsx",
+		"frontend/entry.tsx"
+	],
+	publicPathPrefix,
+	staticPublicAssetMap,
+	buildtimePublicURLFuncName: "hashedURL",
+	ignoredPatterns: [
+		"**/*.go",
+		"**/app/__dist/**/*",
+		"**/backend/__static/**/*",
+		"**/wave.config.json",
+		"**/frontend/river.gen.ts",
+		"**/frontend/routes.ts"
+	],
+	dedupeList: [
+		"solid-js",
+		"solid-js/web"
+	],
+} as const;

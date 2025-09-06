@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type APIConfig } from "./api_client_helpers.ts";
 import {
 	addBuildIDListener,
 	addLocationListener,
@@ -24,9 +23,10 @@ import {
 	type StatusEventDetail,
 	submit,
 } from "./client";
+import type { RiverAppConfig } from "./river_app_helpers.ts";
 import { internal_RiverClientGlobal } from "./river_ctx";
 
-const apiConfig: APIConfig = {
+const riverAppConfig: RiverAppConfig = {
 	actionsRouterMountRoot: "/api/",
 	actionsDynamicRune: ":",
 	actionsSplatRune: "*",
@@ -2312,7 +2312,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					return 0;
 				});
 
-				await initClient(() => {}, { apiConfig });
+				await initClient(() => {}, { riverAppConfig });
 
 				expect(window.scrollTo).toHaveBeenCalledWith(250, 500);
 				expect(
@@ -2333,7 +2333,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					JSON.stringify(scrollState),
 				);
 
-				await initClient(() => {}, { apiConfig });
+				await initClient(() => {}, { riverAppConfig });
 
 				expect(window.scrollTo).not.toHaveBeenCalledWith(250, 500);
 			});
@@ -2351,7 +2351,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					JSON.stringify(scrollState),
 				);
 
-				await initClient(() => {}, { apiConfig });
+				await initClient(() => {}, { riverAppConfig });
 
 				expect(window.scrollTo).not.toHaveBeenCalledWith(250, 500);
 			});
@@ -4049,7 +4049,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 			const customErrorBoundary = () => "Custom Error";
 
 			await initClient(() => {}, {
-				apiConfig,
+				riverAppConfig,
 				defaultErrorBoundary: customErrorBoundary,
 				useViewTransitions: true,
 			});
@@ -4065,7 +4065,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		it("should initialize history with POP listener", async () => {
 			const listenSpy = vi.spyOn(getHistoryInstance(), "listen");
 
-			await initClient(() => {}, { apiConfig });
+			await initClient(() => {}, { riverAppConfig });
 
 			expect(listenSpy).toHaveBeenCalled();
 		});
@@ -4079,7 +4079,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				configurable: true,
 			});
 
-			await initClient(() => {}, { apiConfig });
+			await initClient(() => {}, { riverAppConfig });
 
 			expect(setterSpy).toHaveBeenCalledWith("manual");
 		});
@@ -4093,7 +4093,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 			const replaceSpy = vi.spyOn(getHistoryInstance(), "replace");
 
-			await initClient(() => {}, { apiConfig });
+			await initClient(() => {}, { riverAppConfig });
 
 			expect(replaceSpy).toHaveBeenCalledWith(
 				"http://localhost:3000/?keep=this",
@@ -4110,7 +4110,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				default: () => "Initial Component",
 			}));
 
-			await initClient(() => {}, { apiConfig });
+			await initClient(() => {}, { riverAppConfig });
 
 			expect(
 				internal_RiverClientGlobal.get("activeComponents"),
@@ -4126,7 +4126,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				loadersData: [{ initial: "data" }],
 			});
 
-			await initClient(() => {}, { apiConfig });
+			await initClient(() => {}, { riverAppConfig });
 
 			expect(waitFn).toHaveBeenCalled();
 			expect(internal_RiverClientGlobal.get("clientLoadersData")).toEqual(
@@ -4137,7 +4137,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		it("should execute user render function", async () => {
 			const renderFn = vi.fn();
 
-			await initClient(renderFn, { apiConfig });
+			await initClient(renderFn, { riverAppConfig });
 
 			expect(renderFn).toHaveBeenCalled();
 		});
@@ -4162,7 +4162,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					return 0;
 				});
 
-			await initClient(() => {}, { apiConfig });
+			await initClient(() => {}, { riverAppConfig });
 
 			expect(window.scrollTo).toHaveBeenCalledWith(300, 600);
 			expect(
@@ -4173,7 +4173,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		});
 
 		it("should detect touch devices on first touch", async () => {
-			await initClient(() => {}, { apiConfig });
+			await initClient(() => {}, { riverAppConfig });
 
 			expect(
 				internal_RiverClientGlobal.get("isTouchDevice"),

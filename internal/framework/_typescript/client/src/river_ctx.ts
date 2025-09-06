@@ -1,4 +1,4 @@
-import type { APIConfig } from "./api_client_helpers.ts";
+import type { RiverAppConfig } from "./river_app_helpers.ts";
 
 export type HeadEl = {
 	tag?: string;
@@ -68,7 +68,7 @@ export type RiverClientGlobal = shared & {
 	defaultErrorBoundary: RouteErrorComponent;
 	useViewTransitions: boolean;
 	deploymentID: string;
-	apiConfig: APIConfig;
+	riverAppConfig: RiverAppConfig;
 };
 
 export function __getRiverClientGlobal() {

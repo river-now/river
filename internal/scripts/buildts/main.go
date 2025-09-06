@@ -28,6 +28,7 @@ func main() {
 	buildReact()
 	buildSolid()
 	buildPreact()
+	buildVite()
 	buildCreate()
 
 	removeTestFiles()
@@ -136,6 +137,27 @@ func buildPreact() {
 			"preact/jsx-runtime", "preact/compat", "preact/test-utils",
 		},
 		Outdir:   "./npm_dist/internal/framework/_typescript/preact",
+		Tsconfig: tsconfig,
+	})
+}
+
+func buildVite() {
+	tsconfig := "./internal/framework/_typescript/vite/tsconfig.json"
+	runTSC(tsconfig)
+	build("vite", esbuild.BuildOptions{
+		Sourcemap:   esbuild.SourceMapLinked,
+		Target:      esbuild.ESNext,
+		Format:      esbuild.FormatESModule,
+		TreeShaking: esbuild.TreeShakingTrue,
+		Splitting:   true,
+		Write:       true,
+		Bundle:      true,
+		EntryPoints: []string{"./internal/framework/_typescript/vite/vite.ts"},
+		External: []string{
+			"river.now",
+			"vite",
+		},
+		Outdir:   "./npm_dist/internal/framework/_typescript/vite",
 		Tsconfig: tsconfig,
 	})
 }

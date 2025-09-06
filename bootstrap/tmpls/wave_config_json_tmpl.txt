@@ -1,7 +1,7 @@
 {
 	"$schema": "__dist/static/internal/schema.json",
 	"Core": {
-		"ConfigLocation": "wave.config.json",
+		"ConfigLocation": "app/wave.config.json",
 		"DevBuildHook": "go run ./__cmd/build --dev --hook",
 		"ProdBuildHook": "go run ./__cmd/build --hook",
 		"MainAppEntry": "__cmd/app",

@@ -92,7 +92,7 @@ var Core_Schema = jsonschema.RequiredObject(jsonschema.Def{
 /////////////////////////////////////////////////////////////////////
 
 var ConfigLocation_Schema = jsonschema.OptionalString(jsonschema.Def{
-	Description: `Path to the Wave configuration file. This is set automatically by Wave and typically shouldn't be specified manually.`,
+	Description: `Path to the Wave configuration file. This enables restarting the server when you update the Wave config.`,
 	Examples:    []string{"./wave.json", "./config/wave.json"},
 })
 
@@ -233,32 +233,37 @@ var IncludeDefaults_Schema = jsonschema.OptionalBoolean(jsonschema.Def{
 
 var UIVariant_Schema = jsonschema.OptionalString(jsonschema.Def{
 	Description: `The UI variant to use with River. Determines which UI framework integration to use.`,
-	Examples:    []string{"react", "vue", "solid"},
+	Required:    true,
+	Examples:    []string{"react", "preact", "solid"},
 })
 
 var HTMLTemplateLocation_Schema = jsonschema.OptionalString(jsonschema.Def{
 	Description: `Path to your HTML template file, relative to your static private directory.`,
-	Examples:    []string{"templates/index.html", "index.tmpl"},
+	Required:    true,
+	Examples:    []string{"entry.go.html"},
 })
 
 var ClientEntry_Schema = jsonschema.OptionalString(jsonschema.Def{
-	Description: `Path to your client-side JavaScript/TypeScript entry point.`,
-	Examples:    []string{"./frontend/src/main.ts", "./client/index.js"},
+	Description: `Path to your client-side TypeScript entry point.`,
+	Required:    true,
+	Examples:    []string{"frontend/entry.tsx"},
 })
 
 var ClientRouteDefsFile_Schema = jsonschema.OptionalString(jsonschema.Def{
-	Description: `Path to the file where River route definitions are written. This file is typically auto-generated.`,
-	Examples:    []string{"./frontend/src/routes.gen.ts", "./client/routes.js"},
+	Description: `Path to the file where River route definitions are written.`,
+	Required:    true,
+	Examples:    []string{"frontend/routes.ts"},
 })
 
 var TSGenOutPath_Schema = jsonschema.OptionalString(jsonschema.Def{
 	Description: `Path where TypeScript type definitions should be generated.`,
-	Examples:    []string{"./frontend/river.gen.ts", "./types/river.d.ts"},
+	Required:    true,
+	Examples:    []string{"frontend/river.gen.ts"},
 })
 
 var BuildtimePublicURLFuncName_Schema = jsonschema.OptionalString(jsonschema.Def{
 	Description: `Name of the function to use for resolving public URLs at build time. This function will be injected into your build process.`,
-	Examples:    []string{"waveURL", "withHash", "getAssetURL"},
+	Examples:    []string{"getPublicURLBuildtime"},
 })
 
 /////////////////////////////////////////////////////////////////////

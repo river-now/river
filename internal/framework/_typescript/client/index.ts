@@ -1,12 +1,4 @@
 export {
-	apiHelper,
-	resolvePath,
-	type APIConfig,
-	type PatternBasedProps,
-	type SharedBase,
-	type WithOptionalInput,
-} from "./src/api_client_helpers.ts";
-export {
 	addBuildIDListener,
 	addLocationListener,
 	addRouteChangeListener,
@@ -26,6 +18,7 @@ export {
 	submit,
 	type RouteChangeEvent,
 	type StatusEvent,
+	type SubmitOptions,
 } from "./src/client.ts";
 export {
 	revalidateOnWindowFocus,
@@ -33,18 +26,36 @@ export {
 } from "./src/global_loading_indicator.ts";
 export { hmrRunClientLoaders } from "./src/hmr.ts";
 export {
-	makeFinalLinkProps,
-	makeTypedNavigate,
-	type ParamsForPattern,
-	type RiverLinkPropsBase,
-	type RiverRouteGeneric,
+	buildMutationURL,
+	buildQueryURL,
+	resolvePath,
+	type ExtractApp,
+	type PatternBasedProps,
+	type RiverAppBase,
+	type RiverAppConfig,
+	type RiverLoaderOutput,
+	type RiverLoaderPattern,
+	type RiverMutationInput,
+	type RiverMutationOutput,
+	type RiverMutationPattern,
+	type RiverMutationProps,
+	type RiverQueryInput,
+	type RiverQueryOutput,
+	type RiverQueryPattern,
+	type RiverQueryProps,
 	type RiverRoutePropsGeneric,
-	type RiverUntypedFunction,
-	type UseRouterDataFunction,
-} from "./src/impl_helpers.ts";
+} from "./src/river_app_helpers.ts";
 export {
 	getRouterData,
 	internal_RiverClientGlobal,
 	type ClientLoaderAwaitedServerData,
 } from "./src/river_ctx.ts";
 export type { RiverRoutes } from "./src/route_def_helpers.ts";
+export {
+	makeFinalLinkProps,
+	makeTypedNavigate,
+	type ParamsForPattern,
+	type RiverLinkPropsBase,
+	type RiverRouteGeneric,
+	type UseRouterDataFunction,
+} from "./src/ui_lib_impl_helpers.ts";

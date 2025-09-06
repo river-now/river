@@ -24,9 +24,9 @@ from three things:
 ### Automatic Safe Hard Reloads
 
 Whenever a River client navigates to a new route (or performs a route data
-revalidation) with an outdated build ID, River will automatically
-hard reload the page to ensure it has the latest HTML template, application
-entry module, and global CSS.
+revalidation) with an outdated build ID, River will automatically hard reload
+the page to ensure it has the latest HTML template, application entry module,
+and global CSS.
 
 This will feel basically seamless for end users, as it simply temporarily
 downgrades to a multi-page app (MPA) experience for the duration of a single

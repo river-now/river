@@ -1,7 +1,8 @@
+import river from "river.now/vite";
 import { defineConfig } from "vite";
 import {{.UIVariant}} from "{{.UIVitePlugin}}";
-import { riverVitePlugin } from "./frontend/river.gen.ts";
+import { riverViteConfig } from "./frontend/river.gen.ts";
 {{.TailwindViteImport}}
 export default defineConfig({
-	plugins: [{{.UIVariant}}(), riverVitePlugin(){{.TailwindViteCall}}],
+	plugins: [{{.UIVariant}}(), river(riverViteConfig){{.TailwindViteCall}}],
 });
