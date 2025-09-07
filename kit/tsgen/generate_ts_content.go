@@ -76,9 +76,9 @@ type ArbitraryProperty struct {
 
 type AdHocType = tsgencore.AdHocType
 
-const __commentTemplateNeedsTrim = `/**********************************************************************
-/ __REPLACE_ME__
-/*********************************************************************/`
+const __commentTemplateNeedsTrim = `/////////////////////////////////////////////////////////////////////
+/////// __REPLACE_ME__
+/////////////////////////////////////////////////////////////////////`
 
 var commentTemplate = strings.TrimSpace(__commentTemplateNeedsTrim)
 

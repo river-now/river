@@ -6,7 +6,7 @@ import {
 	revalidateOnWindowFocus,
 	setupGlobalLoadingIndicator,
 } from "river.now/client";
-import { App } from "./app.tsx";
+import { App } from "./components/app.tsx";
 import { riverAppConfig } from "./river.gen.ts";
 
 await initClient({

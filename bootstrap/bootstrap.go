@@ -16,7 +16,7 @@ import (
 type Options struct {
 	// e.g., "appname" or "modroot/apps/appname"
 	GoImportBase string
-	// "react", "solid", or "preact"
+	// "react", "preact", or "solid"
 	UIVariant string
 	// "npm", "pnpm", "yarn", or "bun"
 	JSPackageManager string

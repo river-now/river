@@ -226,8 +226,8 @@ async function main() {
 		message: "Choose frontend UI library:",
 		options: [
 			{ value: "react", label: "React" },
-			{ value: "solid", label: "Solid" },
 			{ value: "preact", label: "Preact" },
+			{ value: "solid", label: "Solid" },
 		],
 	});
 

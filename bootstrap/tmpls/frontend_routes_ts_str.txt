@@ -10,10 +10,12 @@ export default routes;
     3. Always use the true extension for import paths (e.g., ".tsx")
 ********************************************************************/
 
-routes.Add("/", import("./root.tsx"), "Root");
-routes.Add("/_index", import("./home.tsx"), "Home");
-routes.Add("/about", import("./about.tsx"), "About");
-routes.Add("/about/location", import("./about.tsx"), "Location");
-routes.Add("/about/hobbies", import("./about.tsx"), "Hobbies");
-routes.Add("/about/:id", import("./about.tsx"), "Dynamic");
-routes.Add("/about/*", import("./about.tsx"), "Splat");
+routes.Add("/", import("./components/root.tsx"), "Root");
+routes.Add("/_index", import("./components/home.tsx"), "Home");
+
+const aboutMod = import("./components/about.tsx");
+routes.Add("/about", aboutMod, "About");
+routes.Add("/about/location", aboutMod, "Location");
+routes.Add("/about/hobbies", aboutMod, "Hobbies");
+routes.Add("/about/:id", aboutMod, "Dynamic");
+routes.Add("/about/*", aboutMod, "Splat");
