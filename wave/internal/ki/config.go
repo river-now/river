@@ -92,6 +92,8 @@ func (c *Config) InitRuntimeCache() {
 /////////////////////////////////////////////////////////////////////
 
 type Config struct {
+	// Required -- the go:embed byte output of your Wave JSON config
+	ConfigBytes []byte
 	// If not nil, the embedded file system will be used in production builds.
 	// If nil, the disk file system will be used in production builds.
 	// Only relevant in prod (in dev mode, the real disk FS is always used).
@@ -100,7 +102,6 @@ type Config struct {
 	// recommend using the embedded FS.
 	StaticFS               fs.FS
 	StaticFSEmbedDirective string
-	ConfigBytes            []byte
 	Logger                 *slog.Logger
 
 	dev

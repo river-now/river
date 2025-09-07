@@ -16,9 +16,9 @@ import {
 	initClient,
 	initCustomHistory,
 	makeLinkOnClickFn,
-	navigate,
 	navigationStateManager,
 	revalidate,
+	riverNavigate,
 	type ScrollState,
 	type StatusEventDetail,
 	submit,
@@ -294,7 +294,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/user-nav");
+				await riverNavigate("/user-nav");
 				await vi.runAllTimersAsync();
 
 				expect(fetch).toHaveBeenCalledWith(
@@ -424,7 +424,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 						}),
 					);
 
-				await navigate("/original");
+				await riverNavigate("/original");
 				await vi.runAllTimersAsync();
 
 				expect(fetch).toHaveBeenCalledTimes(2);
@@ -655,7 +655,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				} as any;
 
 				// Start navigation
-				const navPromise = navigate("/cleanup-test");
+				const navPromise = riverNavigate("/cleanup-test");
 
 				// IMMEDIATELY check status synchronously - should be navigating
 				expect(getStatus().isNavigating).toBe(true);
@@ -693,7 +693,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				vi.clearAllMocks();
 				abortControllers.length = 0;
 
-				const navPromise2 = navigate("/cleanup-test");
+				const navPromise2 = riverNavigate("/cleanup-test");
 
 				// Should create a new AbortController (proves the old one was cleaned up)
 				expect(abortControllers.length).toBe(1);
@@ -959,7 +959,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const replaceSpy = vi.spyOn(history, "replace");
 				const pushSpy = vi.spyOn(history, "push");
 
-				await navigate("/replace-test", { replace: true });
+				await riverNavigate("/replace-test", { replace: true });
 				await vi.runAllTimersAsync();
 
 				// Should have called replace, not push
@@ -1104,7 +1104,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
-				await navigate("/test-url");
+				await riverNavigate("/test-url");
 				await vi.runAllTimersAsync();
 
 				expect(fetch).toHaveBeenCalledWith(
@@ -1120,7 +1120,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
-				await navigate("/test-headers");
+				await riverNavigate("/test-headers");
 				await vi.runAllTimersAsync();
 
 				expect(fetch).toHaveBeenCalledWith(
@@ -1150,7 +1150,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 						}),
 					);
 
-				await navigate("/original");
+				await riverNavigate("/original");
 				await vi.runAllTimersAsync();
 
 				expect(fetch).toHaveBeenCalledTimes(2);
@@ -1164,7 +1164,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Check initial state
 				expect(getStatus().isNavigating).toBe(false);
 
-				const navPromise = navigate("/empty-json");
+				const navPromise = riverNavigate("/empty-json");
 
 				// Should be navigating immediately (synchronous check)
 				expect(getStatus().isNavigating).toBe(true);
@@ -1181,7 +1181,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				// Verify cleanup by trying to navigate to same URL again
 				vi.clearAllMocks();
-				await navigate("/empty-json");
+				await riverNavigate("/empty-json");
 
 				// Should make a new fetch call (proves previous navigation was cleaned up)
 				expect(fetch).toHaveBeenCalledTimes(1);
@@ -1278,7 +1278,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/pattern/test");
+				await riverNavigate("/pattern/test");
 				await vi.runAllTimersAsync();
 
 				expect(waitFn).toHaveBeenCalledWith(
@@ -1312,7 +1312,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Check initial state
 				expect(getStatus().isNavigating).toBe(false);
 
-				const navPromise = navigate("/cleanup");
+				const navPromise = riverNavigate("/cleanup");
 
 				// Should be navigating immediately
 				expect(getStatus().isNavigating).toBe(true);
@@ -1325,7 +1325,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				// Verify cleanup by trying to navigate to same URL again
 				vi.clearAllMocks();
-				await navigate("/cleanup");
+				await riverNavigate("/cleanup");
 
 				// Should make a new fetch call (proves previous navigation was cleaned up)
 				expect(fetch).toHaveBeenCalledTimes(1);
@@ -1350,7 +1350,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 						}),
 					);
 
-				await navigate("/start");
+				await riverNavigate("/start");
 				await vi.runAllTimersAsync();
 
 				expect(document.title).toBe("Redirect Target");
@@ -1370,7 +1370,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					),
 				);
 
-				await navigate("/new-build");
+				await riverNavigate("/new-build");
 				await vi.runAllTimersAsync();
 
 				expect(buildIdListener).toHaveBeenCalledWith(
@@ -1403,7 +1403,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/wait-test");
+				await riverNavigate("/wait-test");
 				await vi.runAllTimersAsync();
 
 				expect(
@@ -1421,7 +1421,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Check status synchronously
 				expect(getStatus().isNavigating).toBe(false);
 
-				const navPromise = navigate("/clear-loading");
+				const navPromise = riverNavigate("/clear-loading");
 
 				// Should be navigating immediately
 				expect(getStatus().isNavigating).toBe(true);
@@ -1449,7 +1449,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
-				await navigate("/with-transition");
+				await riverNavigate("/with-transition");
 				await vi.runAllTimersAsync();
 
 				expect(mockStartViewTransition).toHaveBeenCalled();
@@ -1494,7 +1494,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse(routeData),
 				);
 
-				await navigate("/users/123");
+				await riverNavigate("/users/123");
 				await vi.runAllTimersAsync();
 
 				expect(
@@ -1514,7 +1514,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const pushSpy = vi.spyOn(history, "push");
 				const replaceSpy = vi.spyOn(history, "replace");
 
-				await navigate("/new-page");
+				await riverNavigate("/new-page");
 				await vi.runAllTimersAsync();
 
 				// Should have used push, not replace
@@ -1538,7 +1538,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const replaceSpy = vi.spyOn(history, "replace");
 				const pushSpy = vi.spyOn(history, "push");
 
-				await navigate("/same-page");
+				await riverNavigate("/same-page");
 				await vi.runAllTimersAsync();
 
 				// Should use replace for same URL, not push
@@ -1575,7 +1575,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/entity-title");
+				await riverNavigate("/entity-title");
 				await vi.runAllTimersAsync();
 
 				expect(document.title).toBe("Title with & entities");
@@ -1606,7 +1606,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				// Navigate and handle the promise properly
-				const navPromise = navigate("/css-wait");
+				const navPromise = riverNavigate("/css-wait");
 
 				// Wait a bit for the navigation to start
 				await vi.advanceTimersByTimeAsync(10);
@@ -1660,7 +1660,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
-				await navigate("/route-change-test");
+				await riverNavigate("/route-change-test");
 				await vi.runAllTimersAsync();
 
 				expect(routeChangeListener).toHaveBeenCalledWith(
@@ -1728,7 +1728,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				// First navigation
-				const nav1Promise = navigate("/css-page");
+				const nav1Promise = riverNavigate("/css-page");
 				await vi.advanceTimersByTimeAsync(10);
 
 				// Trigger onload for preload links
@@ -1755,7 +1755,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				rafCallbacks.length = 0;
 
 				// Second navigation
-				const nav2Promise = navigate("/css-page");
+				const nav2Promise = riverNavigate("/css-page");
 				await vi.advanceTimersByTimeAsync(10);
 
 				// Trigger onload for any new preload links
@@ -1941,7 +1941,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				expect(firstFetchSignal?.aborted).toBe(false);
 
 				// Upgrade by starting a user navigation to the same URL
-				navigate("/abort-test");
+				riverNavigate("/abort-test");
 
 				// Now stop the prefetch handlers
 				handlers?.stop();
@@ -2053,7 +2053,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				(window as any).scrollX = 999;
 				(window as any).scrollY = 999;
 
-				await navigate("/new-page");
+				await riverNavigate("/new-page");
 				vi.runAllTimers();
 
 				const stored = JSON.parse(
@@ -2100,7 +2100,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				(window as any).scrollX = 150;
 				(window as any).scrollY = 300;
 
-				await navigate("/next");
+				await riverNavigate("/next");
 				await vi.runAllTimersAsync();
 
 				const stored = JSON.parse(
@@ -2226,7 +2226,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					routeChangeListener,
 				);
 
-				await navigate("/new-page");
+				await riverNavigate("/new-page");
 				await vi.runAllTimersAsync();
 
 				expect(routeChangeListener).toHaveBeenCalledWith(
@@ -2250,7 +2250,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				document.body.appendChild(element);
 				const scrollIntoViewSpy = vi.spyOn(element, "scrollIntoView");
 
-				await navigate("/page#target");
+				await riverNavigate("/page#target");
 				await vi.runAllTimersAsync();
 
 				// Apply scroll state from route change event
@@ -2377,7 +2377,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
-				await navigate("/test");
+				await riverNavigate("/test");
 				await vi.runAllTimersAsync();
 
 				const headers = vi.mocked(fetch).mock.calls[0]?.[1]
@@ -2414,7 +2414,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/test");
+				await riverNavigate("/test");
 				await vi.runAllTimersAsync();
 
 				expect(locationHref).toContain("/force-reload");
@@ -2443,7 +2443,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				vi.mocked(fetch).mockResolvedValueOnce(redirectedResponse);
 
-				await navigate("/original");
+				await riverNavigate("/original");
 				await vi.runAllTimersAsync();
 
 				// Since redirected=true for GET, navigation completes without rendering
@@ -2487,7 +2487,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 						}),
 					);
 
-				await navigate("/test");
+				await riverNavigate("/test");
 				await vi.runAllTimersAsync();
 
 				expect(document.title).toBe("Client Redirected");
@@ -2507,7 +2507,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					),
 				);
 
-				await navigate("/new-build");
+				await riverNavigate("/new-build");
 				await vi.runAllTimersAsync();
 
 				expect(buildIdListener).toHaveBeenCalled();
@@ -2547,7 +2547,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 						),
 					);
 
-				await navigate("/test");
+				await riverNavigate("/test");
 				await vi.runAllTimersAsync();
 
 				expect(buildIdListener).toHaveBeenCalled();
@@ -2578,7 +2578,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 						}),
 					);
 
-				await navigate("/test");
+				await riverNavigate("/test");
 				await vi.runAllTimersAsync();
 
 				expect(document.title).toBe("Soft Redirected");
@@ -2622,7 +2622,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/test");
+				await riverNavigate("/test");
 				await vi.runAllTimersAsync();
 
 				// The URL might have a trailing slash added
@@ -2665,7 +2665,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/test");
+				await riverNavigate("/test");
 				await vi.runAllTimersAsync();
 
 				expect(locationHref).toContain("/force-internal");
@@ -2692,7 +2692,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				}
 
 				// Navigate - it should stop at the redirect limit
-				await navigate("/test");
+				await riverNavigate("/test");
 				await vi.runAllTimersAsync();
 
 				// Should stop at 10 calls: 1 initial + 9 redirects, then the 10th redirect attempt
@@ -2728,7 +2728,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					),
 				);
 
-				await navigate("/test");
+				await riverNavigate("/test");
 				await vi.runAllTimersAsync();
 
 				expect(window.location.href).not.toContain("mailto:");
@@ -3402,7 +3402,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				vi.mocked(fetch).mockReturnValue(navPromise as any);
 
 				// Start navigation
-				const navResult = navigate("/nav-state");
+				const navResult = riverNavigate("/nav-state");
 
 				// Wait for the debounced status event
 				await vi.advanceTimersByTimeAsync(10);
@@ -3623,7 +3623,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
-				await navigate("/route-change");
+				await riverNavigate("/route-change");
 				await vi.runAllTimersAsync();
 
 				expect(routeChangeListener).toHaveBeenCalledTimes(1);
@@ -3637,7 +3637,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
-				await navigate("/with-hash#section");
+				await riverNavigate("/with-hash#section");
 				await vi.runAllTimersAsync();
 
 				expect(routeChangeListener).toHaveBeenCalledWith(
@@ -3664,7 +3664,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/after-title");
+				await riverNavigate("/after-title");
 				await vi.runAllTimersAsync();
 
 				expect(routeChangeListener).toHaveBeenCalled();
@@ -3727,7 +3727,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					),
 				);
 
-				await navigate("/new-build");
+				await riverNavigate("/new-build");
 				await vi.runAllTimersAsync();
 
 				expect(buildIdListener).toHaveBeenCalledWith(
@@ -3752,7 +3752,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					),
 				);
 
-				await navigate("/check-update");
+				await riverNavigate("/check-update");
 				await vi.runAllTimersAsync();
 
 				expect(buildIdListener).toHaveBeenCalled();
@@ -3807,7 +3807,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/with-module");
+				await riverNavigate("/with-module");
 				await vi.runAllTimersAsync();
 
 				expect(
@@ -3832,7 +3832,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/multi-export");
+				await riverNavigate("/multi-export");
 				await vi.runAllTimersAsync();
 
 				const components =
@@ -3876,7 +3876,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				// 3. EXECUTION: Trigger the navigation.
-				await navigate("/route-with-specific-error-boundary");
+				await riverNavigate("/route-with-specific-error-boundary");
 				await vi.runAllTimersAsync();
 
 				// 4. ASSERTIONS: Verify the state is correct and comprehensive.
@@ -3911,7 +3911,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/missing-error");
+				await riverNavigate("/missing-error");
 				await vi.runAllTimersAsync();
 
 				expect(
@@ -3944,7 +3944,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					return { default: () => {} };
 				});
 
-				await navigate("/dev-test");
+				await riverNavigate("/dev-test");
 				await vi.runAllTimersAsync();
 
 				// In dev, should use viteDevURL with
@@ -3972,7 +3972,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					default: () => {},
 				}));
 
-				await navigate("/prod-test");
+				await riverNavigate("/prod-test");
 				await vi.runAllTimersAsync();
 
 				// Verify it tried to import from the correct path
@@ -4018,7 +4018,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 						return document.head.appendChild(element);
 					});
 
-				await navigate("/slash-test");
+				await riverNavigate("/slash-test");
 
 				// Wait for all async operations
 				await vi.runAllTimersAsync();
@@ -4324,7 +4324,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const statusListener = vi.fn();
 				const cleanup = addListener(addStatusListener, statusListener);
 
-				await navigate("/will-abort");
+				await riverNavigate("/will-abort");
 				await vi.runAllTimersAsync();
 
 				// Should not log abort errors
@@ -4343,7 +4343,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Check initial state
 				expect(getStatus().isNavigating).toBe(false);
 
-				const navPromise = navigate("/abort-loading");
+				const navPromise = riverNavigate("/abort-loading");
 
 				// Should be navigating immediately
 				expect(getStatus().isNavigating).toBe(true);
@@ -4365,7 +4365,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					.spyOn(console, "error")
 					.mockImplementation(() => {});
 
-				await navigate("/fail");
+				await riverNavigate("/fail");
 				await vi.runAllTimersAsync();
 
 				expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -4383,7 +4383,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Check initial state
 				expect(getStatus().isNavigating).toBe(false);
 
-				const navPromise = navigate("/clear-on-fail");
+				const navPromise = riverNavigate("/clear-on-fail");
 
 				// Should be navigating immediately
 				expect(getStatus().isNavigating).toBe(true);
@@ -4401,7 +4401,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					new Error("Navigation error"),
 				);
 
-				await navigate("/unreachable");
+				await riverNavigate("/unreachable");
 				vi.runAllTimers();
 
 				expect(window.location.pathname).toBe(currentPath);
@@ -4419,7 +4419,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					new Error("State test error"),
 				);
 
-				await navigate("/state-fail");
+				await riverNavigate("/state-fail");
 				vi.runAllTimers();
 
 				expect(document.title).toBe(initialState.title);
@@ -4441,7 +4441,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Check initial state
 				expect(getStatus().isNavigating).toBe(false);
 
-				const navPromise = navigate("/empty");
+				const navPromise = riverNavigate("/empty");
 
 				// Should be navigating immediately
 				expect(getStatus().isNavigating).toBe(true);
@@ -4462,7 +4462,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					.spyOn(console, "error")
 					.mockImplementation(() => {});
 
-				await navigate("/network-error");
+				await riverNavigate("/network-error");
 				await vi.runAllTimersAsync();
 
 				expect(consoleErrorSpy).toHaveBeenCalled();
@@ -4478,7 +4478,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				// Navigate to a 404 page
-				await navigate("/not-found");
+				await riverNavigate("/not-found");
 
 				// The important behaviors:
 				// 1. We should still be on the original page
@@ -4497,7 +4497,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					}),
 				);
 
-				await navigate("/success");
+				await riverNavigate("/success");
 
 				// This navigation should work, proving we're not stuck
 				expect(document.title).toBe("Success Page");
@@ -4644,13 +4644,13 @@ describe("Comprehensive Navigation Test Suite", () => {
 			}) as any);
 
 			// Start first navigation
-			navigate("/page1");
+			riverNavigate("/page1");
 
 			// Verify it's navigating
 			expect(getStatus().isNavigating).toBe(true);
 
 			// Start second navigation before first completes
-			const nav2 = navigate("/page2");
+			const nav2 = riverNavigate("/page2");
 
 			// Should still be navigating (now to page2)
 			expect(getStatus().isNavigating).toBe(true);
@@ -4692,7 +4692,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 			expect(fetch).toHaveBeenCalledTimes(1);
 
 			// Start user navigation while prefetch is in flight
-			const navPromise = navigate("/prefetch-race");
+			const navPromise = riverNavigate("/prefetch-race");
 
 			// Should not make another fetch call (reusing prefetch)
 			expect(fetch).toHaveBeenCalledTimes(1);
@@ -4736,7 +4736,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				}),
 			);
 
-			await navigate("/page-with-error1");
+			await riverNavigate("/page-with-error1");
 			await vi.runAllTimersAsync();
 
 			expect(internal_RiverClientGlobal.get("activeErrorBoundary")).toBe(
@@ -4754,7 +4754,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				}),
 			);
 
-			await navigate("/page-with-error2");
+			await riverNavigate("/page-with-error2");
 			await vi.runAllTimersAsync();
 
 			expect(internal_RiverClientGlobal.get("activeErrorBoundary")).toBe(
@@ -5161,7 +5161,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					.mockImplementationOnce(() => secondFetchPromise as any);
 
 				// 2. Start navigation
-				const navPromise = navigate("/dashboard");
+				const navPromise = riverNavigate("/dashboard");
 
 				// 3. Check initial navigating state
 				await vi.advanceTimersByTimeAsync(5);
@@ -5232,7 +5232,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 						}),
 					);
 
-				await navigate("/admin");
+				await riverNavigate("/admin");
 				await vi.runAllTimersAsync();
 
 				// No loading gaps throughout redirect chain
@@ -5281,7 +5281,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Check status before navigation
 				expect(getStatus().isNavigating).toBe(false);
 
-				const navPromise = navigate("/complex-page");
+				const navPromise = riverNavigate("/complex-page");
 
 				// Should be navigating immediately after starting
 				expect(getStatus().isNavigating).toBe(true);
@@ -5351,7 +5351,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				// 3. Start navigation
-				const navPromise = navigate("/styled-page");
+				const navPromise = riverNavigate("/styled-page");
 
 				// 4. Resolve fetch, which triggers the code path that waits for CSS
 				(resolveFetch as any)();
@@ -5413,7 +5413,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				vi.mocked(fetch).mockResolvedValueOnce(fetchPromise as any);
 
 				// 3. Start navigation
-				const navPromise = navigate("/data-page");
+				const navPromise = riverNavigate("/data-page");
 
 				// 4. Resolve fetch, which triggers the client loader
 				(resolveFetch as any)();

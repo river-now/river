@@ -12,7 +12,7 @@ export const useRouterData = makeTypedUseRouterData<RiverApp>();
 export const useLoaderData = makeTypedUseLoaderData<RiverApp>();
 export const usePatternLoaderData = makeTypedUsePatternLoaderData<RiverApp>();
 export const addClientLoader = makeTypedAddClientLoader<RiverApp>();
-export const appNavigate = makeTypedNavigate(riverAppConfig);
-export const AppLink = makeTypedLink(riverAppConfig, {
+export const navigate = makeTypedNavigate(riverAppConfig);
+export const Link = makeTypedLink(riverAppConfig, {
 	prefetch: "intent", // optional defaults
 });

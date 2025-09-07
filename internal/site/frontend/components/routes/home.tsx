@@ -1,6 +1,6 @@
 import {
 	addClientLoader,
-	AppLink,
+	Link,
 	type RouteProps,
 	usePatternLoaderData,
 } from "../app_utils.ts";
@@ -145,13 +145,13 @@ export function Home(_props: RouteProps<"/_index">) {
 					</p>
 					<p class="leading-[1.75]">
 						If you'd prefer to read more first, take a peek at{" "}
-						<AppLink
+						<Link
 							pattern="/*"
 							splatValues={["docs"]}
 							class="underline"
 						>
 							our docs
-						</AppLink>
+						</Link>
 						.
 					</p>
 				</div>

@@ -10,7 +10,7 @@ import {
 	type RiverAppConfig,
 	type RiverLinkPropsBase,
 } from "river.now/client";
-import { createMemo, type JSX, mergeProps } from "solid-js";
+import { createMemo, mergeProps, splitProps, type JSX } from "solid-js";
 
 export function RiverLink(
 	props: JSX.AnchorHTMLAttributes<HTMLAnchorElement> &
@@ -62,19 +62,28 @@ export function makeTypedLink<C extends RiverAppConfig>(
 		props: TypedRiverLinkProps<App, Pattern>,
 	) => {
 		const merged = mergeProps(defaultProps || {}, props);
-		const { pattern, params, splatValues, ...linkProps } = merged as any;
 
-		const href = resolvePath({
-			riverAppConfig,
-			type: "loader",
-			props: {
-				pattern,
-				...(params && { params }),
-				...(splatValues && { splatValues }),
-			},
+		const [local, linkProps] = splitProps(merged as any, [
+			"pattern",
+			"params",
+			"splatValues",
+		]);
+
+		const href = createMemo(() => {
+			return resolvePath({
+				riverAppConfig,
+				type: "loader",
+				props: {
+					pattern: local.pattern,
+					...(local.params && { params: local.params }),
+					...(local.splatValues && {
+						splatValues: local.splatValues,
+					}),
+				},
+			});
 		});
 
-		return <RiverLink {...linkProps} href={href} />;
+		return <RiverLink {...linkProps} href={href()} />;
 	};
 
 	return TypedLink;

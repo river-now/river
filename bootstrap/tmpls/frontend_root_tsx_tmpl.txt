@@ -1,5 +1,5 @@
 import { api } from "../api_client.ts";
-import { AppLink, useRouterData } from "../app_utils.tsx";
+import { Link, useRouterData } from "../app_utils.tsx";
 import { USERNAME_MAX_LEN, type RouteProps } from "../river.gen.ts";
 
 export function Root(props: RouteProps<"/">) {
@@ -8,19 +8,19 @@ export function Root(props: RouteProps<"/">) {
 	return (
 		<>
 			<nav>
-				<AppLink pattern="/">Home</AppLink>
-				<AppLink pattern="/about">About</AppLink>
-				<AppLink pattern="/about/location">About | Location</AppLink>
-				<AppLink pattern="/about/hobbies">About | Hobbies</AppLink>
-				<AppLink pattern="/about/:id" params={{.DynamicLinkParamsProp}}>
+				<Link pattern="/">Home</Link>
+				<Link pattern="/about">About</Link>
+				<Link pattern="/about/location">About | Location</Link>
+				<Link pattern="/about/hobbies">About | Hobbies</Link>
+				<Link pattern="/about/:id" params={{.DynamicLinkParamsProp}}>
 					About | Dynamic
-				</AppLink>
-				<AppLink
+				</Link>
+				<Link
 					pattern="/about/*"
 					splatValues={["some", "random", "route", "segments"]}
 				>
 					About | Splat
-				</AppLink>
+				</Link>
 			</nav>
 			<hr />
 			<h2>Router Data:</h2>

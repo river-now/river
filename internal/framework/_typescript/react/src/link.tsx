@@ -1,4 +1,4 @@
-import { type ComponentProps, useMemo } from "react";
+import { type ComponentProps, memo } from "react";
 import type {
 	ExtractApp,
 	PatternBasedProps,
@@ -12,7 +12,7 @@ import {
 	type RiverLinkPropsBase,
 } from "river.now/client";
 
-export function RiverLink(
+export const RiverLink = memo(function RiverLink(
 	props: ComponentProps<"a"> &
 		RiverLinkPropsBase<
 			(
@@ -20,7 +20,7 @@ export function RiverLink(
 			) => void | Promise<void>
 		>,
 ) {
-	const finalLinkProps = useMemo(() => makeFinalLinkProps(props), [props]);
+	const finalLinkProps = makeFinalLinkProps(props);
 	// oxlint-disable-next-line no-unused-vars
 	const { prefetch, scrollToTop, replace, ...rest } = props;
 
@@ -38,7 +38,7 @@ export function RiverLink(
 			{props.children}
 		</a>
 	);
-}
+});
 
 type TypedRiverLinkProps<
 	App extends RiverAppBase,
@@ -62,9 +62,9 @@ export function makeTypedLink<C extends RiverAppConfig>(
 ) {
 	type App = ExtractApp<C>;
 
-	const TypedLink = <Pattern extends RiverLoaderPattern<App>>(
-		props: TypedRiverLinkProps<App, Pattern>,
-	) => {
+	const TypedLink = memo(function TypedLink<
+		Pattern extends RiverLoaderPattern<App>,
+	>(props: TypedRiverLinkProps<App, Pattern>) {
 		const { pattern, params, splatValues, ...linkProps } = props as any;
 
 		const href = resolvePath({
@@ -79,7 +79,7 @@ export function makeTypedLink<C extends RiverAppConfig>(
 
 		const finalProps = { ...defaultProps, ...linkProps, href };
 		return <RiverLink {...finalProps} />;
-	};
+	});
 
 	TypedLink.displayName = `TypedLink(${Object.keys(defaultProps || {}).join(", ")})`;
 	return TypedLink;

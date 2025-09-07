@@ -742,3 +742,23 @@ func treatGetAsHead(handler http.Handler, w http.ResponseWriter, r *http.Request
 	}
 	w.WriteHeader(headRW.statusCode)
 }
+
+func InjectTasksCtxMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if GetTasksCtx(r) != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		tasksCtx := tasks.NewTasksCtx(r.Context())
+		rd := &rdTransport{
+			tasksCtx:      tasksCtx,
+			req:           r,
+			responseProxy: response.NewProxy(),
+			params:        emptyParams,
+			splatVals:     emptySplatValues,
+		}
+
+		next.ServeHTTP(w, requestStore.GetRequestWithContext(r, rd))
+	})
+}

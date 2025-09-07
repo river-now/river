@@ -1,4 +1,8 @@
-import { getPrefetchHandlers, makeLinkOnClickFn, navigate } from "./client.ts";
+import {
+	getPrefetchHandlers,
+	makeLinkOnClickFn,
+	riverNavigate,
+} from "./client.ts";
 import {
 	resolvePath,
 	type ExtractApp,
@@ -220,6 +224,6 @@ export function makeTypedNavigate<C extends RiverAppConfig>(riverAppConfig: C) {
 			},
 		});
 
-		return navigate(href, { replace, scrollToTop });
+		return riverNavigate(href, { replace, scrollToTop });
 	};
 }

@@ -76,10 +76,7 @@ func (c *Config) get_initial_base_fs() (fs.FS, error) {
 			directive = directive[4:]
 		}
 
-		// Assuming the embed directive looks like this:
-		// //go:embed wave
-		// That means that the wave folder itself (not just its contents) is embedded.
-		// So we have to drop down into the wave folder here.
+		// Navigate into the embedded directory structure specified by StaticFSEmbedDirective.
 		embeddedFS, err := fs.Sub(c.StaticFS, directive)
 		if err != nil {
 			return nil, err

@@ -3,7 +3,7 @@ import { setupGlobalLoadingIndicator } from "river.now/client";
 import { setTheme, THEMES } from "river.now/kit/theme";
 import { RiverRootOutlet } from "river.now/solid";
 import "../styles/tailwind.css";
-import { AppLink, theme, useRouterData } from "./app_utils.ts";
+import { Link, theme, useRouterData } from "./app_utils.ts";
 
 setupGlobalLoadingIndicator({ start, stop: done, isRunning: isStarted });
 
@@ -34,22 +34,18 @@ export function App() {
 		<>
 			<nav class="w-full flex items-center">
 				<div class="flex items-baseline">
-					<AppLink pattern="/">
+					<Link pattern="/">
 						<h1 class="logo">River</h1>
-					</AppLink>
+					</Link>
 					<div class="text-xs opacity-70 hidden sm:flex">
 						({routerData().rootData?.LatestVersion})
 					</div>
 				</div>
 
 				<div class="flex nav-right">
-					<AppLink
-						pattern="/*"
-						splatValues={["docs"]}
-						class="nav-item"
-					>
+					<Link pattern="/*" splatValues={["docs"]} class="nav-item">
 						Docs
-					</AppLink>
+					</Link>
 
 					<button
 						type="button"

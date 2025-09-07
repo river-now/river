@@ -23,12 +23,15 @@ func (c *Config) process_batched_events(events []fsnotify.Event) {
 	isGoOrNeedsHardReloadEvenIfNonGo := false
 
 	for _, evt := range fileChanges {
-		isConfig := filepath.Clean(filepath.Join(c.cleanWatchRoot, evt.Name)) == filepath.Clean(c.GetConfigFile())
-		isWriteOrCreate := evt.Has(fsnotify.Write) || evt.Has(fsnotify.Create)
-		if isConfig && isWriteOrCreate {
-			c.Logger.Info("[watcher]", "op", evt.Op.String(), "filename", evt.Name)
-			c.MustStartDev(must_start_dev_opts{is_rebuild: true})
-			return
+		configFilePath := c.GetConfigFile()
+		if configFilePath != "" {
+			isConfig := filepath.Clean(filepath.Join(c.cleanWatchRoot, evt.Name)) == filepath.Clean(configFilePath)
+			isWriteOrCreate := evt.Has(fsnotify.Write) || evt.Has(fsnotify.Create)
+			if isConfig && isWriteOrCreate {
+				c.Logger.Info("[watcher]", "op", evt.Op.String(), "filename", evt.Name)
+				c.MustStartDev(must_start_dev_opts{is_rebuild: true})
+				return
+			}
 		}
 
 		// no need to check error, because we want to process either way

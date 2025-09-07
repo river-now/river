@@ -1225,7 +1225,7 @@ class ComponentLoader {
 // PUBLIC API
 /////////////////////////////////////////////////////////////////////
 
-export async function navigate(
+export async function riverNavigate(
 	href: string,
 	options?: { replace?: boolean; scrollToTop?: boolean },
 ): Promise<void> {
@@ -1461,7 +1461,7 @@ export function getPrefetchHandlers<E extends Event>(
 		}
 
 		// Use standard navigation -- it will upgrade the prefetch if it exists
-		await navigate(relativeURL, {
+		await riverNavigate(relativeURL, {
 			scrollToTop: input.scrollToTop,
 			replace: input.replace,
 		});
