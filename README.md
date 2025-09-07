@@ -1,4 +1,4 @@
-# river.now
+# River Framework
 
 River is a **_powerful_** full-stack web framework with **_nested routing_** for
 **_Go_** and **_TypeScript_**, built on **_Vite_**.
