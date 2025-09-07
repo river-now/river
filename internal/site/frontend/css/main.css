@@ -309,7 +309,7 @@ code:not(pre code) {
 }
 
 code:not(pre code):not(.high-contrast) {
-	background: #7772;
+	background: #57b2;
 	border-radius: 0.25rem;
 }
 
@@ -319,7 +319,7 @@ code:not(pre code).high-contrast {
 }
 
 .dark code:not(pre code):not(.high-contrast) {
-	background: #7773;
+	background: #57b3;
 }
 
 .dark code:not(pre code).high-contrast {

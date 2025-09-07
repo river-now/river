@@ -1,6 +1,6 @@
-import { api } from "./api_client.ts";
-import { AppLink, useRouterData } from "./app_utils.tsx";
-import { USERNAME_MAX_LEN, type RouteProps } from "./river.gen.ts";
+import { api } from "../api_client.ts";
+import { AppLink, useRouterData } from "../app_utils.tsx";
+import { USERNAME_MAX_LEN, type RouteProps } from "../river.gen.ts";
 
 export function Root(props: RouteProps<"/">) {
 	const routerData = useRouterData(props);

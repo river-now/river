@@ -45,7 +45,7 @@ type derivedOptions struct {
 
 const tw_vite_import = "import tailwindcss from \"@tailwindcss/vite\";\n"
 const tw_vite_call = ", tailwindcss()"
-const tw_file_import = "import \"./css/tailwind.css\";\n"
+const tw_file_import = "import \"./styles/tailwind.css\";\n"
 const dynamic_link_params_prop = `{{ id: "42790214" }}`
 
 func (o Options) derived() derivedOptions {
@@ -98,7 +98,7 @@ func (o Options) derived() derivedOptions {
 		do.VercelPackageJSONExtras = fmt.Sprintf(`,
 		"vercel-install-go": "curl -L https://go.dev/dl/%s.linux-amd64.tar.gz | tar -C /tmp -xz",
 		"vercel-install": "%s vercel-install-go && %s",
-		"vercel-build": "export PATH=/tmp/go/bin:$PATH && go run ./__cmd/build"`,
+		"vercel-build": "export PATH=/tmp/go/bin:$PATH && go run ./control/cmd/build"`,
 			goVersion, do.ResolveJSPackageManagerRunScriptPrefix(), do.ResolveJSPackageManagerInstallCmd(),
 		)
 	}
@@ -134,8 +134,6 @@ var (
 	backend_router_core_go_tmpl_txt string
 	//go:embed tmpls/backend_router_loaders_go_tmpl.txt
 	backend_router_loaders_go_tmpl_txt string
-	//go:embed tmpls/backend_server_server_go_tmpl.txt
-	backend_server_server_go_tmpl_txt string
 	//go:embed tmpls/app_go_tmpl.txt
 	app_go_tmpl_txt string
 	//go:embed tmpls/wave_config_json_tmpl.txt
@@ -190,39 +188,42 @@ func Init(o Options) {
 	do := o.derived()
 
 	fsutil.EnsureDirs(
-		"__cmd/app", "__cmd/build",
-		"app/__dist/static/internal",
-		"backend/__static", "backend/router", "backend/server",
-		"frontend/__static", "frontend/css",
+		"assets/private",
+		"assets/public",
+		"backend/router",
+		"control/cmd/serve",
+		"control/cmd/build",
+		"control/dist/static/internal",
+		"frontend/components",
+		"frontend/styles",
 	)
 
 	if o.DeploymentTarget == "vercel" {
 		fsutil.EnsureDirs("api")
 	}
 
-	do.tmplWriteMust("__cmd/app/main.go", cmd_app_main_go_tmpl_txt)
-	do.tmplWriteMust("__cmd/build/main.go", cmd_build_main_go_tmpl_txt)
-	do.tmplWriteMust("app/__dist/static/.keep", dist_static_keep_tmpl_txt)
-	strWriteMust("backend/__static/entry.go.html", backend_static_entry_go_html_str_txt)
+	do.tmplWriteMust("control/cmd/serve/main.go", cmd_app_main_go_tmpl_txt)
+	do.tmplWriteMust("control/cmd/build/main.go", cmd_build_main_go_tmpl_txt)
+	do.tmplWriteMust("control/dist/static/.keep", dist_static_keep_tmpl_txt)
+	strWriteMust("assets/private/entry.go.html", backend_static_entry_go_html_str_txt)
 	do.tmplWriteMust("backend/router/actions.go", backend_router_actions_go_tmpl_txt)
 	do.tmplWriteMust("backend/router/core.go", backend_router_core_go_tmpl_txt)
 	do.tmplWriteMust("backend/router/loaders.go", backend_router_loaders_go_tmpl_txt)
-	do.tmplWriteMust("backend/server/server.go", backend_server_server_go_tmpl_txt)
-	do.tmplWriteMust("app/app.go", app_go_tmpl_txt)
-	do.tmplWriteMust("app/wave.config.json", wave_config_json_tmpl_txt)
+	do.tmplWriteMust("control/river.config.go", app_go_tmpl_txt)
+	do.tmplWriteMust("control/wave.config.json", wave_config_json_tmpl_txt)
 	do.tmplWriteMust("vite.config.ts", vite_config_ts_tmpl_txt)
 	do.tmplWriteMust("package.json", package_json_tmpl_txt)
 	strWriteMust(".gitignore", gitignore_str_txt)
-	strWriteMust("frontend/css/main.css", main_css_str_txt)
-	strWriteMust("frontend/css/main.critical.css", main_critical_css_str_txt)
+	strWriteMust("frontend/styles/main.css", main_css_str_txt)
+	strWriteMust("frontend/styles/main.critical.css", main_critical_css_str_txt)
 	strWriteMust("frontend/routes.ts", frontend_routes_ts_str_txt)
-	do.tmplWriteMust("frontend/app.tsx", frontend_app_tsx_tmpl_txt)
-	do.tmplWriteMust("frontend/root.tsx", frontend_root_tsx_tmpl_txt)
-	do.tmplWriteMust("frontend/home.tsx", frontend_home_tsx_tmpl_txt)
-	do.tmplWriteMust("frontend/about.tsx", frontend_about_tsx_tmpl_txt)
+	do.tmplWriteMust("frontend/components/app.tsx", frontend_app_tsx_tmpl_txt)
+	do.tmplWriteMust("frontend/components/root.tsx", frontend_root_tsx_tmpl_txt)
+	do.tmplWriteMust("frontend/components/home.tsx", frontend_home_tsx_tmpl_txt)
+	do.tmplWriteMust("frontend/components/about.tsx", frontend_about_tsx_tmpl_txt)
 	do.tmplWriteMust("frontend/app_utils.tsx", frontend_app_utils_tsx_tmpl_txt)
 	strWriteMust("frontend/api_client.ts", frontend_api_client_ts_str_txt)
-	strWriteMust("frontend/css/nprogress.css", frontend_css_nprogress_css_str_txt)
+	strWriteMust("frontend/styles/nprogress.css", frontend_css_nprogress_css_str_txt)
 	if o.DeploymentTarget == "vercel" {
 		do.tmplWriteMust("vercel.json", vercel_json_tmpl_txt)
 		do.tmplWriteMust("api/proxy.ts", api_proxy_ts_str)
@@ -268,7 +269,7 @@ func Init(o Options) {
 	if do.IncludeTailwind {
 		installJSPkg(do, "@tailwindcss/vite")
 		installJSPkg(do, "tailwindcss")
-		strWriteMust("frontend/css/tailwind.css", frontend_css_tailwind_css_str_txt)
+		strWriteMust("frontend/styles/tailwind.css", frontend_css_tailwind_css_str_txt)
 	}
 
 	// install chi (some chi middleware is used in the template)
@@ -277,7 +278,7 @@ func Init(o Options) {
 	}
 
 	// build once (no binary)
-	if err := executil.RunCmd("go", "run", "./__cmd/build", "--no-binary"); err != nil {
+	if err := executil.RunCmd("go", "run", "./control/cmd/build", "--no-binary"); err != nil {
 		panic("failed to run build command: " + err.Error())
 	}
 

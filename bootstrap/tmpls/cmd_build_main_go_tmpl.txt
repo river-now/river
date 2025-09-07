@@ -1,25 +1,39 @@
 package main
 
 import (
-	"{{.GoImportBase}}/app"
 	"{{.GoImportBase}}/backend/router"
+	"{{.GoImportBase}}/control"
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/tsgen"
 )
+
+type SomeType struct {
+	Field1 string
+	Field2 int
+}
+
+type SomeOtherType struct {
+	FieldA string
+	FieldB int
+}
 
 func main() {
 	a := tsgen.Statements{}
 
 	a.Serialize("export const USERNAME_MAX_LEN", router.UsernameMaxLen)
 
-	app.Wave.Builder(func(isDev bool) error {
-		return app.River.Build(&river.BuildOptions{
+	control.Wave.Builder(func(isDev bool) error {
+		return control.River.Build(&river.BuildOptions{
 			IsDev:         isDev,
 			LoadersRouter: router.LoadersRouter,
 			ActionsRouter: router.ActionsRouter,
-			AdHocTypes:    []*river.AdHocType{},
-			ExtraTSCode:   a.BuildString(),
+			AdHocTypes: []*river.AdHocType{
+				// These will get inlined into ./frontend/river.gen.ts
+				{TypeInstance: SomeType{}},
+				{TypeInstance: SomeOtherType{}, TSTypeName: "RenamedType"},
+			},
+			ExtraTSCode: a.BuildString(),
 		})
 	})
 }

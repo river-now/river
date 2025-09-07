@@ -230,6 +230,7 @@ type RerenderAppProps = {
 		replace?: boolean;
 		scrollToTop?: boolean;
 	};
+	onFinish: () => void;
 };
 
 /////////////////////////////////////////////////////////////////////
@@ -768,16 +769,17 @@ class NavigationStateManager {
 								scrollToTop: entry.scrollToTop,
 							}
 						: undefined,
+				onFinish: () => {
+					this.transitionPhase(entry.targetUrl, "complete");
+				},
 			});
 		} catch (error) {
+			this.transitionPhase(entry.targetUrl, "complete");
 			if (!isAbortError(error)) {
 				LogError("Error completing navigation", error);
 			}
 			throw error;
 		}
-
-		// Mark as complete
-		this.transitionPhase(entry.targetUrl, "complete");
 	}
 
 	async submit<T = any>(
@@ -1503,14 +1505,12 @@ function makeListenerAdder<T>(key: string) {
 // INITIALIZATION
 /////////////////////////////////////////////////////////////////////
 
-export async function initClient(
-	renderFn: () => void,
-	options: {
-		riverAppConfig: RiverAppConfig;
-		defaultErrorBoundary?: RouteErrorComponent;
-		useViewTransitions?: boolean;
-	},
-): Promise<void> {
+export async function initClient(options: {
+	riverAppConfig: RiverAppConfig;
+	renderFn: () => void;
+	defaultErrorBoundary?: RouteErrorComponent;
+	useViewTransitions?: boolean;
+}): Promise<void> {
 	internal_RiverClientGlobal.set("riverAppConfig", options.riverAppConfig);
 
 	// Set options
@@ -1549,7 +1549,7 @@ export async function initClient(
 	await setupClientLoaders();
 
 	// Render
-	renderFn();
+	options.renderFn();
 
 	// Restore scroll
 	scrollStateManager.restorePageRefreshState();
@@ -1738,6 +1738,8 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 	// Update head elements
 	updateHeadEls("meta", json.metaHeadEls ?? []);
 	updateHeadEls("rest", json.restHeadEls ?? []);
+
+	props.onFinish();
 }
 
 async function effectuateRedirectDataResult(

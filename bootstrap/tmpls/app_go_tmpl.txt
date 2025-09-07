@@ -1,11 +1,10 @@
-package app
+package control
 
 import (
 	"embed"
 	"net/http"
 
 	"github.com/river-now/river"
-	"github.com/river-now/river/kit/colorlog"
 	"github.com/river-now/river/kit/headels"
 	"github.com/river-now/river/kit/htmlutil"
 	"github.com/river-now/river/wave"
@@ -13,14 +12,16 @@ import (
 
 var River = &river.River{
 	Wave: Wave,
+
 	GetHeadElUniqueRules: func() *headels.HeadEls {
-		e := river.NewHeadEls(2)
+		e := river.NewHeadEls()
 
 		e.Meta(e.Property("og:title"))
 		e.Meta(e.Property("og:description"))
 
 		return e
 	},
+
 	GetDefaultHeadEls: func(r *http.Request) ([]*htmlutil.Element, error) {
 		e := river.NewHeadEls()
 
@@ -29,6 +30,7 @@ var River = &river.River{
 
 		return e.Collect(), nil
 	},
+
 	GetRootTemplateData: func(r *http.Request) (map[string]any, error) {
 		// This gets fed into backend/__static/entry.go.html
 		return map[string]any{}, nil
@@ -38,13 +40,11 @@ var River = &river.River{
 //go:embed wave.config.json
 var configBytes []byte
 
-//go:embed all:__dist/static
+//go:embed all:dist/static
 var staticFS embed.FS
 
 var Wave = wave.New(&wave.Config{
 	ConfigBytes:            configBytes,
 	StaticFS:               staticFS,
-	StaticFSEmbedDirective: "all:__dist/static",
+	StaticFSEmbedDirective: "all:dist/static",
 })
-
-var Log = colorlog.New("{{.GoImportBase}}")

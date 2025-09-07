@@ -223,7 +223,7 @@ async function main() {
 
 	// Collect options
 	const uiVariant = await select({
-		message: "Choose UI framework:",
+		message: "Choose frontend UI library:",
 		options: [
 			{ value: "react", label: "React" },
 			{ value: "solid", label: "Solid" },

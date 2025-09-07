@@ -2312,7 +2312,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					return 0;
 				});
 
-				await initClient(() => {}, { riverAppConfig });
+				await initClient({ renderFn: () => {}, riverAppConfig });
 
 				expect(window.scrollTo).toHaveBeenCalledWith(250, 500);
 				expect(
@@ -2333,7 +2333,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					JSON.stringify(scrollState),
 				);
 
-				await initClient(() => {}, { riverAppConfig });
+				await initClient({ renderFn: () => {}, riverAppConfig });
 
 				expect(window.scrollTo).not.toHaveBeenCalledWith(250, 500);
 			});
@@ -2351,7 +2351,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					JSON.stringify(scrollState),
 				);
 
-				await initClient(() => {}, { riverAppConfig });
+				await initClient({ renderFn: () => {}, riverAppConfig });
 
 				expect(window.scrollTo).not.toHaveBeenCalledWith(250, 500);
 			});
@@ -4048,8 +4048,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 		it("should configure options correctly", async () => {
 			const customErrorBoundary = () => "Custom Error";
 
-			await initClient(() => {}, {
+			await initClient({
 				riverAppConfig,
+				renderFn: () => {},
 				defaultErrorBoundary: customErrorBoundary,
 				useViewTransitions: true,
 			});
@@ -4065,7 +4066,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		it("should initialize history with POP listener", async () => {
 			const listenSpy = vi.spyOn(getHistoryInstance(), "listen");
 
-			await initClient(() => {}, { riverAppConfig });
+			await initClient({ renderFn: () => {}, riverAppConfig });
 
 			expect(listenSpy).toHaveBeenCalled();
 		});
@@ -4079,7 +4080,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				configurable: true,
 			});
 
-			await initClient(() => {}, { riverAppConfig });
+			await initClient({ renderFn: () => {}, riverAppConfig });
 
 			expect(setterSpy).toHaveBeenCalledWith("manual");
 		});
@@ -4093,7 +4094,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 			const replaceSpy = vi.spyOn(getHistoryInstance(), "replace");
 
-			await initClient(() => {}, { riverAppConfig });
+			await initClient({ renderFn: () => {}, riverAppConfig });
 
 			expect(replaceSpy).toHaveBeenCalledWith(
 				"http://localhost:3000/?keep=this",
@@ -4110,7 +4111,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				default: () => "Initial Component",
 			}));
 
-			await initClient(() => {}, { riverAppConfig });
+			await initClient({ renderFn: () => {}, riverAppConfig });
 
 			expect(
 				internal_RiverClientGlobal.get("activeComponents"),
@@ -4126,7 +4127,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				loadersData: [{ initial: "data" }],
 			});
 
-			await initClient(() => {}, { riverAppConfig });
+			await initClient({ renderFn: () => {}, riverAppConfig });
 
 			expect(waitFn).toHaveBeenCalled();
 			expect(internal_RiverClientGlobal.get("clientLoadersData")).toEqual(
@@ -4137,7 +4138,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		it("should execute user render function", async () => {
 			const renderFn = vi.fn();
 
-			await initClient(renderFn, { riverAppConfig });
+			await initClient({ renderFn, riverAppConfig });
 
 			expect(renderFn).toHaveBeenCalled();
 		});
@@ -4162,7 +4163,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					return 0;
 				});
 
-			await initClient(() => {}, { riverAppConfig });
+			await initClient({ renderFn: () => {}, riverAppConfig });
 
 			expect(window.scrollTo).toHaveBeenCalledWith(300, 600);
 			expect(
@@ -4173,7 +4174,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		});
 
 		it("should detect touch devices on first touch", async () => {
-			await initClient(() => {}, { riverAppConfig });
+			await initClient({ renderFn: () => {}, riverAppConfig });
 
 			expect(
 				internal_RiverClientGlobal.get("isTouchDevice"),

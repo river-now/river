@@ -1063,7 +1063,7 @@ Configure River-specific settings in your `wave.config.json`:
 ### River-Specific Methods
 
 ```go
-// Get the UI framework variant
+// Get the frontend UI library variant
 variant := w.GetRiverUIVariant()
 
 // Get HTML template location relative to private static dir

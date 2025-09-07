@@ -2,10 +2,10 @@ pre:
 	@pnpm i && go mod tidy
 
 dev: pre
-	@go run ./__cmd/build --dev
+	@go run ./cmd/build --dev
 
 build: pre
-	@go run ./__cmd/build
+	@go run ./cmd/build
 	@echo "\nbuild complete. now run:\n\tmake run port=9090"
 
 # call with `make run port=whatever`
@@ -25,5 +25,5 @@ outer-npmbuild:
 
 vercel-build: outer-npmbuild
 	@export PATH=/tmp/go/bin:$$PATH && \
-		go run ./__cmd/build && \
+		go run ./cmd/build && \
 		ls -la app/__dist/

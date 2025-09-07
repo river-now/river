@@ -232,7 +232,7 @@ var IncludeDefaults_Schema = jsonschema.OptionalBoolean(jsonschema.Def{
 })
 
 var UIVariant_Schema = jsonschema.OptionalString(jsonschema.Def{
-	Description: `The UI variant to use with River. Determines which UI framework integration to use.`,
+	Description: `The UI variant to use with River. Determines which UI frontend library integration to use.`,
 	Required:    true,
 	Examples:    []string{"react", "preact", "solid"},
 })

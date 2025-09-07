@@ -1,7 +1,7 @@
 # Node
-node_modules
+**/node_modules/
 
 # Wave
-app/__dist/static/*
-!app/__dist/static/.keep
-app/__dist/main*
+control/dist/static/*
+!control/dist/dist/static/.keep
+control/dist/dist/main*

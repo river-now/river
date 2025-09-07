@@ -2,8 +2,8 @@ import {
 	useLoaderData,
 	usePatternLoaderData,
 	useRouterData,
-} from "./app_utils.tsx";
-import type { RouteProps } from "./river.gen.ts";
+} from "../app_utils.tsx";
+import type { RouteProps } from "../river.gen.ts";
 
 export function About(props: RouteProps<"/about">) {
 	const data = useLoaderData(props);

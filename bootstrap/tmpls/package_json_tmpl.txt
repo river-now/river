@@ -2,8 +2,8 @@
 	"type": "module",
 	"private": true,
 	"scripts": {
-		"dev": "go run ./__cmd/build --dev",
-		"build": "go run ./__cmd/build"{{.VercelPackageJSONExtras}}
+		"dev": "go run ./control/cmd/build --dev",
+		"build": "go run ./control/cmd/build"{{.VercelPackageJSONExtras}}
 	},
 	"devDependencies": {}
 }
