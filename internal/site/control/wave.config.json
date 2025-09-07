@@ -1,18 +1,18 @@
 {
-	"$schema": "__dist/static/internal/schema.json",
+	"$schema": "dist/static/internal/schema.json",
 	"Core": {
-		"ConfigLocation": "wave.config.json",
-		"DevBuildHook": "go run ./cmd/build --dev --hook",
-		"ProdBuildHook": "go run ./cmd/build --hook",
-		"MainAppEntry": "cmd/app",
-		"DistDir": "app/__dist",
+		"ConfigLocation": "control/wave.config.json",
+		"DevBuildHook": "go run ./control/cmd/build --dev --hook",
+		"ProdBuildHook": "go run ./control/cmd/build --hook",
+		"MainAppEntry": "control/cmd/serve",
+		"DistDir": "control/dist",
 		"StaticAssetDirs": {
-			"Private": "backend/__static",
-			"Public": "frontend/__static"
+			"Private": "assets/private",
+			"Public": "assets/public"
 		},
 		"CSSEntryFiles": {
-			"Critical": "frontend/css/main.critical.css",
-			"NonCritical": "frontend/css/main.css"
+			"Critical": "frontend/styles/main.critical.css",
+			"NonCritical": "frontend/styles/main.css"
 		},
 		"PublicPathPrefix": "/"
 	},

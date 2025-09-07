@@ -2,7 +2,7 @@ package markdown
 
 import (
 	"io"
-	"site/app"
+	"site/control"
 
 	"github.com/adrg/frontmatter"
 	"github.com/river-now/river/kit/xyz/fsmarkdown"
@@ -11,7 +11,7 @@ import (
 )
 
 var Markdown = fsmarkdown.New(fsmarkdown.Options{
-	FS:                app.Wave.MustGetPrivateFS(),
+	FS:                control.Wave.MustGetPrivateFS(),
 	FrontmatterParser: func(r io.Reader, v any) ([]byte, error) { return frontmatter.Parse(r, v) },
 	MarkdownParser: func(b []byte) []byte {
 		return blackfriday.Run(b, blackfriday.WithExtensions(blackfriday.AutoHeadingIDs|blackfriday.CommonExtensions))

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"site/app"
 	"site/backend/markdown"
+	"site/control"
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/mux"
@@ -66,7 +66,7 @@ var _ = newLoader("/", func(c *mux.NestedReqData) (*RootData, error) {
 })
 
 var _ = newLoader("/_index", func(c *mux.NestedReqData) (string, error) {
-	return app.SiteDescription, nil
+	return control.SiteDescription, nil
 })
 
 var _ = newLoader("/*", func(c *mux.NestedReqData) (*fsmarkdown.DetailedPage, error) {
@@ -81,7 +81,7 @@ var _ = newLoader("/*", func(c *mux.NestedReqData) (*fsmarkdown.DetailedPage, er
 	e := river.NewHeadEls(2)
 
 	if p.Title != "" {
-		e.Title(fmt.Sprintf("%s | %s", app.SiteTitle, p.Title))
+		e.Title(fmt.Sprintf("%s | %s", control.SiteTitle, p.Title))
 		e.Meta(e.Property("og:title"), e.Content(p.Title))
 	}
 

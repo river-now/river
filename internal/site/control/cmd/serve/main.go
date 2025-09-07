@@ -1,4 +1,4 @@
-package server
+package main
 
 import (
 	"context"
@@ -6,17 +6,19 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"site/backend/router"
+	"site/control"
 	"time"
 
-	"site/app"
-	"site/backend/router"
-
+	"github.com/river-now/river/kit/colorlog"
 	"github.com/river-now/river/kit/grace"
 	"github.com/river-now/river/wave"
 )
 
-func Serve() {
-	app.River.Init(wave.GetIsDev())
+var Log = colorlog.New("site")
+
+func main() {
+	control.River.Init(wave.GetIsDev())
 
 	addr := fmt.Sprintf(":%d", wave.MustGetPort())
 
@@ -36,7 +38,7 @@ func Serve() {
 
 	grace.Orchestrate(grace.OrchestrateOptions{
 		StartupCallback: func() error {
-			app.Log.Info("Starting server", "url", url)
+			Log.Info("Starting server", "url", url)
 
 			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				log.Fatalf("Server listen and serve error: %v\n", err)
@@ -46,7 +48,7 @@ func Serve() {
 		},
 
 		ShutdownCallback: func(shutdownCtx context.Context) error {
-			app.Log.Info("Shutting down server", "url", url)
+			Log.Info("Shutting down server", "url", url)
 
 			if err := server.Shutdown(shutdownCtx); err != nil {
 				log.Fatalf("Server shutdown error: %v\n", err)

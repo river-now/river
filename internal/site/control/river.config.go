@@ -1,4 +1,4 @@
-package app
+package control
 
 import (
 	"embed"
@@ -94,13 +94,13 @@ var fontFilesToPreload = []string{
 //go:embed wave.config.json
 var configBytes []byte
 
-//go:embed all:__dist/static
+//go:embed all:dist/static
 var staticFS embed.FS
 
 var Wave = wave.New(&wave.Config{
 	ConfigBytes:            configBytes,
 	StaticFS:               staticFS,
-	StaticFSEmbedDirective: "all:__dist/static",
+	StaticFSEmbedDirective: "all:dist/static",
 })
 
 var Log = colorlog.New("app server")
