@@ -15,6 +15,9 @@ input[type="submit"] {
 }
 
 :root {
+	--mono:
+		"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+		"Liberation Mono", "Courier New", monospace;
 	--dark-green: #064929;
 	--light-green: #4bba5b;
 	--resolved-green: light-dark(var(--dark-green), var(--light-green));
@@ -32,10 +35,20 @@ body {
 	color: var(--fg);
 }
 
+html,
+body,
+code {
+	font-family: var(--mono);
+	font-weight: 300;
+
+	strong,
+	b,
+	.bold {
+		font-weight: 700;
+	}
+}
+
 body {
-	font-family:
-		"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-		"Liberation Mono", "Courier New", monospace;
 	overflow-x: hidden;
 	word-break: break-word;
 	font-size: 16px;
@@ -50,11 +63,6 @@ body,
 	max-width: 100dvw;
 }
 
-html {
-	font-family:
-		"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-		"Liberation Mono", "Courier New", monospace;
-}
 html,
 body {
 	min-height: 100dvh;
@@ -138,7 +146,7 @@ nav .logo:hover {
 	display: flex;
 	flex-direction: column;
 	gap: 2rem;
-	width: 640px;
+	width: 690px;
 	max-width: 100%;
 	margin: 3rem auto 2rem;
 }
@@ -175,24 +183,24 @@ footer {
 	text-decoration: underline;
 }
 
-h2.anchor-heading span {
+h3.anchor-heading span {
 	text-decoration: dotted underline;
 	text-underline-offset: 0.35em;
 	text-decoration-thickness: 0.1em;
 }
 
-h3.anchor-heading {
+h4.anchor-heading {
 	font-size: 1.125rem;
 	font-weight: 800;
 }
 
-h4.anchor-heading {
+h5.anchor-heading {
 	font-size: 1rem;
 	font-weight: 600;
 }
 
-h3.anchor-heading,
-h4.anchor-heading {
+h4.anchor-heading,
+h5.anchor-heading {
 	font-style: italic;
 	.anchor {
 		font-weight: 700;
@@ -248,10 +256,15 @@ pre {
 		line-height: 1.5;
 	}
 }
-.content h1 {
-	font-size: 1.875rem;
-	font-weight: 700;
-	margin-bottom: 1rem;
+.content {
+	h1 {
+		font-size: 2rem;
+		font-weight: 700;
+	}
+	h2 {
+		font-size: 1.75rem;
+		font-weight: 700;
+	}
 }
 .scream-heading {
 	font-size: 1.5rem;
@@ -311,11 +324,13 @@ code:not(pre code) {
 code:not(pre code):not(.high-contrast) {
 	background: #57b2;
 	border-radius: 0.25rem;
+	font-weight: 400;
 }
 
 code:not(pre code).high-contrast {
 	background: black;
 	color: #fff;
+	font-weight: 700;
 }
 
 .dark code:not(pre code):not(.high-contrast) {

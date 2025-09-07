@@ -32,7 +32,7 @@ var River = &river.River{
 	},
 
 	GetRootTemplateData: func(r *http.Request) (map[string]any, error) {
-		// This gets fed into backend/__static/entry.go.html
+		// This gets fed into assets/private/entry.go.html
 		return map[string]any{}, nil
 	},
 }

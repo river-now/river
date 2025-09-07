@@ -31,7 +31,7 @@
 		"HealthcheckEndpoint": "/healthz",
 		"Include": [
 			{
-				"Pattern": "backend/__static/markdown/**/*.md",
+				"Pattern": "assets/private/markdown/**/*.md",
 				"OnlyRunClientDefinedRevalidateFunc": true
 			}
 		]

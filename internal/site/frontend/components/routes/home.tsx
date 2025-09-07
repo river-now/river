@@ -30,33 +30,10 @@ export function Home(_props: RouteProps<"/_index">) {
 	return (
 		<>
 			<h1 class="big-heading">
-				River is a{" "}
-				<b>
-					<i>simple</i>
-				</b>
-				,{" "}
-				<b>
-					<i>lightweight</i>
-				</b>
-				, and{" "}
-				<b>
-					<i>flexible</i>
-				</b>{" "}
-				web framework for{" "}
-				<span class="whitespace-nowrap">
-					<b>
-						<i>Go</i>
-					</b>
-					<span class="p-[2px] font-extralight">/</span>
-					<b>
-						<i>TypeScript</i>
-					</b>
-				</span>
-				, built on{" "}
-				<b>
-					<i>Vite</i>
-				</b>
-				.
+				River is a <FancySpan txt="powerful" /> full-stack web framework
+				with <FancySpan txt="nested routing" /> for{" "}
+				<FancySpan txt="Go" /> and <FancySpan txt="TypeScript" />, built
+				on <FancySpan txt="Vite" />.
 			</h1>
 
 			<div class="flex gap-3 flex-wrap mb-6">
@@ -194,4 +171,8 @@ export function Home(_props: RouteProps<"/_index">) {
 			</div>
 		</>
 	);
+}
+
+function FancySpan(props: { txt: string }) {
+	return <span class="bold italic">{props.txt}</span>;
 }

@@ -1,6 +1,6 @@
 {
 	"name": "river.now",
-	"version": "0.59.0",
+	"version": "0.60.0",
 	"type": "module",
 	"license": "BSD-3-Clause",
 	"repository": {
@@ -83,7 +83,7 @@
 		"npm_dist/",
 		"LICENSE",
 		"README.md",
-		"internal/site/frontend/__static/river-banner.webp",
+		"internal/site/assets/public/river-banner.webp",
 		"tsconfig.base.json",
 		"internal/framework/_typescript/",
 		"kit/_typescript/",
