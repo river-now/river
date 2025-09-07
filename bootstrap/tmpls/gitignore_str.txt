@@ -3,5 +3,5 @@
 
 # Wave
 control/dist/static/*
-!control/dist/dist/static/.keep
-control/dist/dist/main*
+!control/dist/static/.keep
+control/dist/main*
