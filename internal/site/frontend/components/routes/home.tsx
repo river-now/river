@@ -109,11 +109,11 @@ export function Home(_props: RouteProps<"/_index">) {
 						<b>
 							<i>nested routing</i>
 						</b>
-						,{" "}
+						, effortless
 						<b>
-							<i>type-safe server actions</i>
-						</b>
-						,{" "}
+							<i> end-to-end type safety</i>
+						</b>{" "}
+						(including Link components!),{" "}
 						<b>
 							<i>parallel-executed route loaders</i>
 						</b>
