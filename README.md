@@ -1,7 +1,7 @@
 # 🌊 River
 
-River is a **_simple_**, **_lightweight_**, and **_flexible_** web framework for
-**_Go_**&thinsp;/&thinsp;**_TypeScript_**, built on **_Vite_**.
+River is a **_powerful_** full-stack web framework with **_nested routing_** for
+**_Go_** and **_TypeScript_**, built on **_Vite_**.
 
 ## Links
 
@@ -22,8 +22,8 @@ npm create river@latest
 River is a lot like Next.js or Remix, but it uses Go on the backend, with your
 choice of **_React_**, **_Solid_**, or **_Preact_** on the frontend.
 
-It has **_nested routing_**, **_type-safe server actions_**,
-**_parallel-executed route loaders_**, and much, much more.
+It has **_nested routing_**, effortless **_end-to-end type safety_** (including
+Link components!), **_parallel-executed route loaders_**, and much, much more.
 
 It's deeply integrated with **_Vite_** to give you full **_hot module
 reloading_** at dev-time.
