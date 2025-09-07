@@ -45,7 +45,7 @@ type derivedOptions struct {
 
 const tw_vite_import = "import tailwindcss from \"@tailwindcss/vite\";\n"
 const tw_vite_call = ", tailwindcss()"
-const tw_file_import = "import \"./styles/tailwind.css\";\n"
+const tw_file_import = "import \"../styles/tailwind.css\";\n"
 const dynamic_link_params_prop = `{{ id: "42790214" }}`
 
 func (o Options) derived() derivedOptions {

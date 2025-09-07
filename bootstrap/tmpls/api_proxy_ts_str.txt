@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { ChildProcess, spawn } from "node:child_process";
 import http from "node:http";
 import { join } from "node:path";
-import waveConfig from "../app/wave.config.json" with { type: "json" };
+import waveConfig from "../control/wave.config.json" with { type: "json" };
 
 logInfo("Initializing proxy...");
 
