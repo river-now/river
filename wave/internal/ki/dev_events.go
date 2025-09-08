@@ -29,7 +29,10 @@ func (c *Config) process_batched_events(events []fsnotify.Event) {
 			isWriteOrCreate := evt.Has(fsnotify.Write) || evt.Has(fsnotify.Create)
 			if isConfig && isWriteOrCreate {
 				c.Logger.Info("[watcher]", "op", evt.Op.String(), "filename", evt.Name)
-				c.MustStartDev(must_start_dev_opts{is_rebuild: true})
+				c.MustStartDev(must_start_dev_opts{
+					is_rebuild:   true,
+					recompile_go: true,
+				})
 				return
 			}
 		}

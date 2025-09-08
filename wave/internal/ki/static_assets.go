@@ -90,7 +90,7 @@ func (c *Config) getInitialPublicURLInner(originalPublicURL string, fileMapFromG
 	}
 
 	// If no hashed URL found, return the original URL
-	c.Logger.Info(fmt.Sprintf(
+	c.Logger.Warn(fmt.Sprintf(
 		"GetPublicURL: no hashed URL found for %s, returning original URL",
 		originalPublicURL,
 	))

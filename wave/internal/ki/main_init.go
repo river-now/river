@@ -2,6 +2,8 @@ package ki
 
 import (
 	"encoding/json"
+	"errors"
+	"os"
 	"path/filepath"
 
 	"github.com/fsnotify/fsnotify"
@@ -27,13 +29,31 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 		c.Logger = colorlog.New("wave")
 	}
 
+	if opts.IsDev && opts.IsRebuild {
+		configFileLocation := c.GetConfigFile()
+		if configFileLocation != "" {
+			c.Logger.Info("Reloading config from disk", "path", configFileLocation)
+			newConfigBytes, err := os.ReadFile(configFileLocation)
+			if err != nil {
+				c.panic("failed to re-read config file on rebuild", err)
+			}
+			c.ConfigBytes = newConfigBytes
+		}
+	}
+
 	c.fileSemaphore = semaphore.NewWeighted(100)
+
+	if len(c.ConfigBytes) == 0 {
+		c.panic("Config Error: ConfigBytes cannot be nil or empty. A valid wave.config.json must be provided.", nil)
+	}
 
 	// USER CONFIG
 	c._uc = new(UserConfig)
 	if err := json.Unmarshal(c.ConfigBytes, c._uc); err != nil {
 		c.panic("failed to unmarshal user config", err)
 	}
+
+	c.validateUserConfig()
 
 	// CLEAN SOURCES
 	c.cleanSources = CleanSources{
@@ -186,5 +206,55 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 
 	if err := c.add_directory_to_watcher(c.cleanWatchRoot); err != nil {
 		c.panic("failed to add directory to watcher", err)
+	}
+}
+
+var ErrConfigValidation = errors.New("config validation error")
+
+func (c *Config) validateUserConfig() {
+	// Validate top-level required fields in [Core].
+	if c._uc.Core.MainAppEntry == "" {
+		c.panic("Config Error: Core.MainAppEntry is required and cannot be an empty string.", ErrConfigValidation)
+	}
+	if c._uc.Core.DistDir == "" {
+		c.panic("Config Error: Core.DistDir is required and cannot be an empty string.", ErrConfigValidation)
+	}
+
+	// Validate conditionally required fields.
+	if !c._uc.Core.ServerOnlyMode {
+		if c._uc.Core.StaticAssetDirs.Private == "" {
+			c.panic("Config Error: Core.StaticAssetDirs.Private is required and cannot be empty when not in ServerOnlyMode.", ErrConfigValidation)
+		}
+		if c._uc.Core.StaticAssetDirs.Public == "" {
+			c.panic("Config Error: Core.StaticAssetDirs.Public is required and cannot be empty when not in ServerOnlyMode.", ErrConfigValidation)
+		}
+	}
+	if c.StaticFS != nil && c.StaticFSEmbedDirective == "" {
+		c.panic("Config Error: StaticFS was provided, but StaticFSEmbedDirective is empty. The embed directive is required when using an embedded filesystem.", ErrConfigValidation)
+	}
+
+	// Validate required fields within optional blocks.
+	if c._uc.River != nil {
+		if c._uc.River.UIVariant == "" {
+			c.panic("Config Error: River.UIVariant is required when the [River] block is present.", ErrConfigValidation)
+		}
+		if c._uc.River.HTMLTemplateLocation == "" {
+			c.panic("Config Error: River.HTMLTemplateLocation is required when the [River] block is present.", ErrConfigValidation)
+		}
+		if c._uc.River.ClientEntry == "" {
+			c.panic("Config Error: River.ClientEntry is required when the [River] block is present.", ErrConfigValidation)
+		}
+		if c._uc.River.ClientRouteDefsFile == "" {
+			c.panic("Config Error: River.ClientRouteDefsFile is required when the [River] block is present.", ErrConfigValidation)
+		}
+		if c._uc.River.TSGenOutPath == "" {
+			c.panic("Config Error: River.TSGenOutPath is required when the [River] block is present.", ErrConfigValidation)
+		}
+	}
+
+	if c._uc.Vite != nil {
+		if c._uc.Vite.JSPackageManagerBaseCmd == "" {
+			c.panic("Config Error: Vite.JSPackageManagerBaseCmd is required when the [Vite] block is present.", ErrConfigValidation)
+		}
 	}
 }

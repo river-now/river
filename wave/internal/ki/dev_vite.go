@@ -25,6 +25,7 @@ func (c *Config) toViteCtx() *viteutil.BuildCtx {
 		OutDir:                  c.GetViteOutDir(),
 		ManifestOut:             c.GetViteManifestLocation(),
 		ViteConfigFile:          c._uc.Vite.ViteConfigFile,
+		DefaultPort:             c._uc.Vite.DefaultPort,
 	})
 }
 

@@ -67,8 +67,8 @@ func (c *Config) get_initial_base_fs() (fs.FS, error) {
 		directive := c.StaticFSEmbedDirective
 
 		if directive == "" {
-			c.Logger.Warn("no embed directive set in Wave.New -- assuming 'static'")
-			directive = c._dist.S().Static.LastSegment()
+			// sanity check -- should never happen (downstream of user config validation)
+			panic("StaticFSEmbedDirective is empty, cannot use embedded FS")
 		}
 
 		// if first 4 are "all:", strip
