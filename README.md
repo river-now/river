@@ -1,6 +1,6 @@
 # River Framework
 
-Blazing-fast Go. Magical TypeScript. One powerful framework.
+⚡️ Blazing-fast Go.<br>🔮 Magical TypeScript.<br>🤝 One powerful framework.
 
 ## Links
 

@@ -30,13 +30,13 @@ export function Home(_props: RouteProps<"/_index">) {
 	return (
 		<>
 			<h1 class="big-heading">
-				Blazing-fast Go.
+				⚡️&nbsp;<i>Blazing-fast Go</i>.
 				<br class="hidden sm:block" />
 				<span class="sm:hidden"> </span>
-				Magical TypeScript.
+				🔮&nbsp;<i>Magical TypeScript</i>.
 				<br class="hidden sm:block" />
 				<span class="sm:hidden"> </span>
-				One powerful framework.
+				🤝&nbsp;<i>One powerful framework</i>.
 			</h1>
 
 			<div class="flex gap-3 flex-wrap mb-6">
