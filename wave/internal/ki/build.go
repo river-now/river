@@ -526,6 +526,9 @@ func (c *Config) processFile(
 	if fi.isNoHashDir {
 		fileIdentifier.Val = fi.relativePath
 		fileIdentifier.IsPrehashed = true
+	} else if !opts.writeWithHash {
+		// Store original name for private files
+		fileIdentifier.Val = fi.relativePath
 	} else {
 		var err error
 		name, err := getHashedFilenameFromPath(fi.path, relativePathUnderscores)

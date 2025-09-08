@@ -165,15 +165,28 @@ export function Home(_props: RouteProps<"/_index">) {
 			</div>
 
 			<div>
-				<h2 class="scream-heading">Disclaimer</h2>
+				<h2 class="scream-heading">Status</h2>
 				<p class="leading-[1.75]">
-					While River's technology is quite stable and has been used
-					in anger in production settings, our APIs are still
-					evolving, and we plan to stay sub–1.0 until we feel we have
-					collected all the feedback we need to make sure we can
-					support our APIs for years to come. Our general strategy is
-					to delay a 1.0 release for long enough to be sure we won't
-					need a lot of API churn moving forward.
+					River's underlying tech has reached a good degree of
+					stability, but its APIs are still evolving. Sub-1.0 releases
+					may contain breaking changes. If you ever need help
+					upgrading to the latest version, feel free to{" "}
+					<a
+						href="https://github.com/river-now/river"
+						target="_blank"
+						rel="noreferrer"
+					>
+						file an issue on GitHub
+					</a>{" "}
+					or{" "}
+					<a
+						href="https://x.com/riverframework"
+						target="_blank"
+						rel="noreferrer"
+					>
+						reach out on&nbsp;X
+					</a>
+					.
 				</p>
 			</div>
 		</>
