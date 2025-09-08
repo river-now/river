@@ -16,7 +16,7 @@ import (
 const (
 	Domain          = "river.now"
 	SiteTitle       = "River Framework"
-	SiteDescription = "River is a powerful full-stack web framework with nested routing for Go and TypeScript, built on Vite."
+	SiteDescription = "Blazing-fast Go. Magical TypeScript. One powerful framework."
 )
 
 var River = &river.River{

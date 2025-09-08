@@ -30,10 +30,13 @@ export function Home(_props: RouteProps<"/_index">) {
 	return (
 		<>
 			<h1 class="big-heading">
-				River is a <FancySpan txt="powerful" /> full-stack web framework
-				with <FancySpan txt="nested routing" /> for{" "}
-				<FancySpan txt="Go" /> and <FancySpan txt="TypeScript" />, built
-				on <FancySpan txt="Vite" />.
+				Blazing-fast Go.
+				<br class="hidden sm:block" />
+				<span class="sm:hidden"> </span>
+				Magical TypeScript.
+				<br class="hidden sm:block" />
+				<span class="sm:hidden"> </span>
+				One powerful framework.
 			</h1>
 
 			<div class="flex gap-3 flex-wrap mb-6">
@@ -171,8 +174,4 @@ export function Home(_props: RouteProps<"/_index">) {
 			</div>
 		</>
 	);
-}
-
-function FancySpan(props: { txt: string }) {
-	return <span class="bold italic">{props.txt}</span>;
 }
