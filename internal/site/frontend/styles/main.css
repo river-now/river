@@ -96,7 +96,6 @@ button:active {
 	font-weight: 500;
 	line-height: 1.425;
 	opacity: 0.95;
-	padding: 1.5rem 0;
 }
 
 /* Standard headings */
@@ -486,7 +485,7 @@ footer span {
 
 	/* Typography scaling */
 	.big-heading {
-		font-size: 1.625rem;
+		font-size: 1.5rem;
 	}
 
 	h1 {
