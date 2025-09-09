@@ -1,7 +1,7 @@
 package main
 
 import (
-	"{{.GoImportBase}}/backend/router"
+	"{{.GoImportBase}}/app/server/router"
 	"{{.GoImportBase}}/control"
 
 	"github.com/river-now/river"
@@ -29,7 +29,7 @@ func main() {
 			LoadersRouter: router.LoadersRouter,
 			ActionsRouter: router.ActionsRouter,
 			AdHocTypes: []*river.AdHocType{
-				// These will get inlined into ./frontend/river.gen.ts
+				// These will get inlined into ./app/client/river.gen.ts
 				{TypeInstance: SomeType{}},
 				{TypeInstance: SomeOtherType{}, TSTypeName: "RenamedType"},
 			},

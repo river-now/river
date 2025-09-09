@@ -11,17 +11,17 @@
 			"Public": "assets/public"
 		},
 		"CSSEntryFiles": {
-			"Critical": "frontend/styles/main.critical.css",
-			"NonCritical": "frontend/styles/main.css"
+			"Critical": "app/client/styles/main.critical.css",
+			"NonCritical": "app/client/styles/main.css"
 		},
 		"PublicPathPrefix": "/"
 	},
 	"River": {
 		"UIVariant": "solid",
 		"HTMLTemplateLocation": "entry.go.html",
-		"ClientEntry": "frontend/entry.tsx",
-		"ClientRouteDefsFile": "frontend/routes.ts",
-		"TSGenOutPath": "frontend/river.gen.ts",
+		"ClientEntry": "app/client/entry.tsx",
+		"ClientRouteDefsFile": "app/client/routes.ts",
+		"TSGenOutPath": "app/client/river.gen.ts",
 		"BuildtimePublicURLFuncName": "hashedURL"
 	},
 	"Vite": {

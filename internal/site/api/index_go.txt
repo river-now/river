@@ -5,8 +5,8 @@ package api
 import (
 	"net/http"
 
-	"site/app"
-	"site/backend/router"
+	"site/control"
+	"site/app/server/router"
 
 	"github.com/river-now/river/wave"
 )
@@ -14,7 +14,7 @@ import (
 var siteRouter = router.Core()
 
 func init() {
-	app.River.Init(wave.GetIsDev())
+	control.River.Init(wave.GetIsDev())
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {

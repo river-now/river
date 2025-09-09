@@ -154,10 +154,10 @@ export function waveRuntimeURL(
 
 export const riverViteConfig = {
 	rollupInput: [
-		"frontend/components/routes/dyn.tsx",
-		"frontend/components/routes/home.tsx",
-		"frontend/components/routes/md.tsx",
-		"frontend/entry.tsx"
+		"app/client/components/routes/dyn.tsx",
+		"app/client/components/routes/home.tsx",
+		"app/client/components/routes/md.tsx",
+		"app/client/entry.tsx"
 	],
 	publicPathPrefix,
 	staticPublicAssetMap,
@@ -167,8 +167,8 @@ export const riverViteConfig = {
 		"**/control/dist/**/*",
 		"**/assets/private/**/*",
 		"**/control/wave.config.json",
-		"**/frontend/river.gen.ts",
-		"**/frontend/routes.ts"
+		"**/app/client/river.gen.ts",
+		"**/app/client/routes.ts"
 	],
 	dedupeList: [
 		"solid-js",

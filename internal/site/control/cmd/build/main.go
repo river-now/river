@@ -1,7 +1,7 @@
 package main
 
 import (
-	"site/backend/router"
+	"site/app/server/router"
 	"site/control"
 
 	"github.com/river-now/river"
