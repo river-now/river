@@ -39,7 +39,7 @@ export function Home(_props: RouteProps<"/_index">) {
 				</h2>
 
 				<h2 class="big-heading">
-					<span class="fancy">100%</span> delight.
+					<span class="fancy">Unmatched</span> flexibility.
 				</h2>
 			</div>
 
