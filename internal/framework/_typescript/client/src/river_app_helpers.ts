@@ -131,6 +131,21 @@ export type PatternBasedProps<App extends RiverAppBase, P extends string> = {
 } & ConditionalParams<App, P> &
 	ConditionalSplat<App, P>;
 
+export type PermissivePatternBasedProps<
+	App extends RiverAppBase,
+	P extends RiverLoaderPattern<App>,
+> = {
+	pattern: PermissiveLoaderPattern<App, P>;
+} & ConditionalParams<App, P> &
+	ConditionalSplat<App, P>;
+
+type PermissiveLoaderPattern<
+	App extends RiverAppBase,
+	P extends RiverLoaderPattern<App>,
+> = P extends `${infer Prefix}/${App["appConfig"]["loadersExplicitIndexSegment"]}`
+	? P | (Prefix extends "" ? "/" : Prefix)
+	: P;
+
 export type RiverRoutePropsGeneric<
 	JSXElement,
 	App extends RiverAppBase,
@@ -236,6 +251,14 @@ export function resolvePath(opts: APIClientHelperOpts): string {
 	if ("splatValues" in props && props.splatValues) {
 		const splatPath = (props.splatValues as Array<string>).join("/");
 		path = path.replace(splatSegmentRune, splatPath);
+	}
+
+	// Strip explicit index segment
+	if (opts.type === "loader" && riverAppConfig.loadersExplicitIndexSegment) {
+		const indexSegment = `/${riverAppConfig.loadersExplicitIndexSegment}`;
+		if (path.endsWith(indexSegment)) {
+			path = path.slice(0, -indexSegment.length) || "/";
+		}
 	}
 
 	return path;

@@ -168,6 +168,7 @@ type NavigationType =
 
 export type NavigateProps = {
 	href: string;
+	state?: unknown;
 	navigationType: NavigationType;
 	scrollStateToRestore?: ScrollState;
 	replace?: boolean;
@@ -196,19 +197,20 @@ export type NavigationControl = {
 
 type LinkOnClickCallback<E extends Event> = (event: E) => void | Promise<void>;
 
-type LinkOnClickCallbacksBase<E extends Event> = {
+type LinkOnClickCallbacks<E extends Event> = {
 	beforeBegin?: LinkOnClickCallback<E>;
 	beforeRender?: LinkOnClickCallback<E>;
 	afterRender?: LinkOnClickCallback<E>;
 };
 
-type LinkOnClickCallbacks<E extends Event> = LinkOnClickCallbacksBase<E>;
-
-type GetPrefetchHandlersInput<E extends Event> = LinkOnClickCallbacksBase<E> & {
+type GetPrefetchHandlersInput<E extends Event> = LinkOnClickCallbacks<E> & {
 	href: string;
 	delayMs?: number;
 	scrollToTop?: boolean;
 	replace?: boolean;
+	search?: string;
+	hash?: string;
+	state?: unknown;
 };
 
 type PartialWaitFnJSON = Pick<
@@ -229,6 +231,7 @@ type RerenderAppProps = {
 		scrollStateToRestore?: ScrollState;
 		replace?: boolean;
 		scrollToTop?: boolean;
+		state?: unknown;
 	};
 	onFinish: () => void;
 };
@@ -260,6 +263,7 @@ interface NavigationEntry {
 	originUrl: string; // URL when navigation started (for revalidation)
 	scrollToTop?: boolean;
 	replace?: boolean;
+	state?: unknown;
 }
 
 interface SubmissionEntry {
@@ -355,6 +359,7 @@ class NavigationStateManager {
 					intent: "navigate",
 					scrollToTop: props.scrollToTop,
 					replace: props.replace,
+					state: props.state,
 				});
 				return existing.control;
 			}
@@ -445,6 +450,7 @@ class NavigationStateManager {
 			originUrl: window.location.href,
 			scrollToTop: props.scrollToTop,
 			replace: props.replace,
+			state: props.state,
 		};
 
 		this.setNavigation(targetUrl, entry);
@@ -454,7 +460,10 @@ class NavigationStateManager {
 	private upgradeNavigation(
 		href: string,
 		updates: Partial<
-			Pick<NavigationEntry, "type" | "intent" | "scrollToTop" | "replace">
+			Pick<
+				NavigationEntry,
+				"type" | "intent" | "scrollToTop" | "replace" | "state"
+			>
 		>,
 	): void {
 		const existing = this._navigations.get(href);
@@ -675,6 +684,7 @@ class NavigationStateManager {
 				await effectuateRedirectDataResult(
 					result.redirectData,
 					result.props.redirectCount || 0,
+					result.props,
 				);
 				return;
 			}
@@ -767,6 +777,7 @@ class NavigationStateManager {
 									result.props.scrollStateToRestore,
 								replace: entry.replace || result.props.replace,
 								scrollToTop: entry.scrollToTop,
+								state: entry.state,
 							}
 						: undefined,
 				onFinish: () => {
@@ -1227,13 +1238,29 @@ class ComponentLoader {
 
 export async function riverNavigate(
 	href: string,
-	options?: { replace?: boolean; scrollToTop?: boolean },
+	options?: {
+		replace?: boolean;
+		scrollToTop?: boolean;
+		search?: string;
+		hash?: string;
+		state?: unknown;
+	},
 ): Promise<void> {
+	const url = new URL(href, window.location.href);
+
+	if (options?.search !== undefined) {
+		url.search = options.search;
+	}
+	if (options?.hash !== undefined) {
+		url.hash = options.hash;
+	}
+
 	await navigationStateManager.navigate({
-		href,
+		href: url.href,
 		navigationType: "userNavigation",
 		replace: options?.replace,
 		scrollToTop: options?.scrollToTop,
+		state: options?.state,
 	});
 }
 
@@ -1276,6 +1303,7 @@ export function getLocation() {
 		pathname: window.location.pathname,
 		search: window.location.search,
 		hash: window.location.hash,
+		state: HistoryManager.getInstance().location.state,
 	};
 }
 
@@ -1313,6 +1341,7 @@ export function makeLinkOnClickFn<E extends Event>(
 	callbacks: LinkOnClickCallbacks<E> & {
 		scrollToTop?: boolean;
 		replace?: boolean;
+		state?: unknown;
 	},
 ) {
 	return async (e: E) => {
@@ -1342,6 +1371,7 @@ export function makeLinkOnClickFn<E extends Event>(
 				navigationType: "userNavigation",
 				scrollToTop: callbacks.scrollToTop,
 				replace: callbacks.replace,
+				state: callbacks.state,
 			});
 
 			if (!control.promise) return;
@@ -1399,10 +1429,15 @@ export function getPrefetchHandlers<E extends Event>(
 			await input.beforeBegin(e);
 		}
 
+		const fullUrl = new URL(relativeURL, window.location.href);
+		if (input.search !== undefined) fullUrl.search = input.search;
+		if (input.hash !== undefined) fullUrl.hash = input.hash;
+
 		// Use the navigation system
 		await navigationStateManager.navigate({
-			href: relativeURL,
+			href: fullUrl.href,
 			navigationType: "prefetch",
+			state: input.state,
 		});
 	}
 
@@ -1464,6 +1499,9 @@ export function getPrefetchHandlers<E extends Event>(
 		await riverNavigate(relativeURL, {
 			scrollToTop: input.scrollToTop,
 			replace: input.replace,
+			search: input.search,
+			hash: input.hash,
+			state: input.state,
 		});
 
 		if (input.afterRender) {
@@ -1695,9 +1733,9 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 			const current = new URL(window.location.href).href;
 
 			if (target !== current && !replace) {
-				history.push(href);
+				history.push(href, runHistoryOptions.state);
 			} else {
-				history.replace(href);
+				history.replace(href, runHistoryOptions.state);
 			}
 
 			scrollStateToDispatch = hash
@@ -1745,6 +1783,7 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 async function effectuateRedirectDataResult(
 	redirectData: RedirectData,
 	redirectCount: number,
+	originalProps?: NavigateProps,
 ): Promise<RedirectData | null> {
 	if (redirectData.status !== "should") {
 		return null;
@@ -1786,6 +1825,9 @@ async function effectuateRedirectDataResult(
 			href: redirectData.href,
 			navigationType: "redirect",
 			redirectCount: redirectCount + 1,
+			state: originalProps?.state,
+			replace: originalProps?.replace,
+			scrollToTop: originalProps?.scrollToTop,
 		});
 
 		return {

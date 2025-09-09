@@ -30,7 +30,7 @@ export {
 	buildQueryURL,
 	resolvePath,
 	type ExtractApp,
-	type PatternBasedProps,
+	type PermissivePatternBasedProps,
 	type RiverAppBase,
 	type RiverAppConfig,
 	type RiverLoaderOutput,

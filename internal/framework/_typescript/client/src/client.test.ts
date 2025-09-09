@@ -969,6 +969,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Verify it was called with a URL containing our path
 				expect(replaceSpy).toHaveBeenCalledWith(
 					expect.stringContaining("/replace-test"),
+					undefined,
 				);
 			});
 		});
@@ -1524,6 +1525,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Should have been called with the correct path
 				expect(pushSpy).toHaveBeenCalledWith(
 					expect.stringContaining("/new-page"),
+					undefined,
 				);
 			});
 
@@ -1548,6 +1550,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Verify it was called with the correct URL
 				expect(replaceSpy).toHaveBeenCalledWith(
 					expect.stringContaining("/same-page"),
+					undefined,
 				);
 			});
 
@@ -3711,6 +3714,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					pathname: "/test-path",
 					search: "?query=1",
 					hash: "#hash",
+					state: null,
 				});
 			});
 		});
@@ -4618,6 +4622,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					pathname: "/test/path",
 					search: "?query=value",
 					hash: "#section",
+					state: null,
 				});
 			});
 

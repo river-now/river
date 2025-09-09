@@ -8,11 +8,10 @@ import {
 } from "river.now/{{.UIVariant}}";
 import { riverAppConfig, type RiverApp } from "./river.gen.ts";
 
+export const Link = makeTypedLink(riverAppConfig, { prefetch: "intent" });
+export const navigate = makeTypedNavigate(riverAppConfig);
+
 export const useRouterData = makeTypedUseRouterData<RiverApp>();
 export const useLoaderData = makeTypedUseLoaderData<RiverApp>();
 export const usePatternLoaderData = makeTypedUsePatternLoaderData<RiverApp>();
 export const addClientLoader = makeTypedAddClientLoader<RiverApp>();
-export const navigate = makeTypedNavigate(riverAppConfig);
-export const Link = makeTypedLink(riverAppConfig, {
-	prefetch: "intent", // optional defaults
-});

@@ -2,7 +2,7 @@ import { h, type JSX } from "preact";
 import { memo } from "preact/compat";
 import type {
 	ExtractApp,
-	PatternBasedProps,
+	PermissivePatternBasedProps,
 	RiverAppBase,
 	RiverLoaderPattern,
 } from "river.now/client";
@@ -23,7 +23,7 @@ export const RiverLink = memo(function RiverLink(
 ) {
 	const finalLinkProps = makeFinalLinkProps(props);
 	// oxlint-disable-next-line no-unused-vars
-	const { prefetch, scrollToTop, replace, ...rest } = props;
+	const { prefetch, scrollToTop, replace, state, ...rest } = props;
 
 	return h(
 		"a",
@@ -48,7 +48,10 @@ type TypedRiverLinkProps<
 	RiverLinkPropsBase<
 		(e: JSX.TargetedMouseEvent<HTMLAnchorElement>) => void | Promise<void>
 	> &
-	PatternBasedProps<App, Pattern>;
+	PermissivePatternBasedProps<App, Pattern> & {
+		search?: string;
+		hash?: string;
+	};
 
 export function makeTypedLink<C extends RiverAppConfig>(
 	riverAppConfig: C,
@@ -64,7 +67,15 @@ export function makeTypedLink<C extends RiverAppConfig>(
 	const TypedLink = memo(function TypedLink<
 		Pattern extends RiverLoaderPattern<App>,
 	>(props: TypedRiverLinkProps<App, Pattern>) {
-		const { pattern, params, splatValues, ...linkProps } = props as any;
+		const {
+			pattern,
+			params,
+			splatValues,
+			search,
+			hash,
+			state,
+			...linkProps
+		} = props as any;
 
 		const href = resolvePath({
 			riverAppConfig,
@@ -76,7 +87,17 @@ export function makeTypedLink<C extends RiverAppConfig>(
 			},
 		});
 
-		const finalProps = { ...defaultProps, ...linkProps, href };
+		const url = new URL(href, window.location.origin);
+		if (search !== undefined) url.search = search;
+		if (hash !== undefined) url.hash = hash;
+
+		const finalProps = {
+			...defaultProps,
+			...linkProps,
+			href: url.href,
+			state,
+		};
+
 		return h(RiverLink, finalProps);
 	});
 

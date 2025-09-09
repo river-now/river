@@ -6,7 +6,7 @@ import {
 import {
 	resolvePath,
 	type ExtractApp,
-	type PatternBasedProps,
+	type PermissivePatternBasedProps,
 	type RiverAppBase,
 	type RiverAppConfig,
 	type RiverLoaderPattern,
@@ -77,6 +77,7 @@ export type RiverLinkPropsBase<LinkOnClickCallback> = {
 	afterRender?: LinkOnClickCallback;
 	scrollToTop?: boolean;
 	replace?: boolean;
+	state?: unknown;
 };
 
 function linkPropsToPrefetchObj<LinkOnClickCallback>(
@@ -94,6 +95,7 @@ function linkPropsToPrefetchObj<LinkOnClickCallback>(
 		afterRender: props.afterRender as any,
 		scrollToTop: props.scrollToTop,
 		replace: props.replace,
+		state: props.state,
 	});
 }
 
@@ -106,6 +108,7 @@ function linkPropsToOnClickFn<LinkOnClickCallback>(
 		afterRender: props.afterRender as any,
 		scrollToTop: props.scrollToTop,
 		replace: props.replace,
+		state: props.state,
 	});
 }
 
@@ -200,9 +203,12 @@ function isFn(fn: any): fn is (...args: Array<any>) => any {
 type TypedNavigateOptions<
 	App extends RiverAppBase,
 	Pattern extends RiverLoaderPattern<App>,
-> = PatternBasedProps<App, Pattern> & {
+> = PermissivePatternBasedProps<App, Pattern> & {
 	replace?: boolean;
 	scrollToTop?: boolean;
+	search?: string;
+	hash?: string;
+	state?: unknown;
 };
 
 export function makeTypedNavigate<C extends RiverAppConfig>(riverAppConfig: C) {
@@ -211,8 +217,16 @@ export function makeTypedNavigate<C extends RiverAppConfig>(riverAppConfig: C) {
 	return async function typedNavigate<
 		Pattern extends RiverLoaderPattern<App>,
 	>(options: TypedNavigateOptions<App, Pattern>): Promise<void> {
-		const { pattern, params, splatValues, replace, scrollToTop } =
-			options as any;
+		const {
+			pattern,
+			params,
+			splatValues,
+			replace,
+			scrollToTop,
+			search,
+			hash,
+			state,
+		} = options as any;
 
 		const href = resolvePath({
 			riverAppConfig,
@@ -224,6 +238,12 @@ export function makeTypedNavigate<C extends RiverAppConfig>(riverAppConfig: C) {
 			},
 		});
 
-		return riverNavigate(href, { replace, scrollToTop });
+		return riverNavigate(href, {
+			replace,
+			scrollToTop,
+			search,
+			hash,
+			state,
+		});
 	};
 }

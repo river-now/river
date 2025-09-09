@@ -1,6 +1,6 @@
 import type {
 	ExtractApp,
-	PatternBasedProps,
+	PermissivePatternBasedProps,
 	RiverAppBase,
 	RiverLoaderPattern,
 } from "river.now/client";
@@ -20,7 +20,7 @@ export function RiverLink(
 ) {
 	const finalLinkProps = createMemo(() => makeFinalLinkProps(props));
 	// oxlint-disable-next-line no-unused-vars
-	const { prefetch, scrollToTop, replace, ...rest } = props;
+	const { prefetch, scrollToTop, replace, state, ...rest } = props;
 
 	return (
 		<a
@@ -45,7 +45,10 @@ type TypedRiverLinkProps<
 	RiverLinkPropsBase<
 		JSX.CustomEventHandlersCamelCase<HTMLAnchorElement>["onClick"]
 	> &
-	PatternBasedProps<App, Pattern>;
+	PermissivePatternBasedProps<App, Pattern> & {
+		search?: string;
+		hash?: string;
+	};
 
 export function makeTypedLink<C extends RiverAppConfig>(
 	riverAppConfig: C,
@@ -67,10 +70,13 @@ export function makeTypedLink<C extends RiverAppConfig>(
 			"pattern",
 			"params",
 			"splatValues",
+			"search",
+			"hash",
+			"state",
 		]);
 
 		const href = createMemo(() => {
-			return resolvePath({
+			const basePath = resolvePath({
 				riverAppConfig,
 				type: "loader",
 				props: {
@@ -81,9 +87,13 @@ export function makeTypedLink<C extends RiverAppConfig>(
 					}),
 				},
 			});
+			const url = new URL(basePath, window.location.origin);
+			if (local.search !== undefined) url.search = local.search;
+			if (local.hash !== undefined) url.hash = local.hash;
+			return url.href;
 		});
 
-		return <RiverLink {...linkProps} href={href()} />;
+		return <RiverLink {...linkProps} href={href()} state={local.state} />;
 	};
 
 	return TypedLink;
