@@ -41,7 +41,7 @@ var River = &river.River{
 		currentURL := "https://" + path.Join(Domain, r.URL.Path)
 
 		ogImgURL := Wave.GetPublicURL("river-banner.webp")
-		favURL := Wave.GetPublicURL("favicon-2.svg")
+		favURL := Wave.GetPublicURL("favicon.svg")
 
 		if !wave.GetIsDev() {
 			ogImgURL = "https://" + path.Join(Domain, ogImgURL)

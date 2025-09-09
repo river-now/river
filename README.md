@@ -1,8 +1,8 @@
 # River Framework
 
-**_Blazing-fast_** Go.<br>**_Magical_** TypeScript.<br>**_100%_** delight.
-
 <img src="internal/site/assets/public/river-banner.webp" alt="River banner">
+
+Blazing-fast Go. Magical TypeScript. 100% delight.
 
 ## Links
 
