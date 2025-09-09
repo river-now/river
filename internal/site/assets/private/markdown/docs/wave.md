@@ -348,7 +348,7 @@ JSON schema):
   },
   "Vite": {
     "JSPackageManagerBaseCmd": "npx",
-    "JSPackageManagerCmdDir": "./frontend",
+    "JSPackageManagerCmdDir": "./app/client",
     "DefaultPort": 5173,
     "ViteConfigFile": "./vite.config.ts"
   },
@@ -985,7 +985,7 @@ Add Vite settings to your `wave.config.json`:
 {
 	"Vite": {
 		"JSPackageManagerBaseCmd": "npx",
-		"JSPackageManagerCmdDir": "./frontend",
+		"JSPackageManagerCmdDir": "./app/client",
 		"DefaultPort": 5173,
 		"ViteConfigFile": "./vite.config.ts"
 	}

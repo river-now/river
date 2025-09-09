@@ -246,19 +246,19 @@ var HTMLTemplateLocation_Schema = jsonschema.OptionalString(jsonschema.Def{
 var ClientEntry_Schema = jsonschema.OptionalString(jsonschema.Def{
 	Description: `Path to your client-side TypeScript entry point.`,
 	Required:    true,
-	Examples:    []string{"frontend/entry.tsx"},
+	Examples:    []string{"app/client/entry.tsx"},
 })
 
 var ClientRouteDefsFile_Schema = jsonschema.OptionalString(jsonschema.Def{
 	Description: `Path to the file where River route definitions are written.`,
 	Required:    true,
-	Examples:    []string{"frontend/routes.ts"},
+	Examples:    []string{"app/client/routes.ts"},
 })
 
 var TSGenOutPath_Schema = jsonschema.OptionalString(jsonschema.Def{
 	Description: `Path where TypeScript type definitions should be generated.`,
 	Required:    true,
-	Examples:    []string{"frontend/river.gen.ts"},
+	Examples:    []string{"app/client/river.gen.ts"},
 })
 
 var BuildtimePublicURLFuncName_Schema = jsonschema.OptionalString(jsonschema.Def{
@@ -300,8 +300,8 @@ var JSPackageManagerBaseCmd_Schema = jsonschema.RequiredString(jsonschema.Def{
 /////////////////////////////////////////////////////////////////////
 
 var JSPackageManagerCmdDir_Schema = jsonschema.OptionalString(jsonschema.Def{
-	Description: `Directory to run the package manager command from. For example, if you're running commands from ".", but you want to run Vite from "./frontend", set this to "./frontend".`,
-	Examples:    []string{"./frontend", "./client"},
+	Description: `Directory to run the package manager command from. For example, if you're running commands from ".", but you want to run Vite from "./app/client", set this to "./app/client".`,
+	Examples:    []string{"./app/client", "./client"},
 	Default:     ".",
 })
 
@@ -399,7 +399,7 @@ var IncludeItems_Schema = jsonschema.OptionalObject(jsonschema.Def{
 
 var Pattern_Schema = jsonschema.RequiredString(jsonschema.Def{
 	Description: `Glob pattern for matching files (set relative to WatchRoot). Supports ** for recursive matching.`,
-	Examples:    []string{"**/*.go", "frontend/**/*.ts", "templates/*.html"},
+	Examples:    []string{"**/*.go", "app/client/**/*.ts", "templates/*.html"},
 })
 
 /////////////////////////////////////////////////////////////////////

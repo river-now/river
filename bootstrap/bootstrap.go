@@ -190,12 +190,12 @@ func Init(o Options) {
 	fsutil.EnsureDirs(
 		"assets/private",
 		"assets/public",
-		"backend/router",
+		"app/server/router",
 		"control/cmd/serve",
 		"control/cmd/build",
 		"control/dist/static/internal",
-		"frontend/components",
-		"frontend/styles",
+		"app/client/components",
+		"app/client/styles",
 	)
 
 	if o.DeploymentTarget == "vercel" {
@@ -206,24 +206,24 @@ func Init(o Options) {
 	do.tmplWriteMust("control/cmd/build/main.go", cmd_build_main_go_tmpl_txt)
 	do.tmplWriteMust("control/dist/static/.keep", dist_static_keep_tmpl_txt)
 	strWriteMust("assets/private/entry.go.html", backend_static_entry_go_html_str_txt)
-	do.tmplWriteMust("backend/router/actions.go", backend_router_actions_go_tmpl_txt)
-	do.tmplWriteMust("backend/router/core.go", backend_router_core_go_tmpl_txt)
-	do.tmplWriteMust("backend/router/loaders.go", backend_router_loaders_go_tmpl_txt)
+	do.tmplWriteMust("app/server/router/actions.go", backend_router_actions_go_tmpl_txt)
+	do.tmplWriteMust("app/server/router/core.go", backend_router_core_go_tmpl_txt)
+	do.tmplWriteMust("app/server/router/loaders.go", backend_router_loaders_go_tmpl_txt)
 	do.tmplWriteMust("control/river.config.go", app_go_tmpl_txt)
 	do.tmplWriteMust("control/wave.config.json", wave_config_json_tmpl_txt)
 	do.tmplWriteMust("vite.config.ts", vite_config_ts_tmpl_txt)
 	do.tmplWriteMust("package.json", package_json_tmpl_txt)
 	strWriteMust(".gitignore", gitignore_str_txt)
-	strWriteMust("frontend/styles/main.css", main_css_str_txt)
-	strWriteMust("frontend/styles/main.critical.css", main_critical_css_str_txt)
-	strWriteMust("frontend/routes.ts", frontend_routes_ts_str_txt)
-	do.tmplWriteMust("frontend/components/app.tsx", frontend_app_tsx_tmpl_txt)
-	do.tmplWriteMust("frontend/components/root.tsx", frontend_root_tsx_tmpl_txt)
-	do.tmplWriteMust("frontend/components/home.tsx", frontend_home_tsx_tmpl_txt)
-	do.tmplWriteMust("frontend/components/about.tsx", frontend_about_tsx_tmpl_txt)
-	do.tmplWriteMust("frontend/app_utils.tsx", frontend_app_utils_tsx_tmpl_txt)
-	strWriteMust("frontend/api_client.ts", frontend_api_client_ts_str_txt)
-	strWriteMust("frontend/styles/nprogress.css", frontend_css_nprogress_css_str_txt)
+	strWriteMust("app/client/styles/main.css", main_css_str_txt)
+	strWriteMust("app/client/styles/main.critical.css", main_critical_css_str_txt)
+	strWriteMust("app/client/routes.ts", frontend_routes_ts_str_txt)
+	do.tmplWriteMust("app/client/components/app.tsx", frontend_app_tsx_tmpl_txt)
+	do.tmplWriteMust("app/client/components/root.tsx", frontend_root_tsx_tmpl_txt)
+	do.tmplWriteMust("app/client/components/home.tsx", frontend_home_tsx_tmpl_txt)
+	do.tmplWriteMust("app/client/components/about.tsx", frontend_about_tsx_tmpl_txt)
+	do.tmplWriteMust("app/client/app_utils.tsx", frontend_app_utils_tsx_tmpl_txt)
+	strWriteMust("app/client/api_client.ts", frontend_api_client_ts_str_txt)
+	strWriteMust("app/client/styles/nprogress.css", frontend_css_nprogress_css_str_txt)
 	if o.DeploymentTarget == "vercel" {
 		do.tmplWriteMust("vercel.json", vercel_json_tmpl_txt)
 		do.tmplWriteMust("api/proxy.ts", api_proxy_ts_str)
@@ -240,7 +240,7 @@ func Init(o Options) {
 	installJSPkg(do, "@types/nprogress")
 
 	if do.UIVariant == "react" {
-		strWriteMust("frontend/entry.tsx", frontend_entry_tsx_react_str_txt)
+		strWriteMust("app/client/entry.tsx", frontend_entry_tsx_react_str_txt)
 
 		installJSPkg(do, "react")
 		installJSPkg(do, "react-dom")
@@ -250,13 +250,13 @@ func Init(o Options) {
 	}
 
 	if do.UIVariant == "solid" {
-		strWriteMust("frontend/entry.tsx", frontend_entry_tsx_solid_str_txt)
+		strWriteMust("app/client/entry.tsx", frontend_entry_tsx_solid_str_txt)
 
 		installJSPkg(do, "solid-js")
 	}
 
 	if do.UIVariant == "preact" {
-		strWriteMust("frontend/entry.tsx", frontend_entry_tsx_preact_str_txt)
+		strWriteMust("app/client/entry.tsx", frontend_entry_tsx_preact_str_txt)
 
 		installJSPkg(do, "preact")
 		installJSPkg(do, "@preact/signals")
@@ -269,7 +269,7 @@ func Init(o Options) {
 	if do.IncludeTailwind {
 		installJSPkg(do, "@tailwindcss/vite")
 		installJSPkg(do, "tailwindcss")
-		strWriteMust("frontend/styles/tailwind.css", frontend_css_tailwind_css_str_txt)
+		strWriteMust("app/client/styles/tailwind.css", frontend_css_tailwind_css_str_txt)
 	}
 
 	// install chi (some chi middleware is used in the template)

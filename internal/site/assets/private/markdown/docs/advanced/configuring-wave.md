@@ -205,7 +205,7 @@ Configure Wave's integration with the River framework.
 ```json
 {
 	"River": {
-		"ClientEntry": "frontend/entry.tsx"
+		"ClientEntry": "app/client/entry.tsx"
 	}
 }
 ```
@@ -218,7 +218,7 @@ Configure Wave's integration with the River framework.
 ```json
 {
 	"River": {
-		"ClientRouteDefsFile": "frontend/routes.ts"
+		"ClientRouteDefsFile": "app/client/routes.ts"
 	}
 }
 ```
@@ -231,7 +231,7 @@ Configure Wave's integration with the River framework.
 ```json
 {
 	"River": {
-		"TSGenOutPath": "frontend/river.gen.ts"
+		"TSGenOutPath": "app/client/river.gen.ts"
 	}
 }
 ```
@@ -276,7 +276,7 @@ Configure Vite integration for frontend asset bundling.
 ```json
 {
 	"Vite": {
-		"JSPackageManagerCmdDir": "./frontend"
+		"JSPackageManagerCmdDir": "./app/client"
 	}
 }
 ```

@@ -1,4 +1,4 @@
-import { type ComponentProps, memo } from "react";
+import { memo, type ComponentProps, type JSX } from "react";
 import type {
 	ExtractApp,
 	PatternBasedProps,
@@ -62,9 +62,11 @@ export function makeTypedLink<C extends RiverAppConfig>(
 ) {
 	type App = ExtractApp<C>;
 
-	const TypedLink = memo(function TypedLink<
-		Pattern extends RiverLoaderPattern<App>,
-	>(props: TypedRiverLinkProps<App, Pattern>) {
+	const TypedLink = <
+		Pattern extends RiverLoaderPattern<App> = RiverLoaderPattern<App>,
+	>(
+		props: TypedRiverLinkProps<App, Pattern>,
+	) => {
 		const { pattern, params, splatValues, ...linkProps } = props as any;
 
 		const href = resolvePath({
@@ -79,8 +81,16 @@ export function makeTypedLink<C extends RiverAppConfig>(
 
 		const finalProps = { ...defaultProps, ...linkProps, href };
 		return <RiverLink {...finalProps} />;
-	});
+	};
 
-	TypedLink.displayName = `TypedLink(${Object.keys(defaultProps || {}).join(", ")})`;
-	return TypedLink;
+	const MemoizedTypedLink = memo(TypedLink) as <
+		Pattern extends RiverLoaderPattern<App> = RiverLoaderPattern<App>,
+	>(
+		props: TypedRiverLinkProps<App, Pattern>,
+	) => JSX.Element;
+
+	(MemoizedTypedLink as any).displayName =
+		`TypedLink(${Object.keys(defaultProps || {}).join(", ")})`;
+
+	return MemoizedTypedLink;
 }

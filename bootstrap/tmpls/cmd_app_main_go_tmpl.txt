@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"{{.GoImportBase}}/backend/router"
+	"{{.GoImportBase}}/app/server/router"
 	"{{.GoImportBase}}/control"
 	"fmt"
 	"log"
