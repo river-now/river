@@ -86,6 +86,7 @@
 		"tsconfig.base.json",
 		"internal/framework/_typescript/",
 		"kit/_typescript/",
+		"internal/site/assets/public/river-banner.webp",
 		"!node_modules",
 		"!**/*.test.*",
 		"!**/*.bench.*"

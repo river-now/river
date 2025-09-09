@@ -35,7 +35,14 @@ export function App() {
 			<nav class="w-full flex items-center">
 				<div class="flex items-baseline">
 					<Link pattern="/">
-						<h1 class="logo">River</h1>
+						<h1 class="logo">
+							<img
+								src={hashedURL("favicon.svg")}
+								alt="River logo"
+								class="w-5 h-5 brightness-85 dark:brightness-[unset]"
+							/>
+							<span>River</span>
+						</h1>
 					</Link>
 					<div class="text-xs opacity-70 hidden sm:flex">
 						({routerData().rootData?.LatestVersion})

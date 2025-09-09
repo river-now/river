@@ -1,7 +1,7 @@
 :root {
 	color-scheme: light dark;
-	--dark: rgb(24 24 27);
-	--light: rgb(244, 244, 245);
+	--dark: #0e0e0f;
+	--light: #f4f4f5;
 }
 html.light {
 	color-scheme: light;

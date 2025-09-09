@@ -16,7 +16,7 @@ import (
 const (
 	Domain          = "river.now"
 	SiteTitle       = "River Framework"
-	SiteDescription = "⚡️ Blazing-fast Go. 🔮 Magical TypeScript. 🤝 One powerful framework."
+	SiteDescription = "Blazing-fast Go. Magical TypeScript. 100% delight."
 )
 
 var River = &river.River{
@@ -41,7 +41,7 @@ var River = &river.River{
 		currentURL := "https://" + path.Join(Domain, r.URL.Path)
 
 		ogImgURL := Wave.GetPublicURL("river-banner.webp")
-		favURL := Wave.GetPublicURL("favicon.svg")
+		favURL := Wave.GetPublicURL("favicon-2.svg")
 
 		if !wave.GetIsDev() {
 			ogImgURL = "https://" + path.Join(Domain, ogImgURL)

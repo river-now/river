@@ -29,17 +29,17 @@ export function Home(_props: RouteProps<"/_index">) {
 
 	return (
 		<>
-			<div class="flex flex-col gap-2 sm:gap-0 my-6">
+			<div class="flex flex-col gap-2 sm:gap-1 my-6">
 				<h2 class="big-heading">
-					⚡️&nbsp;<i>Blazing-fast Go</i>.
+					<span class="fancy">Blazing-fast</span> Go.
 				</h2>
 
 				<h2 class="big-heading">
-					🔮&nbsp;<i>Magical TypeScript</i>.
+					<span class="fancy">Magical</span> TypeScript.
 				</h2>
 
 				<h2 class="big-heading">
-					🤝&nbsp;<i>One powerful framework</i>.
+					<span class="fancy">100%</span> delight.
 				</h2>
 			</div>
 

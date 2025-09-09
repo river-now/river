@@ -1,7 +1,8 @@
 # River Framework
 
-⚡️ **_Blazing-fast Go_**.<br>🔮 **_Magical TypeScript_**.<br>🤝 **_One powerful
-framework_**.
+**_Blazing-fast_** Go.<br>**_Magical_** TypeScript.<br>**_100%_** delight.
+
+<img src="internal/site/assets/public/river-banner.webp" alt="River banner">
 
 ## Links
 
