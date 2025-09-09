@@ -2,7 +2,7 @@
 
 <img src="internal/site/assets/public/river-banner.webp" alt="River banner">
 
-Blazing-fast Go. Magical TypeScript. 100% delight.
+Blazing-fast Go. Magical TypeScript. Unmatched flexibility.
 
 ## Links
 
