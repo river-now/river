@@ -13,7 +13,7 @@ import (
 
 type AdHocType = rpc.AdHocType
 
-type TSGenOptions struct {
+type tsGenOptions struct {
 	LoadersRouter *mux.NestedRouter
 	ActionsRouter *mux.Router
 	AdHocTypes    []*AdHocType
@@ -33,7 +33,7 @@ var mutationMethods = map[string]struct{}{
 	http.MethodPost: {}, http.MethodPut: {}, http.MethodPatch: {}, http.MethodDelete: {},
 }
 
-func (h *River) GenerateTypeScript(opts *TSGenOptions) (string, error) {
+func (h *River) generateTypeScript(opts *tsGenOptions) (string, error) {
 	var collection []tsgen.CollectionItem
 
 	allLoaders := opts.LoadersRouter.AllRoutes()

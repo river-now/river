@@ -1,9 +1,8 @@
 import {
-	addBuildIDListener,
+	__applyScrollState,
 	addLocationListener,
 	addRouteChangeListener,
-	applyScrollState,
-	internal_RiverClientGlobal as ctx,
+	__riverClientGlobal as ctx,
 	getLocation,
 	getRouterData,
 	type RouteChangeEvent,
@@ -61,17 +60,6 @@ addRouteChangeListener((e) => {
 		setImportURLs(ctx.get("importURLs"));
 		setExportKeys(ctx.get("exportKeys"));
 	});
-});
-
-/////////////////////////////////////////////////////////////////////
-/////// BUILD ID LISTENER
-/////////////////////////////////////////////////////////////////////
-
-addBuildIDListener((e) => {
-	if (!e.detail.fromGETAction) {
-		return;
-	}
-	setRouterData(getRouterData());
 });
 
 /////////////////////////////////////////////////////////////////////
@@ -137,7 +125,7 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 			return;
 		}
 		window.requestAnimationFrame(() => {
-			applyScrollState(e.detail.scrollState);
+			__applyScrollState(e.detail.__scrollState);
 		});
 	});
 

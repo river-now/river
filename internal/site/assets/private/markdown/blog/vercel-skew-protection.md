@@ -43,7 +43,7 @@ listen for this event and handle the situation however they like:
 ```ts
 import { addBuildIDListener } from "river.now/client";
 
-addBuildIDListener(() => {
+addBuildIDListener(({ oldID, newID }) => {
 	// do something, such as:
 	// - hard reload
 	// - show a toast to the user

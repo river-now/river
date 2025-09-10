@@ -1,21 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	__applyScrollState,
+	__getPrefetchHandlers,
+	__makeLinkOnClickFn,
 	addBuildIDListener,
 	addLocationListener,
 	addRouteChangeListener,
 	addStatusListener,
-	applyScrollState,
 	beginNavigation,
 	customHistoryListener,
 	getBuildID,
 	getHistoryInstance,
 	getLocation,
-	getPrefetchHandlers,
 	getRootEl,
 	getStatus,
 	initClient,
 	initCustomHistory,
-	makeLinkOnClickFn,
 	navigationStateManager,
 	revalidate,
 	riverNavigate,
@@ -24,7 +24,7 @@ import {
 	submit,
 } from "./client";
 import type { RiverAppConfig } from "./river_app_helpers.ts";
-import { internal_RiverClientGlobal } from "./river_ctx";
+import { __riverClientGlobal } from "./river_ctx";
 
 const riverAppConfig: RiverAppConfig = {
 	actionsRouterMountRoot: "/api/",
@@ -439,7 +439,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const statusListener = vi.fn();
 				const cleanup = addListener(addStatusListener, statusListener);
 
-				const handlers = getPrefetchHandlers({
+				const handlers = __getPrefetchHandlers({
 					href: "/prefetch-target",
 				});
 				handlers?.start({} as Event);
@@ -717,7 +717,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
-				const handlers = getPrefetchHandlers({
+				const handlers = __getPrefetchHandlers({
 					href: "/prefetch-cleanup",
 					delayMs: 50,
 				});
@@ -735,7 +735,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				// Verify cleanup by starting a new prefetch - should trigger new fetch
 				vi.clearAllMocks();
 
-				const handlers2 = getPrefetchHandlers({
+				const handlers2 = __getPrefetchHandlers({
 					href: "/prefetch-cleanup",
 					delayMs: 0, // No delay this time
 				});
@@ -767,7 +767,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				});
 				vi.mocked(fetch).mockReturnValue(fetchPromise as any);
 
-				const handlers = getPrefetchHandlers({
+				const handlers = __getPrefetchHandlers({
 					href: "/prefetch-cleanup-verify",
 					delayMs: 50,
 				});
@@ -809,7 +809,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				vi.clearAllMocks();
 				abortControllers.length = 0;
 
-				const handlers2 = getPrefetchHandlers({
+				const handlers2 = __getPrefetchHandlers({
 					href: "/prefetch-cleanup-verify",
 					delayMs: 0, // No delay this time
 				});
@@ -844,7 +844,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				Object.defineProperty(event, "target", { value: anchor });
 
-				const onClick = makeLinkOnClickFn({});
+				const onClick = __makeLinkOnClickFn({});
 				await onClick(event);
 
 				expect(preventDefault).toHaveBeenCalled();
@@ -860,7 +860,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				Object.defineProperty(event, "target", { value: anchor });
 
-				const onClick = makeLinkOnClickFn({});
+				const onClick = __makeLinkOnClickFn({});
 				await onClick(event);
 
 				expect(preventDefault).not.toHaveBeenCalled();
@@ -877,7 +877,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				Object.defineProperty(event, "target", { value: anchor });
 
-				const onClick = makeLinkOnClickFn({});
+				const onClick = __makeLinkOnClickFn({});
 				await onClick(event);
 
 				expect(preventDefault).not.toHaveBeenCalled();
@@ -892,7 +892,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				Object.defineProperty(event, "target", { value: anchor });
 
-				const onClick = makeLinkOnClickFn({});
+				const onClick = __makeLinkOnClickFn({});
 				await onClick(event);
 
 				// Should save scroll state but not navigate
@@ -916,7 +916,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				// Start prefetch
-				const handlers = getPrefetchHandlers({
+				const handlers = __getPrefetchHandlers({
 					href: "/prefetch-click",
 				});
 				handlers?.start({} as Event);
@@ -1379,7 +1379,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 						detail: {
 							oldID: "1",
 							newID: "new-build-456",
-							fromGETAction: false,
 						},
 					}),
 				);
@@ -1407,9 +1406,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 				await riverNavigate("/wait-test");
 				await vi.runAllTimersAsync();
 
-				expect(
-					internal_RiverClientGlobal.get("clientLoadersData"),
-				).toEqual([clientData]);
+				expect(__riverClientGlobal.get("clientLoadersData")).toEqual([
+					clientData,
+				]);
 			});
 		});
 
@@ -1498,10 +1497,10 @@ describe("Comprehensive Navigation Test Suite", () => {
 				await riverNavigate("/users/123");
 				await vi.runAllTimersAsync();
 
-				expect(
-					internal_RiverClientGlobal.get("matchedPatterns"),
-				).toEqual(routeData.matchedPatterns);
-				expect(internal_RiverClientGlobal.get("params")).toEqual(
+				expect(__riverClientGlobal.get("matchedPatterns")).toEqual(
+					routeData.matchedPatterns,
+				);
+				expect(__riverClientGlobal.get("params")).toEqual(
 					routeData.params,
 				);
 			});
@@ -1562,7 +1561,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				// Apply scroll state directly
-				applyScrollState(scrollState);
+				__applyScrollState(scrollState);
 
 				expect(window.scrollTo).toHaveBeenCalledWith(100, 200);
 			});
@@ -1795,17 +1794,19 @@ describe("Comprehensive Navigation Test Suite", () => {
 		describe("3.1 Initialization", () => {
 			it("should only create handlers for eligible URLs", () => {
 				// HTTP URL - eligible
-				const httpHandlers = getPrefetchHandlers({ href: "/internal" });
+				const httpHandlers = __getPrefetchHandlers({
+					href: "/internal",
+				});
 				expect(httpHandlers).toBeDefined();
 
 				// External URL - not eligible
-				const externalHandlers = getPrefetchHandlers({
+				const externalHandlers = __getPrefetchHandlers({
 					href: "https://external.com",
 				});
 				expect(externalHandlers).toBeUndefined();
 
 				// Non-HTTP URL - not eligible
-				const mailtoHandlers = getPrefetchHandlers({
+				const mailtoHandlers = __getPrefetchHandlers({
 					href: "mailto:test@test.com",
 				});
 				expect(mailtoHandlers).toBeUndefined();
@@ -1814,7 +1815,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 			it("should not prefetch current page", () => {
 				window.history.replaceState({}, "", "/current-page");
 
-				const handlers = getPrefetchHandlers({ href: "/current-page" });
+				const handlers = __getPrefetchHandlers({
+					href: "/current-page",
+				});
 				const startSpy = vi.fn();
 
 				if (handlers?.start) {
@@ -1833,7 +1836,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
-				const handlers = getPrefetchHandlers({
+				const handlers = __getPrefetchHandlers({
 					href: "/delayed-prefetch",
 					delayMs: 200,
 				});
@@ -1855,7 +1858,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse({ importURLs: [], cssBundles: [] }),
 				);
 
-				const handlers = getPrefetchHandlers({
+				const handlers = __getPrefetchHandlers({
 					href: "/callback-test",
 					beforeBegin,
 				});
@@ -1877,7 +1880,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 					createMockResponse(responseData),
 				);
 
-				const handlers = getPrefetchHandlers({ href: "/store-result" });
+				const handlers = __getPrefetchHandlers({
+					href: "/store-result",
+				});
 				handlers?.start({} as Event);
 
 				// Wait for prefetch to start
@@ -1914,7 +1919,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 			});
 
 			it("should cancel timeout on stop", () => {
-				const handlers = getPrefetchHandlers({
+				const handlers = __getPrefetchHandlers({
 					href: "/cancel-timeout",
 				});
 
@@ -1930,7 +1935,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					() => new Promise(() => {}),
 				);
 
-				const handlers = getPrefetchHandlers({ href: "/abort-test" });
+				const handlers = __getPrefetchHandlers({ href: "/abort-test" });
 				handlers?.start({} as Event);
 
 				await vi.advanceTimersByTimeAsync(100);
@@ -1971,7 +1976,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const beforeRender = vi.fn();
 				const afterRender = vi.fn();
 
-				const handlers = getPrefetchHandlers({
+				const handlers = __getPrefetchHandlers({
 					href: "/click-during",
 					beforeRender,
 					afterRender,
@@ -2166,7 +2171,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				await vi.runAllTimersAsync();
 
 				// Apply the scroll state that would be set by the navigation
-				applyScrollState({ hash: "section" });
+				__applyScrollState({ hash: "section" });
 
 				expect(scrollIntoViewSpy).toHaveBeenCalled();
 
@@ -2257,7 +2262,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				await vi.runAllTimersAsync();
 
 				// Apply scroll state from route change event
-				applyScrollState({ hash: "target" });
+				__applyScrollState({ hash: "target" });
 
 				expect(scrollIntoViewSpy).toHaveBeenCalled();
 			});
@@ -2268,7 +2273,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				document.body.appendChild(element);
 				const scrollIntoViewSpy = vi.spyOn(element, "scrollIntoView");
 
-				applyScrollState({ hash: "fallback" });
+				__applyScrollState({ hash: "fallback" });
 
 				expect(scrollIntoViewSpy).toHaveBeenCalled();
 			});
@@ -2558,7 +2563,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 				expect(event.detail).toEqual({
 					oldID: "1", // This is the initial build ID from beforeEach
 					newID: "redirect-build",
-					fromGETAction: false,
 				});
 			});
 		});
@@ -3739,7 +3743,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 						detail: {
 							oldID: "1",
 							newID: "new-build-456",
-							fromGETAction: false,
 						},
 					}),
 				);
@@ -3760,29 +3763,6 @@ describe("Comprehensive Navigation Test Suite", () => {
 				await vi.runAllTimersAsync();
 
 				expect(buildIdListener).toHaveBeenCalled();
-			});
-
-			it("should indicate fromGETAction for GET submissions", async () => {
-				const buildIdListener = vi.fn();
-				addBuildIDListener(buildIdListener);
-
-				vi.mocked(fetch).mockResolvedValue(
-					createMockResponse(
-						{},
-						{ headers: { "X-River-Build-Id": "get-build" } },
-					),
-				);
-
-				await submit("/api/search", { method: "GET" });
-				await vi.runAllTimersAsync();
-
-				expect(buildIdListener).toHaveBeenCalledWith(
-					expect.objectContaining({
-						detail: expect.objectContaining({
-							fromGETAction: true,
-						}),
-					}),
-				);
 			});
 
 			it("should provide current build ID via getBuildID()", () => {
@@ -3815,7 +3795,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				await vi.runAllTimersAsync();
 
 				expect(
-					internal_RiverClientGlobal.get("activeComponents"),
+					__riverClientGlobal.get("activeComponents"),
 				).toBeDefined();
 			});
 
@@ -3839,8 +3819,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				await riverNavigate("/multi-export");
 				await vi.runAllTimersAsync();
 
-				const components =
-					internal_RiverClientGlobal.get("activeComponents");
+				const components = __riverClientGlobal.get("activeComponents");
 				expect(components).toHaveLength(2);
 				expect(components?.[0]).toBe(mockModule.default);
 				expect(components?.[1]).toBe(mockModule.NamedExport);
@@ -3885,8 +3864,8 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				// 4. ASSERTIONS: Verify the state is correct and comprehensive.
 				const activeComponents =
-					internal_RiverClientGlobal.get("activeComponents");
-				const activeErrorBoundary = internal_RiverClientGlobal.get(
+					__riverClientGlobal.get("activeComponents");
+				const activeErrorBoundary = __riverClientGlobal.get(
 					"activeErrorBoundary",
 				);
 
@@ -3918,9 +3897,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 				await riverNavigate("/missing-error");
 				await vi.runAllTimersAsync();
 
-				expect(
-					internal_RiverClientGlobal.get("activeErrorBoundary"),
-				).toBe(defaultError);
+				expect(__riverClientGlobal.get("activeErrorBoundary")).toBe(
+					defaultError,
+				);
 			});
 		});
 
@@ -3981,7 +3960,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 				// Verify it tried to import from the correct path
 				expect(
-					internal_RiverClientGlobal.get("activeComponents"),
+					__riverClientGlobal.get("activeComponents"),
 				).toBeDefined();
 
 				(import.meta.env as any).DEV = originalEnv;
@@ -4059,12 +4038,10 @@ describe("Comprehensive Navigation Test Suite", () => {
 				useViewTransitions: true,
 			});
 
-			expect(internal_RiverClientGlobal.get("defaultErrorBoundary")).toBe(
+			expect(__riverClientGlobal.get("defaultErrorBoundary")).toBe(
 				customErrorBoundary,
 			);
-			expect(internal_RiverClientGlobal.get("useViewTransitions")).toBe(
-				true,
-			);
+			expect(__riverClientGlobal.get("useViewTransitions")).toBe(true);
 		});
 
 		it("should initialize history with POP listener", async () => {
@@ -4117,9 +4094,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 			await initClient({ renderFn: () => {}, riverAppConfig });
 
-			expect(
-				internal_RiverClientGlobal.get("activeComponents"),
-			).toHaveLength(1);
+			expect(__riverClientGlobal.get("activeComponents")).toHaveLength(1);
 		});
 
 		it("should run initial client wait functions", async () => {
@@ -4134,9 +4109,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 			await initClient({ renderFn: () => {}, riverAppConfig });
 
 			expect(waitFn).toHaveBeenCalled();
-			expect(internal_RiverClientGlobal.get("clientLoadersData")).toEqual(
-				[{ initialized: true }],
-			);
+			expect(__riverClientGlobal.get("clientLoadersData")).toEqual([
+				{ initialized: true },
+			]);
 		});
 
 		it("should execute user render function", async () => {
@@ -4180,13 +4155,11 @@ describe("Comprehensive Navigation Test Suite", () => {
 		it("should detect touch devices on first touch", async () => {
 			await initClient({ renderFn: () => {}, riverAppConfig });
 
-			expect(
-				internal_RiverClientGlobal.get("isTouchDevice"),
-			).toBeUndefined();
+			expect(__riverClientGlobal.get("isTouchDevice")).toBeUndefined();
 
 			window.dispatchEvent(new Event("touchstart"));
 
-			expect(internal_RiverClientGlobal.get("isTouchDevice")).toBe(true);
+			expect(__riverClientGlobal.get("isTouchDevice")).toBe(true);
 		});
 	});
 
@@ -4252,7 +4225,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				history.forward();
 				await vi.runAllTimersAsync();
 
-				applyScrollState({ hash: "new-hash" });
+				__applyScrollState({ hash: "new-hash" });
 				expect(scrollSpy).toHaveBeenCalled();
 			});
 
@@ -4414,9 +4387,8 @@ describe("Comprehensive Navigation Test Suite", () => {
 			it("should not update any state on failure", async () => {
 				const initialState = {
 					title: document.title,
-					components:
-						internal_RiverClientGlobal.get("activeComponents"),
-					params: internal_RiverClientGlobal.get("params"),
+					components: __riverClientGlobal.get("activeComponents"),
+					params: __riverClientGlobal.get("params"),
 				};
 
 				vi.mocked(fetch).mockRejectedValue(
@@ -4427,10 +4399,10 @@ describe("Comprehensive Navigation Test Suite", () => {
 				vi.runAllTimers();
 
 				expect(document.title).toBe(initialState.title);
-				expect(internal_RiverClientGlobal.get("activeComponents")).toBe(
+				expect(__riverClientGlobal.get("activeComponents")).toBe(
 					initialState.components,
 				);
-				expect(internal_RiverClientGlobal.get("params")).toBe(
+				expect(__riverClientGlobal.get("params")).toBe(
 					initialState.params,
 				);
 			});
@@ -4587,7 +4559,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 
 			it("should apply scroll state correctly", () => {
 				// Test coordinate scroll
-				applyScrollState({ x: 100, y: 200 });
+				__applyScrollState({ x: 100, y: 200 });
 				expect(window.scrollTo).toHaveBeenCalledWith(100, 200);
 
 				// Test hash scroll
@@ -4596,7 +4568,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				document.body.appendChild(element);
 				const scrollSpy = vi.spyOn(element, "scrollIntoView");
 
-				applyScrollState({ hash: "test-hash" });
+				__applyScrollState({ hash: "test-hash" });
 				expect(scrollSpy).toHaveBeenCalled();
 
 				// Test no state with hash in URL
@@ -4606,7 +4578,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				document.body.appendChild(urlElement);
 				const urlScrollSpy = vi.spyOn(urlElement, "scrollIntoView");
 
-				applyScrollState(undefined);
+				__applyScrollState(undefined);
 				expect(urlScrollSpy).toHaveBeenCalled();
 			});
 
@@ -4689,7 +4661,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 			vi.mocked(fetch).mockReturnValueOnce(prefetchPromise as any);
 
 			// Start prefetch
-			const handlers = getPrefetchHandlers({ href: "/prefetch-race" });
+			const handlers = __getPrefetchHandlers({ href: "/prefetch-race" });
 			handlers?.start({} as Event);
 			await vi.advanceTimersByTimeAsync(100);
 
@@ -4744,7 +4716,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 			await riverNavigate("/page-with-error1");
 			await vi.runAllTimersAsync();
 
-			expect(internal_RiverClientGlobal.get("activeErrorBoundary")).toBe(
+			expect(__riverClientGlobal.get("activeErrorBoundary")).toBe(
 				errorBoundary1,
 			);
 
@@ -4762,7 +4734,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 			await riverNavigate("/page-with-error2");
 			await vi.runAllTimersAsync();
 
-			expect(internal_RiverClientGlobal.get("activeErrorBoundary")).toBe(
+			expect(__riverClientGlobal.get("activeErrorBoundary")).toBe(
 				errorBoundary2,
 			);
 		});
@@ -4965,7 +4937,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 		}) as any);
 
 		// Step 1: Prefetch /about
-		const handlers = getPrefetchHandlers({ href: "/about" });
+		const handlers = __getPrefetchHandlers({ href: "/about" });
 		handlers?.start({} as Event);
 		await vi.advanceTimersByTimeAsync(100);
 		await vi.runAllTimersAsync();

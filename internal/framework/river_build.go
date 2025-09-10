@@ -363,7 +363,7 @@ func (h *River) Build(opts *BuildOptions) error {
 		return err
 	}
 
-	tsgenOutput, err := h.GenerateTypeScript(&TSGenOptions{
+	tsgenOutput, err := h.generateTypeScript(&tsGenOptions{
 		LoadersRouter: opts.LoadersRouter,
 		ActionsRouter: opts.ActionsRouter,
 		AdHocTypes:    opts.AdHocTypes,
@@ -385,7 +385,7 @@ func (h *River) Build(opts *BuildOptions) error {
 			return err
 		}
 
-		if err := h.PostViteProdBuild(); err != nil {
+		if err := h.postViteProdBuild(); err != nil {
 			Log.Error(fmt.Sprintf("error running post vite prod build: %s", err))
 			return err
 		}

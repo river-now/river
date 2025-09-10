@@ -85,7 +85,7 @@ export function __getRiverClientGlobal() {
 	return { get, set };
 }
 
-export const internal_RiverClientGlobal = __getRiverClientGlobal();
+export const __riverClientGlobal = __getRiverClientGlobal();
 
 // to debug ctx in browser, paste this:
 // const river_ctx = window[Symbol.for("__river_internal__")];
@@ -94,15 +94,14 @@ export function getRouterData<
 	T = any,
 	P extends Record<string, string> = Record<string, string>,
 >() {
-	const rootData: T = internal_RiverClientGlobal.get("hasRootData")
-		? internal_RiverClientGlobal.get("loadersData")[0]
+	const rootData: T = __riverClientGlobal.get("hasRootData")
+		? __riverClientGlobal.get("loadersData")[0]
 		: null;
 	return {
-		buildID: internal_RiverClientGlobal.get("buildID") || "",
-		matchedPatterns:
-			internal_RiverClientGlobal.get("matchedPatterns") || [],
-		splatValues: internal_RiverClientGlobal.get("splatValues") || [],
-		params: (internal_RiverClientGlobal.get("params") || {}) as P,
+		buildID: __riverClientGlobal.get("buildID") || "",
+		matchedPatterns: __riverClientGlobal.get("matchedPatterns") || [],
+		splatValues: __riverClientGlobal.get("splatValues") || [],
+		params: (__riverClientGlobal.get("params") || {}) as P,
 		rootData,
 	};
 }

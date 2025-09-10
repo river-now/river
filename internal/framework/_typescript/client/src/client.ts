@@ -18,9 +18,9 @@ import {
 } from "./redirects.ts";
 import type { RiverAppConfig } from "./river_app_helpers.ts";
 import {
+	__riverClientGlobal,
 	type ClientLoaderAwaitedServerData,
 	type GetRouteDataOutput,
-	internal_RiverClientGlobal,
 	type RouteErrorComponent,
 } from "./river_ctx.ts";
 import { isAbortError, LogError } from "./utils.ts";
@@ -73,12 +73,12 @@ async function ensureMatcherLoaded(config: RiverAppConfig) {
 	};
 }
 
-export async function registerClientLoaderPattern(
+export async function __registerClientLoaderPattern(
 	pattern: string,
 ): Promise<void> {
 	// This is called when a client loader is discovered.
 	// Load both matcher modules on first use.
-	const config = internal_RiverClientGlobal.get("riverAppConfig");
+	const config = __riverClientGlobal.get("riverAppConfig");
 	const { matcherModules, clientPatternRegistry } =
 		await ensureMatcherLoaded(config);
 	matcherModules.register.registerPattern(clientPatternRegistry, pattern);
@@ -91,8 +91,7 @@ export async function registerClientLoaderPattern(
 // be in the parent segments. This fixes that.
 async function findPartialMatchesOnClient(pathname: string) {
 	// Only try to match if we have client loaders
-	const patternToWaitFnMap =
-		internal_RiverClientGlobal.get("patternToWaitFnMap");
+	const patternToWaitFnMap = __riverClientGlobal.get("patternToWaitFnMap");
 	if (Object.keys(patternToWaitFnMap).length === 0) {
 		return null;
 	}
@@ -142,8 +141,7 @@ export type RouteChangeEvent = CustomEvent<RouteChangeEventDetail>;
 export type StatusEvent = CustomEvent<StatusEventDetail>;
 
 type RouteChangeEventDetail = {
-	scrollState?: ScrollState;
-	index?: number;
+	__scrollState?: ScrollState;
 };
 
 export type StatusEventDetail = {
@@ -152,11 +150,7 @@ export type StatusEventDetail = {
 	isRevalidating: boolean;
 };
 
-type BuildIDEvent = {
-	oldID: string;
-	newID: string;
-	fromGETAction: boolean;
-};
+type BuildIDEvent = { oldID: string; newID: string };
 
 type NavigationType =
 	| "browserHistory"
@@ -493,12 +487,11 @@ class NavigationStateManager {
 			const url = new URL(props.href, window.location.href);
 			url.searchParams.set(
 				"river_json",
-				internal_RiverClientGlobal.get("buildID") || "1",
+				__riverClientGlobal.get("buildID") || "1",
 			);
 
 			if (props.navigationType === "revalidation") {
-				const deploymentID =
-					internal_RiverClientGlobal.get("deploymentID");
+				const deploymentID = __riverClientGlobal.get("deploymentID");
 				if (deploymentID) {
 					url.searchParams.set("dpl", deploymentID);
 				}
@@ -527,7 +520,7 @@ class NavigationStateManager {
 			const pathname = url.pathname;
 			const matchResult = await findPartialMatchesOnClient(pathname);
 			const patternToWaitFnMap =
-				internal_RiverClientGlobal.get("patternToWaitFnMap");
+				__riverClientGlobal.get("patternToWaitFnMap");
 			const runningLoaders = new Map<string, Promise<any>>();
 
 			// Start client loaders for already-registered patterns
@@ -729,15 +722,15 @@ class NavigationStateManager {
 		}
 
 		// Update build ID if needed
-		const oldID = internal_RiverClientGlobal.get("buildID");
+		const oldID = __riverClientGlobal.get("buildID");
 		const newID = getBuildIDFromResponse(result.response);
 		if (newID && newID !== oldID) {
-			dispatchBuildIDEvent({ newID, oldID, fromGETAction: false });
+			dispatchBuildIDEvent({ newID, oldID });
 		}
 
 		// Wait for client loaders
 		const clientLoadersData = await result.waitFnPromise;
-		internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
+		__riverClientGlobal.set("clientLoadersData", clientLoadersData);
 
 		// Wait for CSS
 		if (result.cssBundlePromises.length > 0) {
@@ -825,7 +818,7 @@ class NavigationStateManager {
 		try {
 			const urlToUse = new URL(url, window.location.href);
 			const headers = new Headers(requestInit?.headers);
-			const deploymentID = internal_RiverClientGlobal.get("deploymentID");
+			const deploymentID = __riverClientGlobal.get("deploymentID");
 			if (deploymentID) {
 				headers.set("x-deployment-id", deploymentID);
 			}
@@ -843,11 +836,10 @@ class NavigationStateManager {
 				requestInit: finalRequestInit,
 			});
 
-			const oldID = internal_RiverClientGlobal.get("buildID");
+			const oldID = __riverClientGlobal.get("buildID");
 			const newID = getBuildIDFromResponse(response);
 			if (newID && newID !== oldID) {
-				const isGET = getIsGETRequest(requestInit);
-				dispatchBuildIDEvent({ newID, oldID, fromGETAction: isGET });
+				dispatchBuildIDEvent({ newID, oldID });
 			}
 
 			if (!response || !response.ok) {
@@ -1026,7 +1018,7 @@ class ScrollStateManager {
 			) {
 				sessionStorage.removeItem(this.PAGE_REFRESH_KEY);
 				window.requestAnimationFrame(() => {
-					applyScrollState({ x: state.x, y: state.y });
+					__applyScrollState({ x: state.x, y: state.y });
 				});
 			}
 		} catch {}
@@ -1131,7 +1123,7 @@ class AssetManager {
 
 	static applyCSS(bundles: string[]): void {
 		window.requestAnimationFrame(() => {
-			const prefix = internal_RiverClientGlobal.get("publicPathPrefix");
+			const prefix = __riverClientGlobal.get("publicPathPrefix");
 
 			for (const bundle of bundles) {
 				// Check using the data attribute without escaping
@@ -1174,8 +1166,8 @@ class ComponentLoader {
 
 	static async handleComponents(importURLs: string[]): Promise<void> {
 		const modulesMap = await this.loadComponents(importURLs);
-		const originalImportURLs = internal_RiverClientGlobal.get("importURLs");
-		const exportKeys = internal_RiverClientGlobal.get("exportKeys") ?? [];
+		const originalImportURLs = __riverClientGlobal.get("importURLs");
+		const exportKeys = __riverClientGlobal.get("exportKeys") ?? [];
 
 		// Build new components array
 		const newActiveComponents = originalImportURLs.map(
@@ -1190,25 +1182,21 @@ class ComponentLoader {
 		if (
 			!jsonDeepEquals(
 				newActiveComponents,
-				internal_RiverClientGlobal.get("activeComponents"),
+				__riverClientGlobal.get("activeComponents"),
 			)
 		) {
-			internal_RiverClientGlobal.set(
-				"activeComponents",
-				newActiveComponents,
-			);
+			__riverClientGlobal.set("activeComponents", newActiveComponents);
 		}
 
 		// Handle error boundary
-		const errorIdx = internal_RiverClientGlobal.get("outermostErrorIdx");
+		const errorIdx = __riverClientGlobal.get("outermostErrorIdx");
 		if (errorIdx != null) {
 			const errorModuleURL = originalImportURLs[errorIdx];
 			let errorComponent;
 
 			if (errorModuleURL) {
 				const errorModule = modulesMap.get(errorModuleURL);
-				const errorKey =
-					internal_RiverClientGlobal.get("errorExportKey");
+				const errorKey = __riverClientGlobal.get("errorExportKey");
 				if (errorKey && errorModule) {
 					errorComponent = errorModule[errorKey];
 				}
@@ -1216,14 +1204,14 @@ class ComponentLoader {
 
 			const newErrorBoundary =
 				errorComponent ??
-				internal_RiverClientGlobal.get("defaultErrorBoundary");
+				__riverClientGlobal.get("defaultErrorBoundary");
 
 			// Only update if changed
-			const currentErrorBoundary = internal_RiverClientGlobal.get(
+			const currentErrorBoundary = __riverClientGlobal.get(
 				"activeErrorBoundary",
 			);
 			if (currentErrorBoundary !== newErrorBoundary) {
-				internal_RiverClientGlobal.set(
+				__riverClientGlobal.set(
 					"activeErrorBoundary",
 					newErrorBoundary,
 				);
@@ -1308,7 +1296,7 @@ export function getLocation() {
 }
 
 export function getBuildID(): string {
-	return internal_RiverClientGlobal.get("buildID");
+	return __riverClientGlobal.get("buildID");
 }
 
 export function getRootEl(): HTMLDivElement {
@@ -1319,7 +1307,7 @@ export function getHistoryInstance(): historyInstance {
 	return HistoryManager.getInstance();
 }
 
-export function applyScrollState(state?: ScrollState): void {
+export function __applyScrollState(state?: ScrollState): void {
 	if (!state) {
 		const id = window.location.hash.slice(1);
 		if (id) {
@@ -1337,7 +1325,7 @@ export function applyScrollState(state?: ScrollState): void {
 	}
 }
 
-export function makeLinkOnClickFn<E extends Event>(
+export function __makeLinkOnClickFn<E extends Event>(
 	callbacks: LinkOnClickCallbacks<E> & {
 		scrollToTop?: boolean;
 		replace?: boolean;
@@ -1403,7 +1391,7 @@ export function makeLinkOnClickFn<E extends Event>(
 	};
 }
 
-export function getPrefetchHandlers<E extends Event>(
+export function __getPrefetchHandlers<E extends Event>(
 	input: GetPrefetchHandlersInput<E>,
 ) {
 	const hrefDetails = getHrefDetails(input.href);
@@ -1549,23 +1537,20 @@ export async function initClient(options: {
 	defaultErrorBoundary?: RouteErrorComponent;
 	useViewTransitions?: boolean;
 }): Promise<void> {
-	internal_RiverClientGlobal.set("riverAppConfig", options.riverAppConfig);
+	__riverClientGlobal.set("riverAppConfig", options.riverAppConfig);
 
 	// Set options
 	if (options.defaultErrorBoundary) {
-		internal_RiverClientGlobal.set(
+		__riverClientGlobal.set(
 			"defaultErrorBoundary",
 			options.defaultErrorBoundary,
 		);
 	} else {
-		internal_RiverClientGlobal.set(
-			"defaultErrorBoundary",
-			defaultErrorBoundary,
-		);
+		__riverClientGlobal.set("defaultErrorBoundary", defaultErrorBoundary);
 	}
 
 	if (options.useViewTransitions) {
-		internal_RiverClientGlobal.set("useViewTransitions", true);
+		__riverClientGlobal.set("useViewTransitions", true);
 	}
 
 	// Initialize history
@@ -1580,7 +1565,7 @@ export async function initClient(options: {
 
 	// Load initial components
 	await ComponentLoader.handleComponents(
-		internal_RiverClientGlobal.get("importURLs"),
+		__riverClientGlobal.get("importURLs"),
 	);
 
 	// Setup client loaders
@@ -1596,7 +1581,7 @@ export async function initClient(options: {
 	window.addEventListener(
 		"touchstart",
 		() => {
-			internal_RiverClientGlobal.set("isTouchDevice", true);
+			__riverClientGlobal.set("isTouchDevice", true);
 		},
 		{ once: true },
 	);
@@ -1637,12 +1622,12 @@ export async function customHistoryListener({
 		const newHash = location.hash.slice(1);
 
 		if (addingHash || updatingHash) {
-			applyScrollState({ hash: newHash });
+			__applyScrollState({ hash: newHash });
 		}
 
 		if (removingHash) {
 			const stored = scrollStateManager.getState(location.key);
-			applyScrollState(stored ?? { x: 0, y: 0 });
+			__applyScrollState(stored ?? { x: 0, y: 0 });
 		}
 
 		if (!popWithinSameDoc) {
@@ -1677,7 +1662,7 @@ export async function customHistoryListener({
 
 async function __reRenderApp(props: RerenderAppProps): Promise<void> {
 	const shouldUseViewTransitions =
-		internal_RiverClientGlobal.get("useViewTransitions") &&
+		__riverClientGlobal.get("useViewTransitions") &&
 		!!document.startViewTransition &&
 		props.navigationType !== "prefetch" &&
 		props.navigationType !== "revalidation";
@@ -1710,7 +1695,7 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 	] as const;
 
 	for (const key of stateKeys) {
-		internal_RiverClientGlobal.set(key, json[key]);
+		__riverClientGlobal.set(key, json[key]);
 	}
 
 	// Load components
@@ -1892,18 +1877,18 @@ async function handleRedirects(props: {
 export async function setupClientLoaders(): Promise<void> {
 	const clientLoadersData = await runWaitFns(
 		{
-			hasRootData: internal_RiverClientGlobal.get("hasRootData"),
-			importURLs: internal_RiverClientGlobal.get("importURLs"),
-			loadersData: internal_RiverClientGlobal.get("loadersData"),
-			matchedPatterns: internal_RiverClientGlobal.get("matchedPatterns"),
-			params: internal_RiverClientGlobal.get("params"),
-			splatValues: internal_RiverClientGlobal.get("splatValues"),
+			hasRootData: __riverClientGlobal.get("hasRootData"),
+			importURLs: __riverClientGlobal.get("importURLs"),
+			loadersData: __riverClientGlobal.get("loadersData"),
+			matchedPatterns: __riverClientGlobal.get("matchedPatterns"),
+			params: __riverClientGlobal.get("params"),
+			splatValues: __riverClientGlobal.get("splatValues"),
 		},
-		internal_RiverClientGlobal.get("buildID"),
+		__riverClientGlobal.get("buildID"),
 		new AbortController().signal,
 	);
 
-	internal_RiverClientGlobal.set("clientLoadersData", clientLoadersData);
+	__riverClientGlobal.set("clientLoadersData", clientLoadersData);
 }
 
 async function runWaitFns(
@@ -1914,8 +1899,7 @@ async function runWaitFns(
 	await ComponentLoader.loadComponents(json.importURLs);
 
 	const matchedPatterns = json.matchedPatterns ?? [];
-	const patternToWaitFnMap =
-		internal_RiverClientGlobal.get("patternToWaitFnMap");
+	const patternToWaitFnMap = __riverClientGlobal.get("patternToWaitFnMap");
 	const waitFnPromises: Array<Promise<any>> = [];
 
 	let i = 0;
@@ -1954,8 +1938,7 @@ async function completeClientLoaders(
 	await ComponentLoader.loadComponents(json.importURLs);
 
 	const matchedPatterns = json.matchedPatterns ?? [];
-	const patternToWaitFnMap =
-		internal_RiverClientGlobal.get("patternToWaitFnMap");
+	const patternToWaitFnMap = __riverClientGlobal.get("patternToWaitFnMap");
 	const finalPromises: Array<Promise<any>> = [];
 
 	let i = 0;
@@ -1995,9 +1978,9 @@ async function completeClientLoaders(
 }
 
 function resolvePublicHref(relativeHref: string): string {
-	let baseURL = internal_RiverClientGlobal.get("viteDevURL");
+	let baseURL = __riverClientGlobal.get("viteDevURL");
 	if (!baseURL) {
-		baseURL = internal_RiverClientGlobal.get("publicPathPrefix");
+		baseURL = __riverClientGlobal.get("publicPathPrefix");
 	}
 	if (baseURL.endsWith("/")) {
 		baseURL = baseURL.slice(0, -1);

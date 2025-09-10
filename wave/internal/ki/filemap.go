@@ -63,7 +63,7 @@ func (c *Config) saveMapToGob(mapToSave FileMap, dest string) error {
 func (c *Config) savePublicFileMapJSToInternalPublicDir(mapToSave FileMap) error {
 	simpleStrMap := make(map[string]string, len(mapToSave))
 	for k, v := range mapToSave {
-		simpleStrMap[k] = v.Val
+		simpleStrMap[k] = v.DistName
 	}
 
 	mapAsJSON, err := json.Marshal(simpleStrMap)
@@ -217,7 +217,7 @@ func (c *Config) GetSimplePublicFileMapBuildtime() (map[string]string, error) {
 	simpleStrMap := make(map[string]string, len(filemap))
 	for k, v := range filemap {
 		if !v.IsPrehashed {
-			simpleStrMap[k] = v.Val
+			simpleStrMap[k] = v.DistName
 		}
 	}
 

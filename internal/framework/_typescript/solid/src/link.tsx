@@ -5,8 +5,8 @@ import type {
 	RiverLoaderPattern,
 } from "river.now/client";
 import {
-	makeFinalLinkProps,
-	resolvePath,
+	__makeFinalLinkProps,
+	__resolvePath,
 	type RiverAppConfig,
 	type RiverLinkPropsBase,
 } from "river.now/client";
@@ -18,7 +18,7 @@ export function RiverLink(
 			JSX.CustomEventHandlersCamelCase<HTMLAnchorElement>["onClick"]
 		>,
 ) {
-	const finalLinkProps = createMemo(() => makeFinalLinkProps(props));
+	const finalLinkProps = createMemo(() => __makeFinalLinkProps(props));
 	// oxlint-disable-next-line no-unused-vars
 	const { prefetch, scrollToTop, replace, state, ...rest } = props;
 
@@ -76,7 +76,7 @@ export function makeTypedLink<C extends RiverAppConfig>(
 		]);
 
 		const href = createMemo(() => {
-			const basePath = resolvePath({
+			const basePath = __resolvePath({
 				riverAppConfig,
 				type: "loader",
 				props: {

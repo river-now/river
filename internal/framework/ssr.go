@@ -57,7 +57,7 @@ type GetSSRInnerHTMLOutput struct {
 	Sha256Hash string
 }
 
-func (h *River) GetSSRInnerHTML(routeData *final_ui_data) (*GetSSRInnerHTMLOutput, error) {
+func (h *River) getSSRInnerHTML(routeData *final_ui_data) (*GetSSRInnerHTMLOutput, error) {
 	var htmlBuilder strings.Builder
 
 	dto := SSRInnerHTMLInput{

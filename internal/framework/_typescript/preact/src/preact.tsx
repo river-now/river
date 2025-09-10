@@ -2,11 +2,10 @@ import { batch, computed, effect, signal } from "@preact/signals";
 import { h } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "preact/hooks";
 import {
-	addBuildIDListener,
+	__applyScrollState,
 	addLocationListener,
 	addRouteChangeListener,
-	applyScrollState,
-	internal_RiverClientGlobal as ctx,
+	__riverClientGlobal as ctx,
 	getLocation,
 	getRouterData,
 	type RouteChangeEvent,
@@ -42,17 +41,6 @@ addRouteChangeListener((e) => {
 		importURLs.value = ctx.get("importURLs");
 		exportKeys.value = ctx.get("exportKeys");
 	});
-});
-
-/////////////////////////////////////////////////////////////////////
-/////// BUILD ID LISTENER
-/////////////////////////////////////////////////////////////////////
-
-addBuildIDListener((e) => {
-	if (!e.detail.fromGETAction) {
-		return;
-	}
-	routerData.value = getRouterData();
 });
 
 /////////////////////////////////////////////////////////////////////
@@ -134,7 +122,7 @@ export function RiverRootOutlet(props: { idx?: number }): h.JSX.Element {
 				return;
 			}
 			window.requestAnimationFrame(() => {
-				applyScrollState(event.detail.scrollState);
+				__applyScrollState(event.detail.__scrollState);
 			});
 		});
 

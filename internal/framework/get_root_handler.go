@@ -104,7 +104,7 @@ func (h *River) GetLoadersHandler(nestedRouter *mux.NestedRouter) mux.TasksCtxRe
 		})
 
 		eg.Go(func() error {
-			sih, err := h.GetSSRInnerHTML(routeData)
+			sih, err := h.getSSRInnerHTML(routeData)
 			if err != nil {
 				return fmt.Errorf("error getting SSR inner HTML: %w", err)
 			}
@@ -187,6 +187,7 @@ func (h *River) IsCurrentBuildJSONRequest(r *http.Request) bool {
 	return r.URL.Query().Get("river_json") == h._buildID
 }
 
+// GetCurrentBuildID returns the current build ID of the River instance.
 func (h *River) GetCurrentBuildID() string {
 	return h._buildID
 }

@@ -1,8 +1,8 @@
 import { useAtomValue } from "jotai";
 import { useMemo, type JSX } from "react";
 import {
-	internal_RiverClientGlobal,
-	registerClientLoaderPattern,
+	__registerClientLoaderPattern,
+	__riverClientGlobal,
 	type ClientLoaderAwaitedServerData,
 	type ParamsForPattern,
 	type RiverAppBase,
@@ -61,7 +61,7 @@ export function makeTypedUsePatternLoaderData<App extends RiverAppBase>() {
 }
 
 export function makeTypedAddClientLoader<App extends RiverAppBase>() {
-	const m = internal_RiverClientGlobal.get("patternToWaitFnMap");
+	const m = __riverClientGlobal.get("patternToWaitFnMap");
 	return function addClientLoader<
 		Pattern extends RiverLoaderPattern<App>,
 		LoaderData extends RiverLoaderOutput<App, Pattern>,
@@ -77,7 +77,7 @@ export function makeTypedAddClientLoader<App extends RiverAppBase>() {
 			signal: AbortSignal;
 		}) => Promise<T>,
 	) {
-		registerClientLoaderPattern(p as string).catch((error) => {
+		__registerClientLoaderPattern(p as string).catch((error) => {
 			console.error("Failed to register client loader pattern:", error);
 		});
 		(m as any)[p] = fn;

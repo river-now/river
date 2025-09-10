@@ -6,8 +6,8 @@ import type {
 	RiverLoaderPattern,
 } from "river.now/client";
 import {
-	makeFinalLinkProps,
-	resolvePath,
+	__makeFinalLinkProps,
+	__resolvePath,
 	type RiverAppConfig,
 	type RiverLinkPropsBase,
 } from "river.now/client";
@@ -20,7 +20,7 @@ export const RiverLink = memo(function RiverLink(
 			) => void | Promise<void>
 		>,
 ) {
-	const finalLinkProps = makeFinalLinkProps(props);
+	const finalLinkProps = __makeFinalLinkProps(props);
 	// oxlint-disable-next-line no-unused-vars
 	const { prefetch, scrollToTop, replace, state, ...rest } = props;
 
@@ -78,7 +78,7 @@ export function makeTypedLink<C extends RiverAppConfig>(
 			...linkProps
 		} = props as any;
 
-		const href = resolvePath({
+		const href = __resolvePath({
 			riverAppConfig,
 			type: "loader",
 			props: {

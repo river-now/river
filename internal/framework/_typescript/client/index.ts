@@ -1,18 +1,18 @@
 export {
+	__applyScrollState,
+	__getPrefetchHandlers,
+	__makeLinkOnClickFn,
+	__registerClientLoaderPattern,
 	addBuildIDListener,
 	addLocationListener,
 	addRouteChangeListener,
 	addStatusListener,
-	applyScrollState,
 	getBuildID,
 	getHistoryInstance,
 	getLocation,
-	getPrefetchHandlers,
 	getRootEl,
 	getStatus,
 	initClient,
-	makeLinkOnClickFn,
-	registerClientLoaderPattern,
 	revalidate,
 	riverNavigate,
 	submit,
@@ -26,9 +26,9 @@ export {
 } from "./src/global_loading_indicator.ts";
 export { hmrRunClientLoaders } from "./src/hmr.ts";
 export {
+	__resolvePath,
 	buildMutationURL,
 	buildQueryURL,
-	resolvePath,
 	type ExtractApp,
 	type PermissivePatternBasedProps,
 	type RiverAppBase,
@@ -46,13 +46,13 @@ export {
 	type RiverRoutePropsGeneric,
 } from "./src/river_app_helpers.ts";
 export {
+	__riverClientGlobal,
 	getRouterData,
-	internal_RiverClientGlobal,
 	type ClientLoaderAwaitedServerData,
 } from "./src/river_ctx.ts";
 export type { RiverRoutes } from "./src/route_def_helpers.ts";
 export {
-	makeFinalLinkProps,
+	__makeFinalLinkProps,
 	makeTypedNavigate,
 	type ParamsForPattern,
 	type RiverLinkPropsBase,

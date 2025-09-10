@@ -11,7 +11,10 @@ import (
 )
 
 type fileVal struct {
-	Val         string
+	// The actual filename in dist directory
+	DistName string
+	// Hash for content change detection
+	ContentHash string
 	IsPrehashed bool
 }
 
@@ -85,7 +88,7 @@ func (c *Config) getInitialPublicURLInner(originalPublicURL string, fileMapFromG
 
 	if hashedURL, existsInFileMap := fileMapFromGob[cleanURL(originalPublicURL)]; existsInFileMap {
 		return matcher.EnsureLeadingSlash(
-			path.Join(c._uc.Core.PublicPathPrefix, hashedURL.Val),
+			path.Join(c._uc.Core.PublicPathPrefix, hashedURL.DistName),
 		), nil
 	}
 

@@ -217,7 +217,7 @@ function buildURL(opts: APIClientHelperOpts): URL {
 	const base_path = stripTrailingSlash(
 		opts.riverAppConfig.actionsRouterMountRoot,
 	);
-	const resolved_path = resolvePath(opts);
+	const resolved_path = __resolvePath(opts);
 	const url = new URL(base_path + resolved_path, getCurrentOrigin());
 
 	if (opts.type === "query" && opts.props.input) {
@@ -227,7 +227,7 @@ function buildURL(opts: APIClientHelperOpts): URL {
 	return url;
 }
 
-export function resolvePath(opts: APIClientHelperOpts): string {
+export function __resolvePath(opts: APIClientHelperOpts): string {
 	const { props, riverAppConfig } = opts;
 	let path = props.pattern;
 

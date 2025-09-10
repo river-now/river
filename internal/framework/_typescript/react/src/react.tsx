@@ -8,11 +8,10 @@ import {
 	useState,
 } from "react";
 import {
-	addBuildIDListener,
+	__applyScrollState,
 	addLocationListener,
 	addRouteChangeListener,
-	applyScrollState,
-	internal_RiverClientGlobal as ctx,
+	__riverClientGlobal as ctx,
 	getLocation,
 	getRouterData,
 	type RouteChangeEvent,
@@ -70,20 +69,6 @@ addRouteChangeListener((e) => {
 		importURLs: ctx.get("importURLs"),
 		exportKeys: ctx.get("exportKeys"),
 	});
-});
-
-/////////////////////////////////////////////////////////////////////
-/////// BUILD ID LISTENER
-/////////////////////////////////////////////////////////////////////
-
-addBuildIDListener((e) => {
-	if (!e.detail.fromGETAction) {
-		return;
-	}
-	jotaiStore.set(navigationStateAtom, (prev) => ({
-		...prev,
-		routerData: getRouterData(),
-	}));
 });
 
 /////////////////////////////////////////////////////////////////////
@@ -173,7 +158,7 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 			return;
 		}
 		window.requestAnimationFrame(() => {
-			applyScrollState(latestEvent.detail.scrollState);
+			__applyScrollState(latestEvent.detail.__scrollState);
 		});
 	}, [latestEvent, idx]);
 

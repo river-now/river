@@ -475,8 +475,15 @@ func (c *Config) processStaticFiles(opts *staticFileProcessorOpts) error {
 	if opts.is_dev_rebuild {
 		var oldMapErr error
 		oldFileMap.Range(func(k string, v fileVal) bool {
-			if newHash, exists := newFileMap.Load(k); !exists || newHash != v {
-				oldDistPath := filepath.Join(opts.distDir, v.Val)
+			newFile, exists := newFileMap.Load(k)
+
+			// Only delete if:
+			// 1. File was deleted from source (!exists), OR
+			// 2. File was renamed (different DistName)
+			shouldDelete := !exists || (exists && newFile.DistName != v.DistName)
+
+			if shouldDelete {
+				oldDistPath := filepath.Join(opts.distDir, v.DistName)
 				err := os.Remove(oldDistPath)
 				if err != nil && !os.IsNotExist(err) {
 					oldMapErr = fmt.Errorf(
@@ -522,39 +529,44 @@ func (c *Config) processFile(
 
 	relativePathUnderscores := strings.ReplaceAll(fi.relativePath, "/", "_")
 
+	contentHash, err := getHashedFilenameFromPath(fi.path, relativePathUnderscores)
+	if err != nil {
+		return fmt.Errorf("error getting hashed filename: %w", err)
+	}
+
 	var fileIdentifier fileVal
+	fileIdentifier.ContentHash = contentHash
+
 	if fi.isNoHashDir {
-		fileIdentifier.Val = fi.relativePath
+		fileIdentifier.DistName = fi.relativePath
 		fileIdentifier.IsPrehashed = true
 	} else if !opts.writeWithHash {
-		// Store original name for private files
-		fileIdentifier.Val = fi.relativePath
+		// For private files, the on-disk name is the original relative path
+		fileIdentifier.DistName = fi.relativePath
 	} else {
-		var err error
-		name, err := getHashedFilenameFromPath(fi.path, relativePathUnderscores)
-		if err != nil {
-			return fmt.Errorf("error getting hashed filename: %w", err)
-		}
-		fileIdentifier.Val = name
+		// For public files, the on-disk name is the hashed name
+		fileIdentifier.DistName = contentHash
 	}
 
 	newFileMap.Store(fi.relativePath, fileIdentifier)
 
 	// Skip unchanged files if granular updates are enabled
 	if opts.is_dev_rebuild {
-		if oldHash, exists := oldFileMap.Load(fi.relativePath); exists && oldHash == fileIdentifier {
-			return nil
+		if oldVal, exists := oldFileMap.Load(fi.relativePath); exists {
+			if oldVal.ContentHash == fileIdentifier.ContentHash {
+				return nil
+			}
 		}
 	}
 
 	var distPath string
 	if opts.writeWithHash {
-		distPath = filepath.Join(distDir, fileIdentifier.Val)
+		distPath = filepath.Join(distDir, fileIdentifier.DistName)
 	} else {
 		distPath = filepath.Join(distDir, fi.relativePath)
 	}
 
-	err := os.MkdirAll(filepath.Dir(distPath), 0755)
+	err = os.MkdirAll(filepath.Dir(distPath), 0755)
 	if err != nil {
 		return fmt.Errorf("error creating directory: %w", err)
 	}

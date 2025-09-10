@@ -1,10 +1,10 @@
 import {
-	getPrefetchHandlers,
-	makeLinkOnClickFn,
+	__getPrefetchHandlers,
+	__makeLinkOnClickFn,
 	riverNavigate,
 } from "./client.ts";
 import {
-	resolvePath,
+	__resolvePath,
 	type ExtractApp,
 	type PermissivePatternBasedProps,
 	type RiverAppBase,
@@ -12,7 +12,7 @@ import {
 	type RiverLoaderPattern,
 	type RiverRouteParams,
 } from "./river_app_helpers.ts";
-import { internal_RiverClientGlobal, type getRouterData } from "./river_ctx.ts";
+import { __riverClientGlobal, type getRouterData } from "./river_ctx.ts";
 
 /////////////////////////////////////////////////////////////////////
 /////// ROUTE COMPONENTS
@@ -87,7 +87,7 @@ function linkPropsToPrefetchObj<LinkOnClickCallback>(
 		return undefined;
 	}
 
-	return getPrefetchHandlers({
+	return __getPrefetchHandlers({
 		href: props.href,
 		delayMs: props.prefetchDelayMs,
 		beforeBegin: props.beforeBegin as any,
@@ -102,7 +102,7 @@ function linkPropsToPrefetchObj<LinkOnClickCallback>(
 function linkPropsToOnClickFn<LinkOnClickCallback>(
 	props: RiverLinkPropsBase<LinkOnClickCallback>,
 ) {
-	return makeLinkOnClickFn({
+	return __makeLinkOnClickFn({
 		beforeBegin: props.beforeBegin as any,
 		beforeRender: props.beforeRender as any,
 		afterRender: props.afterRender as any,
@@ -130,7 +130,7 @@ const standardCamelHandlerKeys = {
 	onClick: "onClick",
 } satisfies handlerKeys;
 
-export function makeFinalLinkProps<LinkOnClickCallback>(
+export function __makeFinalLinkProps<LinkOnClickCallback>(
 	props: RiverLinkPropsBase<LinkOnClickCallback>,
 	keys: {
 		onPointerEnter: string;
@@ -160,7 +160,7 @@ export function makeFinalLinkProps<LinkOnClickCallback>(
 		onPointerLeave: (e: any) => {
 			// we don't want to stop on a touch device, because this triggers
 			// even when the user "clicks" on the link for some reason
-			if (!internal_RiverClientGlobal.get("isTouchDevice")) {
+			if (!__riverClientGlobal.get("isTouchDevice")) {
 				prefetchObj?.stop();
 			}
 			if (isFn((props as any)[keys.onPointerLeave])) {
@@ -228,7 +228,7 @@ export function makeTypedNavigate<C extends RiverAppConfig>(riverAppConfig: C) {
 			state,
 		} = options as any;
 
-		const href = resolvePath({
+		const href = __resolvePath({
 			riverAppConfig,
 			type: "loader",
 			props: {

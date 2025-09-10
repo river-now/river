@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-func (h *River) PostViteProdBuild() error {
+func (h *River) postViteProdBuild() error {
 	// Must come after Vite -- only needed in prod (the stage "one" version is fine in dev)
 	pf, err := h.toPathsFile_StageTwo()
 	if err != nil {
