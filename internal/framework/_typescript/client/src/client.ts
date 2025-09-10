@@ -11,6 +11,7 @@ import {
 } from "river.now/kit/url";
 import { updateHeadEls } from "./head.ts";
 import type { historyInstance, historyListener } from "./history_types.ts";
+import { initHMR } from "./hmr.ts";
 import {
 	getBuildIDFromResponse,
 	parseFetchResponseForRedirectData,
@@ -140,7 +141,7 @@ export type ScrollState = { x: number; y: number } | { hash: string };
 export type RouteChangeEvent = CustomEvent<RouteChangeEventDetail>;
 export type StatusEvent = CustomEvent<StatusEventDetail>;
 
-type RouteChangeEventDetail = {
+export type RouteChangeEventDetail = {
 	__scrollState?: ScrollState;
 };
 
@@ -1537,6 +1538,13 @@ export async function initClient(options: {
 	defaultErrorBoundary?: RouteErrorComponent;
 	useViewTransitions?: boolean;
 }): Promise<void> {
+	initHMR();
+
+	// Setup beforeunload handler for scroll restoration
+	window.addEventListener("beforeunload", () => {
+		scrollStateManager.savePageRefreshState();
+	});
+
 	__riverClientGlobal.set("riverAppConfig", options.riverAppConfig);
 
 	// Set options
@@ -1752,9 +1760,12 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 	}
 
 	// Dispatch route change event -- this triggers the actual UI update
+	const routeChangeEventDetail: RouteChangeEventDetail = {
+		__scrollState: scrollStateToDispatch,
+	};
 	window.dispatchEvent(
 		new CustomEvent(RIVER_ROUTE_CHANGE_EVENT_KEY, {
-			detail: { scrollState: scrollStateToDispatch },
+			detail: routeChangeEventDetail,
 		}),
 	);
 
@@ -2029,8 +2040,3 @@ const defaultErrorBoundary: RouteErrorComponent = (props: {
 }) => {
 	return "Route Error: " + props.error;
 };
-
-// Setup beforeunload handler for scroll restoration
-window.addEventListener("beforeunload", () => {
-	scrollStateManager.savePageRefreshState();
-});

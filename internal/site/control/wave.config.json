@@ -32,7 +32,8 @@
 		"Include": [
 			{
 				"Pattern": "assets/private/markdown/**/*.md",
-				"OnlyRunClientDefinedRevalidateFunc": true
+				"OnlyRunClientDefinedRevalidateFunc": true,
+				"SkipRebuildingNotification": true
 			}
 		]
 	}

@@ -47,32 +47,35 @@ const [exportKeys, setExportKeys] = createSignal(ctx.get("exportKeys"));
 
 export { clientLoadersData, loadersData, routerData };
 
-addRouteChangeListener((e) => {
-	batch(() => {
-		setLatestEvent(e);
-		setLoadersData(ctx.get("loadersData"));
-		setClientLoadersData(ctx.get("clientLoadersData"));
-		setRouterData(getRouterData());
-		setOutermostErrorIdx(ctx.get("outermostErrorIdx"));
-		setOutermostError(ctx.get("outermostError"));
-		setActiveComponents(ctx.get("activeComponents"));
-		setActiveErrorBoundary(ctx.get("activeErrorBoundary"));
-		setImportURLs(ctx.get("importURLs"));
-		setExportKeys(ctx.get("exportKeys"));
-	});
-});
+let isInited = false;
 
-/////////////////////////////////////////////////////////////////////
-/////// LOCATION
-/////////////////////////////////////////////////////////////////////
+function initUIListeners() {
+	if (isInited) return;
+	isInited = true;
+
+	addRouteChangeListener((e) => {
+		batch(() => {
+			setLatestEvent(e);
+			setLoadersData(ctx.get("loadersData"));
+			setClientLoadersData(ctx.get("clientLoadersData"));
+			setRouterData(getRouterData());
+			setOutermostErrorIdx(ctx.get("outermostErrorIdx"));
+			setOutermostError(ctx.get("outermostError"));
+			setActiveComponents(ctx.get("activeComponents"));
+			setActiveErrorBoundary(ctx.get("activeErrorBoundary"));
+			setImportURLs(ctx.get("importURLs"));
+			setExportKeys(ctx.get("exportKeys"));
+		});
+	});
+
+	addLocationListener(() => {
+		setLocation(getLocation());
+	});
+}
 
 const [location, setLocation] = createSignal(getLocation());
 
 export { location };
-
-addLocationListener(() => {
-	setLocation(getLocation());
-});
 
 /////////////////////////////////////////////////////////////////////
 /////// COMPONENT
@@ -82,6 +85,8 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 	const idx = props.idx ?? 0;
 
 	if (idx === 0) {
+		initUIListeners();
+
 		batch(() => {
 			setClientLoadersData(ctx.get("clientLoadersData"));
 			setActiveComponents(ctx.get("activeComponents"));

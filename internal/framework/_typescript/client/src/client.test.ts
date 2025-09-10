@@ -19,6 +19,7 @@ import {
 	navigationStateManager,
 	revalidate,
 	riverNavigate,
+	type RouteChangeEventDetail,
 	type ScrollState,
 	type StatusEventDetail,
 	submit,
@@ -1668,8 +1669,8 @@ describe("Comprehensive Navigation Test Suite", () => {
 				expect(routeChangeListener).toHaveBeenCalledWith(
 					expect.objectContaining({
 						detail: expect.objectContaining({
-							scrollState: { x: 0, y: 0 },
-						}),
+							__scrollState: { x: 0, y: 0 },
+						} satisfies RouteChangeEventDetail),
 					}),
 				);
 
@@ -2240,8 +2241,8 @@ describe("Comprehensive Navigation Test Suite", () => {
 				expect(routeChangeListener).toHaveBeenCalledWith(
 					expect.objectContaining({
 						detail: expect.objectContaining({
-							scrollState: { x: 0, y: 0 },
-						}),
+							__scrollState: { x: 0, y: 0 },
+						} satisfies RouteChangeEventDetail),
 					}),
 				);
 
@@ -2280,9 +2281,11 @@ describe("Comprehensive Navigation Test Suite", () => {
 		});
 
 		describe("4.4 Page Refresh Handling", () => {
-			it("should save scroll state on unload", () => {
+			it("should save scroll state on unload", async () => {
 				(window as any).scrollX = 200;
 				(window as any).scrollY = 400;
+
+				await initClient({ renderFn: () => {}, riverAppConfig });
 
 				window.dispatchEvent(new Event("beforeunload"));
 
@@ -3650,8 +3653,8 @@ describe("Comprehensive Navigation Test Suite", () => {
 				expect(routeChangeListener).toHaveBeenCalledWith(
 					expect.objectContaining({
 						detail: expect.objectContaining({
-							scrollState: { hash: "section" },
-						}),
+							__scrollState: { hash: "section" },
+						} satisfies RouteChangeEventDetail),
 					}),
 				);
 			});

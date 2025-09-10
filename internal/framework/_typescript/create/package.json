@@ -1,11 +1,16 @@
 {
 	"name": "create-river",
-	"version": "0.66.0",
+	"version": "0.67.0",
+	"description": "CLI for creating new River applications.",
 	"type": "module",
 	"license": "BSD-3-Clause",
 	"repository": {
 		"url": "https://github.com/river-now/river",
-		"type": "git"
+		"type": "git",
+		"directory": "internal/framework/_typescript/create"
+	},
+	"bugs": {
+		"url": "https://github.com/river-now/river/issues"
 	},
 	"homepage": "https://river.now",
 	"author": "Samuel J. Cook",

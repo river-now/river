@@ -56,34 +56,37 @@ export const routerDataAtom = atom((get) => {
 	return get(navigationStateAtom).routerData;
 });
 
-addRouteChangeListener((e) => {
-	jotaiStore.set(navigationStateAtom, {
-		latestEvent: e,
-		loadersData: ctx.get("loadersData"),
-		clientLoadersData: ctx.get("clientLoadersData"),
-		routerData: getRouterData(),
-		outermostError: ctx.get("outermostError"),
-		outermostErrorIdx: ctx.get("outermostErrorIdx"),
-		activeComponents: ctx.get("activeComponents"),
-		activeErrorBoundary: ctx.get("activeErrorBoundary"),
-		importURLs: ctx.get("importURLs"),
-		exportKeys: ctx.get("exportKeys"),
-	});
-});
+let isInited = false;
 
-/////////////////////////////////////////////////////////////////////
-/////// LOCATION
-/////////////////////////////////////////////////////////////////////
+function initUIListeners() {
+	if (isInited) return;
+	isInited = true;
+
+	addRouteChangeListener((e) => {
+		jotaiStore.set(navigationStateAtom, {
+			latestEvent: e,
+			loadersData: ctx.get("loadersData"),
+			clientLoadersData: ctx.get("clientLoadersData"),
+			routerData: getRouterData(),
+			outermostError: ctx.get("outermostError"),
+			outermostErrorIdx: ctx.get("outermostErrorIdx"),
+			activeComponents: ctx.get("activeComponents"),
+			activeErrorBoundary: ctx.get("activeErrorBoundary"),
+			importURLs: ctx.get("importURLs"),
+			exportKeys: ctx.get("exportKeys"),
+		});
+	});
+
+	addLocationListener(() => {
+		jotaiStore.set(locationAtom, getLocation());
+	});
+}
 
 const locationAtom = atom(getLocation());
 
 export function useLocation() {
 	return useAtomValue(locationAtom);
 }
-
-addLocationListener(() => {
-	jotaiStore.set(locationAtom, getLocation());
-});
 
 /////////////////////////////////////////////////////////////////////
 /////// COMPONENT
@@ -106,6 +109,8 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 	} = state;
 
 	if (idx === 0 && initialRenderRef.current) {
+		initUIListeners();
+
 		initialRenderRef.current = false;
 		jotaiStore.set(navigationStateAtom, {
 			latestEvent: null,

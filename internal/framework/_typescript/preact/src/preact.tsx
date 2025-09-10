@@ -28,30 +28,33 @@ const exportKeys = signal(ctx.get("exportKeys"));
 
 export { clientLoadersData, loadersData, routerData };
 
-addRouteChangeListener((e) => {
-	batch(() => {
-		latestEvent.value = e;
-		loadersData.value = ctx.get("loadersData");
-		clientLoadersData.value = ctx.get("clientLoadersData");
-		routerData.value = getRouterData();
-		outermostErrorIdx.value = ctx.get("outermostErrorIdx");
-		outermostError.value = ctx.get("outermostError");
-		activeComponents.value = ctx.get("activeComponents");
-		activeErrorBoundary.value = ctx.get("activeErrorBoundary");
-		importURLs.value = ctx.get("importURLs");
-		exportKeys.value = ctx.get("exportKeys");
-	});
-});
+let isInited = false;
 
-/////////////////////////////////////////////////////////////////////
-/////// LOCATION
-/////////////////////////////////////////////////////////////////////
+function initUIListeners() {
+	if (isInited) return;
+	isInited = true;
+
+	addRouteChangeListener((e) => {
+		batch(() => {
+			latestEvent.value = e;
+			loadersData.value = ctx.get("loadersData");
+			clientLoadersData.value = ctx.get("clientLoadersData");
+			routerData.value = getRouterData();
+			outermostErrorIdx.value = ctx.get("outermostErrorIdx");
+			outermostError.value = ctx.get("outermostError");
+			activeComponents.value = ctx.get("activeComponents");
+			activeErrorBoundary.value = ctx.get("activeErrorBoundary");
+			importURLs.value = ctx.get("importURLs");
+			exportKeys.value = ctx.get("exportKeys");
+		});
+	});
+
+	addLocationListener(() => {
+		location.value = getLocation();
+	});
+}
 
 export const location = signal(getLocation());
-
-addLocationListener(() => {
-	location.value = getLocation();
-});
 
 /////////////////////////////////////////////////////////////////////
 /////// COMPONENT
@@ -63,6 +66,8 @@ export function RiverRootOutlet(props: { idx?: number }): h.JSX.Element {
 	const initialRenderRef = useRef(true);
 
 	if (idx === 0 && initialRenderRef.current) {
+		initUIListeners();
+
 		initialRenderRef.current = false;
 		batch(() => {
 			loadersData.value = ctx.get("loadersData");
