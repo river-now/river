@@ -1,8 +1,11 @@
+/// <reference types="vite/client" />
+
 import { useAtomValue } from "jotai";
 import { useMemo, type JSX } from "react";
 import {
 	__registerClientLoaderPattern,
 	__riverClientGlobal,
+	__runClientLoadersAfterHMRUpdate,
 	type ClientLoaderAwaitedServerData,
 	type ParamsForPattern,
 	type RiverAppBase,
@@ -66,21 +69,29 @@ export function makeTypedAddClientLoader<App extends RiverAppBase>() {
 		Pattern extends RiverLoaderPattern<App>,
 		LoaderData extends RiverLoaderOutput<App, Pattern>,
 		T = any,
-	>(
-		p: Pattern,
-		fn: (props: {
+	>(props: {
+		pattern: Pattern;
+		clientLoader: (props: {
 			params: Record<ParamsForPattern<App, Pattern>, string>;
 			splatValues: string[];
 			serverDataPromise: Promise<
 				ClientLoaderAwaitedServerData<App["rootData"], LoaderData>
 			>;
 			signal: AbortSignal;
-		}) => Promise<T>,
-	) {
+		}) => Promise<T>;
+		reRunOnModuleChange?: ImportMeta;
+	}) {
+		const p = props.pattern;
+		const fn = props.clientLoader;
+
 		__registerClientLoaderPattern(p as string).catch((error) => {
 			console.error("Failed to register client loader pattern:", error);
 		});
 		(m as any)[p] = fn;
+
+		if (import.meta.env.DEV && props.reRunOnModuleChange) {
+			__runClientLoadersAfterHMRUpdate(props.reRunOnModuleChange, p);
+		}
 
 		type Res = Awaited<ReturnType<typeof fn>>;
 

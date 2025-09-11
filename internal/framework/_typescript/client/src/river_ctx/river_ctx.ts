@@ -1,4 +1,4 @@
-import type { RiverAppConfig } from "./river_app_helpers.ts";
+import type { RiverAppConfig } from "../river_app_helpers/river_app_helpers.ts";
 
 export type HeadEl = {
 	tag?: string;

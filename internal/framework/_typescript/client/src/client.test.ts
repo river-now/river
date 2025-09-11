@@ -1,31 +1,33 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-	__applyScrollState,
-	__getPrefetchHandlers,
-	__makeLinkOnClickFn,
-	addBuildIDListener,
-	addLocationListener,
-	addRouteChangeListener,
-	addStatusListener,
 	beginNavigation,
-	customHistoryListener,
 	getBuildID,
 	getHistoryInstance,
 	getLocation,
 	getRootEl,
 	getStatus,
-	initClient,
-	initCustomHistory,
 	navigationStateManager,
 	revalidate,
 	riverNavigate,
-	type RouteChangeEventDetail,
-	type ScrollState,
-	type StatusEventDetail,
 	submit,
 } from "./client";
-import type { RiverAppConfig } from "./river_app_helpers.ts";
-import { __riverClientGlobal } from "./river_ctx";
+import {
+	addBuildIDListener,
+	addLocationListener,
+	addRouteChangeListener,
+	addStatusListener,
+	type RouteChangeEventDetail,
+	type StatusEventDetail,
+} from "./events.ts";
+import { customHistoryListener, initCustomHistory } from "./history/history.ts";
+import { initClient } from "./init_client.ts";
+import { __getPrefetchHandlers, __makeLinkOnClickFn } from "./links.ts";
+import type { RiverAppConfig } from "./river_app_helpers/river_app_helpers.ts";
+import { __riverClientGlobal } from "./river_ctx/river_ctx.ts";
+import {
+	__applyScrollState,
+	type ScrollState,
+} from "./scroll_state_manager.ts";
 
 const riverAppConfig: RiverAppConfig = {
 	actionsRouterMountRoot: "/api/",
@@ -2215,7 +2217,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 				};
 
 				// Import and call customHistoryListener
-				const { customHistoryListener } = await import("./client.ts");
+				const { customHistoryListener } = await import(
+					"./history/history.ts"
+				);
 				await customHistoryListener(update as any);
 
 				await vi.runAllTimersAsync();
@@ -3694,7 +3698,9 @@ describe("Comprehensive Navigation Test Suite", () => {
 				);
 
 				// Import and call customHistoryListener directly
-				const { customHistoryListener } = await import("./client.ts");
+				const { customHistoryListener } = await import(
+					"./history/history.ts"
+				);
 
 				// Simulate a history update with a different key
 				await customHistoryListener({

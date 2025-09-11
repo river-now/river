@@ -1,11 +1,11 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getStartAndEndComments, updateHeadEls } from "./head.ts";
-import type { HeadEl } from "./river_ctx.ts";
-import { Panic } from "./utils.ts";
+import type { HeadEl } from "../river_ctx/river_ctx.ts";
+import { panic } from "../utils/errors.ts";
+import { getStartAndEndComments, updateHeadEls } from "./head_elements.ts";
 
-vi.mock("./utils.ts", () => ({
-	Panic: vi.fn(() => {
+vi.mock("../utils/errors.ts", () => ({
+	panic: vi.fn(() => {
 		throw new Error("Panic called");
 	}),
 }));
@@ -14,10 +14,14 @@ let dom: JSDOM;
 
 describe("updateHeadEls", () => {
 	beforeEach(() => {
-		dom = new JSDOM("<!DOCTYPE html><html><head></head><body></body></html>", {
-			url: "http://localhost/",
-		});
-		(global as any).window = dom.window as unknown as Window & typeof globalThis;
+		dom = new JSDOM(
+			"<!DOCTYPE html><html><head></head><body></body></html>",
+			{
+				url: "http://localhost/",
+			},
+		);
+		(global as any).window = dom.window as unknown as Window &
+			typeof globalThis;
 		(global as any).document = dom.window.document;
 		(global as any).NodeFilter = {
 			SHOW_COMMENT: 128,
@@ -28,9 +32,13 @@ describe("updateHeadEls", () => {
 			ELEMENT_NODE: 1,
 		};
 
-		const startMetaComment = document.createComment('data-river="meta-start"');
+		const startMetaComment = document.createComment(
+			'data-river="meta-start"',
+		);
 		const endMetaComment = document.createComment('data-river="meta-end"');
-		const startRestComment = document.createComment('data-river="rest-start"');
+		const startRestComment = document.createComment(
+			'data-river="rest-start"',
+		);
 		const endRestComment = document.createComment('data-river="rest-end"');
 
 		document.head.appendChild(startMetaComment);
@@ -44,7 +52,8 @@ describe("updateHeadEls", () => {
 	afterEach(() => {
 		vi.resetAllMocks();
 		dom.window.close();
-		(global as any).window = undefined as unknown as Window & typeof globalThis;
+		(global as any).window = undefined as unknown as Window &
+			typeof globalThis;
 		(global as any).document = undefined as unknown as Document;
 		(global as any).NodeFilter = undefined as unknown as NodeFilter;
 	});
@@ -63,7 +72,10 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "Test Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Test Description",
+				},
 			},
 			{
 				tag: "link",
@@ -97,11 +109,15 @@ describe("updateHeadEls", () => {
 		const headChildren = Array.from(document.head.childNodes);
 		const startMetaIndex = headChildren.findIndex((node) => {
 			return (
-				node.nodeType === 8 && (node as Comment).data === 'data-river="meta-start"'
+				node.nodeType === 8 &&
+				(node as Comment).data === 'data-river="meta-start"'
 			);
 		});
 		const endMetaIndex = headChildren.findIndex((node) => {
-			return node.nodeType === 8 && (node as Comment).data === 'data-river="meta-end"';
+			return (
+				node.nodeType === 8 &&
+				(node as Comment).data === 'data-river="meta-end"'
+			);
 		});
 
 		const elementsBetweenComments = headChildren.slice(
@@ -127,7 +143,10 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "New Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "New Description",
+				},
 			},
 		];
 
@@ -165,7 +184,10 @@ describe("updateHeadEls", () => {
 			// Only keep the meta, remove the link
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "Old Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Old Description",
+				},
 			},
 		];
 
@@ -191,7 +213,10 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "Test Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Test Description",
+				},
 			},
 		];
 
@@ -223,11 +248,17 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "viewport", content: "width=device-width" },
+				attributesKnownSafe: {
+					name: "viewport",
+					content: "width=device-width",
+				},
 			},
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Description",
+				},
 			},
 		];
 
@@ -288,7 +319,9 @@ describe("updateHeadEls", () => {
 
 	it("should handle missing start/end comments gracefully", () => {
 		document.head.innerHTML = "";
-		const startRestComment = document.createComment('data-river="rest-start"');
+		const startRestComment = document.createComment(
+			'data-river="rest-start"',
+		);
 		const endRestComment = document.createComment('data-river="rest-end"');
 		document.head.appendChild(startRestComment);
 		document.head.appendChild(endRestComment);
@@ -296,7 +329,10 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "Test Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Test Description",
+				},
 			},
 		];
 
@@ -309,7 +345,10 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				// No tag property
-				attributesKnownSafe: { name: "description", content: "Test Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Test Description",
+				},
 			},
 			{
 				tag: "link",
@@ -341,12 +380,14 @@ describe("updateHeadEls", () => {
 		expect(scriptEl.getAttribute("src")).toBe("/script.js");
 
 		// Verify script is between rest comments
-		const startComment = Array.from(document.head.childNodes).find((node) => {
-			return (
-				node.nodeType === 8 &&
-				(node as Comment).data.trim() === 'data-river="rest-start"'
-			);
-		});
+		const startComment = Array.from(document.head.childNodes).find(
+			(node) => {
+				return (
+					node.nodeType === 8 &&
+					(node as Comment).data.trim() === 'data-river="rest-start"'
+				);
+			},
+		);
 		const endComment = Array.from(document.head.childNodes).find((node) => {
 			return (
 				node.nodeType === 8 &&
@@ -387,7 +428,10 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "Test Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Test Description",
+				},
 			},
 		];
 
@@ -404,14 +448,21 @@ describe("updateHeadEls", () => {
 		const headChildren = Array.from(document.head.childNodes);
 		const metaStartIndex = headChildren.findIndex((node) => {
 			return (
-				node.nodeType === 8 && (node as Comment).data === 'data-river="meta-start"'
+				node.nodeType === 8 &&
+				(node as Comment).data === 'data-river="meta-start"'
 			);
 		});
 		const metaEndIndex = headChildren.findIndex((node) => {
-			return node.nodeType === 8 && (node as Comment).data === 'data-river="meta-end"';
+			return (
+				node.nodeType === 8 &&
+				(node as Comment).data === 'data-river="meta-end"'
+			);
 		});
 
-		const nodesBetweenComments = headChildren.slice(metaStartIndex + 1, metaEndIndex);
+		const nodesBetweenComments = headChildren.slice(
+			metaStartIndex + 1,
+			metaEndIndex,
+		);
 		const hasTextNodes = nodesBetweenComments.some((node) => {
 			return node.nodeType === Node.TEXT_NODE;
 		});
@@ -422,7 +473,10 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "Test Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Test Description",
+				},
 			},
 		];
 
@@ -444,14 +498,17 @@ describe("updateHeadEls", () => {
 		];
 
 		expect(() => updateHeadEls("meta", blocks)).toThrow();
-		expect(Panic).toHaveBeenCalled();
+		expect(panic).toHaveBeenCalled();
 	});
 
 	it("should not process undefined tags", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: undefined,
-				attributesKnownSafe: { name: "description", content: "Test Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Test Description",
+				},
 			},
 		];
 
@@ -516,7 +573,10 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "keywords", content: "test, vitest" },
+				attributesKnownSafe: {
+					name: "keywords",
+					content: "test, vitest",
+				},
 			},
 			{
 				tag: "meta",
@@ -550,26 +610,44 @@ describe("updateHeadEls", () => {
 		expect(elementsBetweenComments[2]?.tagName?.toLowerCase()).toBe("link");
 
 		// Verify content
-		expect(elementsBetweenComments[0]?.getAttribute("name")).toBe("keywords");
-		expect(elementsBetweenComments[0]?.getAttribute("content")).toBe("test, vitest");
+		expect(elementsBetweenComments[0]?.getAttribute("name")).toBe(
+			"keywords",
+		);
+		expect(elementsBetweenComments[0]?.getAttribute("content")).toBe(
+			"test, vitest",
+		);
 
-		expect(elementsBetweenComments[1]?.getAttribute("name")).toBe("description");
+		expect(elementsBetweenComments[1]?.getAttribute("name")).toBe(
+			"description",
+		);
 		expect(elementsBetweenComments[1]?.getAttribute("content")).toBe(
 			"Updated Description",
 		);
 
-		expect(elementsBetweenComments[2]?.getAttribute("rel")).toBe("stylesheet");
-		expect(elementsBetweenComments[2]?.getAttribute("href")).toBe("/styles.css");
+		expect(elementsBetweenComments[2]?.getAttribute("rel")).toBe(
+			"stylesheet",
+		);
+		expect(elementsBetweenComments[2]?.getAttribute("href")).toBe(
+			"/styles.css",
+		);
 
 		// Verify canonical link is removed
-		expect(document.head.querySelectorAll('link[rel="canonical"]').length).toBe(0);
+		expect(
+			document.head.querySelectorAll('link[rel="canonical"]').length,
+		).toBe(0);
 	});
 
 	it("should handle complex innerHTML correctly (style tag)", () => {
 		const initialCSS = "body > .foo { color: red; }\n/* comment */";
 		const updatedCSS = ".bar { font-weight: bold; }";
-		const initialBlock: HeadEl = { tag: "style", dangerousInnerHTML: initialCSS };
-		const updatedBlock: HeadEl = { tag: "style", dangerousInnerHTML: updatedCSS };
+		const initialBlock: HeadEl = {
+			tag: "style",
+			dangerousInnerHTML: initialCSS,
+		};
+		const updatedBlock: HeadEl = {
+			tag: "style",
+			dangerousInnerHTML: updatedCSS,
+		};
 
 		updateHeadEls("rest", [initialBlock]);
 
@@ -601,20 +679,28 @@ describe("updateHeadEls", () => {
 		updateHeadEls("rest", [scriptBlockBase]);
 
 		let scriptEl =
-			document.head.querySelector<HTMLScriptElement>("script[src='a.js']");
+			document.head.querySelector<HTMLScriptElement>(
+				"script[src='a.js']",
+			);
 		expect(scriptEl).not.toBeNull();
 		expect(scriptEl?.hasAttribute("async")).toBe(false);
 
 		updateHeadEls("rest", [scriptBlockWithAsync]);
 
-		scriptEl = document.head.querySelector<HTMLScriptElement>("script[src='a.js']");
+		scriptEl =
+			document.head.querySelector<HTMLScriptElement>(
+				"script[src='a.js']",
+			);
 		expect(scriptEl).not.toBeNull();
 		expect(scriptEl?.hasAttribute("async")).toBe(true);
 		expect(scriptEl?.getAttribute("async")).toBe("");
 
 		updateHeadEls("rest", [scriptBlockBase]);
 
-		scriptEl = document.head.querySelector<HTMLScriptElement>("script[src='a.js']");
+		scriptEl =
+			document.head.querySelector<HTMLScriptElement>(
+				"script[src='a.js']",
+			);
 		expect(scriptEl).not.toBeNull();
 		expect(scriptEl?.hasAttribute("async")).toBe(false);
 	});
@@ -636,14 +722,21 @@ describe("updateHeadEls", () => {
 		document.head.insertBefore(metaDesc1, comments.endComment);
 		document.head.insertBefore(metaDesc2, comments.endComment);
 
-		expect(document.head.querySelectorAll('meta[name="description"]').length).toBe(2);
+		expect(
+			document.head.querySelectorAll('meta[name="description"]').length,
+		).toBe(2);
 
 		const blocks: Array<HeadEl> = [
-			{ tag: "meta", attributesKnownSafe: { name: "description", content: "A" } },
+			{
+				tag: "meta",
+				attributesKnownSafe: { name: "description", content: "A" },
+			},
 		];
 		updateHeadEls("meta", blocks);
 
-		const finalElements = document.head.querySelectorAll('meta[name="description"]');
+		const finalElements = document.head.querySelectorAll(
+			'meta[name="description"]',
+		);
 		expect(finalElements.length).toBe(1);
 		expect(finalElements[0]?.getAttribute("content")).toBe("A");
 
@@ -687,10 +780,14 @@ describe("updateHeadEls", () => {
 		updateHeadEls("meta", blocks);
 
 		// Get the element after update
-		const metaAfterUpdate = document.head.querySelector('meta[name="description"]');
+		const metaAfterUpdate = document.head.querySelector(
+			'meta[name="description"]',
+		);
 
 		// Verify attributes updated
-		expect(metaAfterUpdate?.getAttribute("content")).toBe("Updated description");
+		expect(metaAfterUpdate?.getAttribute("content")).toBe(
+			"Updated description",
+		);
 
 		// Verify it's positioned correctly (should be first element after start comment)
 		expect(comments.startComment.nextElementSibling).toBe(metaAfterUpdate);
@@ -724,15 +821,24 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "robots", content: "index, follow" },
+				attributesKnownSafe: {
+					name: "robots",
+					content: "index, follow",
+				},
 			},
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Description",
+				},
 			},
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "viewport", content: "width=device-width" },
+				attributesKnownSafe: {
+					name: "viewport",
+					content: "width=device-width",
+				},
 			},
 		];
 
@@ -780,11 +886,17 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Description",
+				},
 			},
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "robots", content: "index, follow" },
+				attributesKnownSafe: {
+					name: "robots",
+					content: "index, follow",
+				},
 			},
 		];
 
@@ -839,7 +951,10 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "keywords", content: "original, keywords" },
+				attributesKnownSafe: {
+					name: "keywords",
+					content: "original, keywords",
+				},
 			},
 			{
 				tag: "meta",
@@ -850,7 +965,10 @@ describe("updateHeadEls", () => {
 			},
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "viewport", content: "width=device-width" },
+				attributesKnownSafe: {
+					name: "viewport",
+					content: "width=device-width",
+				},
 			},
 		];
 
@@ -874,7 +992,9 @@ describe("updateHeadEls", () => {
 		expect(metaElements[2].getAttribute("name")).toBe("viewport");
 
 		// Verify content updates happened
-		expect(metaElements[1].getAttribute("content")).toBe("Updated description");
+		expect(metaElements[1].getAttribute("content")).toBe(
+			"Updated description",
+		);
 
 		// Verify canonical link was removed
 		expect(document.head.querySelector('link[rel="canonical"]')).toBeNull();
@@ -904,16 +1024,23 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "Test Description" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Test Description",
+				},
 			},
 		];
 
 		updateHeadEls("meta", blocks);
 
 		// Check that meta element still exists
-		const metaAfterUpdate = document.head.querySelector('meta[name="description"]');
+		const metaAfterUpdate = document.head.querySelector(
+			'meta[name="description"]',
+		);
 		expect(metaAfterUpdate).not.toBeNull();
-		expect(metaAfterUpdate?.getAttribute("content")).toBe("Test Description");
+		expect(metaAfterUpdate?.getAttribute("content")).toBe(
+			"Test Description",
+		);
 
 		// Check that element is properly positioned (first element after start comment)
 		expect(comments.startComment.nextElementSibling).toBe(metaAfterUpdate);
@@ -952,14 +1079,19 @@ describe("updateHeadEls", () => {
 		const blocks: Array<HeadEl> = [
 			{
 				tag: "meta",
-				attributesKnownSafe: { name: "description", content: "Identical content" },
+				attributesKnownSafe: {
+					name: "description",
+					content: "Identical content",
+				},
 			},
 		];
 
 		updateHeadEls("meta", blocks);
 
 		// Get the element after update
-		const metaAfterUpdate = document.head.querySelector('meta[name="description"]');
+		const metaAfterUpdate = document.head.querySelector(
+			'meta[name="description"]',
+		);
 
 		// For identical fingerprints, the element should be reused
 		expect(metaAfterUpdate).toBe(originalElement);

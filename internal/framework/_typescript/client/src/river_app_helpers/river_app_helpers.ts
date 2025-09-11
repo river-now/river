@@ -1,5 +1,5 @@
 import { serializeToSearchParams } from "river.now/kit/json";
-import type { SubmitOptions } from "./client.ts";
+import type { SubmitOptions } from "../client.ts";
 
 export type RiverAppConfig = {
 	actionsRouterMountRoot: string;

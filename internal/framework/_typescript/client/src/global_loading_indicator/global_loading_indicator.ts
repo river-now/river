@@ -1,11 +1,5 @@
-import { addOnWindowFocusListener } from "river.now/kit/listeners";
-import {
-	addStatusListener,
-	getLastTriggeredNavOrRevalidateTimestampMS,
-	getStatus,
-	revalidate,
-	type StatusEvent,
-} from "./client.ts";
+import { getStatus } from "../client.ts";
+import { addStatusListener, type StatusEvent } from "../events.ts";
 
 const DEFAULT_DELAY = 12;
 
@@ -128,30 +122,4 @@ function getIsWorking(
 		return true;
 	}
 	return false;
-}
-
-/**
- * If called, will setup listeners to revalidate the current route when
- * the window regains focus and at least `staleTimeMS` has passed since
- * the last revalidation. The `staleTimeMS` option defaults to 5,000
- * (5 seconds). Returns a cleanup function.
- */
-export function revalidateOnWindowFocus(options?: { staleTimeMS?: number }) {
-	const staleTimeMS = options?.staleTimeMS ?? 5_000;
-	return addOnWindowFocusListener(() => {
-		const status = getStatus();
-		if (
-			!status.isNavigating &&
-			!status.isSubmitting &&
-			!status.isRevalidating
-		) {
-			if (
-				Date.now() - getLastTriggeredNavOrRevalidateTimestampMS() <
-				staleTimeMS
-			) {
-				return;
-			}
-			revalidate();
-		}
-	});
 }

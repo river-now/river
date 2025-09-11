@@ -7,22 +7,26 @@ import type { RouteProps } from "../river.gen.ts";
 // Warm (discovered) client loaders will run parallel to server loaders.
 // Cold (undiscovered) client loaders will run serially after server loaders
 // exactly once, after which they will be warm and always run parallel.
-const useHomeClientLoaderData = addClientLoader("/_index", async (props) => {
-	// If you need data from the server loader, you can await the serverDataPromise:
-	// const serverData = await props.serverDataPromise;
+const useHomeClientLoaderData = addClientLoader({
+	pattern: "/_index",
+	clientLoader: async (props) => {
+		// If you need data from the server loader, you can await the serverDataPromise:
+		// const serverData = await props.serverDataPromise;
 
-	const usernameRes = await api.query({
-		pattern: "/get-username",
-		// Optional: pass the abort signal to cancel the dependent
-		// API request if the underlying navigation is aborted
-		requestInit: { signal: props.signal },
-	});
+		const usernameRes = await api.query({
+			pattern: "/get-username",
+			// Optional: pass the abort signal to cancel the dependent
+			// API request if the underlying navigation is aborted
+			requestInit: { signal: props.signal },
+		});
 
-	if (!usernameRes.success) {
-		throw new Error("Failed to fetch username");
-	}
+		if (!usernameRes.success) {
+			throw new Error("Failed to fetch username");
+		}
 
-	return `Hello, ${usernameRes.data}`;
+		return `Hello, ${usernameRes.data}`;
+	},
+	reRunOnModuleChange: import.meta,
 });
 
 export function Home(props: RouteProps<"/_index">) {

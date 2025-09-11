@@ -1,16 +1,5 @@
-import type { HeadEl } from "./river_ctx.ts";
-import { Panic } from "./utils.ts";
-
-function findComment(matchingText: string): Comment | null {
-	const walker = document.createTreeWalker(document.head, NodeFilter.SHOW_COMMENT, {
-		acceptNode(node: Comment) {
-			return node.nodeValue?.trim() === matchingText.trim()
-				? NodeFilter.FILTER_ACCEPT
-				: NodeFilter.FILTER_REJECT;
-		},
-	});
-	return walker.nextNode() as Comment | null;
-}
+import type { HeadEl } from "../river_ctx/river_ctx.ts";
+import { panic } from "../utils/errors.ts";
 
 export function getStartAndEndComments(type: "meta" | "rest"): {
 	startComment: Comment | null;
@@ -23,19 +12,19 @@ export function getStartAndEndComments(type: "meta" | "rest"): {
 	return { startComment: start, endComment: end };
 }
 
-function createElementFingerprint(element: Element): string {
-	const attributes: Array<string> = [];
-	for (let i = 0; i < element.attributes.length; i++) {
-		const attr = element.attributes[i];
-		if (!attr) {
-			continue;
-		}
-		const value =
-			element.hasAttribute(attr.name) && attr.value === "" ? "" : attr.value;
-		attributes.push(`${attr.name}="${value}"`);
-	}
-	attributes.sort();
-	return `${element.tagName.toUpperCase()}|${attributes.join(",")}|${(element.innerHTML || "").trim()}`;
+function findComment(matchingText: string): Comment | null {
+	const walker = document.createTreeWalker(
+		document.head,
+		NodeFilter.SHOW_COMMENT,
+		{
+			acceptNode(node: Comment) {
+				return node.nodeValue?.trim() === matchingText.trim()
+					? NodeFilter.FILTER_ACCEPT
+					: NodeFilter.FILTER_REJECT;
+			},
+		},
+	);
+	return walker.nextNode() as Comment | null;
 }
 
 export function updateHeadEls(type: "meta" | "rest", blocks: Array<HeadEl>) {
@@ -68,7 +57,7 @@ export function updateHeadEls(type: "meta" | "rest", blocks: Array<HeadEl>) {
 			for (const key of Object.keys(block.attributesKnownSafe)) {
 				const value = block.attributesKnownSafe[key];
 				if (value === null || value === undefined) {
-					Panic(
+					panic(
 						`Attribute value for '${key}' in tag '${block.tag}' cannot be null or undefined.`,
 					);
 				}
@@ -114,7 +103,8 @@ export function updateHeadEls(type: "meta" | "rest", blocks: Array<HeadEl>) {
 
 	for (const newEl of newElements) {
 		const fingerprint = createElementFingerprint(newEl);
-		const matchingCurrentElementsList = currentElementsMap.get(fingerprint) || [];
+		const matchingCurrentElementsList =
+			currentElementsMap.get(fingerprint) || [];
 
 		// Find the first matching element that hasn't been used yet
 		const matchingElement = matchingCurrentElementsList.find(
@@ -183,4 +173,21 @@ export function updateHeadEls(type: "meta" | "rest", blocks: Array<HeadEl>) {
 			lastProcessedElement = element;
 		}
 	}
+}
+
+function createElementFingerprint(element: Element): string {
+	const attributes: Array<string> = [];
+	for (let i = 0; i < element.attributes.length; i++) {
+		const attr = element.attributes[i];
+		if (!attr) {
+			continue;
+		}
+		const value =
+			element.hasAttribute(attr.name) && attr.value === ""
+				? ""
+				: attr.value;
+		attributes.push(`${attr.name}="${value}"`);
+	}
+	attributes.sort();
+	return `${element.tagName.toUpperCase()}|${attributes.join(",")}|${(element.innerHTML || "").trim()}`;
 }

@@ -51,7 +51,7 @@ interface historyPath {
 	search: historySearch;
 	hash: historyHash;
 }
-interface historyLocation extends historyPath {
+export interface historyLocation extends historyPath {
 	state: unknown;
 	key: historyKey;
 }
