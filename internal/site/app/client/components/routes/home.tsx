@@ -43,7 +43,7 @@ export function Home(_props: RouteProps<"/_index">) {
 				</h2>
 
 				<h2 class="big-heading">
-					<span class="fancy">Unmatched</span> flexibility.
+					<span class="fancy">Unrivaled</span> flexibility.
 				</h2>
 			</div>
 
