@@ -1,3 +1,4 @@
+import type { PatternRegistry } from "river.now/kit/matcher/register";
 import type { RiverAppConfig } from "../river_app_helpers/river_app_helpers.ts";
 
 export type HeadEl = {
@@ -69,6 +70,15 @@ export type RiverClientGlobal = shared & {
 	useViewTransitions: boolean;
 	deploymentID: string;
 	riverAppConfig: RiverAppConfig;
+	// SSR'd
+	routeManifestURL: string;
+	// Fetched at startup -- fine because progressive enhancement
+	// and not needed until any given route's second navigation
+	// anyway
+	routeManifest: Record<string, number> | undefined;
+	// built up as we navigate
+	clientModuleMap: Record<string, { importURL: string; exportKey: string }>;
+	patternRegistry: PatternRegistry;
 };
 
 export function __getRiverClientGlobal() {

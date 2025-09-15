@@ -3,14 +3,17 @@ package main
 import (
 	"log"
 
-	"github.com/river-now/river/kit/scripts/repoconcat"
+	"github.com/river-now/river/kit/lab/repoconcat"
 )
 
 func main() {
-	cfg := repoconcat.Config{
-		Root:       "./internal/framework",
-		Output:     "LLM__INTERNAL_FRAMEWORK.local.txt",
-		IgnoreDirs: []string{},
+	/////// RIVER FRAMEWORK
+	if err := repoconcat.Concat(repoconcat.Config{
+		Root:   "./internal/framework",
+		Output: "LLM__INTERNAL_FRAMEWORK.local.txt",
+		IgnoreDirs: []string{
+			"_typescript/create",
+		},
 		IgnoreFiles: []string{
 			"**/*_test.go",
 			"**/*.test.*",
@@ -20,13 +23,12 @@ func main() {
 			"**/*.bench.txt",
 		},
 		Verbose: true,
-	}
-
-	if err := repoconcat.Concat(cfg); err != nil {
+	}); err != nil {
 		log.Fatal(err)
 	}
 
-	cfg = repoconcat.Config{
+	/////// WAVE
+	if err := repoconcat.Concat(repoconcat.Config{
 		Root:       "./wave",
 		Output:     "LLM__WAVE.local.txt",
 		IgnoreDirs: []string{},
@@ -39,13 +41,12 @@ func main() {
 			"**/*.bench.txt",
 		},
 		Verbose: true,
-	}
-
-	if err := repoconcat.Concat(cfg); err != nil {
+	}); err != nil {
 		log.Fatal(err)
 	}
 
-	cfg = repoconcat.Config{
+	/////// KIT -- MATCHER
+	if err := repoconcat.Concat(repoconcat.Config{
 		Root:       "./kit/matcher",
 		Output:     "LLM__KIT_MATCHER.local.txt",
 		IgnoreDirs: []string{},
@@ -58,13 +59,12 @@ func main() {
 			"**/*.bench.txt",
 		},
 		Verbose: true,
-	}
-
-	if err := repoconcat.Concat(cfg); err != nil {
+	}); err != nil {
 		log.Fatal(err)
 	}
 
-	cfg = repoconcat.Config{
+	/////// KIT -- VALIDATE
+	if err := repoconcat.Concat(repoconcat.Config{
 		Root:       "./kit/validate",
 		Output:     "LLM__KIT_VALIDATE.local.txt",
 		IgnoreDirs: []string{},
@@ -77,13 +77,12 @@ func main() {
 			"**/*.bench.txt",
 		},
 		Verbose: true,
-	}
-
-	if err := repoconcat.Concat(cfg); err != nil {
+	}); err != nil {
 		log.Fatal(err)
 	}
 
-	cfg = repoconcat.Config{
+	/////// KIT -- TASKS
+	if err := repoconcat.Concat(repoconcat.Config{
 		Root:       "./kit/tasks",
 		Output:     "LLM__KIT_TASKS.local.txt",
 		IgnoreDirs: []string{},
@@ -96,13 +95,12 @@ func main() {
 			"**/*.bench.txt",
 		},
 		Verbose: true,
-	}
-
-	if err := repoconcat.Concat(cfg); err != nil {
+	}); err != nil {
 		log.Fatal(err)
 	}
 
-	cfg = repoconcat.Config{
+	/////// KIT -- MUX
+	if err := repoconcat.Concat(repoconcat.Config{
 		Root:       "./kit/mux",
 		Output:     "LLM__KIT_MUX.local.txt",
 		IgnoreDirs: []string{},
@@ -115,13 +113,12 @@ func main() {
 			"**/*.bench.txt",
 		},
 		Verbose: true,
-	}
-
-	if err := repoconcat.Concat(cfg); err != nil {
+	}); err != nil {
 		log.Fatal(err)
 	}
 
-	cfg = repoconcat.Config{
+	/////// KIT -- RESPONSE
+	if err := repoconcat.Concat(repoconcat.Config{
 		Root:       "./kit/response",
 		Output:     "LLM__KIT_RESPONSE.local.txt",
 		IgnoreDirs: []string{},
@@ -134,13 +131,12 @@ func main() {
 			"**/*.bench.txt",
 		},
 		Verbose: true,
-	}
-
-	if err := repoconcat.Concat(cfg); err != nil {
+	}); err != nil {
 		log.Fatal(err)
 	}
 
-	cfg = repoconcat.Config{
+	/////// KIT -- VITEUTIL
+	if err := repoconcat.Concat(repoconcat.Config{
 		Root:       "./kit/viteutil",
 		Output:     "LLM__KIT_VITEUTIL.local.txt",
 		IgnoreDirs: []string{},
@@ -153,9 +149,43 @@ func main() {
 			"**/*.bench.txt",
 		},
 		Verbose: true,
+	}); err != nil {
+		log.Fatal(err)
 	}
 
-	if err := repoconcat.Concat(cfg); err != nil {
+	/////// BOOTSTRAPPER -- GO CORE
+	if err := repoconcat.Concat(repoconcat.Config{
+		Root:       "./bootstrap",
+		Output:     "LLM__BOOTSTRAP.local.txt",
+		IgnoreDirs: []string{},
+		IgnoreFiles: []string{
+			"**/*_test.go",
+			"**/*.test.*",
+			"bench.txt",
+			"**/*.bench.*",
+			"**/*.local.*",
+			"**/*.bench.txt",
+		},
+		Verbose: true,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
+	/////// BOOTSTRAPPER -- NPM PACKAGE SCRIPT
+	if err := repoconcat.Concat(repoconcat.Config{
+		Root:       "./internal/framework/_typescript/create",
+		Output:     "LLM__CREATE_TS.local.txt",
+		IgnoreDirs: []string{},
+		IgnoreFiles: []string{
+			"**/*_test.go",
+			"**/*.test.*",
+			"bench.txt",
+			"**/*.bench.*",
+			"**/*.local.*",
+			"**/*.bench.txt",
+		},
+		Verbose: true,
+	}); err != nil {
 		log.Fatal(err)
 	}
 }

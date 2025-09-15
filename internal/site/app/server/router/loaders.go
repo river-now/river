@@ -8,8 +8,8 @@ import (
 	"site/control"
 
 	"github.com/river-now/river"
+	"github.com/river-now/river/kit/lab/fsmarkdown"
 	"github.com/river-now/river/kit/mux"
-	"github.com/river-now/river/kit/xyz/fsmarkdown"
 	"github.com/river-now/river/wave"
 )
 

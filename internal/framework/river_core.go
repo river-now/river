@@ -75,4 +75,5 @@ type River struct {
 	_depToCSSBundleMap map[string]string
 	_rootTemplate      *template.Template
 	_privateFS         fs.FS
+	_routeManifestFile string
 }

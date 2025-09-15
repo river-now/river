@@ -1,8 +1,12 @@
+// This package is not meant to be called directly by users.
+// If you are looking to bootstrap a new River app, please
+// run `npm create river@latest` in your terminal instead.
 package bootstrap
 
 import (
-	_ "embed"
+	"embed"
 	"fmt"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -11,8 +15,6 @@ import (
 	"github.com/river-now/river/kit/fsutil"
 )
 
-// __TODO: add "docker" as a deployment target option
-
 type Options struct {
 	// e.g., "appname" or "modroot/apps/appname"
 	GoImportBase string
@@ -20,10 +22,17 @@ type Options struct {
 	UIVariant string
 	// "npm", "pnpm", "yarn", or "bun"
 	JSPackageManager string
-	// "generic" or "vercel" (defaults to "generic")
+	// "docker", "vercel", or "none"
 	DeploymentTarget string
 	IncludeTailwind  bool
 	CreatedInDir     string // Empty if not created in a new directory
+	NodeMajorVersion string // Example: "22"
+	GoVersion        string // Example: "go1.24.0"
+
+	// Monorepo support fields
+	ModuleRoot      string // Absolute path to go.mod location
+	CurrentDir      string // Absolute path where River app is being created
+	HasParentModule bool   // True if using a parent go.mod
 }
 
 type derivedOptions struct {
@@ -33,7 +42,7 @@ type derivedOptions struct {
 	UIVitePlugin               string
 	JSPackageManagerBaseCmd    string // "npx", "pnpm", "yarn", or "bunx"
 	Call                       string
-	VercelPackageJSONExtras    string
+	PackageJSONExtras          string
 	TailwindViteImport         string
 	TailwindViteCall           string
 	TailwindFileImport         string
@@ -41,6 +50,25 @@ type derivedOptions struct {
 	BackgroundColorKey         string
 	StylePropOpen              string // "{{"
 	StylePropClose             string // "}}"
+	DockerLockFile             string
+	DockerInstallCommand       string
+	GoVersionForDocker         string
+
+	/////// Monorepo Docker support
+	// Path from app to module root (e.g., "../../")
+	DockerBuildContextPath string
+	// Path from module root to app (e.g., "apps/myapp")
+	AppPathFromModuleRoot string
+	// True if this is a monorepo setup
+	IsMonorepo bool
+
+	/////// Resolved Docker template fields
+	// Either empty or newline + RUN command
+	DockerPackageManagerInstall string
+	// Either empty or newline + WORKDIR command
+	DockerWorkdirCommand string
+	// Path to binary in builder stage
+	DockerBinaryPath string
 }
 
 const tw_vite_import = "import tailwindcss from \"@tailwindcss/vite\";\n"
@@ -87,20 +115,93 @@ func (o Options) derived() derivedOptions {
 		do.TSConfigJSXImportSourceVal = "preact"
 	}
 
-	if o.DeploymentTarget == "" {
-		o.DeploymentTarget = "generic"
-	}
-	if o.DeploymentTarget != "generic" && o.DeploymentTarget != "vercel" {
+	if o.DeploymentTarget != "none" &&
+		o.DeploymentTarget != "vercel" &&
+		o.DeploymentTarget != "docker" {
 		panic("unknown DeploymentTarget: " + o.DeploymentTarget)
 	}
-	goVersion := runtime.Version()
+
+	// Use Go version from options or fallback to runtime
+	goVersion := o.GoVersion
+	if goVersion == "" {
+		goVersion = runtime.Version()
+	}
+
+	// Get Go version for Docker (format: 1.24)
+	goVersionForDocker := strings.TrimPrefix(goVersion, "go")
+	// Remove patch version for Docker tag (1.24.0 -> 1.24)
+	if parts := strings.Split(goVersionForDocker, "."); len(parts) >= 2 {
+		goVersionForDocker = parts[0] + "." + parts[1]
+	}
+	do.GoVersionForDocker = goVersionForDocker
+
+	// Calculate monorepo paths for Docker
+	if o.HasParentModule && o.ModuleRoot != "" && o.CurrentDir != "" {
+		do.IsMonorepo = true
+
+		// Calculate path from current dir back to module root
+		relPath, err := filepath.Rel(o.CurrentDir, o.ModuleRoot)
+		if err == nil {
+			do.DockerBuildContextPath = filepath.ToSlash(relPath)
+		}
+
+		// Calculate path from module root to current dir
+		appPath, err := filepath.Rel(o.ModuleRoot, o.CurrentDir)
+		if err == nil {
+			do.AppPathFromModuleRoot = filepath.ToSlash(appPath)
+		}
+	}
+
 	if o.DeploymentTarget == "vercel" {
-		do.VercelPackageJSONExtras = fmt.Sprintf(`,
+		do.PackageJSONExtras = fmt.Sprintf(`,
 		"vercel-install-go": "curl -L https://go.dev/dl/%s.linux-amd64.tar.gz | tar -C /tmp -xz",
 		"vercel-install": "%s vercel-install-go && %s",
 		"vercel-build": "export PATH=/tmp/go/bin:$PATH && go run ./control/cmd/build"`,
 			goVersion, do.ResolveJSPackageManagerRunScriptPrefix(), do.ResolveJSPackageManagerInstallCmd(),
 		)
+	}
+
+	if o.DeploymentTarget == "docker" {
+		// Update package.json extras for Docker
+		dockerBuildCmd := "docker build -t river-app ."
+		if do.IsMonorepo && do.DockerBuildContextPath != "" {
+			// For monorepo, build from module root
+			dockerBuildCmd = fmt.Sprintf("docker build -f Dockerfile -t river-app %s", do.DockerBuildContextPath)
+		}
+
+		do.PackageJSONExtras = fmt.Sprintf(`,
+		"docker-build": "%s",
+		"docker-run": "docker run -d -p ${PORT:-8080}:${PORT:-8080} -e PORT=${PORT:-8080} river-app"`,
+			dockerBuildCmd)
+
+		// Set lock file and install command based on package manager
+		switch o.JSPackageManager {
+		case "npm":
+			do.DockerLockFile = "package-lock.json"
+			do.DockerInstallCommand = "npm ci"
+			do.DockerPackageManagerInstall = ""
+		case "pnpm":
+			do.DockerLockFile = "pnpm-lock.yaml"
+			do.DockerInstallCommand = "pnpm i --frozen-lockfile"
+			do.DockerPackageManagerInstall = "\nRUN npm i -g pnpm"
+		case "yarn":
+			do.DockerLockFile = "yarn.lock"
+			do.DockerInstallCommand = "yarn install --frozen-lockfile"
+			do.DockerPackageManagerInstall = "\nRUN npm i -g yarn"
+		case "bun":
+			do.DockerLockFile = "bun.lockb"
+			do.DockerInstallCommand = "bun install --frozen-lockfile"
+			do.DockerPackageManagerInstall = "\nRUN npm i -g bun"
+		}
+
+		// Resolve Docker template fields
+		if do.IsMonorepo {
+			do.DockerWorkdirCommand = "\nWORKDIR /app/" + do.AppPathFromModuleRoot
+			do.DockerBinaryPath = "/app/" + do.AppPathFromModuleRoot + "/control/dist/main"
+		} else {
+			do.DockerWorkdirCommand = "" // No extra WORKDIR needed
+			do.DockerBinaryPath = "/app/control/dist/main"
+		}
 	}
 
 	do.UIVitePlugin = resolveUIVitePlugin(do)
@@ -120,64 +221,10 @@ func (o Options) derived() derivedOptions {
 }
 
 var (
-	//go:embed tmpls/cmd_app_main_go_tmpl.txt
-	cmd_app_main_go_tmpl_txt string
-	//go:embed tmpls/cmd_build_main_go_tmpl.txt
-	cmd_build_main_go_tmpl_txt string
-	//go:embed tmpls/dist_static_keep_tmpl.txt
-	dist_static_keep_tmpl_txt string
-	//go:embed tmpls/backend_static_entry_go_html_str.txt
-	backend_static_entry_go_html_str_txt string
-	//go:embed tmpls/backend_router_actions_go_tmpl.txt
-	backend_router_actions_go_tmpl_txt string
-	//go:embed tmpls/backend_router_core_go_tmpl.txt
-	backend_router_core_go_tmpl_txt string
-	//go:embed tmpls/backend_router_loaders_go_tmpl.txt
-	backend_router_loaders_go_tmpl_txt string
-	//go:embed tmpls/app_go_tmpl.txt
-	app_go_tmpl_txt string
-	//go:embed tmpls/wave_config_json_tmpl.txt
-	wave_config_json_tmpl_txt string
-	//go:embed tmpls/vite_config_ts_tmpl.txt
-	vite_config_ts_tmpl_txt string
-	//go:embed tmpls/package_json_tmpl.txt
-	package_json_tmpl_txt string
-	//go:embed tmpls/gitignore_str.txt
-	gitignore_str_txt string
-	//go:embed tmpls/main_css_str.txt
-	main_css_str_txt string
-	//go:embed tmpls/main_critical_css_str.txt
-	main_critical_css_str_txt string
-	//go:embed tmpls/frontend_routes_ts_str.txt
-	frontend_routes_ts_str_txt string
-	//go:embed tmpls/frontend_entry_tsx_react_str.txt
-	frontend_entry_tsx_react_str_txt string
-	//go:embed tmpls/frontend_entry_tsx_solid_str.txt
-	frontend_entry_tsx_solid_str_txt string
-	//go:embed tmpls/frontend_entry_tsx_preact_str.txt
-	frontend_entry_tsx_preact_str_txt string
-	//go:embed tmpls/frontend_app_tsx_tmpl.txt
-	frontend_app_tsx_tmpl_txt string
-	//go:embed tmpls/frontend_root_tsx_tmpl.txt
-	frontend_root_tsx_tmpl_txt string
-	//go:embed tmpls/frontend_home_tsx_tmpl.txt
-	frontend_home_tsx_tmpl_txt string
-	//go:embed tmpls/frontend_about_tsx_tmpl.txt
-	frontend_about_tsx_tmpl_txt string
-	//go:embed tmpls/frontend_app_utils_tsx_tmpl.txt
-	frontend_app_utils_tsx_tmpl_txt string
-	//go:embed tmpls/frontend_api_client_ts_str.txt
-	frontend_api_client_ts_str_txt string
-	//go:embed tmpls/ts_config_json_tmpl.txt
-	tsconfig_json_tmpl_txt string
-	//go:embed tmpls/vercel_json_tmpl.txt
-	vercel_json_tmpl_txt string
-	//go:embed tmpls/api_proxy_ts_str.txt
-	api_proxy_ts_str string
-	//go:embed tmpls/frontend_css_tailwind_css_str.txt
-	frontend_css_tailwind_css_str_txt string
-	//go:embed tmpls/frontend_css_nprogress_css_str.txt
-	frontend_css_nprogress_css_str_txt string
+	//go:embed tmpls
+	tmplsFS embed.FS
+	//go:embed assets
+	assetsFS embed.FS
 )
 
 func Init(o Options) {
@@ -202,35 +249,38 @@ func Init(o Options) {
 		fsutil.EnsureDirs("api")
 	}
 
-	do.tmplWriteMust("control/cmd/serve/main.go", cmd_app_main_go_tmpl_txt)
-	do.tmplWriteMust("control/cmd/build/main.go", cmd_build_main_go_tmpl_txt)
-	do.tmplWriteMust("control/dist/static/.keep", dist_static_keep_tmpl_txt)
-	strWriteMust("assets/private/entry.go.html", backend_static_entry_go_html_str_txt)
-	do.tmplWriteMust("app/server/router/actions.go", backend_router_actions_go_tmpl_txt)
-	do.tmplWriteMust("app/server/router/core.go", backend_router_core_go_tmpl_txt)
-	do.tmplWriteMust("app/server/router/loaders.go", backend_router_loaders_go_tmpl_txt)
-	do.tmplWriteMust("control/river.config.go", app_go_tmpl_txt)
-	do.tmplWriteMust("control/wave.config.json", wave_config_json_tmpl_txt)
-	do.tmplWriteMust("vite.config.ts", vite_config_ts_tmpl_txt)
-	do.tmplWriteMust("package.json", package_json_tmpl_txt)
-	strWriteMust(".gitignore", gitignore_str_txt)
-	strWriteMust("app/client/styles/main.css", main_css_str_txt)
-	strWriteMust("app/client/styles/main.critical.css", main_critical_css_str_txt)
-	strWriteMust("app/client/routes.ts", frontend_routes_ts_str_txt)
-	do.tmplWriteMust("app/client/components/app.tsx", frontend_app_tsx_tmpl_txt)
-	do.tmplWriteMust("app/client/components/root.tsx", frontend_root_tsx_tmpl_txt)
-	do.tmplWriteMust("app/client/components/home.tsx", frontend_home_tsx_tmpl_txt)
-	do.tmplWriteMust("app/client/components/about.tsx", frontend_about_tsx_tmpl_txt)
-	do.tmplWriteMust("app/client/app_utils.tsx", frontend_app_utils_tsx_tmpl_txt)
-	strWriteMust("app/client/api_client.ts", frontend_api_client_ts_str_txt)
-	strWriteMust("app/client/styles/nprogress.css", frontend_css_nprogress_css_str_txt)
+	do.tmplWriteMust("control/cmd/serve/main.go", "tmpls/cmd_app_main_go_tmpl.txt")
+	do.tmplWriteMust("control/cmd/build/main.go", "tmpls/cmd_build_main_go_tmpl.txt")
+	do.tmplWriteMust("control/dist/static/.keep", "tmpls/dist_static_keep_tmpl.txt")
+	strWriteMust("assets/private/entry.go.html", "tmpls/backend_static_entry_go_html_str.txt")
+	do.tmplWriteMust("app/server/router/actions.go", "tmpls/backend_router_actions_go_tmpl.txt")
+	do.tmplWriteMust("app/server/router/core.go", "tmpls/backend_router_core_go_tmpl.txt")
+	do.tmplWriteMust("app/server/router/loaders.go", "tmpls/backend_router_loaders_go_tmpl.txt")
+	do.tmplWriteMust("control/river.config.go", "tmpls/app_go_tmpl.txt")
+	do.tmplWriteMust("control/wave.config.json", "tmpls/wave_config_json_tmpl.txt")
+	do.tmplWriteMust("vite.config.ts", "tmpls/vite_config_ts_tmpl.txt")
+	do.tmplWriteMust("package.json", "tmpls/package_json_tmpl.txt")
+	strWriteMust(".gitignore", "tmpls/gitignore_str.txt")
+	strWriteMust("app/client/styles/main.css", "tmpls/main_css_str.txt")
+	strWriteMust("app/client/styles/main.critical.css", "tmpls/main_critical_css_str.txt")
+	strWriteMust("app/client/routes.ts", "tmpls/frontend_routes_ts_str.txt")
+	do.tmplWriteMust("app/client/components/app.tsx", "tmpls/frontend_app_tsx_tmpl.txt")
+	do.tmplWriteMust("app/client/components/root.tsx", "tmpls/frontend_root_tsx_tmpl.txt")
+	do.tmplWriteMust("app/client/components/home.tsx", "tmpls/frontend_home_tsx_tmpl.txt")
+	do.tmplWriteMust("app/client/components/links.tsx", "tmpls/frontend_links_tsx_tmpl.txt")
+	do.tmplWriteMust("app/client/app_utils.tsx", "tmpls/frontend_app_utils_tsx_tmpl.txt")
+	strWriteMust("app/client/api_client.ts", "tmpls/frontend_api_client_ts_str.txt")
+	strWriteMust("app/client/styles/nprogress.css", "tmpls/frontend_css_nprogress_css_str.txt")
 	if o.DeploymentTarget == "vercel" {
-		do.tmplWriteMust("vercel.json", vercel_json_tmpl_txt)
-		do.tmplWriteMust("api/proxy.ts", api_proxy_ts_str)
+		do.tmplWriteMust("vercel.json", "tmpls/vercel_json_tmpl.txt")
+		do.tmplWriteMust("api/proxy.ts", "tmpls/api_proxy_ts_str.txt")
+	}
+	if o.DeploymentTarget == "docker" {
+		do.tmplWriteMust("Dockerfile", "tmpls/dockerfile_tmpl.txt")
 	}
 
 	// last
-	do.tmplWriteMust("tsconfig.json", tsconfig_json_tmpl_txt)
+	do.tmplWriteMust("tsconfig.json", "tmpls/ts_config_json_tmpl.txt")
 
 	installJSPkg(do, "typescript")
 	installJSPkg(do, "vite")
@@ -240,7 +290,7 @@ func Init(o Options) {
 	installJSPkg(do, "@types/nprogress")
 
 	if do.UIVariant == "react" {
-		strWriteMust("app/client/entry.tsx", frontend_entry_tsx_react_str_txt)
+		strWriteMust("app/client/entry.tsx", "tmpls/frontend_entry_tsx_react_str.txt")
 
 		installJSPkg(do, "react")
 		installJSPkg(do, "react-dom")
@@ -250,13 +300,13 @@ func Init(o Options) {
 	}
 
 	if do.UIVariant == "solid" {
-		strWriteMust("app/client/entry.tsx", frontend_entry_tsx_solid_str_txt)
+		strWriteMust("app/client/entry.tsx", "tmpls/frontend_entry_tsx_solid_str.txt")
 
 		installJSPkg(do, "solid-js")
 	}
 
 	if do.UIVariant == "preact" {
-		strWriteMust("app/client/entry.tsx", frontend_entry_tsx_preact_str_txt)
+		strWriteMust("app/client/entry.tsx", "tmpls/frontend_entry_tsx_preact_str.txt")
 
 		installJSPkg(do, "preact")
 		installJSPkg(do, "@preact/signals")
@@ -269,8 +319,11 @@ func Init(o Options) {
 	if do.IncludeTailwind {
 		installJSPkg(do, "@tailwindcss/vite")
 		installJSPkg(do, "tailwindcss")
-		strWriteMust("app/client/styles/tailwind.css", frontend_css_tailwind_css_str_txt)
+		strWriteMust("app/client/styles/tailwind.css", "tmpls/frontend_css_tailwind_css_str.txt")
 	}
+
+	// write assets
+	fileWriteMust("assets/public/favicon.svg", "assets/favicon.svg")
 
 	// install chi (some chi middleware is used in the template)
 	if err := executil.RunCmd("go", "get", "github.com/go-chi/chi/v5/middleware"); err != nil {

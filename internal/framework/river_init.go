@@ -83,6 +83,7 @@ func (h *River) initInner(isDev bool) error {
 	if h._depToCSSBundleMap == nil {
 		h._depToCSSBundleMap = make(map[string]string)
 	}
+	h._routeManifestFile = pathsFile.RouteManifestFile
 	tmpl, err := template.ParseFS(h._privateFS, h.Wave.GetRiverHTMLTemplateLocation())
 	if err != nil {
 		return fmt.Errorf("error parsing root template: %w", err)

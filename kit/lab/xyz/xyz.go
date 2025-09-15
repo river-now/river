@@ -1,4 +1,4 @@
-// Experimental or miscellaneous things. Buyer beware.
+// buyer beware
 package xyz
 
 import (

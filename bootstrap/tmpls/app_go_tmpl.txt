@@ -28,6 +28,12 @@ var River = &river.River{
 		e.Title("River Example")
 		e.Description("This is a River example.")
 
+		e.Link(
+			e.Rel("icon"),
+			e.Attr("href", Wave.GetPublicURL("favicon.svg")),
+			e.Attr("type", "image/svg+xml"),
+		)
+
 		return e.Collect(), nil
 	},
 

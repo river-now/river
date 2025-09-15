@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	PublicFileMapJSName   = "public_filemap.js"
+	PublicFileMapJSName   = "river_internal_public_filemap.js"
 	PublicFileMapGobName  = "public_filemap.gob"
 	PrivateFileMapGobName = "private_filemap.gob"
 )
@@ -75,13 +75,31 @@ func (c *Config) savePublicFileMapJSToInternalPublicDir(mapToSave FileMap) error
 
 	hashedFilename := getHashedFilename(bytes, PublicFileMapJSName)
 
+	// Clean up old public_filemap files before writing new one
+	publicAssetsPath := c._dist.S().Static.S().Assets.S().Public.FullPath()
+	oldFileMapPattern := filepath.Join(
+		publicAssetsPath,
+		"river_out_river_internal_public_filemap_*.js",
+	)
+	oldFileMapFiles, err := filepath.Glob(oldFileMapPattern)
+	if err != nil {
+		return fmt.Errorf("error finding old public filemap files: %w", err)
+	}
+	for _, oldFile := range oldFileMapFiles {
+		if err := os.Remove(oldFile); err != nil {
+			return fmt.Errorf("error removing old public filemap file: %w", err)
+		}
+	}
+
+	// Write the reference file
 	hashedFileRefPath := c._dist.S().Static.S().Internal.S().PublicFileMapFileRefDotTXT.FullPath()
 	if err := os.WriteFile(hashedFileRefPath, []byte(hashedFilename), 0644); err != nil {
 		return fmt.Errorf("error writing to file: %w", err)
 	}
 
+	// Write the new hashed file
 	return os.WriteFile(filepath.Join(
-		c._dist.S().Static.S().Assets.S().Public.FullPath(),
+		publicAssetsPath,
 		hashedFilename,
 	), bytes, 0644)
 }

@@ -14,7 +14,6 @@ export const useRootClientLoaderData = addClientLoader({
 		// console.log(`Client loader '/' started at ${Date.now()}`);
 		const { loaderData } = await props.serverDataPromise;
 		// console.log("Server data promise resolved at ", Date.now(), loaderData);
-		console.log("HOME.TSX CLIENT LOADER");
 		return loaderData.LatestVersion;
 	},
 	reRunOnModuleChange: import.meta,

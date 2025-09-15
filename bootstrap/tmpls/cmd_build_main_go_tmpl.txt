@@ -21,7 +21,7 @@ type SomeOtherType struct {
 func main() {
 	a := tsgen.Statements{}
 
-	a.Serialize("export const USERNAME_MAX_LEN", router.UsernameMaxLen)
+	a.Serialize("export const GITHUB_REPO_LINK", "https://github.com/river-now/river")
 
 	control.Wave.Builder(func(isDev bool) error {
 		return control.River.Build(&river.BuildOptions{

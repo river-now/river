@@ -1,4 +1,4 @@
 html {
-	background-color: #333;
-	color: #efefef;
+	background-color: #101214;
+	color: #f4f4f5;
 }

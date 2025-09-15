@@ -21,11 +21,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 async function main() {
-	intro("🌊 Create River App");
+	const args = process.argv.slice(2);
+	const isLocalTest = args.includes("--local-test");
+
+	console.log();
+	intro("Welcome to the River new app creator!");
 
 	// Check Go installation
+	let goVersion = "";
 	try {
-		const goVersion = execSync("go version", { encoding: "utf8" }).trim();
+		goVersion = execSync("go version", { encoding: "utf8" }).trim();
 		const versionMatch = goVersion.match(/go(\d+)\.(\d+)/);
 		if (versionMatch) {
 			if (!versionMatch[1] || !versionMatch[2]) {
@@ -68,7 +73,7 @@ async function main() {
 	// Option to create a new directory at start if not already in desired location
 	const createNewDir = await confirm({
 		message: "Create a new directory for your River app?",
-		initialValue: false,
+		initialValue: true,
 	});
 
 	if (isCancel(createNewDir)) {
@@ -139,8 +144,8 @@ async function main() {
 		const moduleChoice = await select({
 			message: `Found parent Go module: ${moduleName}`,
 			options: [
-				{ value: "use", label: "Use existing module" },
-				{ value: "new", label: "Create new nested module" },
+				{ value: "new", label: "Create new go.mod" },
+				{ value: "use", label: "Use parent go.mod" },
 			],
 		});
 
@@ -185,6 +190,14 @@ async function main() {
 		s.start("Initializing Go module");
 		try {
 			execSync(`go mod init ${moduleName}`, { cwd: moduleRoot });
+			if (isLocalTest) {
+				const riverPath = path.resolve(__dirname, "../../../../../");
+				execSync(
+					`go mod edit -replace github.com/river-now/river=${riverPath}`,
+					{ cwd: moduleRoot },
+				);
+				log.info("Using local River code for testing");
+			}
 			s.stop("Go module initialized");
 		} catch (error) {
 			s.stop("Failed to initialize module");
@@ -254,10 +267,17 @@ async function main() {
 	const deploymentTarget = await select({
 		message: "Choose deployment target:",
 		options: [
-			{ value: "generic", label: "Generic (anywhere)" },
+			{
+				value: "docker",
+				label: "Docker",
+			},
 			{
 				value: "vercel",
-				label: "Vercel (adds some Vercel-specific config)",
+				label: "Vercel",
+			},
+			{
+				value: "none",
+				label: "None (I'll figure it out myself)",
 			},
 		],
 	});
@@ -270,7 +290,7 @@ async function main() {
 	// Ask about Tailwind CSS
 	const includeTailwind = await confirm({
 		message: "Include Tailwind CSS?",
-		initialValue: true,
+		initialValue: false,
 	});
 
 	if (isCancel(includeTailwind)) {
@@ -285,6 +305,10 @@ async function main() {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-river-"));
 	const bootstrapFile = path.join(tempDir, "main.go");
 
+	// Extract Go version string (e.g., "go1.24.0")
+	const goVersionMatch = goVersion.match(/go\d+\.\d+\.\d+/);
+	const goVersionString = goVersionMatch ? goVersionMatch[0] : "";
+
 	try {
 		// Write bootstrap Go file
 		const goCode = `package main
@@ -298,7 +322,12 @@ func main() {
 		JSPackageManager: "${packageManager}",
 		DeploymentTarget: "${deploymentTarget}",
 		IncludeTailwind:  ${includeTailwind},
+		NodeMajorVersion: "${nodeMajor}",
+		GoVersion:        "${goVersionString}",
 		${createNewDir ? `CreatedInDir:     "${path.basename(targetDir)}",` : ""}
+		ModuleRoot:       "${moduleRoot || process.cwd()}",
+		CurrentDir:       "${process.cwd()}",
+		HasParentModule:  ${moduleRoot !== null && moduleRoot !== process.cwd()},
 	})
 }
 `;
@@ -310,10 +339,14 @@ func main() {
 			fs.readFileSync(packageJsonPath, "utf8"),
 		);
 		const version = packageJson.version;
-		execSync(`go get github.com/river-now/river@v${version}`, {
-			cwd: process.cwd(),
-			stdio: "pipe",
-		});
+		const usingExistingModule = !createNewModule;
+		const skipRiverGet = isLocalTest && usingExistingModule;
+		if (!skipRiverGet) {
+			execSync(`go get github.com/river-now/river@v${version}`, {
+				cwd: process.cwd(),
+				stdio: "pipe",
+			});
+		}
 
 		// Run bootstrap
 		console.log("🛠️  Running bootstrapper...");

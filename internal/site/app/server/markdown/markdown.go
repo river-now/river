@@ -5,7 +5,7 @@ import (
 	"site/control"
 
 	"github.com/adrg/frontmatter"
-	"github.com/river-now/river/kit/xyz/fsmarkdown"
+	"github.com/river-now/river/kit/lab/fsmarkdown"
 	"github.com/river-now/river/wave"
 	"github.com/russross/blackfriday/v2"
 )

@@ -3,6 +3,7 @@ package framework
 import (
 	"fmt"
 	"html/template"
+	"path"
 	"strings"
 
 	"github.com/river-now/river/kit/envutil"
@@ -17,6 +18,7 @@ type SSRInnerHTMLInput struct {
 	BuildID          string
 	PublicPathPrefix string
 	DeploymentID     string
+	RouteManifestURL string
 
 	*ui_data_core
 
@@ -48,6 +50,7 @@ x.splatValues = {{.SplatValues}};
 x.deps = {{.Deps}};
 x.cssBundles = {{.CSSBundles}};
 x.deploymentID = {{.DeploymentID}};
+x.routeManifestURL = {{.RouteManifestURL}};
 </script>`
 
 var ssrInnerTmpl = template.Must(template.New("ssr").Parse(ssrInnerHTMLTmplStr))
@@ -67,6 +70,10 @@ func (h *River) getSSRInnerHTML(routeData *final_ui_data) (*GetSSRInnerHTMLOutpu
 		ViteDevURL:       routeData.ViteDevURL,
 		BuildID:          h._buildID,
 		PublicPathPrefix: h.Wave.GetPublicPathPrefix(),
+		RouteManifestURL: path.Join(
+			h.Wave.GetPublicPathPrefix(),
+			h._routeManifestFile,
+		),
 
 		ui_data_core: routeData.ui_data_core,
 

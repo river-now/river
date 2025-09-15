@@ -99,14 +99,16 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 		}
 	}
 
-	// Changing the title instantly makes it feel faster
-	// The temp textarea trick is to decode any HTML entities in the title.
-	// This should come after pushing to history though, so that the title is
-	// correct in the history entry.
-	const tempTxt = document.createElement("textarea");
-	tempTxt.innerHTML = json.title?.dangerousInnerHTML || "";
-	if (document.title !== tempTxt.value) {
-		document.title = tempTxt.value;
+	if (json.title !== undefined) {
+		// Changing the title instantly makes it feel faster
+		// The temp textarea trick is to decode any HTML entities in the title.
+		// This should come after pushing to history though, so that the title is
+		// correct in the history entry.
+		const tempTxt = document.createElement("textarea");
+		tempTxt.innerHTML = json.title?.dangerousInnerHTML || "";
+		if (document.title !== tempTxt.value) {
+			document.title = tempTxt.value;
+		}
 	}
 
 	// Apply CSS
@@ -117,9 +119,13 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 	// Dispatch route change event -- this triggers the actual UI update
 	dispatchRouteChangeEvent({ __scrollState: scrollStateToDispatch });
 
-	// Update head elements
-	updateHeadEls("meta", json.metaHeadEls ?? []);
-	updateHeadEls("rest", json.restHeadEls ?? []);
+	// Only update head elements if provided (not undefined)
+	if (json.metaHeadEls !== undefined) {
+		updateHeadEls("meta", json.metaHeadEls ?? []);
+	}
+	if (json.restHeadEls !== undefined) {
+		updateHeadEls("rest", json.restHeadEls ?? []);
+	}
 
 	props.onFinish();
 }

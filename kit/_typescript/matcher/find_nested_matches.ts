@@ -7,7 +7,7 @@ import type {
 } from "./register.ts";
 import { NODE_DYNAMIC, NODE_SPLAT, SEG_TYPES } from "./register.ts";
 
-type Match = {
+export type Match = {
 	registeredPattern: RegisteredPattern;
 	params: Params;
 	splatValues: string[];

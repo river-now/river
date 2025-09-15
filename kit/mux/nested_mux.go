@@ -53,6 +53,14 @@ func (nr *NestedRouter) IsRegistered(originalPattern string) bool {
 	return exists
 }
 
+func (nr *NestedRouter) HasTaskHandler(originalPattern string) bool {
+	route, exists := nr.routes[originalPattern]
+	if !exists {
+		return false
+	}
+	return route.getTaskHandler() != nil
+}
+
 func (nr *NestedRouter) GetExplicitIndexSegment() string {
 	return nr.matcher.GetExplicitIndexSegment()
 }

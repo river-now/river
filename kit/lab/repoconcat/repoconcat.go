@@ -1,3 +1,4 @@
+// buyer beware
 package repoconcat
 
 import (

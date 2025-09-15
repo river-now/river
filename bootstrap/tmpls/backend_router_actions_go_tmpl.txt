@@ -2,7 +2,6 @@ package router
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/river-now/river/kit/mux"
@@ -39,37 +38,11 @@ func NewAction[I any, O any](method, pattern string, f func(c *ActionCtx[I]) (O,
 	return actionTask
 }
 
-/////// EXAMPLES
-
-const UsernameMaxLen = 42
+/////// EXAMPLE COUNTER ENDPOINT
 
 var count = 0
-var username = "guest"
 
 var _ = NewAction("POST", "/increment-count", func(c *ActionCtx[mux.None]) (int, error) {
 	count++
 	return count, nil
-})
-
-var _ = NewAction("GET", "/get-username", func(c *ActionCtx[mux.None]) (string, error) {
-	return username, nil
-})
-
-type UsernameInput struct {
-	Username string `json:"username"`
-}
-
-func (i *UsernameInput) Validate() error {
-	if i.Username == "" {
-		return errors.New("username is required")
-	}
-	if len(i.Username) > UsernameMaxLen {
-		return fmt.Errorf("username must be at most %d characters", UsernameMaxLen)
-	}
-	return nil
-}
-
-var _ = NewAction("POST", "/set-username", func(c *ActionCtx[UsernameInput]) (string, error) {
-	username = c.Input().Username
-	return username, nil
 })

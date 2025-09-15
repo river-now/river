@@ -17,7 +17,6 @@ for (const url of Object.values(theme_to_label_map)) {
 	preload_img(url);
 }
 
-// __TODO move to kit
 function preload_img(url: string) {
 	const img = new Image();
 	img.src = url;

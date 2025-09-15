@@ -246,7 +246,6 @@ func removeTestFiles() {
 		// Remove test files and their source maps
 		if strings.Contains(path, ".test.") ||
 			strings.Contains(path, ".bench.") {
-			log.Printf("Removing test file: %s", path)
 			return os.Remove(path)
 		}
 

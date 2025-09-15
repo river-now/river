@@ -1,6 +1,6 @@
-import type { PatternRegistry } from "river.now/kit/matcher/register";
+import { findNestedMatches } from "river.now/kit/matcher/find-nested";
+import { registerPattern } from "river.now/kit/matcher/register";
 import { ComponentLoader } from "./component_loader.ts";
-import type { RiverAppConfig } from "./river_app_helpers/river_app_helpers.ts";
 import {
 	__riverClientGlobal,
 	type GetRouteDataOutput,
@@ -25,63 +25,10 @@ export async function setupClientLoaders(): Promise<void> {
 	__riverClientGlobal.set("clientLoadersData", clientLoadersData);
 }
 
-// The client loaders matcher system is imported dynamically,
-// so it will only increase your bundle size if you actually
-// use them. If you do use them, however, this unlocks loading
-// discovered client loaders in parallel with the server loaders.
-// The first time any client loader is discovered, it will
-// necessarily be serial (it wasn't discovered before). But all
-// subsequent runs will be parallel. This pattern means we do not
-// need to ship a (potentially massive) routes manifest to the client.
-
-let clientPatternRegistry: PatternRegistry | undefined;
-let matcherModules:
-	| {
-			register: typeof import("river.now/kit/matcher/register");
-			findNested: typeof import("river.now/kit/matcher/find-nested");
-	  }
-	| undefined;
-let initializationPromise: Promise<void> | undefined;
-
-async function ensureMatcherLoaded(config: RiverAppConfig) {
-	if (!initializationPromise) {
-		initializationPromise = (async () => {
-			if (!matcherModules) {
-				const [registerModule, findNestedModule] = await Promise.all([
-					import("river.now/kit/matcher/register"),
-					import("river.now/kit/matcher/find-nested"),
-				]);
-				matcherModules = {
-					register: registerModule,
-					findNested: findNestedModule,
-				};
-				const { createPatternRegistry } = registerModule;
-				clientPatternRegistry = createPatternRegistry({
-					dynamicParamPrefixRune: config.loadersDynamicRune,
-					splatSegmentRune: config.loadersSplatRune,
-					explicitIndexSegment: config.loadersExplicitIndexSegment,
-				});
-			}
-		})();
-	}
-
-	await initializationPromise;
-
-	return {
-		matcherModules: matcherModules!,
-		clientPatternRegistry: clientPatternRegistry!,
-	};
-}
-
 export async function __registerClientLoaderPattern(
 	pattern: string,
 ): Promise<void> {
-	// This is called when a client loader is discovered.
-	// Load both matcher modules on first use.
-	const config = __riverClientGlobal.get("riverAppConfig");
-	const { matcherModules, clientPatternRegistry } =
-		await ensureMatcherLoaded(config);
-	matcherModules.register.registerPattern(clientPatternRegistry, pattern);
+	registerPattern(__riverClientGlobal.get("patternRegistry"), pattern);
 }
 
 // This is needed because the matcher, by definition, will only
@@ -90,21 +37,15 @@ export async function __registerClientLoaderPattern(
 // no match, even if some registered patterns would potentially
 // be in the parent segments. This fixes that.
 export async function findPartialMatchesOnClient(pathname: string) {
-	// Only try to match if we have client loaders
 	const patternToWaitFnMap = __riverClientGlobal.get("patternToWaitFnMap");
 	if (Object.keys(patternToWaitFnMap).length === 0) {
 		return null;
 	}
 
-	// If we have patterns registered, the modules should already be loaded
-	if (!matcherModules || !clientPatternRegistry) {
-		return null;
-	}
-
-	const { findNestedMatches } = matcherModules.findNested;
+	const patternRegistry = __riverClientGlobal.get("patternRegistry");
 
 	// First try the full path
-	const fullResult = findNestedMatches(clientPatternRegistry, pathname);
+	const fullResult = findNestedMatches(patternRegistry, pathname);
 	if (fullResult) {
 		// If we get a full match, we have everything we need
 		return fullResult;
@@ -117,7 +58,7 @@ export async function findPartialMatchesOnClient(pathname: string) {
 	for (let i = segments.length; i >= 0; i--) {
 		const partialPath =
 			i === 0 ? "/" : "/" + segments.slice(0, i).join("/");
-		const result = findNestedMatches(clientPatternRegistry, partialPath);
+		const result = findNestedMatches(patternRegistry, partialPath);
 		if (result) {
 			return result; // First match is the longest
 		}

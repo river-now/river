@@ -27,17 +27,20 @@ import (
 )
 
 const (
-	riverVitePrehashedFilePrefix   = "river_out_vite_"
+	riverOutPrefix                 = "river_out_"
+	riverVitePrehashedFilePrefix   = riverOutPrefix + "vite_"
+	riverRouteManifestPrefix       = riverOutPrefix + "river_internal_route_manifest_"
 	RiverPathsStageOneJSONFileName = "river_paths_stage_1.json"
 	RiverPathsStageTwoJSONFileName = "river_paths_stage_2.json"
 )
 
 type PathsFile struct {
 	// both stages one and two
-	Stage          string           `json:"stage"`
-	BuildID        string           `json:"buildID,omitempty"`
-	ClientEntrySrc string           `json:"clientEntrySrc"`
-	Paths          map[string]*Path `json:"paths"`
+	Stage             string           `json:"stage"`
+	BuildID           string           `json:"buildID,omitempty"`
+	ClientEntrySrc    string           `json:"clientEntrySrc"`
+	Paths             map[string]*Path `json:"paths"`
+	RouteManifestFile string           `json:"routeManifestFile"`
 
 	// stage two only
 	ClientEntryOut    string            `json:"clientEntryOut,omitempty"`
@@ -57,10 +60,11 @@ func (h *River) writePathsToDisk_StageOne() error {
 	}
 
 	pathsAsJSON, err := json.MarshalIndent(PathsFile{
-		Stage:          "one",
-		Paths:          h._paths,
-		ClientEntrySrc: h.Wave.GetRiverClientEntry(),
-		BuildID:        h._buildID,
+		Stage:             "one",
+		Paths:             h._paths,
+		ClientEntrySrc:    h.Wave.GetRiverClientEntry(),
+		BuildID:           h._buildID,
+		RouteManifestFile: h._routeManifestFile,
 	}, "", "\t")
 	if err != nil {
 		return err
@@ -351,15 +355,23 @@ func (h *River) Build(opts *BuildOptions) error {
 		}
 	}
 
-	if err = h.writePathsToDisk_StageOne(); err != nil {
-		Log.Error(fmt.Sprintf("error writing paths to disk: %s", err))
-		return err
-	}
-
 	// Remove all files in StaticPublicOutDir starting with riverChunkPrefix or riverEntryPrefix.
 	err = cleanStaticPublicOutDir(h.Wave.GetStaticPublicOutDir())
 	if err != nil {
 		Log.Error(fmt.Sprintf("error cleaning static public out dir: %s", err))
+		return err
+	}
+
+	manifest := h.generateRouteManifest(opts.LoadersRouter)
+	manifestFile, err := h.writeRouteManifestToDisk(manifest)
+	if err != nil {
+		Log.Error(fmt.Sprintf("error writing route manifest: %s", err))
+		return err
+	}
+	h._routeManifestFile = manifestFile
+
+	if err = h.writePathsToDisk_StageOne(); err != nil {
+		Log.Error(fmt.Sprintf("error writing paths to disk: %s", err))
 		return err
 	}
 
@@ -440,7 +452,8 @@ func cleanStaticPublicOutDir(staticPublicOutDir string) error {
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(filepath.Base(path), riverVitePrehashedFilePrefix) {
+		if strings.HasPrefix(filepath.Base(path), riverVitePrehashedFilePrefix) ||
+			strings.HasPrefix(filepath.Base(path), riverRouteManifestPrefix) {
 			err = os.Remove(path)
 			if err != nil {
 				return err
@@ -543,6 +556,7 @@ func (h *River) toPathsFile_StageTwo() (*PathsFile, error) {
 		ClientEntrySrc:    h.Wave.GetRiverClientEntry(),
 		ClientEntryOut:    riverClientEntryOut,
 		ClientEntryDeps:   riverClientEntryDeps,
+		RouteManifestFile: h._routeManifestFile,
 	}
 
 	asJSON, err := json.Marshal(pf)
@@ -576,4 +590,38 @@ type BuildOptions struct {
 	ActionsRouter *mux.Router
 	AdHocTypes    []*AdHocType
 	ExtraTSCode   string
+}
+
+func (h *River) writeRouteManifestToDisk(manifest map[string]int) (string, error) {
+	manifestJSON, err := json.Marshal(manifest)
+	if err != nil {
+		return "", fmt.Errorf("error marshalling route manifest: %w", err)
+	}
+
+	// Hash the content to create a stable filename
+	hash := cryptoutil.Sha256Hash(manifestJSON)
+	hashStr := base64.RawURLEncoding.EncodeToString(hash[:8])
+	filename := fmt.Sprintf(riverRouteManifestPrefix+"%s.json", hashStr)
+
+	// Write to static public dir so it's served automatically
+	outPath := filepath.Join(h.Wave.GetStaticPublicOutDir(), filename)
+	if err := os.WriteFile(outPath, manifestJSON, 0644); err != nil {
+		return "", fmt.Errorf("error writing route manifest: %w", err)
+	}
+
+	return filename, nil
+}
+
+func (h *River) generateRouteManifest(nestedRouter *mux.NestedRouter) map[string]int {
+	manifest := make(map[string]int)
+
+	for _, v := range h._paths {
+		hasServerLoader := 0
+		if nestedRouter.HasTaskHandler(v.OriginalPattern) {
+			hasServerLoader = 1
+		}
+		manifest[v.OriginalPattern] = hasServerLoader
+	}
+
+	return manifest
 }

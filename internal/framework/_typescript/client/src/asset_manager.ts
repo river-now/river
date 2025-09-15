@@ -17,6 +17,14 @@ export class AssetManager {
 	static preloadCSS(url: string): Promise<void> {
 		const href = resolvePublicHref(url);
 
+		if (
+			document.querySelector(
+				`link[rel="preload"][href="${CSS.escape(href)}"]`,
+			)
+		) {
+			return Promise.resolve();
+		}
+
 		const link = document.createElement("link");
 		link.rel = "preload";
 		link.setAttribute("as", "style");

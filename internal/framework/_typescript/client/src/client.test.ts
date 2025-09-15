@@ -1,3 +1,4 @@
+import { createPatternRegistry } from "river.now/kit/matcher/register";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	beginNavigation,
@@ -78,6 +79,7 @@ const setupGlobalRiverContext = (initialData = {}) => {
 		patternToWaitFnMap: {},
 		viteDevURL: "",
 		publicPathPrefix: "",
+		patternRegistry: createPatternRegistry(),
 		...initialData,
 	};
 };
@@ -3575,7 +3577,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				expect(statusListener).not.toHaveBeenCalled();
 
 				// After debounce
-				await vi.advanceTimersByTimeAsync(5);
+				await vi.advanceTimersByTimeAsync(8);
 				expect(statusListener).toHaveBeenCalledTimes(1);
 			});
 
@@ -3591,7 +3593,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					href: "/same",
 					navigationType: "userNavigation",
 				});
-				await vi.advanceTimersByTimeAsync(5);
+				await vi.advanceTimersByTimeAsync(8);
 
 				const callCount = statusListener.mock.calls.length;
 
@@ -3600,7 +3602,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 					href: "/same2",
 					navigationType: "userNavigation",
 				});
-				await vi.advanceTimersByTimeAsync(5);
+				await vi.advanceTimersByTimeAsync(8);
 
 				// Should not dispatch duplicate
 				expect(statusListener).toHaveBeenCalledTimes(callCount);
@@ -5150,13 +5152,13 @@ describe("Comprehensive Navigation Test Suite", () => {
 				const navPromise = riverNavigate("/dashboard");
 
 				// 3. Check initial navigating state
-				await vi.advanceTimersByTimeAsync(5);
+				await vi.advanceTimersByTimeAsync(8);
 				expect(statusUpdates.at(-1)?.isNavigating).toBe(true);
 
 				// 4. Resolve the first fetch to trigger the redirect logic
 				(resolveFirstFetch as any)();
 				await new Promise((resolve) => setImmediate(resolve)); // Yield for redirect to start
-				await vi.advanceTimersByTimeAsync(5);
+				await vi.advanceTimersByTimeAsync(8);
 
 				// 5. CRITICAL CHECK: We must still be navigating during the handoff
 				expect(statusUpdates.at(-1)?.isNavigating).toBe(true);

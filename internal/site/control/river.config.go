@@ -16,7 +16,7 @@ import (
 const (
 	Domain          = "river.now"
 	SiteTitle       = "River Framework"
-	SiteDescription = "Blazing-fast Go. Magical TypeScript. Unmatched flexibility."
+	SiteDescription = "Blazing-fast Go. Magical TypeScript. Unrivaled flexibility."
 )
 
 var River = &river.River{

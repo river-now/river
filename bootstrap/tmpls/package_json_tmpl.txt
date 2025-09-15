@@ -3,7 +3,7 @@
 	"private": true,
 	"scripts": {
 		"dev": "go run ./control/cmd/build --dev",
-		"build": "go run ./control/cmd/build"{{.VercelPackageJSONExtras}}
+		"build": "go run ./control/cmd/build"{{.PackageJSONExtras}}
 	},
 	"devDependencies": {}
 }

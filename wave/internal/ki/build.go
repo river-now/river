@@ -294,7 +294,7 @@ func (c *Config) __processCSS(nature string) error {
 
 	if nature == "normal" {
 		// first, delete the old normal.css file(s)
-		oldNormalPath := filepath.Join(outputPath, "normal_*.css")
+		oldNormalPath := filepath.Join(outputPath, "river_out_river_internal_normal_*.css")
 		oldNormalFiles, err := filepath.Glob(oldNormalPath)
 		if err != nil {
 			return fmt.Errorf("error finding old normal CSS files: %w", err)
@@ -306,7 +306,10 @@ func (c *Config) __processCSS(nature string) error {
 		}
 
 		// Hash the css output
-		outputFileName = getHashedFilename(result.OutputFiles[0].Contents, "normal.css")
+		outputFileName = getHashedFilename(
+			result.OutputFiles[0].Contents,
+			"river_internal_normal.css",
+		)
 	}
 
 	// Ensure output directory exists

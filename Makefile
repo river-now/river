@@ -82,3 +82,8 @@ docker-run-site:
 
 repoconcat:
 	@go run ./internal/scripts/repoconcat
+
+run-create: tsreset npmbuild nuke-node-modules
+	@mkdir -p test_create.local && \
+		cd test_create.local && \
+		node ../internal/framework/_typescript/create/dist/main.js --local-test

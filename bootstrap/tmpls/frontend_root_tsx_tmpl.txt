@@ -1,63 +1,19 @@
-import { api } from "../api_client.ts";
-import { Link, useRouterData } from "../app_utils.tsx";
-import { USERNAME_MAX_LEN, type RouteProps } from "../river.gen.ts";
+import { Link } from "../app_utils.tsx";
+import { type RouteProps } from "../river.gen.ts";
 
 export function Root(props: RouteProps<"/">) {
-	const routerData = useRouterData(props);
-
 	return (
-		<>
+		<div id="root-wrapper">
+			<img src={getPublicURLBuildtime("favicon.svg")} alt="River logo" />
+
 			<nav>
-				<Link pattern="/">Home</Link>
-				<Link pattern="/about">About</Link>
-				<Link pattern="/about/location">About | Location</Link>
-				<Link pattern="/about/hobbies">About | Hobbies</Link>
-				<Link pattern="/about/:id" params={{.DynamicLinkParamsProp}}>
-					About | Dynamic
-				</Link>
-				<Link
-					pattern="/about/*"
-					splatValues={["some", "random", "route", "segments"]}
-				>
-					About | Splat
-				</Link>
+				<Link pattern="/">home</Link>
+				<Link pattern="/links">links</Link>
 			</nav>
-			<hr />
-			<h2>Router Data:</h2>
-			<p>buildID: {routerData{{.Call}}.buildID}</p>
-			<p>
-				matchedPatterns: {JSON.stringify(routerData{{.Call}}.matchedPatterns)}
-			</p>{" "}
-			<p>splatValues: {JSON.stringify(routerData{{.Call}}.splatValues)}</p>{" "}
-			<p>params: {JSON.stringify(routerData{{.Call}}.params)}</p>{" "}
-			<p>rootData.Message: {routerData{{.Call}}.rootData.Message}</p>
-			<p>rootData.Count: {routerData{{.Call}}.rootData.Count}</p>
-			<p>rootData.Username: {routerData{{.Call}}.rootData.Username}</p>
-			<button
-				onClick={() => {
-					api.mutate({
-						pattern: "/increment-count",
-					});
-				}}
-			>
-				Increment count
-			</button>
-			<form
-				onSubmit={(e) => {
-					e.preventDefault();
-					const formData = new FormData(e.currentTarget);
-					const username = formData.get("username") as string;
-					api.mutate({
-						pattern: "/set-username",
-						input: { username },
-					});
-				}}
-			>
-				<input name="username" placeholder="New username" required maxLength={USERNAME_MAX_LEN} />
-				<button type="submit">Update username</button>
-			</form>
-			<hr />
-			<props.Outlet />
-		</>
+
+			<div id="outlet-wrapper">
+				<props.Outlet />
+			</div>
+		</div>
 	);
 }

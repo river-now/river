@@ -1,32 +1,133 @@
 @import "./nprogress.css";
 
-html {
+*,
+::after,
+::before {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	border: 0 solid;
+}
+button {
+	border: none;
 	font-family: monospace;
 }
 
+html {
+	font-family: monospace;
+	line-height: 1.5;
+}
+
+html,
+body,
+main,
+#river-root {
+	height: 100%;
+	width: 100%;
+}
+
+main {
+	display: grid;
+	place-items: center;
+	padding: 1rem;
+}
+
 nav {
-	margin-top: 2rem;
 	display: flex;
-	flex-wrap: wrap;
+	justify-content: center;
+	gap: 1rem;
+	margin-bottom: 2rem;
 }
 
 a,
-button {
-	color: #000000;
-	font-weight: bold;
+#increment-button {
+	color: #789;
+}
+a {
+	font-size: 1.3rem;
+	text-decoration: underline;
+	text-decoration-thickness: 2px;
+	text-decoration-color: #abc;
+	text-underline-offset: 5px;
+}
+a:hover {
+	color: #9ab;
+	text-decoration-color: salmon;
+}
+a:active {
+	color: #789;
+	opacity: 0.9;
+}
+
+button:hover,
+#docs-link:hover,
+#github-link:hover {
+	outline: 2px solid #fff5;
+}
+button:active,
+#docs-link:active,
+#github-link:active {
+	outline: 2px solid #fff3;
+	opacity: 0.7;
+}
+
+#root-wrapper {
+	display: flex;
+	flex-direction: column;
+	margin: auto;
+
+	#outlet-wrapper {
+		min-height: 60px;
+	}
+
+	img {
+		width: 50px;
+		height: 50px;
+		margin: 2rem auto;
+	}
+}
+
+#home-wrapper,
+#links-wrapper {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+@media screen and (min-width: 360px) {
+	#home-wrapper {
+		flex-direction: row;
+	}
+}
+
+#docs-link,
+#github-link {
 	text-decoration: none;
-	padding: 0.5em;
-	background: rgb(115, 156, 222);
-	margin: 0.5em;
-	border: none;
+	span {
+		margin-left: -0.25em;
+		font-size: 150%;
+		opacity: 0.7;
+		line-height: 0;
+	}
 }
 
-hr {
-	border: 1px solid #fff;
-	margin: 2rem 0;
+#count {
+	font-size: 2rem;
+	font-weight: bold;
+	font-style: italic;
+	line-height: 1;
+	color: #abc;
 }
 
-input {
-	border: 1px solid white;
-	padding: 4px 8px;
+#increment-button,
+#docs-link,
+#github-link {
+	background-color: #7892;
+	font-size: 1.3rem;
+	padding: 0.5rem 0.7rem;
+	line-height: 1;
+	border-radius: 8px;
+	cursor: pointer;
 }

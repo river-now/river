@@ -1,3 +1,7 @@
+import {
+	createPatternRegistry,
+	registerPattern,
+} from "river.now/kit/matcher/register";
 import { setupClientLoaders } from "./client_loaders.ts";
 import { ComponentLoader } from "./component_loader.ts";
 import { defaultErrorBoundary } from "./error_boundary.ts";
@@ -7,6 +11,7 @@ import { initHMR } from "./hmr/hmr.ts";
 import type { RiverAppConfig } from "./river_app_helpers/river_app_helpers.ts";
 import {
 	__riverClientGlobal,
+	type RiverClientGlobal,
 	type RouteErrorComponent,
 } from "./river_ctx/river_ctx.ts";
 import { scrollStateManager } from "./scroll_state_manager.ts";
@@ -25,6 +30,53 @@ export async function initClient(options: {
 	});
 
 	__riverClientGlobal.set("riverAppConfig", options.riverAppConfig);
+	const clientModuleMap: RiverClientGlobal["clientModuleMap"] = {};
+
+	// Populate client module map with initial page's modules
+	const initialMatchedPatterns =
+		__riverClientGlobal.get("matchedPatterns") || [];
+	const initialImportURLs = __riverClientGlobal.get("importURLs") || [];
+	const initialExportKeys = __riverClientGlobal.get("exportKeys") || [];
+
+	for (let i = 0; i < initialMatchedPatterns.length; i++) {
+		const pattern = initialMatchedPatterns[i];
+		const importURL = initialImportURLs[i];
+		const exportKey = initialExportKeys[i];
+
+		if (pattern && importURL) {
+			clientModuleMap[pattern] = {
+				importURL,
+				exportKey: exportKey || "default",
+			};
+		}
+	}
+	__riverClientGlobal.set("clientModuleMap", clientModuleMap);
+
+	const patternRegistry = createPatternRegistry({
+		dynamicParamPrefixRune: options.riverAppConfig.loadersDynamicRune,
+		splatSegmentRune: options.riverAppConfig.loadersSplatRune,
+		explicitIndexSegment:
+			options.riverAppConfig.loadersExplicitIndexSegment,
+	});
+	__riverClientGlobal.set("patternRegistry", patternRegistry);
+
+	const manifestURL = __riverClientGlobal.get("routeManifestURL");
+	if (manifestURL) {
+		fetch(manifestURL)
+			.then((response) => response.json())
+			.then((manifest) => {
+				__riverClientGlobal.set("routeManifest", manifest);
+
+				// Register all patterns from manifest into the existing registry
+				for (const pattern of Object.keys(manifest)) {
+					registerPattern(patternRegistry, pattern);
+				}
+			})
+			.catch((error) => {
+				// This is no biggie -- it's a progressive enhancement
+				console.warn("Failed to load route manifest:", error);
+			});
+	}
 
 	// Set options
 	if (options.defaultErrorBoundary) {

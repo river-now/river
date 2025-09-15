@@ -13,9 +13,5 @@ export default routes;
 routes.Add("/", import("./components/root.tsx"), "Root");
 routes.Add("/_index", import("./components/home.tsx"), "Home");
 
-const aboutMod = import("./components/about.tsx");
-routes.Add("/about", aboutMod, "About");
-routes.Add("/about/location", aboutMod, "Location");
-routes.Add("/about/hobbies", aboutMod, "Hobbies");
-routes.Add("/about/:id", aboutMod, "Dynamic");
-routes.Add("/about/*", aboutMod, "Splat");
+const linksMod = import("./components/links.tsx");
+routes.Add("/links", linksMod, "Links");

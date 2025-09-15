@@ -6,8 +6,12 @@ import (
 	"text/template"
 )
 
-func (d *derivedOptions) tmplWriteMust(target, tmplStr string) {
-	tmpl := template.Must(template.New(target).Parse(tmplStr))
+func (d *derivedOptions) tmplWriteMust(target, name string) {
+	tmplStr, err := tmplsFS.ReadFile(name)
+	if err != nil {
+		panic(err)
+	}
+	tmpl := template.Must(template.New(target).Parse(string(tmplStr)))
 	var sb strings.Builder
 	if err := tmpl.Execute(&sb, d); err != nil {
 		panic(err)
@@ -18,8 +22,22 @@ func (d *derivedOptions) tmplWriteMust(target, tmplStr string) {
 	}
 }
 
-func strWriteMust(target string, content string) {
-	if err := os.WriteFile(target, []byte(content), 0644); err != nil {
+func strWriteMust(target, name string) {
+	content, err := tmplsFS.ReadFile(name)
+	if err != nil {
+		panic(err)
+	}
+	if err := os.WriteFile(target, content, 0644); err != nil {
+		panic(err)
+	}
+}
+
+func fileWriteMust(target, source string) {
+	b, err := assetsFS.ReadFile(source)
+	if err != nil {
+		panic(err)
+	}
+	if err := os.WriteFile(target, b, 0644); err != nil {
 		panic(err)
 	}
 }

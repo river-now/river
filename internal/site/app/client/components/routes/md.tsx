@@ -25,8 +25,6 @@ export const useSplatClientLoaderData = addClientLoader({
 		// 	requestInit: { signal: props.signal },
 		// });
 
-		console.log("MD.TSX CLIENT LOADER");
-
 		return loaderData.Title as string;
 	},
 	reRunOnModuleChange: import.meta,
