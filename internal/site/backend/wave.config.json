@@ -17,18 +17,24 @@
 		"PublicPathPrefix": "/"
 	},
 	"River": {
-		"UIVariant": "{{.UIVariant}}",
+		"UIVariant": "solid",
 		"HTMLTemplateLocation": "entry.go.html",
 		"ClientEntry": "frontend/src/entry.tsx",
 		"ClientRouteDefsFile": "frontend/src/routes.ts",
 		"TSGenOutPath": "frontend/src/river.gen.ts",
-		"BuildtimePublicURLFuncName": "getPublicURLBuildtime"
+		"BuildtimePublicURLFuncName": "hashedURL"
 	},
 	"Vite": {
-		"JSPackageManagerBaseCmd": "{{.JSPackageManagerBaseCmd}}"
+		"JSPackageManagerBaseCmd": "pnpm"
 	},
 	"Watch": {
 		"HealthcheckEndpoint": "/healthz",
-		"Include": []
+		"Include": [
+			{
+				"Pattern": "backend/assets/markdown/**/*.md",
+				"OnlyRunClientDefinedRevalidateFunc": true,
+				"SkipRebuildingNotification": true
+			}
+		]
 	}
 }

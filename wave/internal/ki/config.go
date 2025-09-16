@@ -204,7 +204,7 @@ type UserConfigRiver struct {
 	HTMLTemplateLocation       string // Relative to your static private dir
 	ClientEntry                string
 	ClientRouteDefsFile        string
-	TSGenOutPath               string // e.g., "app/client/river.gen.ts"
+	TSGenOutPath               string // e.g., "frontend/src/river.gen.ts"
 	BuildtimePublicURLFuncName string // e.g., "waveURL", "withHash", etc.
 }
 

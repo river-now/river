@@ -1,6 +1,6 @@
 # River Framework
 
-<img src="internal/site/assets/public/river-banner.webp" alt="River banner">
+<img src="internal/site/frontend/assets/river-banner.webp" alt="River banner">
 
 ---
 

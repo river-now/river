@@ -1,4 +1,4 @@
 # Wave
-control/dist/static/*
-!control/dist/static/.keep
-control/dist/main*
+backend/dist/static/*
+!backend/dist/static/.keep
+backend/dist/main*

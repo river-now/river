@@ -29,6 +29,13 @@ func (m *Matcher) FindNestedMatches(realPath string) (*FindNestedMatchesResults,
 	if realPath == "" {
 		if rr, ok := m.staticPatterns["/"]; ok {
 			matches[rr.normalizedPattern] = &Match{RegisteredPattern: rr}
+		} else {
+			if rr, ok := m.dynamicPatterns["/*"]; ok {
+				matches["/*"] = &Match{
+					RegisteredPattern: rr,
+					splatValues:       []string{},
+				}
+			}
 		}
 		return flattenAndSortMatches(matches, realPath, realSegmentsLen)
 	}

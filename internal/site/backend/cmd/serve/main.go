@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"{{.GoImportBase}}/backend"
-	"{{.GoImportBase}}/backend/src/router"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"site/backend"
+	"site/backend/src/router"
 	"time"
 
 	"github.com/river-now/river/kit/colorlog"
@@ -15,7 +15,7 @@ import (
 	"github.com/river-now/river/wave"
 )
 
-var Log = colorlog.New("{{.GoImportBase}}")
+var Log = colorlog.New("site")
 
 func main() {
 	backend.River.Init(wave.GetIsDev())

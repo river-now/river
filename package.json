@@ -1,6 +1,6 @@
 {
 	"name": "river.now",
-	"version": "0.69.0",
+	"version": "0.70.0",
 	"description": "A flexible web framework for Go and TypeScript.",
 	"type": "module",
 	"sideEffects": false,
@@ -103,10 +103,11 @@
 		"tsconfig.base.json",
 		"internal/framework/_typescript/",
 		"kit/_typescript/",
-		"internal/site/assets/public/river-banner.webp",
+		"internal/site/frontend/assets/river-banner.webp",
 		"!node_modules",
 		"!**/*.test.*",
-		"!**/*.bench.*"
+		"!**/*.bench.*",
+		"!**/bench.txt"
 	],
 	"devDependencies": {
 		"@preact/signals": "^2.3.1",

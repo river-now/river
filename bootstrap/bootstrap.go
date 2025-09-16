@@ -156,7 +156,7 @@ func (o Options) derived() derivedOptions {
 		do.PackageJSONExtras = fmt.Sprintf(`,
 		"vercel-install-go": "curl -L https://go.dev/dl/%s.linux-amd64.tar.gz | tar -C /tmp -xz",
 		"vercel-install": "%s vercel-install-go && %s",
-		"vercel-build": "export PATH=/tmp/go/bin:$PATH && go run ./control/cmd/build"`,
+		"vercel-build": "export PATH=/tmp/go/bin:$PATH && go run ./backend/cmd/build"`,
 			goVersion, do.ResolveJSPackageManagerRunScriptPrefix(), do.ResolveJSPackageManagerInstallCmd(),
 		)
 	}
@@ -197,10 +197,10 @@ func (o Options) derived() derivedOptions {
 		// Resolve Docker template fields
 		if do.IsMonorepo {
 			do.DockerWorkdirCommand = "\nWORKDIR /app/" + do.AppPathFromModuleRoot
-			do.DockerBinaryPath = "/app/" + do.AppPathFromModuleRoot + "/control/dist/main"
+			do.DockerBinaryPath = "/app/" + do.AppPathFromModuleRoot + "/backend/dist/main"
 		} else {
 			do.DockerWorkdirCommand = "" // No extra WORKDIR needed
-			do.DockerBinaryPath = "/app/control/dist/main"
+			do.DockerBinaryPath = "/app/backend/dist/main"
 		}
 	}
 
@@ -235,42 +235,42 @@ func Init(o Options) {
 	do := o.derived()
 
 	fsutil.EnsureDirs(
-		"assets/private",
-		"assets/public",
-		"app/server/router",
-		"control/cmd/serve",
-		"control/cmd/build",
-		"control/dist/static/internal",
-		"app/client/components",
-		"app/client/styles",
+		"backend/assets",
+		"frontend/assets",
+		"backend/src/router",
+		"backend/cmd/serve",
+		"backend/cmd/build",
+		"backend/dist/static/internal",
+		"frontend/src/components",
+		"frontend/src/styles",
 	)
 
 	if o.DeploymentTarget == "vercel" {
 		fsutil.EnsureDirs("api")
 	}
 
-	do.tmplWriteMust("control/cmd/serve/main.go", "tmpls/cmd_app_main_go_tmpl.txt")
-	do.tmplWriteMust("control/cmd/build/main.go", "tmpls/cmd_build_main_go_tmpl.txt")
-	do.tmplWriteMust("control/dist/static/.keep", "tmpls/dist_static_keep_tmpl.txt")
-	strWriteMust("assets/private/entry.go.html", "tmpls/backend_static_entry_go_html_str.txt")
-	do.tmplWriteMust("app/server/router/actions.go", "tmpls/backend_router_actions_go_tmpl.txt")
-	do.tmplWriteMust("app/server/router/core.go", "tmpls/backend_router_core_go_tmpl.txt")
-	do.tmplWriteMust("app/server/router/loaders.go", "tmpls/backend_router_loaders_go_tmpl.txt")
-	do.tmplWriteMust("control/river.config.go", "tmpls/app_go_tmpl.txt")
-	do.tmplWriteMust("control/wave.config.json", "tmpls/wave_config_json_tmpl.txt")
+	do.tmplWriteMust("backend/cmd/serve/main.go", "tmpls/cmd_app_main_go_tmpl.txt")
+	do.tmplWriteMust("backend/cmd/build/main.go", "tmpls/cmd_build_main_go_tmpl.txt")
+	do.tmplWriteMust("backend/dist/static/.keep", "tmpls/dist_static_keep_tmpl.txt")
+	strWriteMust("backend/assets/entry.go.html", "tmpls/backend_static_entry_go_html_str.txt")
+	do.tmplWriteMust("backend/src/router/actions.go", "tmpls/backend_router_actions_go_tmpl.txt")
+	do.tmplWriteMust("backend/src/router/core.go", "tmpls/backend_router_core_go_tmpl.txt")
+	do.tmplWriteMust("backend/src/router/loaders.go", "tmpls/backend_router_loaders_go_tmpl.txt")
+	do.tmplWriteMust("backend/river.config.go", "tmpls/app_go_tmpl.txt")
+	do.tmplWriteMust("backend/wave.config.json", "tmpls/wave_config_json_tmpl.txt")
 	do.tmplWriteMust("vite.config.ts", "tmpls/vite_config_ts_tmpl.txt")
 	do.tmplWriteMust("package.json", "tmpls/package_json_tmpl.txt")
 	strWriteMust(".gitignore", "tmpls/gitignore_str.txt")
-	strWriteMust("app/client/styles/main.css", "tmpls/main_css_str.txt")
-	strWriteMust("app/client/styles/main.critical.css", "tmpls/main_critical_css_str.txt")
-	strWriteMust("app/client/routes.ts", "tmpls/frontend_routes_ts_str.txt")
-	do.tmplWriteMust("app/client/components/app.tsx", "tmpls/frontend_app_tsx_tmpl.txt")
-	do.tmplWriteMust("app/client/components/root.tsx", "tmpls/frontend_root_tsx_tmpl.txt")
-	do.tmplWriteMust("app/client/components/home.tsx", "tmpls/frontend_home_tsx_tmpl.txt")
-	do.tmplWriteMust("app/client/components/links.tsx", "tmpls/frontend_links_tsx_tmpl.txt")
-	do.tmplWriteMust("app/client/app_utils.tsx", "tmpls/frontend_app_utils_tsx_tmpl.txt")
-	strWriteMust("app/client/api_client.ts", "tmpls/frontend_api_client_ts_str.txt")
-	strWriteMust("app/client/styles/nprogress.css", "tmpls/frontend_css_nprogress_css_str.txt")
+	strWriteMust("frontend/src/styles/main.css", "tmpls/main_css_str.txt")
+	strWriteMust("frontend/src/styles/main.critical.css", "tmpls/main_critical_css_str.txt")
+	strWriteMust("frontend/src/routes.ts", "tmpls/frontend_routes_ts_str.txt")
+	do.tmplWriteMust("frontend/src/components/app.tsx", "tmpls/frontend_app_tsx_tmpl.txt")
+	do.tmplWriteMust("frontend/src/components/root.tsx", "tmpls/frontend_root_tsx_tmpl.txt")
+	do.tmplWriteMust("frontend/src/components/home.tsx", "tmpls/frontend_home_tsx_tmpl.txt")
+	do.tmplWriteMust("frontend/src/components/links.tsx", "tmpls/frontend_links_tsx_tmpl.txt")
+	do.tmplWriteMust("frontend/src/app_utils.tsx", "tmpls/frontend_app_utils_tsx_tmpl.txt")
+	strWriteMust("frontend/src/api_client.ts", "tmpls/frontend_api_client_ts_str.txt")
+	strWriteMust("frontend/src/styles/nprogress.css", "tmpls/frontend_css_nprogress_css_str.txt")
 	if o.DeploymentTarget == "vercel" {
 		do.tmplWriteMust("vercel.json", "tmpls/vercel_json_tmpl.txt")
 		do.tmplWriteMust("api/proxy.ts", "tmpls/api_proxy_ts_str.txt")
@@ -290,7 +290,7 @@ func Init(o Options) {
 	installJSPkg(do, "@types/nprogress")
 
 	if do.UIVariant == "react" {
-		strWriteMust("app/client/entry.tsx", "tmpls/frontend_entry_tsx_react_str.txt")
+		strWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_react_str.txt")
 
 		installJSPkg(do, "react")
 		installJSPkg(do, "react-dom")
@@ -300,13 +300,13 @@ func Init(o Options) {
 	}
 
 	if do.UIVariant == "solid" {
-		strWriteMust("app/client/entry.tsx", "tmpls/frontend_entry_tsx_solid_str.txt")
+		strWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_solid_str.txt")
 
 		installJSPkg(do, "solid-js")
 	}
 
 	if do.UIVariant == "preact" {
-		strWriteMust("app/client/entry.tsx", "tmpls/frontend_entry_tsx_preact_str.txt")
+		strWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_preact_str.txt")
 
 		installJSPkg(do, "preact")
 		installJSPkg(do, "@preact/signals")
@@ -319,11 +319,11 @@ func Init(o Options) {
 	if do.IncludeTailwind {
 		installJSPkg(do, "@tailwindcss/vite")
 		installJSPkg(do, "tailwindcss")
-		strWriteMust("app/client/styles/tailwind.css", "tmpls/frontend_css_tailwind_css_str.txt")
+		strWriteMust("frontend/src/styles/tailwind.css", "tmpls/frontend_css_tailwind_css_str.txt")
 	}
 
 	// write assets
-	fileWriteMust("assets/public/favicon.svg", "assets/favicon.svg")
+	fileWriteMust("frontend/assets/favicon.svg", "assets/favicon.svg")
 
 	// install chi (some chi middleware is used in the template)
 	if err := executil.RunCmd("go", "get", "github.com/go-chi/chi/v5/middleware"); err != nil {
@@ -331,7 +331,7 @@ func Init(o Options) {
 	}
 
 	// build once (no binary)
-	if err := executil.RunCmd("go", "run", "./control/cmd/build", "--no-binary"); err != nil {
+	if err := executil.RunCmd("go", "run", "./backend/cmd/build", "--no-binary"); err != nil {
 		panic("failed to run build command: " + err.Error())
 	}
 

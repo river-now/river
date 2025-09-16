@@ -2,15 +2,15 @@ pre:
 	@pnpm i && go mod tidy
 
 dev: pre
-	@go run ./control/cmd/build --dev
+	@go run ./backend/cmd/build --dev
 
 build: pre
-	@go run ./control/cmd/build
+	@go run ./backend/cmd/build
 	@echo "\nbuild complete. now run:\n\tmake run port=9090"
 
 # call with `make run port=whatever`
 run:
-	@PORT=$(port) ./control/dist/main
+	@PORT=$(port) ./backend/dist/main
 
 vercel-install-go:
 	@curl -L https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | tar -C /tmp -xz
@@ -25,5 +25,5 @@ outer-npmbuild:
 
 vercel-build: outer-npmbuild
 	@export PATH=/tmp/go/bin:$$PATH && \
-		go run ./control/cmd/build && \
-		ls -la control/dist/
+		go run ./backend/cmd/build && \
+		ls -la backend/dist/

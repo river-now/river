@@ -202,6 +202,15 @@ export function findNestedMatches(
 				params: {},
 				splatValues: [],
 			});
+		} else {
+			const catchAllRR = registry.dynamicPatterns.get("/*");
+			if (catchAllRR) {
+				matches.set("/*", {
+					registeredPattern: catchAllRR,
+					params: {},
+					splatValues: [],
+				});
+			}
 		}
 		return flattenAndSortMatches(matches, realPath, realSegmentsLen);
 	}

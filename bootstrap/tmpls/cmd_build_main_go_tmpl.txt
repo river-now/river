@@ -1,8 +1,8 @@
 package main
 
 import (
-	"{{.GoImportBase}}/app/server/router"
-	"{{.GoImportBase}}/control"
+	"{{.GoImportBase}}/backend"
+	"{{.GoImportBase}}/backend/src/router"
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/tsgen"
@@ -23,13 +23,13 @@ func main() {
 
 	a.Serialize("export const GITHUB_REPO_LINK", "https://github.com/river-now/river")
 
-	control.Wave.Builder(func(isDev bool) error {
-		return control.River.Build(&river.BuildOptions{
+	backend.Wave.Builder(func(isDev bool) error {
+		return backend.River.Build(&river.BuildOptions{
 			IsDev:         isDev,
 			LoadersRouter: router.LoadersRouter,
 			ActionsRouter: router.ActionsRouter,
 			AdHocTypes: []*river.AdHocType{
-				// These will get inlined into ./app/client/river.gen.ts
+				// These will get inlined into ./frontend/src/river.gen.ts
 				{TypeInstance: SomeType{}},
 				{TypeInstance: SomeOtherType{}, TSTypeName: "RenamedType"},
 			},

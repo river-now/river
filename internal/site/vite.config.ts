@@ -2,7 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import river from "river.now/vite";
 import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
-import { riverViteConfig } from "./app/client/river.gen.ts";
+import { riverViteConfig } from "./frontend/src/river.gen.ts";
 
 export default defineConfig({
 	plugins: [solid(), river(riverViteConfig), tailwindcss()],

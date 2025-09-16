@@ -2,10 +2,10 @@
 	"$schema": "https://openapi.vercel.sh/vercel.json",
 	"installCommand": "{{.ResolveJSPackageManagerRunScriptPrefix}} vercel-install",
 	"buildCommand": "{{.ResolveJSPackageManagerRunScriptPrefix}} vercel-build",
-	"outputDirectory": "control/dist/static/assets/public",
+	"outputDirectory": "backend/dist/static/assets/public",
 	"functions": {
 		"api/proxy.ts": {
-			"includeFiles": "control/{dist/main,wave.config.json}"
+			"includeFiles": "backend/{dist/main,wave.config.json}"
 		}
 	},
 	"rewrites": [

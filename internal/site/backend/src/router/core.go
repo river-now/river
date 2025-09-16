@@ -1,7 +1,7 @@
 package router
 
 import (
-	"{{.GoImportBase}}/backend"
+	"site/backend"
 
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/river-now/river/kit/middleware/etag"

@@ -23,9 +23,6 @@ var NestedPatterns = []string{
 	"/tiger/:tiger_id/_index",                         // Index
 
 	// NOTE: This will evaluate to an empty string -- should match to everything
-	// __TODO modify this to run tests both with and without this absolute root ("") pattern
-	// as well as with and without the catch-all ("/*") pattern. If you don't have the catch-all
-	// and you only match the absolute root, it should not be a match at all
 	"/",
 
 	"/*",
@@ -424,40 +421,144 @@ func TestFindAllMatches(t *testing.T) {
 
 func TestFindAllMatchesAdditionalScenarios(t *testing.T) {
 	testCases := []struct {
-		name        string
-		patterns    []string
-		path        string
-		expectMatch bool
+		name            string
+		patterns        []string
+		path            string
+		expectMatch     bool
+		expectedMatches []string
 	}{
 		{
-			name:        "Invalid match with unhandled segment",
-			patterns:    []string{"/", "/:slug", "/_index", "/app"},
-			path:        "/settings/account",
-			expectMatch: false,
+			name:            "Invalid match with unhandled segment",
+			patterns:        []string{"/", "/:slug", "/_index", "/app"},
+			path:            "/settings/account",
+			expectMatch:     false,
+			expectedMatches: []string{},
 		},
 		{
-			name:        "Deeper Invalid 'Almost' Match",
-			patterns:    []string{"/dashboard/customers"},
-			path:        "/dashboard/customers/reports",
-			expectMatch: false,
+			name:            "Deeper Invalid 'Almost' Match",
+			patterns:        []string{"/dashboard/customers"},
+			path:            "/dashboard/customers/reports",
+			expectMatch:     false,
+			expectedMatches: []string{},
 		},
 		{
-			name:        "Splat as the Only Full Match",
-			patterns:    []string{"/files/*", "/files/images"},
-			path:        "/files/documents/report.pdf",
-			expectMatch: true,
+			name:            "Splat as the Only Full Match",
+			patterns:        []string{"/files/*", "/files/images"},
+			path:            "/files/documents/report.pdf",
+			expectMatch:     true,
+			expectedMatches: []string{"/files/*"},
 		},
 		{
-			name:        "Index Segment Edge Case with Extra Segment",
-			patterns:    []string{"/articles/_index"},
-			path:        "/articles/some-topic",
-			expectMatch: false,
+			name:            "Index Segment Edge Case with Extra Segment",
+			patterns:        []string{"/articles/_index"},
+			path:            "/articles/some-topic",
+			expectMatch:     false,
+			expectedMatches: []string{},
 		},
 		{
-			name:        "No Root Fallback for Multi-Segment Path",
-			patterns:    []string{"/"},
-			path:        "/some/random/path",
-			expectMatch: false,
+			name:            "No Root Fallback for Multi-Segment Path",
+			patterns:        []string{"/"},
+			path:            "/some/random/path",
+			expectMatch:     false,
+			expectedMatches: []string{},
+		},
+		{
+			name:            "A",
+			patterns:        []string{"/"},
+			path:            "/",
+			expectMatch:     true,
+			expectedMatches: []string{"/"},
+		},
+		{
+			name:            "B",
+			patterns:        []string{"/*"},
+			path:            "/",
+			expectMatch:     true,
+			expectedMatches: []string{"/*"},
+		},
+		{
+			name:            "C",
+			patterns:        []string{"/_index"},
+			path:            "/",
+			expectMatch:     true,
+			expectedMatches: []string{"/_index"},
+		},
+		{
+			name:            "AB",
+			patterns:        []string{"/", "/*"},
+			path:            "/",
+			expectMatch:     true,
+			expectedMatches: []string{"/", "/*"},
+		},
+		{
+			name:            "AC",
+			patterns:        []string{"/", "/_index"},
+			path:            "/",
+			expectMatch:     true,
+			expectedMatches: []string{"/", "/_index"},
+		},
+		{
+			name:            "BC",
+			patterns:        []string{"/*", "/_index"},
+			path:            "/",
+			expectMatch:     true,
+			expectedMatches: []string{"/_index"},
+		},
+		{
+			name:            "ABC",
+			patterns:        []string{"/", "/*", "/_index"},
+			path:            "/",
+			expectMatch:     true,
+			expectedMatches: []string{"/", "/_index"},
+		},
+		{
+			name:            "A-docs",
+			patterns:        []string{"/"},
+			path:            "/docs",
+			expectMatch:     false,
+			expectedMatches: []string{},
+		},
+		{
+			name:            "B-docs",
+			patterns:        []string{"/*"},
+			path:            "/docs",
+			expectMatch:     true,
+			expectedMatches: []string{"/*"},
+		},
+		{
+			name:            "C-docs",
+			patterns:        []string{"/_index"},
+			path:            "/docs",
+			expectMatch:     false,
+			expectedMatches: []string{},
+		},
+		{
+			name:            "AB-docs",
+			patterns:        []string{"/", "/*"},
+			path:            "/docs",
+			expectMatch:     true,
+			expectedMatches: []string{"/", "/*"},
+		},
+		{
+			name:            "AC-docs",
+			patterns:        []string{"/", "/_index"},
+			path:            "/docs",
+			expectMatch:     false,
+			expectedMatches: []string{},
+		},
+		{
+			name:            "BC-docs",
+			patterns:        []string{"/*", "/_index"},
+			path:            "/docs",
+			expectMatch:     true,
+			expectedMatches: []string{"/*"},
+		},
+		{
+			name:            "ABC-docs",
+			patterns:        []string{"/", "/*", "/_index"},
+			path:            "/docs",
+			expectMatch:     true,
+			expectedMatches: []string{"/", "/*"},
 		},
 	}
 
@@ -478,13 +579,35 @@ func TestFindAllMatchesAdditionalScenarios(t *testing.T) {
 			if !tc.expectMatch {
 				if results != nil && len(results.Matches) != 0 {
 					t.Errorf("Expected no matches for path %q, but got %d matches", tc.path, len(results.Matches))
+					for i, match := range results.Matches {
+						t.Logf("  [%d] %q", i, match.originalPattern)
+					}
 				}
 			}
 
-			// If a match was expected, ensure the results are not empty.
+			// If a match was expected, check the specific patterns that matched
 			if tc.expectMatch {
 				if results == nil || len(results.Matches) == 0 {
 					t.Errorf("Expected matches for path %q, but got none", tc.path)
+				} else if tc.expectedMatches != nil {
+					// Check that we got the expected patterns
+					actualPatterns := make([]string, len(results.Matches))
+					for i, match := range results.Matches {
+						actualPatterns[i] = match.originalPattern
+					}
+
+					if len(actualPatterns) != len(tc.expectedMatches) {
+						t.Errorf("Path %q: expected %d matches %v, got %d matches %v",
+							tc.path, len(tc.expectedMatches), tc.expectedMatches,
+							len(actualPatterns), actualPatterns)
+					} else {
+						for i, expected := range tc.expectedMatches {
+							if actualPatterns[i] != expected {
+								t.Errorf("Path %q: at position [%d], expected %q, got %q",
+									tc.path, i, expected, actualPatterns[i])
+							}
+						}
+					}
 				}
 			}
 		})
@@ -782,32 +905,6 @@ func TestTrailingSlashBehavior(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestOldBugLoaderPatternMatching(t *testing.T) {
-	m := New(&Options{ExplicitIndexSegment: "_index"})
-
-	m.RegisterPattern("/")
-	m.RegisterPattern("/*")
-
-	// "/" -- should match "/"
-	results, ok := m.FindNestedMatches("/")
-	if !ok {
-		t.Errorf("Expected to find matches for '/', but got none")
-	} else if len(results.Matches) != 1 ||
-		results.Matches[0].originalPattern != "/" {
-		t.Errorf("Expected to match '/', got %v", results.Matches)
-	}
-
-	// "/docs" -- should match "/" and "/*"
-	results, ok = m.FindNestedMatches("/docs")
-	if !ok {
-		t.Fatal("Expected to find matches for '/docs', but got none")
-	} else if len(results.Matches) != 2 ||
-		results.Matches[0].originalPattern != "/" ||
-		results.Matches[1].originalPattern != "/*" {
-		t.Errorf("Expected to match '/' and '/*', got %v", results.Matches)
 	}
 }
 
