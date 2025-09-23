@@ -248,7 +248,7 @@ type NodeScriptResult []NodeScriptResultItem
 
 type buildInnerOptions struct {
 	isDev        bool
-	buildOptions *BuildRiverOptions
+	buildOptions *BuildOptions
 }
 
 func (h *River) buildInner(opts *buildInnerOptions) error {
@@ -271,8 +271,10 @@ func (h *River) buildInner(opts *buildInnerOptions) error {
 		Log.Info("START building River (PROD)")
 	}
 
+	clientRouteDefsFile := h.Wave.GetRiverClientRouteDefsFile()
+
 	esbuildResult := esbuild.Build(esbuild.BuildOptions{
-		EntryPoints: []string{h.Wave.GetRiverClientRouteDefsFile()},
+		EntryPoints: []string{clientRouteDefsFile},
 		Bundle:      false,
 		Write:       false,
 		Format:      esbuild.FormatESModule,
@@ -290,7 +292,11 @@ func (h *River) buildInner(opts *buildInnerOptions) error {
 		return err
 	}
 
-	importsUnfiltered := metafile.Outputs["routes.js"].Imports
+	ext := filepath.Ext(clientRouteDefsFile)
+	withoutExt := strings.TrimSuffix(filepath.Base(clientRouteDefsFile), ext)
+	asJS := withoutExt + ".js"
+
+	importsUnfiltered := metafile.Outputs[asJS].Imports
 	var imports []string
 	for _, imp := range importsUnfiltered {
 		if imp.Kind != esbuildutil.KindDymanicImport {
@@ -324,7 +330,7 @@ func (h *River) buildInner(opts *buildInnerOptions) error {
 		code = strings.ReplaceAll(code, backticks, replacement)
 	}
 
-	location := filepath.Join(".", tempDirName, "routes.js")
+	location := filepath.Join(".", tempDirName, asJS)
 	err = os.MkdirAll(filepath.Dir(location), os.ModePerm)
 	if err != nil {
 		Log.Error(fmt.Sprintf("error creating directory: %s", err))
@@ -368,7 +374,7 @@ func (h *River) buildInner(opts *buildInnerOptions) error {
 		return err
 	}
 
-	manifest := h.generateRouteManifest(opts.buildOptions.LoadersRouter.NestedRouter)
+	manifest := h.generateRouteManifest(h.LoadersRouter().NestedRouter)
 	manifestFile, err := h.writeRouteManifestToDisk(manifest)
 	if err != nil {
 		Log.Error(fmt.Sprintf("error writing route manifest: %s", err))
@@ -382,8 +388,8 @@ func (h *River) buildInner(opts *buildInnerOptions) error {
 	}
 
 	tsgenOutput, err := h.generateTypeScript(&tsGenOptions{
-		LoadersRouter: opts.buildOptions.LoadersRouter.NestedRouter,
-		ActionsRouter: opts.buildOptions.ActionsRouter.Router,
+		LoadersRouter: h.LoadersRouter().NestedRouter,
+		ActionsRouter: h.ActionsRouter().Router,
 		AdHocTypes:    opts.buildOptions.AdHocTypes,
 		ExtraTSCode:   opts.buildOptions.ExtraTSCode,
 	})

@@ -2,7 +2,7 @@ import { done, isStarted, start } from "nprogress";
 import { setupGlobalLoadingIndicator } from "river.now/client";
 import { setTheme, THEMES } from "river.now/kit/theme";
 import { RiverRootOutlet } from "river.now/solid";
-import { Link, theme, useRouterData } from "../app_utils.tsx";
+import { Link, theme, useRouterData } from "../river.utils.tsx";
 import "../styles/tailwind.css";
 
 setupGlobalLoadingIndicator({ start, stop: done, isRunning: isStarted });

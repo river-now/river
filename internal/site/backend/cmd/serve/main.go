@@ -15,7 +15,7 @@ import (
 var Log = colorlog.New("site")
 
 func main() {
-	handler, addr := router.Init()
+	addr, handler := router.Init()
 	url := "http://localhost" + addr
 
 	server := &http.Server{

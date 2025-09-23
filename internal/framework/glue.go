@@ -2,7 +2,6 @@ package river
 
 import (
 	"errors"
-	"io/fs"
 	"net/http"
 
 	"github.com/river-now/river/kit/headels"
@@ -41,7 +40,7 @@ type ActionsRouterOptions struct {
 	SupportedMethods []string
 }
 
-func NewLoadersRouter(options ...LoadersRouterOptions) *LoadersRouter {
+func newLoadersRouter(options ...LoadersRouterOptions) *LoadersRouter {
 	var o LoadersRouterOptions
 	if len(options) > 0 {
 		o = options[0]
@@ -60,7 +59,7 @@ func NewLoadersRouter(options ...LoadersRouterOptions) *LoadersRouter {
 	}
 }
 
-func NewActionsRouter(options ...ActionsRouterOptions) *ActionsRouter {
+func newActionsRouter(options ...ActionsRouterOptions) *ActionsRouter {
 	var o ActionsRouterOptions
 	if len(options) > 0 {
 		o = options[0]
@@ -104,29 +103,23 @@ func NewActionsRouter(options ...ActionsRouterOptions) *ActionsRouter {
 }
 
 type RiverAppConfig struct {
-	// Required -- the bytes of your wave.config.json file. You can use go:embed or
-	// just read the file in yourself. Using go:embed is recommended for simpler
-	// deployments and improved performance.
-	WaveConfigJSON []byte
-
-	// Required -- be sure to pass in a file system that has your <distDir>/static
-	// directory as its ROOT. If you are using an embedded filesystem, you may need
-	// to use fs.Sub to get the correct subdirectory. Using go:embed is recommended
-	// for simpler deployments and improved performance.
-	DistStaticFS fs.FS
+	Wave *wave.Wave
 
 	GetDefaultHeadEls    GetDefaultHeadElsFunc
 	GetHeadElUniqueRules GetHeadElUniqueRulesFunc
 	GetRootTemplateData  GetRootTemplateDataFunc
+
+	LoadersRouterOptions LoadersRouterOptions
+	ActionsRouterOptions ActionsRouterOptions
 }
 
 func NewRiverApp(o RiverAppConfig) *River {
 	var rvr River
 
-	rvr.Wave = wave.New(&wave.Config{
-		WaveConfigJSON: o.WaveConfigJSON,
-		DistStaticFS:   o.DistStaticFS,
-	})
+	rvr.Wave = o.Wave
+	if rvr.Wave == nil {
+		panic("Wave instance is required")
+	}
 
 	rvr.getDefaultHeadEls = o.GetDefaultHeadEls
 	if rvr.getDefaultHeadEls == nil {
@@ -149,64 +142,53 @@ func NewRiverApp(o RiverAppConfig) *River {
 		}
 	}
 
+	rvr.loadersRouter = newLoadersRouter(o.LoadersRouterOptions)
+	rvr.actionsRouter = newActionsRouter(o.ActionsRouterOptions)
+
 	return &rvr
 }
 
-type Loaders struct {
-	river         *River
-	loadersRouter *LoadersRouter
-}
-type Actions struct {
-	river         *River
-	actionsRouter *ActionsRouter
-}
+type Loaders struct{ river *River }
+type Actions struct{ river *River }
 
 func (h *River) ServeStatic() func(http.Handler) http.Handler {
 	return h.Wave.ServeStatic(true)
 }
 
-func (h *River) Loaders(loadersRouter *LoadersRouter) *Loaders {
-	return &Loaders{
-		river:         h,
-		loadersRouter: loadersRouter,
-	}
-}
-func (h *River) Actions(actionsRouter *ActionsRouter) *Actions {
-	return &Actions{
-		river:         h,
-		actionsRouter: actionsRouter,
-	}
-}
+func (h *River) Loaders() *Loaders { return &Loaders{river: h} }
+func (h *River) Actions() *Actions { return &Actions{river: h} }
 
 func (h *Loaders) HandlerMountPattern() string {
 	return "/*"
 }
 func (h *Loaders) Handler() http.Handler {
-	return h.river.GetLoadersHandler(h.loadersRouter.NestedRouter)
+	return h.river.GetLoadersHandler(h.river.LoadersRouter().NestedRouter)
 }
 
 func (h *Actions) HandlerMountPattern() string {
-	return h.actionsRouter.MountRoot("*")
+	return h.river.ActionsRouter().MountRoot("*")
 }
 func (h *Actions) Handler() http.Handler {
-	return h.river.GetActionsHandler(h.actionsRouter.Router)
+	return h.river.GetActionsHandler(h.river.ActionsRouter().Router)
 }
 func (h *Actions) SupportedMethods() map[string]bool {
-	return h.actionsRouter.supportedMethods
+	return h.river.ActionsRouter().supportedMethods
 }
 
-type BuildRiverOptions struct {
-	LoadersRouter *LoadersRouter
-	ActionsRouter *ActionsRouter
-	AdHocTypes    []*AdHocType
-	ExtraTSCode   string
+type BuildOptions struct {
+	AdHocTypes  []*AdHocType
+	ExtraTSCode string
 }
 
-func (h *River) BuildRiver(o BuildRiverOptions) {
+func (h *River) Build(o ...BuildOptions) {
+	var opts BuildOptions
+	if len(o) > 0 {
+		opts = o[0]
+	}
 	h.Wave.BuildWaveWithHook(func(isDev bool) error {
 		return h.buildInner(&buildInnerOptions{
 			isDev:        isDev,
-			buildOptions: &o,
+			buildOptions: &opts,
 		})
 	})
 }

@@ -67,6 +67,9 @@ type (
 type River struct {
 	*wave.Wave
 
+	actionsRouter *ActionsRouter
+	loadersRouter *LoadersRouter
+
 	getDefaultHeadEls    GetDefaultHeadElsFunc
 	getHeadElUniqueRules GetHeadElUniqueRulesFunc
 	getRootTemplateData  GetRootTemplateDataFunc
@@ -85,6 +88,6 @@ type River struct {
 	_serverAddr        string
 }
 
-func (h *River) ServerAddr() string {
-	return h._serverAddr
-}
+func (h *River) ServerAddr() string            { return h._serverAddr }
+func (h *River) LoadersRouter() *LoadersRouter { return h.loadersRouter }
+func (h *River) ActionsRouter() *ActionsRouter { return h.actionsRouter }

@@ -135,7 +135,7 @@ navigation.
 
 ### river.gen.ts
 
-### routes.ts & registration of frontend routes
+### river.routes.ts & registration of frontend routes
 
 ---
 

@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/river-now/river"
-	"github.com/river-now/river/kit/fsutil"
 	"github.com/river-now/river/kit/middleware/healthcheck"
 	"github.com/river-now/river/kit/mux"
 )
@@ -18,14 +17,13 @@ func Init() (addr string, handler http.Handler) {
 	App.Init()
 
 	r := mux.NewRouter()
+	loaders, actions := App.Loaders(), App.Actions()
 
 	mux.SetGlobalHTTPMiddleware(r, App.ServeStatic())
 	mux.SetGlobalHTTPMiddleware(r, healthcheck.Healthz)
 
-	loaders := App.Loaders(LoadersRouter)
 	mux.RegisterHandler(r, "GET", loaders.HandlerMountPattern(), loaders.Handler())
 
-	actions := App.Actions(ActionsRouter)
 	for m := range actions.SupportedMethods() {
 		mux.RegisterHandler(r, m, actions.HandlerMountPattern(), actions.Handler())
 	}
@@ -38,8 +36,7 @@ func Init() (addr string, handler http.Handler) {
 /////////////////////////////////////////////////////////////////////
 
 var App = river.NewRiverApp(river.RiverAppConfig{
-	WaveConfigJSON: fsutil.MustReadFile(backend.EmbedFS, "wave.config.json"),
-	DistStaticFS:   fsutil.MustSub(backend.EmbedFS, "dist", "static"),
+	Wave: backend.Wave,
 	GetHeadElUniqueRules: func() *river.HeadEls {
 		e := river.NewHeadEls()
 		e.Meta(e.Property("og:title"))
@@ -67,49 +64,27 @@ var App = river.NewRiverApp(river.RiverAppConfig{
 /////// LOADER/ACTION REGISTRATION HELPERS
 /////////////////////////////////////////////////////////////////////
 
-var (
-	LoadersRouter = river.NewLoadersRouter()
-	ActionsRouter = river.NewActionsRouter()
-)
+// NOTE: You can add anything you want to the loader/action contexts
+
+type LoaderCtx struct{ *river.LoaderReqData }
+type ActionCtx[I any] struct{ *river.ActionReqData[I] }
+
+func decorateLoaderCtx(rd *river.LoaderReqData) *LoaderCtx {
+	return &LoaderCtx{LoaderReqData: rd}
+}
+func decorateActionCtx[I any](rd *river.ActionReqData[I]) *ActionCtx[I] {
+	return &ActionCtx[I]{ActionReqData: rd}
+}
 
 func NewLoader[O any](
-	pattern string,
-	loaderFunc river.LoaderFunc[LoaderCtx, O],
+	pattern string, loader river.LoaderFunc[LoaderCtx, O],
 ) *river.Loader[O] {
-	return river.NewLoader(LoadersRouter, pattern, loaderFunc, loaderCtxFactory)
+	return river.NewLoader(App, pattern, loader, decorateLoaderCtx)
 }
-
 func NewAction[I any, O any](
-	method string,
-	pattern string,
-	actionFunc river.ActionFunc[ActionCtx[I], I, O],
+	method string, pattern string, action river.ActionFunc[ActionCtx[I], I, O],
 ) *river.Action[I, O] {
-	return river.NewAction(ActionsRouter, method, pattern, actionFunc, actionCtxFactory)
-}
-
-type (
-	LoaderCtx struct {
-		*river.LoaderReqData
-		// Add anything else you want available on the LoaderCtx
-	}
-	ActionCtx[I any] struct {
-		*river.ActionReqData[I]
-		// Add anything else you want available on the ActionCtx
-	}
-)
-
-func loaderCtxFactory(rd *river.LoaderReqData) *LoaderCtx {
-	return &LoaderCtx{
-		LoaderReqData: rd,
-		// Add anything else you want available on the LoaderCtx
-	}
-}
-
-func actionCtxFactory[I any](rd *river.ActionReqData[I]) *ActionCtx[I] {
-	return &ActionCtx[I]{
-		ActionReqData: rd,
-		// Add anything else you want available on the ActionCtx
-	}
+	return river.NewAction(App, method, pattern, action, decorateActionCtx)
 }
 
 /////////////////////////////////////////////////////////////////////

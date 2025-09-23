@@ -76,11 +76,11 @@ your-app/
 │   └── src/
 │       ├── components/
 │       ├── styles/
-│       ├── api_client.ts        # Type-safe API client wrapper
-│       ├── app_utils.tsx        # Type-safe hooks & utilities
-│       ├── entry.tsx            # Client entry point
+│       ├── river.api.ts         # Type-safe API client wrapper
+│       ├── river.entry.tsx      # Client entry point
 │       ├── river.gen.ts         # River-generated TypeScript
-│       └── routes.ts            # Route components registry
+│       ├── river.routes.ts      # Route components registry
+│       └── river.utils.tsx      # Type-safe hooks & utilities
 │
 ├── backend/
 │   ├── assets/                  # Server-only assets (e.g., templates)

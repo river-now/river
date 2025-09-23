@@ -157,7 +157,7 @@ export const riverViteConfig = {
 		"frontend/src/components/dyn.tsx",
 		"frontend/src/components/home.tsx",
 		"frontend/src/components/md.tsx",
-		"frontend/src/entry.tsx"
+		"frontend/src/river.entry.tsx"
 	],
 	publicPathPrefix,
 	staticPublicAssetMap,
@@ -168,7 +168,7 @@ export const riverViteConfig = {
 		"**/backend/assets/**/*",
 		"**/backend/wave.config.json",
 		"**/frontend/src/river.gen.ts",
-		"**/frontend/src/routes.ts"
+		"**/frontend/src/river.routes.ts"
 	],
 	dedupeList: [
 		"solid-js",

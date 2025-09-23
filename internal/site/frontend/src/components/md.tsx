@@ -4,7 +4,7 @@ import {
 	addClientLoader,
 	useLoaderData,
 	type RouteProps,
-} from "../app_utils.tsx";
+} from "../river.utils.tsx";
 import { useRootClientLoaderData } from "./home.tsx";
 import { RenderedMarkdown } from "./rendered-markdown.tsx";
 

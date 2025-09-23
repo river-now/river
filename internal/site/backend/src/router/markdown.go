@@ -1,8 +1,7 @@
-package markdown
+package router
 
 import (
 	"io"
-	"site/backend"
 
 	"github.com/adrg/frontmatter"
 	"github.com/river-now/river/kit/lab/fsmarkdown"
@@ -10,10 +9,10 @@ import (
 )
 
 var Markdown = fsmarkdown.New(fsmarkdown.Options{
-	FS:                backend.App.MustGetPrivateFS(),
+	FS:                App.MustGetPrivateFS(),
 	FrontmatterParser: func(r io.Reader, v any) ([]byte, error) { return frontmatter.Parse(r, v) },
 	MarkdownParser: func(b []byte) []byte {
 		return blackfriday.Run(b, blackfriday.WithExtensions(blackfriday.AutoHeadingIDs|blackfriday.CommonExtensions))
 	},
-	IsDev: backend.App.GetIsDev(),
+	IsDev: App.GetIsDev(),
 })

@@ -254,19 +254,19 @@ func Init(o Options) {
 	do.tmplWriteMust("backend/dist/static/.keep", "tmpls/dist_static_keep_tmpl.txt")
 	strWriteMust("backend/assets/entry.go.html", "tmpls/backend_static_entry_go_html_str.txt")
 	do.tmplWriteMust("backend/src/router/router.go", "tmpls/backend_src_router_router_go_tmpl.txt")
-	do.tmplWriteMust("backend/embed.go", "tmpls/app_go_tmpl.txt")
+	do.tmplWriteMust("backend/wave.go", "tmpls/app_go_tmpl.txt")
 	do.tmplWriteMust("backend/wave.config.json", "tmpls/wave_config_json_tmpl.txt")
 	do.tmplWriteMust("vite.config.ts", "tmpls/vite_config_ts_tmpl.txt")
 	do.tmplWriteMust("package.json", "tmpls/package_json_tmpl.txt")
 	strWriteMust(".gitignore", "tmpls/gitignore_str.txt")
 	strWriteMust("frontend/src/styles/main.css", "tmpls/main_css_str.txt")
 	strWriteMust("frontend/src/styles/main.critical.css", "tmpls/main_critical_css_str.txt")
-	strWriteMust("frontend/src/routes.ts", "tmpls/frontend_routes_ts_str.txt")
+	strWriteMust("frontend/src/river.routes.ts", "tmpls/frontend_routes_ts_str.txt")
 	do.tmplWriteMust("frontend/src/components/root.tsx", "tmpls/frontend_root_tsx_tmpl.txt")
 	do.tmplWriteMust("frontend/src/components/home.tsx", "tmpls/frontend_home_tsx_tmpl.txt")
 	do.tmplWriteMust("frontend/src/components/links.tsx", "tmpls/frontend_links_tsx_tmpl.txt")
-	do.tmplWriteMust("frontend/src/app_utils.tsx", "tmpls/frontend_app_utils_tsx_tmpl.txt")
-	strWriteMust("frontend/src/api_client.ts", "tmpls/frontend_api_client_ts_str.txt")
+	do.tmplWriteMust("frontend/src/river.utils.tsx", "tmpls/frontend_app_utils_tsx_tmpl.txt")
+	strWriteMust("frontend/src/river.api.ts", "tmpls/frontend_api_client_ts_str.txt")
 	if o.DeploymentTarget == "vercel" {
 		do.tmplWriteMust("vercel.json", "tmpls/vercel_json_tmpl.txt")
 		do.tmplWriteMust("api/proxy.ts", "tmpls/api_proxy_ts_str.txt")
@@ -284,7 +284,7 @@ func Init(o Options) {
 	installJSPkg(do, resolveUIVitePlugin(do))
 
 	if do.UIVariant == "react" {
-		do.tmplWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_react_tmpl.txt")
+		do.tmplWriteMust("frontend/src/river.entry.tsx", "tmpls/frontend_entry_tsx_react_tmpl.txt")
 
 		installJSPkg(do, "react")
 		installJSPkg(do, "react-dom")
@@ -294,13 +294,13 @@ func Init(o Options) {
 	}
 
 	if do.UIVariant == "solid" {
-		do.tmplWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_solid_tmpl.txt")
+		do.tmplWriteMust("frontend/src/river.entry.tsx", "tmpls/frontend_entry_tsx_solid_tmpl.txt")
 
 		installJSPkg(do, "solid-js")
 	}
 
 	if do.UIVariant == "preact" {
-		do.tmplWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_preact_tmpl.txt")
+		do.tmplWriteMust("frontend/src/river.entry.tsx", "tmpls/frontend_entry_tsx_preact_tmpl.txt")
 
 		installJSPkg(do, "preact")
 		installJSPkg(do, "@preact/signals")

@@ -246,13 +246,13 @@ var HTMLTemplateLocation_Schema = jsonschema.OptionalString(jsonschema.Def{
 var ClientEntry_Schema = jsonschema.OptionalString(jsonschema.Def{
 	Description: `Path to your client-side TypeScript entry point.`,
 	Required:    true,
-	Examples:    []string{"frontend/src/entry.tsx"},
+	Examples:    []string{"frontend/src/river.entry.tsx"},
 })
 
 var ClientRouteDefsFile_Schema = jsonschema.OptionalString(jsonschema.Def{
 	Description: `Path to the file where River route definitions are written.`,
 	Required:    true,
-	Examples:    []string{"frontend/src/routes.ts"},
+	Examples:    []string{"frontend/src/river.routes.ts"},
 })
 
 var TSGenOutPath_Schema = jsonschema.OptionalString(jsonschema.Def{

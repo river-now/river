@@ -205,7 +205,7 @@ Configure Wave's integration with the River framework.
 ```json
 {
 	"River": {
-		"ClientEntry": "frontend/src/entry.tsx"
+		"ClientEntry": "frontend/src/river.entry.tsx"
 	}
 }
 ```
@@ -218,7 +218,7 @@ Configure Wave's integration with the River framework.
 ```json
 {
 	"River": {
-		"ClientRouteDefsFile": "frontend/src/routes.ts"
+		"ClientRouteDefsFile": "frontend/src/river.routes.ts"
 	}
 }
 ```

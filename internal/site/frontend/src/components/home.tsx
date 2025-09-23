@@ -3,7 +3,7 @@ import {
 	Link,
 	type RouteProps,
 	usePatternLoaderData,
-} from "../app_utils.tsx";
+} from "../river.utils.tsx";
 // import { useSplatClientLoaderData } from "./md.tsx";
 
 export const useRootClientLoaderData = addClientLoader({

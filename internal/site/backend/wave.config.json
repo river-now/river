@@ -19,8 +19,8 @@
 	"River": {
 		"UIVariant": "solid",
 		"HTMLTemplateLocation": "entry.go.html",
-		"ClientEntry": "frontend/src/entry.tsx",
-		"ClientRouteDefsFile": "frontend/src/routes.ts",
+		"ClientEntry": "frontend/src/river.entry.tsx",
+		"ClientRouteDefsFile": "frontend/src/river.routes.ts",
 		"TSGenOutPath": "frontend/src/river.gen.ts",
 		"BuildtimePublicURLFuncName": "hashedURL"
 	},

@@ -1,4 +1,4 @@
-// Used by client route defs file (e.g., routes.ts)
+// Used by client route defs file (e.g., river.routes.ts)
 
 type ImportPromise = Promise<Record<string, any>>;
 type Key<T extends ImportPromise> = keyof Awaited<T>;

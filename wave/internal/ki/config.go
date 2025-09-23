@@ -104,7 +104,7 @@ type Config struct {
 	// deployments and improved performance.
 	DistStaticFS fs.FS
 
-	// Optional -- a logger instance. If not provided, a default logger
+	// Optional -- a Logger instance. If not provided, a default Logger
 	// will be created that writes to standard out.
 	Logger *slog.Logger
 

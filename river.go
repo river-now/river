@@ -26,7 +26,7 @@ type (
 	None                              = mux.None
 	Action[I any, O any]              = rf.TaskHandler[I, O]
 	Loader[O any]                     = rf.TaskHandler[None, O]
-	BuildRiverOptions                 = rf.BuildRiverOptions
+	BuildOptions                      = rf.BuildOptions
 	LoaderFunc[Ctx any, O any]        = func(*Ctx) (O, error)
 	ActionFunc[Ctx any, I any, O any] = func(*Ctx) (O, error)
 	LoadersRouterOptions              = rf.LoadersRouterOptions
@@ -43,34 +43,32 @@ var (
 	NewHeadEls             = headels.New
 	RiverBuildIDHeaderKey  = rf.RiverBuildIDHeaderKey
 	EnableThirdPartyRouter = mux.InjectTasksCtxMiddleware
-	NewLoadersRouter       = rf.NewLoadersRouter
-	NewActionsRouter       = rf.NewActionsRouter
 )
 
 func NewRiverApp(o RiverAppConfig) *River { return rf.NewRiverApp(o) }
 
 func NewLoader[O any, CtxPtr ~*Ctx, Ctx any](
-	r *LoadersRouter,
+	app *River,
 	p string,
 	f func(CtxPtr) (O, error),
-	ctxFactory func(*LoaderReqData) CtxPtr,
+	decorateCtx func(*LoaderReqData) CtxPtr,
 ) *Loader[O] {
-	wrappedF := func(c *LoaderReqData) (O, error) { return f(ctxFactory(c)) }
+	wrappedF := func(c *LoaderReqData) (O, error) { return f(decorateCtx(c)) }
 	loaderTask := mux.TaskHandlerFromFunc(wrappedF)
-	mux.RegisterNestedTaskHandler(r.NestedRouter, p, loaderTask)
+	mux.RegisterNestedTaskHandler(app.LoadersRouter().NestedRouter, p, loaderTask)
 	return loaderTask
 }
 
 func NewAction[I any, O any, CtxPtr ~*Ctx, Ctx any](
-	r *ActionsRouter,
+	app *River,
 	m string,
 	p string,
 	f func(CtxPtr) (O, error),
-	ctxFactory func(*mux.ReqData[I]) CtxPtr,
+	decorateCtx func(*mux.ReqData[I]) CtxPtr,
 ) *Action[I, O] {
-	wrappedF := func(c *mux.ReqData[I]) (O, error) { return f(ctxFactory(c)) }
+	wrappedF := func(c *mux.ReqData[I]) (O, error) { return f(decorateCtx(c)) }
 	actionTask := mux.TaskHandlerFromFunc(wrappedF)
-	mux.RegisterTaskHandler(r.Router, m, p, actionTask)
+	mux.RegisterTaskHandler(app.ActionsRouter().Router, m, p, actionTask)
 	return actionTask
 }
 

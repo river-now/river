@@ -4,32 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"site/backend"
-	"site/backend/src/markdown"
-
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/lab/fsmarkdown"
 	"github.com/river-now/river/wave"
 )
-
-var LoadersRouter = river.NewLoadersRouter()
-
-type LoaderCtx struct {
-	*river.LoaderReqData
-}
-
-func loaderCtxFactory(rd *river.LoaderReqData) *LoaderCtx {
-	return &LoaderCtx{
-		LoaderReqData: rd,
-	}
-}
-
-func newLoader[O any](
-	pattern string,
-	loaderFunc river.LoaderFunc[LoaderCtx, O],
-) *river.Loader[O] {
-	return river.NewLoader(LoadersRouter, pattern, loaderFunc, loaderCtxFactory)
-}
 
 type RootData struct {
 	LatestVersion string
@@ -53,7 +31,7 @@ var htmlCacheControlVal = strings.Join([]string{
 	"must-revalidate",                // revalidate after 1 day in CDN
 }, ", ")
 
-var _ = newLoader("/", func(c *LoaderCtx) (*RootData, error) {
+var _ = NewLoader("/", func(c *LoaderCtx) (*RootData, error) {
 	r, rp := c.Request(), c.ResponseProxy()
 
 	if !wave.GetIsDev() {
@@ -73,14 +51,14 @@ var _ = newLoader("/", func(c *LoaderCtx) (*RootData, error) {
 	return &RootData{LatestVersion: currentNPMVersion}, nil
 })
 
-var _ = newLoader("/_index", func(c *LoaderCtx) (string, error) {
-	return backend.SiteDescription, nil
+var _ = NewLoader("/_index", func(c *LoaderCtx) (string, error) {
+	return SiteDescription, nil
 })
 
-var _ = newLoader("/*", func(c *LoaderCtx) (*fsmarkdown.DetailedPage, error) {
+var _ = NewLoader("/*", func(c *LoaderCtx) (*fsmarkdown.DetailedPage, error) {
 	r, rp := c.Request(), c.ResponseProxy()
 
-	p, err := markdown.Markdown.GetPageDetails(r)
+	p, err := Markdown.GetPageDetails(r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get page details: %w", err)
 	}
@@ -89,7 +67,7 @@ var _ = newLoader("/*", func(c *LoaderCtx) (*fsmarkdown.DetailedPage, error) {
 	e := river.NewHeadEls(2)
 
 	if p.Title != "" {
-		e.Title(fmt.Sprintf("%s | %s", backend.SiteTitle, p.Title))
+		e.Title(fmt.Sprintf("%s | %s", SiteTitle, p.Title))
 		e.Meta(e.Property("og:title"), e.Content(p.Title))
 	}
 

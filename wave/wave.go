@@ -3,6 +3,7 @@ package wave
 import (
 	"html/template"
 	"io/fs"
+	"log/slog"
 	"net/http"
 
 	"github.com/river-now/river/kit/middleware"
@@ -10,8 +11,7 @@ import (
 )
 
 type (
-	Wave        struct{ c *Config }
-	Config      = ki.Config
+	Wave        struct{ c *ki.Config }
 	FileMap     = ki.FileMap
 	WatchedFile = ki.WatchedFile
 	OnChangeCmd = ki.OnChangeHook
@@ -36,18 +36,38 @@ func (k Wave) GetIsDev() bool   { return GetIsDev() }
 func (k Wave) MustGetPort() int { return MustGetPort() }
 func (k Wave) SetModeToDev()    { SetModeToDev() }
 
-func New(config *ki.Config) *Wave {
-	if config == nil {
-		panic("wave.New: config cannot be nil")
-	}
+type Config struct {
+	// Required -- the bytes of your wave.config.json file. You can
+	// use go:embed or just read the file in yourself. Using go:embed
+	// is recommended for simpler deployments and improved performance.
+	WaveConfigJSON []byte
+
+	// Required -- be sure to pass in a file system that has your
+	// <distDir>/static directory as its ROOT. If you are using an
+	// embedded filesystem, you may need to use fs.Sub to get the
+	// correct subdirectory. Using go:embed is recommended for simpler
+	// deployments and improved performance.
+	DistStaticFS fs.FS
+
+	// Optional -- a logger instance. If not provided, a default logger
+	// will be created that writes to standard out.
+	Logger *slog.Logger
+}
+
+func New(config Config) *Wave {
 	if config.WaveConfigJSON == nil {
 		panic("wave.New: config.WaveConfigJSON cannot be nil")
 	}
 	if config.DistStaticFS == nil {
 		panic("wave.New: config.DistStaticFS cannot be nil")
 	}
-	config.MainInit(ki.MainInitOptions{}, "wave.New")
-	return &Wave{config}
+	cfg := &ki.Config{
+		WaveConfigJSON: config.WaveConfigJSON,
+		DistStaticFS:   config.DistStaticFS,
+		Logger:         config.Logger,
+	}
+	cfg.MainInit(ki.MainInitOptions{}, "wave.New")
+	return &Wave{cfg}
 }
 
 // If you want to do a custom build command, just use

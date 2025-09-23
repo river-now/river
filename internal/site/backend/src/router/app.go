@@ -1,19 +1,15 @@
-package backend
+package router
 
 import (
-	"embed"
 	"net/http"
 	"path"
+	"site/backend"
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/colorlog"
-	"github.com/river-now/river/kit/fsutil"
 	"github.com/river-now/river/kit/theme"
 	"github.com/river-now/river/wave"
 )
-
-//go:embed all:dist/static wave.config.json
-var embedFS embed.FS
 
 var Log = colorlog.New("app server")
 
@@ -24,8 +20,7 @@ const (
 )
 
 var App = river.NewRiverApp(river.RiverAppConfig{
-	WaveConfigJSON: fsutil.MustReadFile(embedFS, "wave.config.json"),
-	DistStaticFS:   fsutil.MustSub(embedFS, "dist", "static"),
+	Wave: backend.Wave,
 
 	GetHeadElUniqueRules: func() *river.HeadEls {
 		e := river.NewHeadEls(8)
