@@ -87,7 +87,7 @@ button:active {
 /* Big heading (hero/page title) */
 .big-heading {
 	font-size: 2.125rem;
-	font-weight: 600;
+	font-weight: 400;
 	font-style: italic;
 	line-height: 1.425;
 	opacity: 0.95;

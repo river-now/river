@@ -4,7 +4,7 @@
 
 ---
 
-Vite-powered web framework bridging Go and TypeScript
+Vite-powered web framework bridging Go backends and TypeScript UIs
 
 ## Links
 
