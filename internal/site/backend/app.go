@@ -20,7 +20,7 @@ var Log = colorlog.New("app server")
 const (
 	Domain          = "river.now"
 	SiteTitle       = "River Framework"
-	SiteDescription = "Blazing-fast Go. Magical TypeScript. Unrivaled flexibility."
+	SiteDescription = "Vite-powered web framework bridging Go and TypeScript"
 )
 
 var App = river.NewRiverApp(river.RiverAppConfig{

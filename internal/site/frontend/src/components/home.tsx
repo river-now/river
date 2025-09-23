@@ -35,15 +35,7 @@ export function Home(_props: RouteProps<"/_index">) {
 		<>
 			<div class="flex flex-col gap-2 sm:gap-1 my-6">
 				<h2 class="big-heading">
-					<span class="fancy">Blazing-fast</span> Go.
-				</h2>
-
-				<h2 class="big-heading">
-					<span class="fancy">Magical</span> TypeScript.
-				</h2>
-
-				<h2 class="big-heading">
-					<span class="fancy">Unrivaled</span> flexibility.
+					Vite-powered web framework bridging Go and TypeScript
 				</h2>
 			</div>
 

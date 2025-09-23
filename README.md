@@ -4,7 +4,7 @@
 
 ---
 
-Blazing-fast Go. Magical TypeScript. Unrivaled flexibility.
+Vite-powered web framework bridging Go and TypeScript
 
 ## Links
 
