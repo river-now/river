@@ -1,6 +1,6 @@
 {
 	"name": "river.now",
-	"version": "0.71.0",
+	"version": "0.72.0",
 	"description": "A flexible web framework for Go and TypeScript.",
 	"type": "module",
 	"sideEffects": false,

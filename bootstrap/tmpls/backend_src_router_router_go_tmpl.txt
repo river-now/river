@@ -1,42 +1,70 @@
 package router
 
-import "github.com/river-now/river"
+import (
+	"{{.GoImportBase}}/backend"
+	"net/http"
+
+	"github.com/river-now/river"
+	"github.com/river-now/river/kit/fsutil"
+	"github.com/river-now/river/kit/middleware/healthcheck"
+	"github.com/river-now/river/kit/mux"
+)
 
 /////////////////////////////////////////////////////////////////////
-/////// EXAMPLE LOADERS
+/////// CORE ROUTER
 /////////////////////////////////////////////////////////////////////
 
-type RootData struct {
-	Message string
+func Init() (addr string, handler http.Handler) {
+	App.Init()
+
+	r := mux.NewRouter()
+
+	mux.SetGlobalHTTPMiddleware(r, App.ServeStatic())
+	mux.SetGlobalHTTPMiddleware(r, healthcheck.Healthz)
+
+	loaders := App.Loaders(LoadersRouter)
+	mux.RegisterHandler(r, "GET", loaders.HandlerMountPattern(), loaders.Handler())
+
+	actions := App.Actions(ActionsRouter)
+	for m := range actions.SupportedMethods() {
+		mux.RegisterHandler(r, m, actions.HandlerMountPattern(), actions.Handler())
+	}
+
+	return App.ServerAddr(), r
 }
 
-var _ = NewLoader("/", func(c *LoaderCtx) (*RootData, error) {
-	return &RootData{Message: "Welcome to your River app!"}, nil
-})
+/////////////////////////////////////////////////////////////////////
+/////// RIVER APP INSTANCE
+/////////////////////////////////////////////////////////////////////
 
-var _ = NewLoader("/_index", func(c *LoaderCtx) (int, error) {
-	return count, nil
-})
-
-const externalDocsLink = "https://river.now/docs"
-
-var _ = NewLoader("/links", func(c *LoaderCtx) (string, error) {
-	return externalDocsLink, nil
+var App = river.NewRiverApp(river.RiverAppConfig{
+	WaveConfigJSON: fsutil.MustReadFile(backend.EmbedFS, "wave.config.json"),
+	DistStaticFS:   fsutil.MustSub(backend.EmbedFS, "dist", "static"),
+	GetHeadElUniqueRules: func() *river.HeadEls {
+		e := river.NewHeadEls()
+		e.Meta(e.Property("og:title"))
+		e.Meta(e.Property("og:description"))
+		return e
+	},
+	GetDefaultHeadEls: func(r *http.Request, app *river.River) (*river.HeadEls, error) {
+		e := river.NewHeadEls()
+		e.Title("River Example")
+		e.Description("This is a River example.")
+		e.Link(
+			e.Rel("icon"),
+			e.Attr("href", app.GetPublicURL("favicon.svg")),
+			e.Attr("type", "image/svg+xml"),
+		)
+		return e, nil
+	},
+	GetRootTemplateData: func(r *http.Request) (map[string]any, error) {
+		// This gets fed into backend/assets/entry.go.html
+		return map[string]any{}, nil
+	},
 })
 
 /////////////////////////////////////////////////////////////////////
-/////// EXAMPLE ACTION
-/////////////////////////////////////////////////////////////////////
-
-var count = 0
-
-var _ = NewAction("POST", "/increment-count", func(c *ActionCtx[river.None]) (int, error) {
-	count++
-	return count, nil
-})
-
-/////////////////////////////////////////////////////////////////////
-/////// SETUP
+/////// LOADER/ACTION REGISTRATION HELPERS
 /////////////////////////////////////////////////////////////////////
 
 var (
@@ -83,3 +111,36 @@ func actionCtxFactory[I any](rd *river.ActionReqData[I]) *ActionCtx[I] {
 		// Add anything else you want available on the ActionCtx
 	}
 }
+
+/////////////////////////////////////////////////////////////////////
+/////// EXAMPLE LOADERS
+/////////////////////////////////////////////////////////////////////
+
+type RootData struct {
+	Message string
+}
+
+var _ = NewLoader("/", func(c *LoaderCtx) (*RootData, error) {
+	return &RootData{Message: "Welcome to your River app!"}, nil
+})
+
+var _ = NewLoader("/_index", func(c *LoaderCtx) (int, error) {
+	return count, nil
+})
+
+const externalDocsLink = "https://river.now/docs"
+
+var _ = NewLoader("/links", func(c *LoaderCtx) (string, error) {
+	return externalDocsLink, nil
+})
+
+/////////////////////////////////////////////////////////////////////
+/////// EXAMPLE ACTION
+/////////////////////////////////////////////////////////////////////
+
+var count = 0
+
+var _ = NewAction("POST", "/increment-count", func(c *ActionCtx[river.None]) (int, error) {
+	count++
+	return count, nil
+})

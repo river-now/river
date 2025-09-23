@@ -254,7 +254,7 @@ func Init(o Options) {
 	do.tmplWriteMust("backend/dist/static/.keep", "tmpls/dist_static_keep_tmpl.txt")
 	strWriteMust("backend/assets/entry.go.html", "tmpls/backend_static_entry_go_html_str.txt")
 	do.tmplWriteMust("backend/src/router/router.go", "tmpls/backend_src_router_router_go_tmpl.txt")
-	do.tmplWriteMust("backend/app.go", "tmpls/app_go_tmpl.txt")
+	do.tmplWriteMust("backend/embed.go", "tmpls/app_go_tmpl.txt")
 	do.tmplWriteMust("backend/wave.config.json", "tmpls/wave_config_json_tmpl.txt")
 	do.tmplWriteMust("vite.config.ts", "tmpls/vite_config_ts_tmpl.txt")
 	do.tmplWriteMust("package.json", "tmpls/package_json_tmpl.txt")

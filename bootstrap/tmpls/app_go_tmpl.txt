@@ -1,38 +1,6 @@
 package backend
 
-import (
-	"embed"
-	"net/http"
-
-	"github.com/river-now/river"
-	"github.com/river-now/river/kit/fsutil"
-)
+import "embed"
 
 //go:embed all:dist/static wave.config.json
-var embedFS embed.FS
-
-var App = river.NewRiverApp(river.RiverAppConfig{
-	WaveConfigJSON: fsutil.MustReadFile(embedFS, "wave.config.json"),
-	DistStaticFS:   fsutil.MustSub(embedFS, "dist", "static"),
-	GetHeadElUniqueRules: func() *river.HeadEls {
-		e := river.NewHeadEls()
-		e.Meta(e.Property("og:title"))
-		e.Meta(e.Property("og:description"))
-		return e
-	},
-	GetDefaultHeadEls: func(r *http.Request, app *river.River) (*river.HeadEls, error) {
-		e := river.NewHeadEls()
-		e.Title("River Example")
-		e.Description("This is a River example.")
-		e.Link(
-			e.Rel("icon"),
-			e.Attr("href", app.GetPublicURL("favicon.svg")),
-			e.Attr("type", "image/svg+xml"),
-		)
-		return e, nil
-	},
-	GetRootTemplateData: func(r *http.Request) (map[string]any, error) {
-		// This gets fed into backend/assets/entry.go.html
-		return map[string]any{}, nil
-	},
-})
+var EmbedFS embed.FS

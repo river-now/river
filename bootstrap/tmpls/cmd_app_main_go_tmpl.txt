@@ -1,32 +1,13 @@
 package main
 
 import (
-	"{{.GoImportBase}}/backend"
 	"{{.GoImportBase}}/backend/src/router"
 	"fmt"
 	"net/http"
-
-	"github.com/river-now/river/kit/middleware/healthcheck"
-	"github.com/river-now/river/kit/mux"
 )
 
 func main() {
-	r := mux.NewRouter()
-	app := backend.App.Init()
-	addr := app.ServerAddr()
-
-	mux.SetGlobalHTTPMiddleware(r, app.ServeStatic())
-	mux.SetGlobalHTTPMiddleware(r, healthcheck.Healthz)
-
-	loaders := app.Loaders(router.LoadersRouter)
-	mux.RegisterHandler(r, "GET", loaders.HandlerMountPattern(), loaders.Handler())
-
-	actions := app.Actions(router.ActionsRouter)
-	for m := range actions.SupportedMethods() {
-		mux.RegisterHandler(r, m, actions.HandlerMountPattern(), actions.Handler())
-	}
-
+	addr, handler := router.Init()
 	fmt.Printf("Server starting at http://localhost%s\n", addr)
-
-	http.ListenAndServe(addr, r)
+	http.ListenAndServe(addr, handler)
 }

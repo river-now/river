@@ -1,14 +1,13 @@
 package main
 
 import (
-	"{{.GoImportBase}}/backend"
 	"{{.GoImportBase}}/backend/src/router"
 
 	"github.com/river-now/river"
 )
 
 func main() {
-	backend.App.BuildRiver(river.BuildRiverOptions{
+	router.App.BuildRiver(river.BuildRiverOptions{
 		LoadersRouter: router.LoadersRouter,
 		ActionsRouter: router.ActionsRouter,
 	})
