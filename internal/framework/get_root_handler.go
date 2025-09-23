@@ -1,4 +1,4 @@
-package framework
+package river
 
 import (
 	"bytes"
@@ -121,8 +121,8 @@ func (h *River) GetLoadersHandler(nestedRouter *mux.NestedRouter) mux.TasksCtxRe
 
 		var rootTemplateData map[string]any
 		var err error
-		if h.GetRootTemplateData != nil {
-			rootTemplateData, err = h.GetRootTemplateData(r)
+		if h.getRootTemplateData != nil {
+			rootTemplateData, err = h.getRootTemplateData(r)
 		} else {
 			rootTemplateData = make(map[string]any)
 		}

@@ -244,7 +244,7 @@ Configure Wave's integration with the River framework.
 ```json
 {
 	"River": {
-		"BuildtimePublicURLFuncName": "getPublicURLBuildtime"
+		"BuildtimePublicURLFuncName": "waveBuildtimeURL"
 	}
 }
 ```

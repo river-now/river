@@ -132,7 +132,12 @@ type Options struct {
 	InjectTasksCtx bool
 }
 
-func NewRouter(opts *Options) *Router {
+func NewRouter(options ...*Options) *Router {
+	var opts *Options
+	if len(options) > 0 {
+		opts = options[0]
+	}
+
 	matcherOpts := new(matcher.Options)
 	if opts == nil {
 		opts = new(Options)

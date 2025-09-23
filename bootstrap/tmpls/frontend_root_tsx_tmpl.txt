@@ -4,7 +4,7 @@ import { type RouteProps } from "../river.gen.ts";
 export function Root(props: RouteProps<"/">) {
 	return (
 		<div id="root-wrapper">
-			<img src={getPublicURLBuildtime("favicon.svg")} alt="River logo" />
+			<img src={waveBuildtimeURL("favicon.svg")} alt="River logo" />
 
 			<nav>
 				<Link pattern="/">home</Link>

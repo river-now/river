@@ -37,19 +37,19 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 			if err != nil {
 				c.panic("failed to re-read config file on rebuild", err)
 			}
-			c.ConfigBytes = newConfigBytes
+			c.WaveConfigJSON = newConfigBytes
 		}
 	}
 
 	c.fileSemaphore = semaphore.NewWeighted(100)
 
-	if len(c.ConfigBytes) == 0 {
+	if len(c.WaveConfigJSON) == 0 {
 		c.panic("Config Error: ConfigBytes cannot be nil or empty. A valid wave.config.json must be provided.", nil)
 	}
 
 	// USER CONFIG
 	c._uc = new(UserConfig)
-	if err := json.Unmarshal(c.ConfigBytes, c._uc); err != nil {
+	if err := json.Unmarshal(c.WaveConfigJSON, c._uc); err != nil {
 		c.panic("failed to unmarshal user config", err)
 	}
 
@@ -228,9 +228,6 @@ func (c *Config) validateUserConfig() {
 		if c._uc.Core.StaticAssetDirs.Public == "" {
 			c.panic("Config Error: Core.StaticAssetDirs.Public is required and cannot be empty when not in ServerOnlyMode.", ErrConfigValidation)
 		}
-	}
-	if c.StaticFS != nil && c.StaticFSEmbedDirective == "" {
-		c.panic("Config Error: StaticFS was provided, but StaticFSEmbedDirective is empty. The embed directive is required when using an embedded filesystem.", ErrConfigValidation)
 	}
 
 	// Validate required fields within optional blocks.

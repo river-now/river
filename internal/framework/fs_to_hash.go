@@ -1,4 +1,4 @@
-package framework
+package river
 
 import (
 	"crypto/sha256"

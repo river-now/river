@@ -263,7 +263,7 @@ var TSGenOutPath_Schema = jsonschema.OptionalString(jsonschema.Def{
 
 var BuildtimePublicURLFuncName_Schema = jsonschema.OptionalString(jsonschema.Def{
 	Description: `Name of the function to use for resolving public URLs at build time. This function will be injected into your build process.`,
-	Examples:    []string{"getPublicURLBuildtime"},
+	Examples:    []string{"waveBuildtimeURL"},
 })
 
 /////////////////////////////////////////////////////////////////////

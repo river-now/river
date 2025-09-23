@@ -1,4 +1,4 @@
-package framework
+package river
 
 import (
 	"html/template"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/river-now/river/kit/colorlog"
 	"github.com/river-now/river/kit/headels"
-	"github.com/river-now/river/kit/htmlutil"
 	"github.com/river-now/river/kit/mux"
 	"github.com/river-now/river/wave"
 )
@@ -59,11 +58,18 @@ var UIVariants = struct {
 	Solid:  "solid",
 }
 
+type (
+	GetDefaultHeadElsFunc    func(r *http.Request, app *River) (*headels.HeadEls, error)
+	GetHeadElUniqueRulesFunc func() *headels.HeadEls
+	GetRootTemplateDataFunc  func(r *http.Request) (map[string]any, error)
+)
+
 type River struct {
-	Wave                 *wave.Wave
-	GetDefaultHeadEls    func(r *http.Request) ([]*htmlutil.Element, error)
-	GetHeadElUniqueRules func() *headels.HeadEls
-	GetRootTemplateData  func(r *http.Request) (map[string]any, error)
+	*wave.Wave
+
+	getDefaultHeadEls    GetDefaultHeadElsFunc
+	getHeadElUniqueRules GetHeadElUniqueRulesFunc
+	getRootTemplateData  GetRootTemplateDataFunc
 
 	mu                 sync.RWMutex
 	_isDev             bool
@@ -76,4 +82,9 @@ type River struct {
 	_rootTemplate      *template.Template
 	_privateFS         fs.FS
 	_routeManifestFile string
+	_serverAddr        string
+}
+
+func (h *River) ServerAddr() string {
+	return h._serverAddr
 }

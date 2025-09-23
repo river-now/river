@@ -92,17 +92,21 @@ func (c *Config) InitRuntimeCache() {
 /////////////////////////////////////////////////////////////////////
 
 type Config struct {
-	// Required -- the go:embed byte output of your Wave JSON config
-	ConfigBytes []byte
-	// If not nil, the embedded file system will be used in production builds.
-	// If nil, the disk file system will be used in production builds.
-	// Only relevant in prod (in dev mode, the real disk FS is always used).
-	// If nil in prod, you need to make sure that you ship the "static" directory
-	// (located in your dist dir) as a sibling to your binary. For simplicity, we
-	// recommend using the embedded FS.
-	StaticFS               fs.FS
-	StaticFSEmbedDirective string
-	Logger                 *slog.Logger
+	// Required -- the bytes of your wave.config.json file. You can
+	// use go:embed or just read the file in yourself. Using go:embed
+	// is recommended for simpler deployments and improved performance.
+	WaveConfigJSON []byte
+
+	// Required -- be sure to pass in a file system that has your
+	// <distDir>/static directory as its ROOT. If you are using an
+	// embedded filesystem, you may need to use fs.Sub to get the
+	// correct subdirectory. Using go:embed is recommended for simpler
+	// deployments and improved performance.
+	DistStaticFS fs.FS
+
+	// Optional -- a logger instance. If not provided, a default logger
+	// will be created that writes to standard out.
+	Logger *slog.Logger
 
 	dev
 	_runtime
@@ -224,7 +228,11 @@ func (c *Config) GetRiverTSGenOutPath() string {
 	return c._uc.River.TSGenOutPath
 }
 func (c *Config) GetRiverBuildtimePublicURLFuncName() string {
-	return c._uc.River.BuildtimePublicURLFuncName
+	funcName := c._uc.River.BuildtimePublicURLFuncName
+	if funcName == "" {
+		funcName = "waveBuildtimeURL"
+	}
+	return funcName
 }
 
 type UserConfigWatch struct {

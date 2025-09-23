@@ -31,20 +31,34 @@ var (
 	SetModeToDev = ki.SetModeToDev
 )
 
-func New(c *ki.Config) *Wave {
-	c.MainInit(ki.MainInitOptions{}, "wave.New")
-	return &Wave{c}
+// Also add top-level funcs to Wave struct for convenience.
+func (k Wave) GetIsDev() bool   { return GetIsDev() }
+func (k Wave) MustGetPort() int { return MustGetPort() }
+func (k Wave) SetModeToDev()    { SetModeToDev() }
+
+func New(config *ki.Config) *Wave {
+	if config == nil {
+		panic("wave.New: config cannot be nil")
+	}
+	if config.WaveConfigJSON == nil {
+		panic("wave.New: config.WaveConfigJSON cannot be nil")
+	}
+	if config.DistStaticFS == nil {
+		panic("wave.New: config.DistStaticFS cannot be nil")
+	}
+	config.MainInit(ki.MainInitOptions{}, "wave.New")
+	return &Wave{config}
 }
 
 // If you want to do a custom build command, just use
-// Wave.BuildWithoutCompilingGo() instead of Wave.Build(),
+// Wave.BuildWaveWithoutCompilingGo() instead of Wave.BuildWave(),
 // and then you can control your build yourself afterwards.
 
-func (k Wave) Build() error {
-	return k.c.Build(ki.BuildOptions{RecompileGoBinary: true})
+func (k Wave) BuildWave() error {
+	return k.c.BuildWave(ki.BuildOptions{RecompileGoBinary: true})
 }
-func (k Wave) BuildWithoutCompilingGo() error {
-	return k.c.Build(ki.BuildOptions{})
+func (k Wave) BuildWaveWithoutCompilingGo() error {
+	return k.c.BuildWave(ki.BuildOptions{})
 }
 
 func (k Wave) GetPublicFS() (fs.FS, error) {
@@ -150,8 +164,8 @@ func (k Wave) GetPublicStaticDir() string {
 func (k Wave) GetPublicPathPrefix() string {
 	return k.c.GetPublicPathPrefix()
 }
-func (k Wave) ViteProdBuild() error {
-	return k.c.ViteProdBuild()
+func (k Wave) ViteProdBuildWave() error {
+	return k.c.ViteProdBuildWave()
 }
 func (k Wave) GetViteManifestLocation() string {
 	return k.c.GetViteManifestLocation()
@@ -159,8 +173,8 @@ func (k Wave) GetViteManifestLocation() string {
 func (k Wave) GetViteOutDir() string {
 	return k.c.GetViteOutDir()
 }
-func (k Wave) Builder(hook func(isDev bool) error) {
-	k.c.Builder(hook)
+func (k Wave) BuildWaveWithHook(hook func(isDev bool) error) {
+	k.c.BuildWaveWithHook(hook)
 }
 func (k Wave) GetRiverUIVariant() string {
 	return k.c.GetRiverUIVariant()

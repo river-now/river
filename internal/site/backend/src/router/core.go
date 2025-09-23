@@ -1,6 +1,7 @@
 package router
 
 import (
+	"net/http"
 	"site/backend"
 
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -11,30 +12,26 @@ import (
 	"github.com/river-now/river/kit/mux"
 )
 
-var supportedAPIMethods = map[string]struct{}{
-	"GET": {}, "POST": {}, "PUT": {}, "DELETE": {}, "PATCH": {},
-}
-
-func Core() *mux.Router {
-	r := mux.NewRouter(nil)
+func Init() (http.Handler, string) {
+	r := mux.NewRouter()
+	app := backend.App.Init()
 
 	mux.SetGlobalHTTPMiddleware(r, chimw.Logger)
 	mux.SetGlobalHTTPMiddleware(r, chimw.Recoverer)
 	mux.SetGlobalHTTPMiddleware(r, etag.Auto())
 	mux.SetGlobalHTTPMiddleware(r, chimw.Compress(5))
-	mux.SetGlobalHTTPMiddleware(r, backend.Wave.ServeStatic(true))
+	mux.SetGlobalHTTPMiddleware(r, app.ServeStatic())
 	mux.SetGlobalHTTPMiddleware(r, secureheaders.Middleware)
 	mux.SetGlobalHTTPMiddleware(r, healthcheck.Healthz)
 	mux.SetGlobalHTTPMiddleware(r, robotstxt.Allow)
-	mux.SetGlobalHTTPMiddleware(r, backend.Wave.FaviconRedirect())
 
-	mux.RegisterHandler(r, "GET", "/*", backend.River.GetLoadersHandler(LoadersRouter))
+	loaders := app.Loaders(LoadersRouter)
+	mux.RegisterHandler(r, "GET", loaders.HandlerMountPattern(), loaders.Handler())
 
-	for method := range supportedAPIMethods {
-		mux.RegisterHandler(
-			r, method, ActionsRouter.MountRoot("*"), backend.River.GetActionsHandler(ActionsRouter),
-		)
+	actions := app.Actions(ActionsRouter)
+	for m := range actions.SupportedMethods() {
+		mux.RegisterHandler(r, m, actions.HandlerMountPattern(), actions.Handler())
 	}
 
-	return r
+	return r, app.ServerAddr()
 }

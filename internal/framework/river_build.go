@@ -1,4 +1,4 @@
-package framework
+package river
 
 import (
 	"bytes"
@@ -246,13 +246,18 @@ type NodeScriptResultItem struct {
 
 type NodeScriptResult []NodeScriptResultItem
 
-func (h *River) Build(opts *BuildOptions) error {
+type buildInnerOptions struct {
+	isDev        bool
+	buildOptions *BuildRiverOptions
+}
+
+func (h *River) buildInner(opts *buildInnerOptions) error {
 	a := time.Now()
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	h._isDev = opts.IsDev
+	h._isDev = opts.isDev
 
 	if h._isDev {
 		buildID, err := id.New(16)
@@ -308,6 +313,7 @@ func (h *River) Build(opts *BuildOptions) error {
 	routesSrcFile := path.Join(".", h.Wave.GetRiverClientRouteDefsFile())
 	routesDir := path.Dir(routesSrcFile)
 
+	// __TODO do whitespace-friendly regex here
 	for _, imp := range imports {
 		doubleQuotes := fmt.Sprintf(`import("%s")`, imp)
 		singleQuotes := fmt.Sprintf("import('%s')", imp)
@@ -362,7 +368,7 @@ func (h *River) Build(opts *BuildOptions) error {
 		return err
 	}
 
-	manifest := h.generateRouteManifest(opts.LoadersRouter)
+	manifest := h.generateRouteManifest(opts.buildOptions.LoadersRouter.NestedRouter)
 	manifestFile, err := h.writeRouteManifestToDisk(manifest)
 	if err != nil {
 		Log.Error(fmt.Sprintf("error writing route manifest: %s", err))
@@ -376,10 +382,10 @@ func (h *River) Build(opts *BuildOptions) error {
 	}
 
 	tsgenOutput, err := h.generateTypeScript(&tsGenOptions{
-		LoadersRouter: opts.LoadersRouter,
-		ActionsRouter: opts.ActionsRouter,
-		AdHocTypes:    opts.AdHocTypes,
-		ExtraTSCode:   opts.ExtraTSCode,
+		LoadersRouter: opts.buildOptions.LoadersRouter.NestedRouter,
+		ActionsRouter: opts.buildOptions.ActionsRouter.Router,
+		AdHocTypes:    opts.buildOptions.AdHocTypes,
+		ExtraTSCode:   opts.buildOptions.ExtraTSCode,
 	})
 	if err != nil {
 		Log.Error(fmt.Sprintf("error generating TypeScript: %s", err))
@@ -392,7 +398,7 @@ func (h *River) Build(opts *BuildOptions) error {
 	}
 
 	if !h._isDev {
-		if err := h.Wave.ViteProdBuild(); err != nil {
+		if err := h.Wave.ViteProdBuildWave(); err != nil {
 			Log.Error(fmt.Sprintf("error running vite prod build: %s", err))
 			return err
 		}
@@ -582,14 +588,6 @@ func (h *River) toPathsFile_StageTwo() (*PathsFile, error) {
 	pf.BuildID = buildID
 
 	return pf, nil
-}
-
-type BuildOptions struct {
-	IsDev         bool
-	LoadersRouter *mux.NestedRouter
-	ActionsRouter *mux.Router
-	AdHocTypes    []*AdHocType
-	ExtraTSCode   string
 }
 
 func (h *River) writeRouteManifestToDisk(manifest map[string]int) (string, error) {

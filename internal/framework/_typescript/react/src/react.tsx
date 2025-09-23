@@ -23,9 +23,7 @@ import {
 
 const jotaiStore = createStore();
 
-export function RiverProvider({
-	children,
-}: React.PropsWithChildren): JSX.Element {
+function RiverProvider({ children }: React.PropsWithChildren): JSX.Element {
 	return <Provider store={jotaiStore}>{children}</Provider>;
 }
 
@@ -92,7 +90,15 @@ export function useLocation() {
 /////// COMPONENT
 /////////////////////////////////////////////////////////////////////
 
-export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
+export function RiverRootOutlet(): JSX.Element {
+	return (
+		<RiverProvider>
+			<RiverRootOutletInner />
+		</RiverProvider>
+	);
+}
+
+function RiverRootOutletInner(props: { idx?: number }): JSX.Element {
 	const idx = props.idx ?? 0;
 
 	const initialRenderRef = useRef(true);
@@ -180,7 +186,13 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 
 	const Outlet = useMemo(
 		() => (localProps: Record<string, any> | undefined) => {
-			return <RiverRootOutlet {...localProps} {...props} idx={idx + 1} />;
+			return (
+				<RiverRootOutletInner
+					{...localProps}
+					{...props}
+					idx={idx + 1}
+				/>
+			);
 		},
 		[nextImportURL, nextExportKey],
 	);

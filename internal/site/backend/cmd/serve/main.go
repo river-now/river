@@ -2,29 +2,25 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"site/backend"
 	"site/backend/src/router"
 	"time"
 
 	"github.com/river-now/river/kit/colorlog"
 	"github.com/river-now/river/kit/grace"
-	"github.com/river-now/river/wave"
 )
 
 var Log = colorlog.New("site")
 
 func main() {
-	backend.River.Init(wave.GetIsDev())
-
-	addr := fmt.Sprintf(":%d", wave.MustGetPort())
+	handler, addr := router.Init()
+	url := "http://localhost" + addr
 
 	server := &http.Server{
 		Addr:                         addr,
-		Handler:                      http.TimeoutHandler(router.Core(), 60*time.Second, "Request timed out"),
+		Handler:                      http.TimeoutHandler(handler, 60*time.Second, "Request timed out"),
 		ReadTimeout:                  15 * time.Second,
 		WriteTimeout:                 30 * time.Second,
 		IdleTimeout:                  60 * time.Second,
@@ -33,8 +29,6 @@ func main() {
 		DisableGeneralOptionsHandler: true,
 		ErrorLog:                     log.New(os.Stderr, "HTTP: ", log.Ldate|log.Ltime|log.Lshortfile),
 	}
-
-	url := "http://localhost" + addr
 
 	grace.Orchestrate(grace.OrchestrateOptions{
 		StartupCallback: func() error {

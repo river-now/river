@@ -7,11 +7,15 @@ import (
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/colorlog"
-	"github.com/river-now/river/kit/headels"
-	"github.com/river-now/river/kit/htmlutil"
+	"github.com/river-now/river/kit/fsutil"
 	"github.com/river-now/river/kit/theme"
 	"github.com/river-now/river/wave"
 )
+
+//go:embed all:dist/static wave.config.json
+var embedFS embed.FS
+
+var Log = colorlog.New("app server")
 
 const (
 	Domain          = "river.now"
@@ -19,10 +23,11 @@ const (
 	SiteDescription = "Blazing-fast Go. Magical TypeScript. Unrivaled flexibility."
 )
 
-var River = &river.River{
-	Wave: Wave,
+var App = river.NewRiverApp(river.RiverAppConfig{
+	WaveConfigJSON: fsutil.MustReadFile(embedFS, "wave.config.json"),
+	DistStaticFS:   fsutil.MustSub(embedFS, "dist", "static"),
 
-	GetHeadElUniqueRules: func() *headels.HeadEls {
+	GetHeadElUniqueRules: func() *river.HeadEls {
 		e := river.NewHeadEls(8)
 
 		e.Meta(e.Property("og:title"))
@@ -37,11 +42,11 @@ var River = &river.River{
 		return e
 	},
 
-	GetDefaultHeadEls: func(r *http.Request) ([]*htmlutil.Element, error) {
+	GetDefaultHeadEls: func(r *http.Request, app *river.River) (*river.HeadEls, error) {
 		currentURL := "https://" + path.Join(Domain, r.URL.Path)
 
-		ogImgURL := Wave.GetPublicURL("river-banner.webp")
-		favURL := Wave.GetPublicURL("favicon.svg")
+		ogImgURL := app.GetPublicURL("river-banner.webp")
+		favURL := app.GetPublicURL("favicon.svg")
 
 		if !wave.GetIsDev() {
 			ogImgURL = "https://" + path.Join(Domain, ogImgURL)
@@ -63,8 +68,11 @@ var River = &river.River{
 
 		e.Link(e.Rel("icon"), e.Attr("href", favURL), e.Attr("type", "image/svg+xml"))
 
-		for _, fontFile := range fontFilesToPreload {
-			fontURL := Wave.GetPublicURL(fontFile)
+		for _, fontFile := range []string{
+			"fonts/jetbrains_mono.woff2",
+			"fonts/jetbrains_mono_italic.woff2",
+		} {
+			fontURL := app.GetPublicURL(fontFile)
 			e.Link(
 				e.Rel("preload"),
 				e.Attr("as", "font"),
@@ -74,7 +82,7 @@ var River = &river.River{
 			)
 		}
 
-		return e.Collect(), nil
+		return e, nil
 	},
 
 	GetRootTemplateData: func(r *http.Request) (map[string]any, error) {
@@ -84,23 +92,4 @@ var River = &river.River{
 			"SystemThemeScriptSha256Hash": theme.SystemThemeScriptSha256Hash,
 		}, nil
 	},
-}
-
-var fontFilesToPreload = []string{
-	"fonts/jetbrains_mono.woff2",
-	"fonts/jetbrains_mono_italic.woff2",
-}
-
-//go:embed wave.config.json
-var configBytes []byte
-
-//go:embed all:dist/static
-var staticFS embed.FS
-
-var Wave = wave.New(&wave.Config{
-	ConfigBytes:            configBytes,
-	StaticFS:               staticFS,
-	StaticFSEmbedDirective: "all:dist/static",
 })
-
-var Log = colorlog.New("app server")

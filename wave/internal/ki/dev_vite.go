@@ -38,7 +38,7 @@ func (c *Config) viteDevBuild() (*viteutil.BuildCtx, error) {
 	return ctx, err
 }
 
-func (c *Config) ViteProdBuild() error {
+func (c *Config) ViteProdBuildWave() error {
 	if !c.isUsingVite() {
 		return nil
 	}

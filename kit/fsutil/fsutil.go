@@ -137,3 +137,20 @@ func FromGob[T any](file fs.File) (T, error) {
 	}
 	return *destPtr, nil
 }
+
+func MustSub(f fs.FS, dirElems ...string) fs.FS {
+	dir := filepath.Join(dirElems...)
+	sub, err := fs.Sub(f, dir)
+	if err != nil {
+		panic(fmt.Sprintf("fsutil.MustSub: failed to get sub FS for dir %s: %v", dir, err))
+	}
+	return sub
+}
+
+func MustReadFile(f fs.FS, name string) []byte {
+	data, err := fs.ReadFile(f, name)
+	if err != nil {
+		panic(fmt.Sprintf("fsutil.MustReadFile: failed to read file %s: %v", name, err))
+	}
+	return data
+}

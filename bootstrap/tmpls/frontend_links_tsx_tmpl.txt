@@ -1,5 +1,5 @@
 import { useLoaderData } from "../app_utils.tsx";
-import { GITHUB_REPO_LINK, type RouteProps } from "../river.gen.ts";
+import type { RouteProps } from "../river.gen.ts";
 
 export function Links(props: RouteProps<"/links">) {
 	const data = useLoaderData(props);
@@ -10,7 +10,7 @@ export function Links(props: RouteProps<"/links">) {
 				docs <span>↗</span>
 			</a>
 			<a
-				href={GITHUB_REPO_LINK}
+				href="https://github.com/river-now/river"
 				id="github-link"
 				target="_blank"
 				rel="noreferrer"

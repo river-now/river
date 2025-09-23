@@ -1,0 +1,85 @@
+package router
+
+import "github.com/river-now/river"
+
+/////////////////////////////////////////////////////////////////////
+/////// EXAMPLE LOADERS
+/////////////////////////////////////////////////////////////////////
+
+type RootData struct {
+	Message string
+}
+
+var _ = NewLoader("/", func(c *LoaderCtx) (*RootData, error) {
+	return &RootData{Message: "Welcome to your River app!"}, nil
+})
+
+var _ = NewLoader("/_index", func(c *LoaderCtx) (int, error) {
+	return count, nil
+})
+
+const externalDocsLink = "https://river.now/docs"
+
+var _ = NewLoader("/links", func(c *LoaderCtx) (string, error) {
+	return externalDocsLink, nil
+})
+
+/////////////////////////////////////////////////////////////////////
+/////// EXAMPLE ACTION
+/////////////////////////////////////////////////////////////////////
+
+var count = 0
+
+var _ = NewAction("POST", "/increment-count", func(c *ActionCtx[river.None]) (int, error) {
+	count++
+	return count, nil
+})
+
+/////////////////////////////////////////////////////////////////////
+/////// SETUP
+/////////////////////////////////////////////////////////////////////
+
+var (
+	LoadersRouter = river.NewLoadersRouter()
+	ActionsRouter = river.NewActionsRouter()
+)
+
+func NewLoader[O any](
+	pattern string,
+	loaderFunc river.LoaderFunc[LoaderCtx, O],
+) *river.Loader[O] {
+	return river.NewLoader(LoadersRouter, pattern, loaderFunc, loaderCtxFactory)
+}
+
+func NewAction[I any, O any](
+	method string,
+	pattern string,
+	actionFunc river.ActionFunc[ActionCtx[I], I, O],
+) *river.Action[I, O] {
+	return river.NewAction(ActionsRouter, method, pattern, actionFunc, actionCtxFactory)
+}
+
+type (
+	LoaderCtx struct {
+		*river.LoaderReqData
+		// Add anything else you want available on the LoaderCtx
+	}
+	ActionCtx[I any] struct {
+		*river.ActionReqData[I]
+		// Add anything else you want available on the ActionCtx
+	}
+)
+
+func loaderCtxFactory(rd *river.LoaderReqData) *LoaderCtx {
+	return &LoaderCtx{
+		LoaderReqData: rd,
+		// Add anything else you want available on the LoaderCtx
+	}
+}
+
+func actionCtxFactory[I any](rd *river.ActionReqData[I]) *ActionCtx[I] {
+	return &ActionCtx[I]{
+		ActionReqData: rd,
+		// Add anything else you want available on the ActionCtx
+	}
+}

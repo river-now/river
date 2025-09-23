@@ -5,12 +5,10 @@ import (
 	"io/fs"
 	"os"
 	"path"
-
-	"github.com/river-now/river/kit/executil"
 )
 
 func (c *Config) get_is_using_embedded_fs() bool {
-	return c.StaticFS != nil
+	return c.DistStaticFS != nil
 }
 
 func (c *Config) get_initial_base_dir_fs() (fs.FS, error) {
@@ -62,35 +60,10 @@ func (c *Config) get_initial_base_fs() (fs.FS, error) {
 		return os.DirFS(c._dist.S().Static.FullPath()), nil
 	}
 
-	// If we are using the embedded file system, we should use the dist file system
-	if c.get_is_using_embedded_fs() {
-		directive := c.StaticFSEmbedDirective
-
-		if directive == "" {
-			// sanity check -- should never happen (downstream of user config validation)
-			panic("StaticFSEmbedDirective is empty, cannot use embedded FS")
-		}
-
-		// if first 4 are "all:", strip
-		if len(directive) > 4 && directive[:4] == "all:" {
-			directive = directive[4:]
-		}
-
-		// Navigate into the embedded directory structure specified by StaticFSEmbedDirective.
-		embeddedFS, err := fs.Sub(c.StaticFS, directive)
-		if err != nil {
-			return nil, err
-		}
-
-		return embeddedFS, nil
+	fsToUse := c.DistStaticFS
+	if fsToUse == nil {
+		panic("DistStaticFS is nil in production mode; you must provide an embedded FS")
 	}
 
-	// If we are not using the embedded file system, we should use the os file system,
-	// and assume that the executable is a sibling to the wave-outputted "static" directory
-	execDir, err := executil.GetExecutableDir()
-	if err != nil {
-		return nil, err
-	}
-
-	return os.DirFS(path.Join(execDir, c._dist.S().Static.LastSegment())), nil
+	return fsToUse, nil
 }

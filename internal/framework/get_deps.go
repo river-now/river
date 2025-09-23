@@ -1,4 +1,4 @@
-package framework
+package river
 
 import "github.com/river-now/river/kit/matcher"
 

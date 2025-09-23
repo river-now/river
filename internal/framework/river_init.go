@@ -1,4 +1,4 @@
-package framework
+package river
 
 import (
 	"encoding/json"
@@ -10,7 +10,8 @@ import (
 	"github.com/river-now/river/kit/mux"
 )
 
-func (h *River) Init(isDev bool) {
+func (h *River) Init() *River {
+	isDev := h.GetIsDev()
 	if err := h.initInner(isDev); err != nil {
 		wrapped := fmt.Errorf("error initializing River: %w", err)
 		if isDev {
@@ -21,6 +22,7 @@ func (h *River) Init(isDev bool) {
 	} else {
 		Log.Info("River initialized", "build id", h._buildID)
 	}
+	return h
 }
 
 // RUNTIME! Gets called from the handler maker, which gets called by the user's router init function.
@@ -89,11 +91,12 @@ func (h *River) initInner(isDev bool) error {
 		return fmt.Errorf("error parsing root template: %w", err)
 	}
 	h._rootTemplate = tmpl
-	if h.GetHeadElUniqueRules != nil {
-		headElsInstance.InitUniqueRules(h.GetHeadElUniqueRules())
+	if h.getHeadElUniqueRules != nil {
+		headElsInstance.InitUniqueRules(h.getHeadElUniqueRules())
 	} else {
 		headElsInstance.InitUniqueRules(nil)
 	}
+	h._serverAddr = fmt.Sprintf(":%d", h.MustGetPort())
 	return nil
 }
 

@@ -4,7 +4,7 @@ import (
 	"flag"
 )
 
-func (c *Config) Builder(hook func(isDev bool) error) {
+func (c *Config) BuildWaveWithHook(hook func(isDev bool) error) {
 	devModeFlag := flag.Bool("dev", false, "set dev mode")
 	hookModeFlag := flag.Bool("hook", false, "set hook mode")
 	noBinaryFlag := flag.Bool("no-binary", false, "skip go binary compilation")
@@ -27,7 +27,7 @@ func (c *Config) Builder(hook func(isDev bool) error) {
 		return
 	}
 
-	if err := c.Build(BuildOptions{RecompileGoBinary: !noBinary}); err != nil {
+	if err := c.BuildWave(BuildOptions{RecompileGoBinary: !noBinary}); err != nil {
 		panic(err)
 	}
 }

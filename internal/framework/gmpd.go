@@ -1,4 +1,4 @@
-package framework
+package river
 
 import (
 	"fmt"
@@ -271,18 +271,18 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 
 	eg := errgroup.Group{}
 
-	var defaultHeadEls []*htmlutil.Element
+	var defaultHeadEls *headels.HeadEls
 	var egErr error
 
 	eg.Go(func() error {
 		var headErr error
-		if h.GetDefaultHeadEls != nil {
-			defaultHeadEls, headErr = h.GetDefaultHeadEls(r)
+		if h.getDefaultHeadEls != nil {
+			defaultHeadEls, headErr = h.getDefaultHeadEls(r, h)
 			if headErr != nil {
 				return fmt.Errorf("GetDefaultHeadEls error: %w", headErr)
 			}
 		} else {
-			defaultHeadEls = []*htmlutil.Element{}
+			defaultHeadEls = headels.New()
 		}
 		return nil
 	})
@@ -303,9 +303,11 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 
 	cssBundles := h.getCSSBundles(uiRoutesData.ui_data_core.Deps)
 
+	defaultHeadElsRaw := defaultHeadEls.Collect()
+
 	var hb []*htmlutil.Element
-	hb = make([]*htmlutil.Element, 0, len(uiRoutesData.stage_1_head_els)+len(defaultHeadEls))
-	hb = append(hb, defaultHeadEls...)
+	hb = make([]*htmlutil.Element, 0, len(uiRoutesData.stage_1_head_els)+len(defaultHeadElsRaw))
+	hb = append(hb, defaultHeadElsRaw...)
 	hb = append(hb, uiRoutesData.stage_1_head_els...)
 
 	publicPathPrefix := h.Wave.GetPublicPathPrefix()

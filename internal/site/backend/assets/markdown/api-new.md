@@ -1,5 +1,5 @@
 ---
-title: River Documentation
+title: River Framework Documentation
 ---
 
 ## Creating a new River app

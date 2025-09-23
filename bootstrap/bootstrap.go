@@ -73,7 +73,7 @@ type derivedOptions struct {
 
 const tw_vite_import = "import tailwindcss from \"@tailwindcss/vite\";\n"
 const tw_vite_call = ", tailwindcss()"
-const tw_file_import = "import \"../styles/tailwind.css\";\n"
+const tw_file_import = "import \"./styles/tailwind.css\";\n"
 const dynamic_link_params_prop = `{{ id: "42790214" }}`
 
 func (o Options) derived() derivedOptions {
@@ -253,10 +253,8 @@ func Init(o Options) {
 	do.tmplWriteMust("backend/cmd/build/main.go", "tmpls/cmd_build_main_go_tmpl.txt")
 	do.tmplWriteMust("backend/dist/static/.keep", "tmpls/dist_static_keep_tmpl.txt")
 	strWriteMust("backend/assets/entry.go.html", "tmpls/backend_static_entry_go_html_str.txt")
-	do.tmplWriteMust("backend/src/router/actions.go", "tmpls/backend_router_actions_go_tmpl.txt")
-	do.tmplWriteMust("backend/src/router/core.go", "tmpls/backend_router_core_go_tmpl.txt")
-	do.tmplWriteMust("backend/src/router/loaders.go", "tmpls/backend_router_loaders_go_tmpl.txt")
-	do.tmplWriteMust("backend/river.config.go", "tmpls/app_go_tmpl.txt")
+	do.tmplWriteMust("backend/src/router/router.go", "tmpls/backend_src_router_router_go_tmpl.txt")
+	do.tmplWriteMust("backend/app.go", "tmpls/app_go_tmpl.txt")
 	do.tmplWriteMust("backend/wave.config.json", "tmpls/wave_config_json_tmpl.txt")
 	do.tmplWriteMust("vite.config.ts", "tmpls/vite_config_ts_tmpl.txt")
 	do.tmplWriteMust("package.json", "tmpls/package_json_tmpl.txt")
@@ -264,13 +262,11 @@ func Init(o Options) {
 	strWriteMust("frontend/src/styles/main.css", "tmpls/main_css_str.txt")
 	strWriteMust("frontend/src/styles/main.critical.css", "tmpls/main_critical_css_str.txt")
 	strWriteMust("frontend/src/routes.ts", "tmpls/frontend_routes_ts_str.txt")
-	do.tmplWriteMust("frontend/src/components/app.tsx", "tmpls/frontend_app_tsx_tmpl.txt")
 	do.tmplWriteMust("frontend/src/components/root.tsx", "tmpls/frontend_root_tsx_tmpl.txt")
 	do.tmplWriteMust("frontend/src/components/home.tsx", "tmpls/frontend_home_tsx_tmpl.txt")
 	do.tmplWriteMust("frontend/src/components/links.tsx", "tmpls/frontend_links_tsx_tmpl.txt")
 	do.tmplWriteMust("frontend/src/app_utils.tsx", "tmpls/frontend_app_utils_tsx_tmpl.txt")
 	strWriteMust("frontend/src/api_client.ts", "tmpls/frontend_api_client_ts_str.txt")
-	strWriteMust("frontend/src/styles/nprogress.css", "tmpls/frontend_css_nprogress_css_str.txt")
 	if o.DeploymentTarget == "vercel" {
 		do.tmplWriteMust("vercel.json", "tmpls/vercel_json_tmpl.txt")
 		do.tmplWriteMust("api/proxy.ts", "tmpls/api_proxy_ts_str.txt")
@@ -286,11 +282,9 @@ func Init(o Options) {
 	installJSPkg(do, "vite")
 	installJSPkg(do, fmt.Sprintf("river.now@%s", river.Internal__GetCurrentNPMVersion()))
 	installJSPkg(do, resolveUIVitePlugin(do))
-	installJSPkg(do, "nprogress")
-	installJSPkg(do, "@types/nprogress")
 
 	if do.UIVariant == "react" {
-		strWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_react_str.txt")
+		do.tmplWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_react_tmpl.txt")
 
 		installJSPkg(do, "react")
 		installJSPkg(do, "react-dom")
@@ -300,13 +294,13 @@ func Init(o Options) {
 	}
 
 	if do.UIVariant == "solid" {
-		strWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_solid_str.txt")
+		do.tmplWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_solid_tmpl.txt")
 
 		installJSPkg(do, "solid-js")
 	}
 
 	if do.UIVariant == "preact" {
-		strWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_preact_str.txt")
+		do.tmplWriteMust("frontend/src/entry.tsx", "tmpls/frontend_entry_tsx_preact_tmpl.txt")
 
 		installJSPkg(do, "preact")
 		installJSPkg(do, "@preact/signals")
@@ -325,19 +319,14 @@ func Init(o Options) {
 	// write assets
 	fileWriteMust("frontend/assets/favicon.svg", "assets/favicon.svg")
 
-	// install chi (some chi middleware is used in the template)
-	if err := executil.RunCmd("go", "get", "github.com/go-chi/chi/v5/middleware"); err != nil {
-		panic("failed to install chi middleware: " + err.Error())
+	// tidy go modules
+	if err := executil.RunCmd("go", "mod", "tidy"); err != nil {
+		panic("failed to tidy go modules: " + err.Error())
 	}
 
 	// build once (no binary)
 	if err := executil.RunCmd("go", "run", "./backend/cmd/build", "--no-binary"); err != nil {
 		panic("failed to run build command: " + err.Error())
-	}
-
-	// tidy go modules (must come after so chi mw stays installed)
-	if err := executil.RunCmd("go", "mod", "tidy"); err != nil {
-		panic("failed to tidy go modules: " + err.Error())
 	}
 
 	fmt.Println()

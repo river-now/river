@@ -5,35 +5,11 @@ import (
 	"{{.GoImportBase}}/backend/src/router"
 
 	"github.com/river-now/river"
-	"github.com/river-now/river/kit/tsgen"
 )
 
-type SomeType struct {
-	Field1 string
-	Field2 int
-}
-
-type SomeOtherType struct {
-	FieldA string
-	FieldB int
-}
-
 func main() {
-	a := tsgen.Statements{}
-
-	a.Serialize("export const GITHUB_REPO_LINK", "https://github.com/river-now/river")
-
-	backend.Wave.Builder(func(isDev bool) error {
-		return backend.River.Build(&river.BuildOptions{
-			IsDev:         isDev,
-			LoadersRouter: router.LoadersRouter,
-			ActionsRouter: router.ActionsRouter,
-			AdHocTypes: []*river.AdHocType{
-				// These will get inlined into ./frontend/src/river.gen.ts
-				{TypeInstance: SomeType{}},
-				{TypeInstance: SomeOtherType{}, TSTypeName: "RenamedType"},
-			},
-			ExtraTSCode: a.BuildString(),
-		})
+	backend.App.BuildRiver(river.BuildRiverOptions{
+		LoadersRouter: router.LoadersRouter,
+		ActionsRouter: router.ActionsRouter,
 	})
 }

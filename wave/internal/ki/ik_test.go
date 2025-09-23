@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/river-now/river/kit/colorlog"
+	"github.com/river-now/river/kit/fsutil"
 	"github.com/river-now/river/kit/safecache"
 	"golang.org/x/sync/semaphore"
 )
@@ -74,8 +75,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	c.fileSemaphore = semaphore.NewWeighted(100)
 
 	// Set up embedded FS
-	c.StaticFS = os.DirFS(filepath.Join(testRootDir, "dist"))
-	c.StaticFSEmbedDirective = "static"
+	c.DistStaticFS = fsutil.MustSub(os.DirFS(filepath.Join(testRootDir, "dist")), "static")
 
 	// Initialize safecache
 	c.runtime_cache = runtimeCache{

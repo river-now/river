@@ -9,18 +9,26 @@ import (
 
 	"github.com/river-now/river"
 	"github.com/river-now/river/kit/lab/fsmarkdown"
-	"github.com/river-now/river/kit/mux"
 	"github.com/river-now/river/wave"
 )
 
-var LoadersRouter = mux.NewNestedRouter(&mux.NestedOptions{
-	ExplicitIndexSegment: "_index",
-})
+var LoadersRouter = river.NewLoadersRouter()
 
-func newLoader[O any](pattern string, f mux.TaskHandlerFunc[mux.None, O]) *mux.TaskHandler[mux.None, O] {
-	loaderTask := mux.TaskHandlerFromFunc(f)
-	mux.RegisterNestedTaskHandler(LoadersRouter, pattern, loaderTask)
-	return loaderTask
+type LoaderCtx struct {
+	*river.LoaderReqData
+}
+
+func loaderCtxFactory(rd *river.LoaderReqData) *LoaderCtx {
+	return &LoaderCtx{
+		LoaderReqData: rd,
+	}
+}
+
+func newLoader[O any](
+	pattern string,
+	loaderFunc river.LoaderFunc[LoaderCtx, O],
+) *river.Loader[O] {
+	return river.NewLoader(LoadersRouter, pattern, loaderFunc, loaderCtxFactory)
 }
 
 type RootData struct {
@@ -45,7 +53,7 @@ var htmlCacheControlVal = strings.Join([]string{
 	"must-revalidate",                // revalidate after 1 day in CDN
 }, ", ")
 
-var _ = newLoader("/", func(c *mux.NestedReqData) (*RootData, error) {
+var _ = newLoader("/", func(c *LoaderCtx) (*RootData, error) {
 	r, rp := c.Request(), c.ResponseProxy()
 
 	if !wave.GetIsDev() {
@@ -65,11 +73,11 @@ var _ = newLoader("/", func(c *mux.NestedReqData) (*RootData, error) {
 	return &RootData{LatestVersion: currentNPMVersion}, nil
 })
 
-var _ = newLoader("/_index", func(c *mux.NestedReqData) (string, error) {
+var _ = newLoader("/_index", func(c *LoaderCtx) (string, error) {
 	return backend.SiteDescription, nil
 })
 
-var _ = newLoader("/*", func(c *mux.NestedReqData) (*fsmarkdown.DetailedPage, error) {
+var _ = newLoader("/*", func(c *LoaderCtx) (*fsmarkdown.DetailedPage, error) {
 	r, rp := c.Request(), c.ResponseProxy()
 
 	p, err := markdown.Markdown.GetPageDetails(r)

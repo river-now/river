@@ -323,7 +323,7 @@ func (c *Config) callback(wfc *WatchedFile, evtDetails *EvtDetails) error {
 // Also, we don't necessarily recompile Go here (we only necessarily) run
 // the other build steps. We only recompile Go if wfc.RecompileGoBinary is true.
 func (c *Config) runOtherFileBuild(wfc *WatchedFile, evtDetails *EvtDetails) error {
-	err := c.Build(BuildOptions{
+	err := c.BuildWave(BuildOptions{
 		RecompileGoBinary:          wfc.RecompileGoBinary,
 		IsDev:                      true,
 		is_dev_rebuild:             true,

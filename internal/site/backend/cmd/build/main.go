@@ -8,11 +8,8 @@ import (
 )
 
 func main() {
-	backend.Wave.Builder(func(isDev bool) error {
-		return backend.River.Build(&river.BuildOptions{
-			IsDev:         isDev,
-			LoadersRouter: router.LoadersRouter,
-			ActionsRouter: router.ActionsRouter,
-		})
+	backend.App.BuildRiver(river.BuildRiverOptions{
+		LoadersRouter: router.LoadersRouter,
+		ActionsRouter: router.ActionsRouter,
 	})
 }

@@ -1,0 +1,11 @@
+import { getRootEl, initClient } from "river.now/client";
+import { RiverRootOutlet } from "river.now/{{.UIVariant}}";
+import { render } from "solid-js/web";
+import { riverAppConfig } from "./river.gen.ts";
+{{.TailwindFileImport}}
+await initClient({
+	riverAppConfig,
+	renderFn: () => {
+		render(() => <RiverRootOutlet />, getRootEl());
+	},
+});

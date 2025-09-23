@@ -1,5 +1,3 @@
-@import "./nprogress.css";
-
 *,
 ::after,
 ::before {
@@ -20,13 +18,12 @@ html {
 
 html,
 body,
-main,
 #river-root {
 	height: 100%;
 	width: 100%;
 }
 
-main {
+#river-root {
 	display: grid;
 	place-items: center;
 	padding: 1rem;

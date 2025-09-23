@@ -38,16 +38,10 @@ html.dark {
 /* ============================================
    BASE STYLES
    ============================================ */
-html {
-	font-size: 18px;
-}
-
 html,
 body {
+	font-size: 18px;
 	min-height: 100dvh;
-}
-
-* {
 	overscroll-behavior: none;
 }
 

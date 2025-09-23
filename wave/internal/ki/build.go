@@ -74,7 +74,7 @@ func (c *Config) do_build_time_file_processing(shouldBeGranular bool) error {
 	return nil
 }
 
-func (c *Config) Build(opts BuildOptions) error {
+func (c *Config) BuildWave(opts BuildOptions) error {
 	a := time.Now()
 
 	if !opts.just_run_simple_file_build {

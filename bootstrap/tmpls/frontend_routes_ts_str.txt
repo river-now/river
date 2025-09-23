@@ -12,6 +12,4 @@ export default routes;
 
 routes.Add("/", import("./components/root.tsx"), "Root");
 routes.Add("/_index", import("./components/home.tsx"), "Home");
-
-const linksMod = import("./components/links.tsx");
-routes.Add("/links", linksMod, "Links");
+routes.Add("/links", import("./components/links.tsx"), "Links");

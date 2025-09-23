@@ -1,60 +1,32 @@
 package main
 
 import (
-	"context"
 	"{{.GoImportBase}}/backend"
 	"{{.GoImportBase}}/backend/src/router"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
-	"time"
 
-	"github.com/river-now/river/kit/colorlog"
-	"github.com/river-now/river/kit/grace"
-	"github.com/river-now/river/wave"
+	"github.com/river-now/river/kit/middleware/healthcheck"
+	"github.com/river-now/river/kit/mux"
 )
 
-var Log = colorlog.New("{{.GoImportBase}}")
-
 func main() {
-	backend.River.Init(wave.GetIsDev())
+	r := mux.NewRouter()
+	app := backend.App.Init()
+	addr := app.ServerAddr()
 
-	addr := fmt.Sprintf(":%d", wave.MustGetPort())
+	mux.SetGlobalHTTPMiddleware(r, app.ServeStatic())
+	mux.SetGlobalHTTPMiddleware(r, healthcheck.Healthz)
 
-	server := &http.Server{
-		Addr:                         addr,
-		Handler:                      http.TimeoutHandler(router.Core(), 60*time.Second, "Request timed out"),
-		ReadTimeout:                  15 * time.Second,
-		WriteTimeout:                 30 * time.Second,
-		IdleTimeout:                  60 * time.Second,
-		ReadHeaderTimeout:            10 * time.Second,
-		MaxHeaderBytes:               1 << 20, // 1 MB
-		DisableGeneralOptionsHandler: true,
-		ErrorLog:                     log.New(os.Stderr, "HTTP: ", log.Ldate|log.Ltime|log.Lshortfile),
+	loaders := app.Loaders(router.LoadersRouter)
+	mux.RegisterHandler(r, "GET", loaders.HandlerMountPattern(), loaders.Handler())
+
+	actions := app.Actions(router.ActionsRouter)
+	for m := range actions.SupportedMethods() {
+		mux.RegisterHandler(r, m, actions.HandlerMountPattern(), actions.Handler())
 	}
 
-	url := "http://localhost" + addr
+	fmt.Printf("Server starting at http://localhost%s\n", addr)
 
-	grace.Orchestrate(grace.OrchestrateOptions{
-		StartupCallback: func() error {
-			Log.Info("Starting server", "url", url)
-
-			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				log.Fatalf("Server listen and serve error: %v\n", err)
-			}
-
-			return nil
-		},
-
-		ShutdownCallback: func(shutdownCtx context.Context) error {
-			Log.Info("Shutting down server", "url", url)
-
-			if err := server.Shutdown(shutdownCtx); err != nil {
-				log.Fatalf("Server shutdown error: %v\n", err)
-			}
-
-			return nil
-		},
-	})
+	http.ListenAndServe(addr, r)
 }

@@ -1,4 +1,4 @@
-package framework
+package river
 
 import (
 	"fmt"

@@ -35,7 +35,7 @@ func (c *Config) MustStartDev(_opts ...must_start_dev_opts) {
 	set_refresh_server_port(refresh_server_port)
 
 	// build without binary
-	err = c.Build(BuildOptions{
+	err = c.BuildWave(BuildOptions{
 		IsDev:             true,
 		RecompileGoBinary: false,
 		is_dev_rebuild:    opts.is_rebuild,

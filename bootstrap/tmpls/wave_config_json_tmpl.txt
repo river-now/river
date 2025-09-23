@@ -22,7 +22,7 @@
 		"ClientEntry": "frontend/src/entry.tsx",
 		"ClientRouteDefsFile": "frontend/src/routes.ts",
 		"TSGenOutPath": "frontend/src/river.gen.ts",
-		"BuildtimePublicURLFuncName": "getPublicURLBuildtime"
+		"BuildtimePublicURLFuncName": "waveBuildtimeURL"
 	},
 	"Vite": {
 		"JSPackageManagerBaseCmd": "{{.JSPackageManagerBaseCmd}}"

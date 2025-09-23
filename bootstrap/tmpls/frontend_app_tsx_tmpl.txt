@@ -1,9 +1,0 @@
-import { RiverRootOutlet } from "river.now/{{.UIVariant}}";
-{{.TailwindFileImport}}
-export function App() {
-	return (
-		<main>
-			<RiverRootOutlet />
-		</main>
-	);
-}
