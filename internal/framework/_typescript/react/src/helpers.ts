@@ -1,6 +1,5 @@
 /// <reference types="vite/client" />
 
-import { useAtomValue } from "jotai";
 import { useMemo, type JSX } from "react";
 import {
 	__registerClientLoaderPattern,
@@ -16,9 +15,9 @@ import {
 	type UseRouterDataFunction,
 } from "river.now/client";
 import {
-	clientLoadersDataAtom,
-	loadersDataAtom,
-	routerDataAtom,
+	useClientLoadersData,
+	useLoadersData,
+	useRouterData,
 } from "./react.tsx";
 
 export type RiverRouteProps<
@@ -32,16 +31,14 @@ export type RiverRoute<
 > = RiverRouteGeneric<JSX.Element, App, Pattern>;
 
 export function makeTypedUseRouterData<App extends RiverAppBase>() {
-	return (() => {
-		return useAtomValue(routerDataAtom);
-	}) as UseRouterDataFunction<App, false>;
+	return useRouterData as UseRouterDataFunction<App, false>;
 }
 
 export function makeTypedUseLoaderData<App extends RiverAppBase>() {
 	return function useLoaderData<Pattern extends RiverLoaderPattern<App>>(
 		props: RiverRouteProps<App, Pattern>,
 	): RiverLoaderOutput<App, Pattern> {
-		const loadersData = useAtomValue(loadersDataAtom);
+		const loadersData = useLoadersData();
 		return loadersData[props.idx];
 	};
 }
@@ -50,8 +47,8 @@ export function makeTypedUsePatternLoaderData<App extends RiverAppBase>() {
 	return function usePatternLoaderData<
 		Pattern extends RiverLoaderPattern<App>,
 	>(pattern: Pattern): RiverLoaderOutput<App, Pattern> | undefined {
-		const routerData = useAtomValue(routerDataAtom);
-		const loadersData = useAtomValue(loadersDataAtom);
+		const routerData = useRouterData();
+		const loadersData = useLoadersData();
 		const idx = useMemo(() => {
 			return routerData.matchedPatterns.findIndex((p) => p === pattern);
 		}, [routerData.matchedPatterns, pattern]);
@@ -98,8 +95,8 @@ export function makeTypedAddClientLoader<App extends RiverAppBase>() {
 		const useClientLoaderData = (
 			props?: RiverRouteProps<App, Pattern>,
 		): Res | undefined => {
-			const clientLoadersData = useAtomValue(clientLoadersDataAtom);
-			const routerData = useAtomValue(routerDataAtom);
+			const clientLoadersData = useClientLoadersData();
+			const routerData = useRouterData();
 
 			const idx = useMemo(() => {
 				if (props) {

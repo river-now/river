@@ -88,7 +88,11 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		initUIListeners();
 
 		batch(() => {
+			setLoadersData(ctx.get("loadersData"));
 			setClientLoadersData(ctx.get("clientLoadersData"));
+			setRouterData(getRouterData());
+			setOutermostErrorIdx(ctx.get("outermostErrorIdx"));
+			setOutermostError(ctx.get("outermostError"));
 			setActiveComponents(ctx.get("activeComponents"));
 			setActiveErrorBoundary(ctx.get("activeErrorBoundary"));
 			setImportURLs(ctx.get("importURLs"));
@@ -103,26 +107,25 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		exportKeys()?.[idx],
 	);
 
-	if (currentImportURL) {
-		createEffect(() => {
-			const e = latestEvent();
-			if (!e) {
-				return;
-			}
+	createEffect(() => {
+		if (!currentImportURL()) {
+			return;
+		}
+		const e = latestEvent();
+		if (!e) {
+			return;
+		}
 
-			batch(() => {
-				const newCurrentImportURL = importURLs()?.[idx];
-				const newCurrentExportKey = exportKeys()?.[idx];
+		const newCurrentImportURL = importURLs()?.[idx];
+		const newCurrentExportKey = exportKeys()?.[idx];
 
-				if (currentImportURL() !== newCurrentImportURL) {
-					setCurrentImportURL(newCurrentImportURL);
-				}
-				if (currentExportKey() !== newCurrentExportKey) {
-					setCurrentExportKey(newCurrentExportKey);
-				}
-			});
-		});
-	}
+		if (currentImportURL() !== newCurrentImportURL) {
+			setCurrentImportURL(newCurrentImportURL);
+		}
+		if (currentExportKey() !== newCurrentExportKey) {
+			setCurrentExportKey(newCurrentExportKey);
+		}
+	});
 
 	createRenderEffect(() => {
 		const e = latestEvent();
@@ -148,10 +151,7 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 	});
 
 	const shouldFallbackOutletMemo = createMemo(() => {
-		if (isErrorIdxMemo()) {
-			return false;
-		}
-		if (currentCompMemo()) {
+		if (isErrorIdxMemo() || currentCompMemo()) {
 			return false;
 		}
 		return idx + 1 < loadersData().length;
@@ -164,26 +164,28 @@ export function RiverRootOutlet(props: { idx?: number }): JSX.Element {
 		return activeErrorBoundary();
 	});
 
+	const remountKeyNext = createMemo(
+		() => `${importURLs()[idx + 1]}|${exportKeys()[idx + 1]}`,
+	);
+
+	const Outlet = (localProps: Record<string, any> | undefined) => (
+		<Show when={remountKeyNext()} keyed>
+			<RiverRootOutlet {...localProps} {...props} idx={idx + 1} />
+		</Show>
+	);
+
 	return (
 		<>
 			<Show when={currentCompMemo()}>
 				<Dynamic
 					component={currentCompMemo()}
 					idx={idx}
-					Outlet={(localProps: Record<string, any> | undefined) => {
-						return (
-							<RiverRootOutlet
-								{...localProps}
-								{...props}
-								idx={idx + 1}
-							/>
-						);
-					}}
+					Outlet={Outlet}
 				/>
 			</Show>
 
 			<Show when={shouldFallbackOutletMemo()}>
-				<RiverRootOutlet {...props} idx={idx + 1} />
+				<Outlet />
 			</Show>
 
 			<Show when={isErrorIdxMemo()}>

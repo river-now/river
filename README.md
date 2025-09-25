@@ -4,7 +4,8 @@
 
 ---
 
-Vite-powered web framework bridging Go backends and TypeScript UIs
+Vite-powered web framework for building full-stack applications with Go and
+TypeScript
 
 ## Links
 

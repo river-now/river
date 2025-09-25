@@ -354,6 +354,7 @@ func (h *River) buildInner(opts *buildInnerOptions) error {
 	var nodeScriptResult NodeScriptResult
 	if err := json.Unmarshal(output, &nodeScriptResult); err != nil {
 		Log.Error(fmt.Sprintf("error unmarshalling node script output: %s", err))
+		return err
 	}
 
 	h._paths = make(map[string]*Path)
@@ -364,6 +365,19 @@ func (h *River) buildInner(opts *buildInnerOptions) error {
 			SrcPath:         item.Module,
 			ExportKey:       item.Key,
 			ErrorExportKey:  item.ErrorKey,
+		}
+	}
+
+	allServerRoutes := h.LoadersRouter().NestedRouter.AllRoutes()
+	for pattern := range allServerRoutes {
+		if _, hasClientRoute := h._paths[pattern]; !hasClientRoute {
+			// Create a pass-through path entry
+			h._paths[pattern] = &Path{
+				OriginalPattern: pattern,
+				SrcPath:         "", // Empty indicates pass-through
+				ExportKey:       "default",
+				ErrorExportKey:  "",
+			}
 		}
 	}
 

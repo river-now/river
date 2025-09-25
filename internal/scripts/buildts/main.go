@@ -100,7 +100,6 @@ func buildReact() {
 		External: []string{
 			"river.now",
 			"react", "react-dom",
-			"jotai",
 		},
 		Outdir:   "./npm_dist/internal/framework/_typescript/react",
 		Tsconfig: tsconfig,

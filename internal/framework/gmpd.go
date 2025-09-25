@@ -117,7 +117,8 @@ func (h *River) get_ui_data_stage_1(
 		_cachedItemSubset = &cachedItemSubset{}
 		for _, path := range _matches {
 			foundPath := h._paths[path.OriginalPattern()]
-			if foundPath == nil {
+			// Potentially a server route with no client-side counterpart
+			if foundPath == nil || foundPath.SrcPath == "" {
 				_cachedItemSubset.ImportURLs = append(_cachedItemSubset.ImportURLs, "")
 				_cachedItemSubset.ExportKeys = append(_cachedItemSubset.ExportKeys, "")
 				_cachedItemSubset.ErrorExportKeys = append(_cachedItemSubset.ErrorExportKeys, "")

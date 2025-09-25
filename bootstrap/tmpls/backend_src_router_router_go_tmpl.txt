@@ -61,19 +61,15 @@ var App = river.NewRiverApp(river.RiverAppConfig{
 })
 
 /////////////////////////////////////////////////////////////////////
-/////// LOADER/ACTION REGISTRATION HELPERS
+/////// LOADER HELPERS
 /////////////////////////////////////////////////////////////////////
 
-// NOTE: You can add anything you want to the loader/action contexts
-
-type LoaderCtx struct{ *river.LoaderReqData }
-type ActionCtx[I any] struct{ *river.ActionReqData[I] }
+type LoaderCtx struct {
+	*river.LoaderReqData
+}
 
 func decorateLoaderCtx(rd *river.LoaderReqData) *LoaderCtx {
 	return &LoaderCtx{LoaderReqData: rd}
-}
-func decorateActionCtx[I any](rd *river.ActionReqData[I]) *ActionCtx[I] {
-	return &ActionCtx[I]{ActionReqData: rd}
 }
 
 func NewLoader[O any](
@@ -81,6 +77,19 @@ func NewLoader[O any](
 ) *river.Loader[O] {
 	return river.NewLoader(App, pattern, loader, decorateLoaderCtx)
 }
+
+/////////////////////////////////////////////////////////////////////
+/////// ACTION HELPERS
+/////////////////////////////////////////////////////////////////////
+
+type ActionCtx[I any] struct {
+	*river.ActionReqData[I]
+}
+
+func decorateActionCtx[I any](rd *river.ActionReqData[I]) *ActionCtx[I] {
+	return &ActionCtx[I]{ActionReqData: rd}
+}
+
 func NewAction[I any, O any](
 	method string, pattern string, action river.ActionFunc[ActionCtx[I], I, O],
 ) *river.Action[I, O] {

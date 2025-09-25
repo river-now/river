@@ -82,20 +82,20 @@ export function RiverRootOutlet(props: { idx?: number }): h.JSX.Element {
 		});
 	}
 
-	const currentImportURL = signal(importURLs.value?.[idx]);
-	const currentExportKey = signal(exportKeys.value?.[idx]);
-	const nextImportURL = signal(importURLs.value?.[idx + 1]);
-	const nextExportKey = signal(exportKeys.value?.[idx + 1]);
+	const currentImportURL = signal(importURLs.value[idx]);
+	const currentExportKey = signal(exportKeys.value[idx]);
+	const nextImportURL = signal(importURLs.value[idx + 1]);
+	const nextExportKey = signal(exportKeys.value[idx + 1]);
 
 	useEffect(() => {
 		const dispose = effect(() => {
-			if (!currentImportURL.value || latestEvent.value) {
+			if (!currentImportURL.value || !latestEvent.value) {
 				return;
 			}
 
 			batch(() => {
-				const newCurrentImportURL = importURLs.value?.[idx];
-				const newCurrentExportKey = exportKeys.value?.[idx];
+				const newCurrentImportURL = importURLs.value[idx];
+				const newCurrentExportKey = exportKeys.value[idx];
 
 				if (currentImportURL.value !== newCurrentImportURL) {
 					currentImportURL.value = newCurrentImportURL;
@@ -105,8 +105,8 @@ export function RiverRootOutlet(props: { idx?: number }): h.JSX.Element {
 				}
 
 				// these are also needed for Outlets to render correctly
-				const newNextImportURL = importURLs.value?.[idx + 1];
-				const newNextExportKey = exportKeys.value?.[idx + 1];
+				const newNextImportURL = importURLs.value[idx + 1];
+				const newNextExportKey = exportKeys.value[idx + 1];
 
 				if (nextImportURL.value !== newNextImportURL) {
 					nextImportURL.value = newNextImportURL;

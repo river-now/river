@@ -19,8 +19,12 @@ export function RiverLink(
 		>,
 ) {
 	const finalLinkProps = createMemo(() => __makeFinalLinkProps(props));
-	// oxlint-disable-next-line no-unused-vars
-	const { prefetch, scrollToTop, replace, state, ...rest } = props;
+	const [, rest] = splitProps(props, [
+		"prefetch",
+		"scrollToTop",
+		"replace",
+		"state",
+	]);
 
 	return (
 		<a

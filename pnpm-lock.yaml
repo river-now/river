@@ -35,9 +35,6 @@ importers:
       history:
         specifier: 5.3.0
         version: 5.3.0
-      jotai:
-        specifier: ^2.13.1
-        version: 2.13.1(@babel/core@7.28.4)(@babel/template@7.27.2)(@types/react@19.1.12)(react@19.1.1)
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0
@@ -1000,24 +997,6 @@ packages:
 
   is-potential-custom-element-name@1.0.1:
     resolution: {integrity: sha512-bCYeRA2rVibKZd+s2625gGnGF/t7DSqDs4dP7CrLA1m7jKWz6pps0LpYLJN8Q64HtmPKJ1hrN3nzPNKFEKOUiQ==}
-
-  jotai@2.13.1:
-    resolution: {integrity: sha512-cRsw6kFeGC9Z/D3egVKrTXRweycZ4z/k7i2MrfCzPYsL9SIWcPXTyqv258/+Ay8VUEcihNiE/coBLE6Kic6b8A==}
-    engines: {node: '>=12.20.0'}
-    peerDependencies:
-      '@babel/core': '>=7.0.0'
-      '@babel/template': '>=7.0.0'
-      '@types/react': '>=17.0.0'
-      react: '>=17.0.0'
-    peerDependenciesMeta:
-      '@babel/core':
-        optional: true
-      '@babel/template':
-        optional: true
-      '@types/react':
-        optional: true
-      react:
-        optional: true
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -2344,13 +2323,6 @@ snapshots:
       safer-buffer: 2.1.2
 
   is-potential-custom-element-name@1.0.1: {}
-
-  jotai@2.13.1(@babel/core@7.28.4)(@babel/template@7.27.2)(@types/react@19.1.12)(react@19.1.1):
-    optionalDependencies:
-      '@babel/core': 7.28.4
-      '@babel/template': 7.27.2
-      '@types/react': 19.1.12
-      react: 19.1.1
 
   js-tokens@4.0.0: {}
 

@@ -290,7 +290,6 @@ func Init(o Options) {
 		installJSPkg(do, "react-dom")
 		installJSPkg(do, "@types/react")
 		installJSPkg(do, "@types/react-dom")
-		installJSPkg(do, "jotai")
 	}
 
 	if do.UIVariant == "solid" {

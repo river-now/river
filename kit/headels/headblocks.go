@@ -335,6 +335,10 @@ type HeadEls struct {
 	els []*htmlutil.Element
 }
 
+func FromRaw(els []*htmlutil.Element) *HeadEls {
+	return &HeadEls{els: els}
+}
+
 func New(size ...int) *HeadEls {
 	var els []*htmlutil.Element
 	if len(size) > 0 {

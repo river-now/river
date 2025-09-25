@@ -69,7 +69,7 @@ higher-level: a `location` signal is exported from `river.now/preact` and
 ```ts
 import { location } from "river.now/preact"; // Preact signal
 import { location } from "river.now/solid"; // Solid signal
-import { useLocation } from "river.now/react"; // Jotai-powered hook
+import { useLocation } from "river.now/react"; // React hook
 ```
 
 **NOTE:** `addLocationListener` triggers if you update search params directly
