@@ -58,9 +58,6 @@ func New(config Config) *Wave {
 	if config.WaveConfigJSON == nil {
 		panic("wave.New: config.WaveConfigJSON cannot be nil")
 	}
-	if config.DistStaticFS == nil {
-		panic("wave.New: config.DistStaticFS cannot be nil")
-	}
 	cfg := &ki.Config{
 		WaveConfigJSON: config.WaveConfigJSON,
 		DistStaticFS:   config.DistStaticFS,

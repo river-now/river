@@ -50,7 +50,7 @@ export {
 	type ClientLoaderAwaitedServerData,
 } from "./src/river_ctx/river_ctx.ts";
 export { __applyScrollState } from "./src/scroll_state_manager.ts";
-export type { RiverRoutes } from "./src/static_route_defs/route_def_helpers.ts";
+export { route } from "./src/static_route_defs/route_def_helpers.ts";
 export {
 	__makeFinalLinkProps,
 	type RiverLinkPropsBase,

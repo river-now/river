@@ -5,25 +5,28 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	esbuild "github.com/evanw/esbuild/pkg/api"
 	"github.com/river-now/river/kit/cryptoutil"
-	"github.com/river-now/river/kit/esbuildutil"
 	"github.com/river-now/river/kit/id"
 	"github.com/river-now/river/kit/mux"
 	"github.com/river-now/river/kit/stringsutil"
 	"github.com/river-now/river/kit/tsgen"
 	"github.com/river-now/river/kit/viteutil"
+	"github.com/tdewolff/parse/v2"
+	"github.com/tdewolff/parse/v2/js"
 )
 
 const (
@@ -212,31 +215,6 @@ func (h *River) handleViteConfigHelper(extraTS string) error {
 	return nil
 }
 
-const nodeScript = `
-const path = await import("node:path");
-const { pathToFileURL } = await import("node:url");
-const importPath = path.resolve(".", process.argv.slice(1)[0]);
-const importPathClean = pathToFileURL(importPath);
-const routesFile = await import(importPathClean);
-const final = routesFile.default.__all_routes();
-console.log(JSON.stringify(final));
-`
-
-const routesBuilderSnippet = `
-function __river_routes_builder() {
-	const routes = [];
-	function Add(pattern, ip, ck, ebk) {
-		const routeObj = { p: pattern, m: ip, k: ck };
-		if (ebk) {
-			routeObj.ek = ebk;
-		}
-		routes.push(routeObj);
-	}
-	return { Add, __all_routes: () => routes };
-}
-const routes = __river_routes_builder();
-`
-
 type NodeScriptResultItem struct {
 	Pattern  string `json:"p"`
 	Module   string `json:"m"`
@@ -249,6 +227,186 @@ type NodeScriptResult []NodeScriptResultItem
 type buildInnerOptions struct {
 	isDev        bool
 	buildOptions *BuildOptions
+}
+
+// Finds `import("./path")` and captures just the path string `"./path"`.
+// Handles single quotes, double quotes, and backticks.
+// Intended to be run post-minification to ensure consistent formatting.
+var importRegex = regexp.MustCompile(`import\((` +
+	"`" + `[^` + "`" + `]+` + "`" +
+	`|'[^']+'|"[^"]+")\)`)
+
+// RouteCall represents a parsed route() function call.
+type RouteCall struct {
+	Pattern  string
+	Module   string
+	Key      string
+	ErrorKey string
+}
+
+// importTracker tracks variable assignments that contain import() calls
+type importTracker struct {
+	imports map[string]string // varName -> importPath
+}
+
+// routeCallVisitor is a stateful struct to find route() calls while walking the AST.
+type routeCallVisitor struct {
+	routeFuncNames map[string]bool
+	routes         *[]RouteCall
+	importTracker  *importTracker
+}
+
+// Enter is called for each node when descending into the AST.
+func (v *routeCallVisitor) Enter(n js.INode) js.IVisitor {
+	call, isCall := n.(*js.CallExpr)
+	if !isCall {
+		return v
+	}
+
+	ident, isIdent := call.X.(*js.Var)
+	if !isIdent {
+		return v
+	}
+
+	if _, isRouteFunc := v.routeFuncNames[string(ident.Data)]; isRouteFunc {
+		route := RouteCall{Key: "default"}
+		argsList := call.Args.List
+
+		extractStringArg := func(idx int) (string, bool) {
+			if idx < len(argsList) {
+				if strLit, ok := argsList[idx].Value.(*js.LiteralExpr); ok && strLit.TokenType == js.StringToken {
+					unquoted, err := strconv.Unquote(string(strLit.Data))
+					if err == nil {
+						return unquoted, true
+					}
+				}
+			}
+			return "", false
+		}
+
+		// Extract pattern (first argument)
+		val, ok := extractStringArg(0)
+		if !ok {
+			return v
+		}
+		route.Pattern = val
+
+		// Extract module (second argument) -- could be a variable or direct import
+		if len(argsList) > 1 {
+			arg := argsList[1]
+
+			// Check if it's a variable reference
+			if varRef, ok := arg.Value.(*js.Var); ok {
+				if importPath, exists := v.importTracker.imports[string(varRef.Data)]; exists {
+					route.Module = importPath
+				} else {
+					return v // Skip if we can't resolve the variable
+				}
+			} else if call, ok := arg.Value.(*js.CallExpr); ok {
+				// Direct import() call
+				if ident, ok := call.X.(*js.Var); ok && string(ident.Data) == "import" {
+					if len(call.Args.List) > 0 {
+						if strLit, ok := call.Args.List[0].Value.(*js.LiteralExpr); ok && strLit.TokenType == js.StringToken {
+							unquoted, err := strconv.Unquote(string(strLit.Data))
+							if err == nil {
+								route.Module = unquoted
+							} else {
+								return v
+							}
+						}
+					}
+				}
+			} else {
+				// Try to extract as string (shouldn't happen with imports, but just in case)
+				val, ok := extractStringArg(1)
+				if !ok {
+					return v
+				}
+				route.Module = val
+			}
+		}
+
+		// Extract remaining arguments
+		if val, ok = extractStringArg(2); ok {
+			route.Key = val
+		}
+
+		if val, ok = extractStringArg(3); ok {
+			route.ErrorKey = val
+		}
+
+		*v.routes = append(*v.routes, route)
+	}
+	return v
+}
+
+// Exit is called when ascending from a node.
+func (v *routeCallVisitor) Exit(n js.INode) {}
+
+// extractRouteCalls uses an AST parser to find all `route()` calls.
+func extractRouteCalls(code string) ([]RouteCall, error) {
+	parsedAST, err := js.Parse(parse.NewInputString(code), js.Options{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JS/TS code: %w", err)
+	}
+
+	routeFuncNames := make(map[string]bool)
+	tracker := &importTracker{
+		imports: make(map[string]string),
+	}
+
+	// First pass: collect route function names and import assignments
+	for _, stmt := range parsedAST.BlockStmt.List {
+		switch s := stmt.(type) {
+		case *js.ImportStmt:
+			// Get the import path from the Module field
+			importPath := ""
+			if s.Module != nil {
+				importPath = string(s.Module)
+				// Remove quotes if present
+				importPath = strings.Trim(importPath, `"'`+"`")
+			}
+
+			// Only process route imports from river.now/client
+			if importPath == "river.now/client" {
+				for _, alias := range s.List {
+					if string(alias.Name) == "route" ||
+						(string(alias.Name) == "" && string(alias.Binding) == "route") {
+						if len(alias.Binding) > 0 {
+							routeFuncNames[string(alias.Binding)] = true
+						} else {
+							routeFuncNames[string(alias.Name)] = true
+						}
+					}
+				}
+			}
+		case *js.VarDecl:
+			// Look for const/let/var declarations with string literals (transformed imports)
+			for _, binding := range s.List {
+				if varBinding, ok := binding.Binding.(*js.Var); ok {
+					varName := string(varBinding.Data)
+
+					// Since imports were transformed to string literals, check for those
+					if strLit, ok := binding.Default.(*js.LiteralExpr); ok && strLit.TokenType == js.StringToken {
+						unquoted, err := strconv.Unquote(string(strLit.Data))
+						if err == nil {
+							tracker.imports[varName] = unquoted
+						}
+					}
+				}
+			}
+		}
+	}
+
+	var routes []RouteCall
+	visitor := &routeCallVisitor{
+		routeFuncNames: routeFuncNames,
+		routes:         &routes,
+		importTracker:  tracker,
+	}
+	js.Walk(visitor, parsedAST)
+
+	return routes, nil
 }
 
 func (h *River) buildInner(opts *buildInnerOptions) error {
@@ -273,98 +431,71 @@ func (h *River) buildInner(opts *buildInnerOptions) error {
 
 	clientRouteDefsFile := h.Wave.GetRiverClientRouteDefsFile()
 
-	esbuildResult := esbuild.Build(esbuild.BuildOptions{
-		EntryPoints: []string{clientRouteDefsFile},
-		Bundle:      false,
-		Write:       false,
-		Format:      esbuild.FormatESModule,
-		Platform:    esbuild.PlatformNode,
-		Metafile:    true,
+	code, err := os.ReadFile(clientRouteDefsFile)
+	if err != nil {
+		Log.Error(fmt.Sprintf("error reading client route defs file: %s", err))
+		return err
+	}
+
+	// First, transpile and minify the routes file to ensure consistent import format
+	minifyResult := esbuild.Transform(string(code), esbuild.TransformOptions{
+		Format:            esbuild.FormatESModule,
+		Platform:          esbuild.PlatformNode,
+		MinifyWhitespace:  true,
+		MinifySyntax:      true,
+		MinifyIdentifiers: false,
+		Loader:            esbuild.LoaderTSX,
+		Target:            esbuild.ES2020,
 	})
-	if err := esbuildutil.CollectErrors(esbuildResult); err != nil {
-		Log.Error(fmt.Sprintf("esbuild errors: %s", err))
-		return err
-	}
-
-	metafile, err := esbuildutil.UnmarshalOutput(esbuildResult)
-	if err != nil {
-		Log.Error(fmt.Sprintf("error unmarshalling esbuild output: %s", err))
-		return err
-	}
-
-	ext := filepath.Ext(clientRouteDefsFile)
-	withoutExt := strings.TrimSuffix(filepath.Base(clientRouteDefsFile), ext)
-	asJS := withoutExt + ".js"
-
-	importsUnfiltered := metafile.Outputs[asJS].Imports
-	var imports []string
-	for _, imp := range importsUnfiltered {
-		if imp.Kind != esbuildutil.KindDymanicImport {
-			continue
+	if len(minifyResult.Errors) > 0 {
+		for _, msg := range minifyResult.Errors {
+			Log.Error(fmt.Sprintf("esbuild error: %s", msg.Text))
 		}
-		imports = append(imports, imp.Path)
+		return fmt.Errorf("esbuild errors occurred during transform")
 	}
+	minifiedCode := string(minifyResult.Code)
 
-	tempDirName, err := os.MkdirTemp(".", "river-build")
+	// Apply the import transformation to the minified code
+	transformedCode := importRegex.ReplaceAllString(minifiedCode, "$1")
+
+	// Extract route calls from the transformed code
+	routeCalls, err := extractRouteCalls(transformedCode)
 	if err != nil {
-		Log.Error(fmt.Sprintf("error creating temp dir: %s", err))
-		return err
-	}
-	defer os.RemoveAll(tempDirName)
-
-	code := string(esbuildResult.OutputFiles[0].Contents)
-
-	code = routesBuilderSnippet + code
-
-	routesSrcFile := path.Join(".", h.Wave.GetRiverClientRouteDefsFile())
-	routesDir := path.Dir(routesSrcFile)
-
-	// __TODO do whitespace-friendly regex here
-	for _, imp := range imports {
-		doubleQuotes := fmt.Sprintf(`import("%s")`, imp)
-		singleQuotes := fmt.Sprintf("import('%s')", imp)
-		backticks := fmt.Sprintf("import(`%s`)", imp)
-		replacement := fmt.Sprintf(`"%s"`, path.Join(routesDir, imp))
-		code = strings.ReplaceAll(code, doubleQuotes, replacement)
-		code = strings.ReplaceAll(code, singleQuotes, replacement)
-		code = strings.ReplaceAll(code, backticks, replacement)
-	}
-
-	location := filepath.Join(".", tempDirName, asJS)
-	err = os.MkdirAll(filepath.Dir(location), os.ModePerm)
-	if err != nil {
-		Log.Error(fmt.Sprintf("error creating directory: %s", err))
-		return err
-	}
-	err = os.WriteFile(location, []byte(code), os.ModePerm)
-	if err != nil {
-		Log.Error(fmt.Sprintf("error writing file to disk: %s", err))
-		return err
-	}
-
-	cmd := exec.Command("node", "--input-type=module", "-e", nodeScript)
-	cmd.Args = append(cmd.Args, filepath.ToSlash(location))
-
-	output, err := cmd.Output()
-	if err != nil {
-		Log.Error(fmt.Sprintf("error running node script: %s | output: %s", err, string(output)))
-		return err
-	}
-
-	var nodeScriptResult NodeScriptResult
-	if err := json.Unmarshal(output, &nodeScriptResult); err != nil {
-		Log.Error(fmt.Sprintf("error unmarshalling node script output: %s", err))
+		Log.Error(fmt.Sprintf("error extracting route calls: %s", err))
 		return err
 	}
 
 	h._paths = make(map[string]*Path)
 
-	for _, item := range nodeScriptResult {
-		h._paths[item.Pattern] = &Path{
-			OriginalPattern: item.Pattern,
-			SrcPath:         item.Module,
-			ExportKey:       item.Key,
-			ErrorExportKey:  item.ErrorKey,
+	routesDir := filepath.Dir(clientRouteDefsFile)
+	for _, routeCall := range routeCalls {
+		// The module path is now a raw string literal, so we need to unquote it if needed
+		unquotedModule := routeCall.Module
+
+		resolvedModulePath, err := filepath.Rel(".", filepath.Join(routesDir, unquotedModule))
+		if err != nil {
+			Log.Warn(fmt.Sprintf("could not make module path relative: %s", err))
+			resolvedModulePath = unquotedModule
+		}
+		modulePath := filepath.ToSlash(resolvedModulePath)
+
+		// Check if the module file exists on disk
+		if _, err := os.Stat(modulePath); err != nil {
+			if os.IsNotExist(err) {
+				errMsg := fmt.Sprintf("Component module does not exist: %s (pattern: %s). Did you specify the correct file extension?", modulePath, routeCall.Pattern)
+				Log.Error(errMsg)
+				return errors.New(errMsg)
+			}
+			errMsg := fmt.Sprintf("Error accessing component module %s: %v", modulePath, err)
+			Log.Error(errMsg)
+			return errors.New(errMsg)
+		}
+
+		h._paths[routeCall.Pattern] = &Path{
+			OriginalPattern: routeCall.Pattern,
+			SrcPath:         modulePath,
+			ExportKey:       routeCall.Key,
+			ErrorExportKey:  routeCall.ErrorKey,
 		}
 	}
 
@@ -431,7 +562,7 @@ func (h *River) buildInner(opts *buildInnerOptions) error {
 
 	Log.Info("DONE building River",
 		"buildID", h._buildID,
-		"routes found", len(nodeScriptResult),
+		"routes found", len(routeCalls),
 		"duration", time.Since(a),
 	)
 

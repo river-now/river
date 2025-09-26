@@ -24,6 +24,10 @@ type MainInitOptions struct {
 }
 
 func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
+	if opts.IsDev {
+		SetModeToDev()
+	}
+
 	// LOGGER
 	if c.Logger == nil {
 		c.Logger = colorlog.New("wave")
@@ -86,8 +90,6 @@ func (c *Config) MainInit(opts MainInitOptions, calledFrom string) {
 	c._rebuild_cleanup_chan = make(chan struct{})
 
 	c.cleanWatchRoot = filepath.Clean(c._uc.Watch.WatchRoot)
-
-	SetModeToDev()
 
 	// HEALTH CHECK ENDPOINT
 	if c._uc.Watch.HealthcheckEndpoint == "" {
