@@ -27,6 +27,7 @@ export {
 	__resolvePath,
 	buildMutationURL,
 	buildQueryURL,
+	resolveBody,
 	type ExtractApp,
 	type PermissivePatternBasedProps,
 	type RiverAppBase,

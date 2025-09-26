@@ -2,6 +2,7 @@ package river
 
 import (
 	"errors"
+	"mime"
 	"net/http"
 
 	"github.com/river-now/river/kit/headels"
@@ -93,6 +94,11 @@ func newActionsRouter(options ...ActionsRouterOptions) *ActionsRouter {
 					return validate.URLSearchParamsInto(r, iPtr)
 				}
 				if supportedMethods[r.Method] {
+					contentType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
+					if contentType == "application/x-www-form-urlencoded" ||
+						contentType == "multipart/form-data" {
+						return nil
+					}
 					return validate.JSONBodyInto(r, iPtr)
 				}
 				return errors.New("unsupported method")
@@ -101,6 +107,10 @@ func newActionsRouter(options ...ActionsRouterOptions) *ActionsRouter {
 		supportedMethods: supportedMethods,
 	}
 }
+
+type FormData struct{}
+
+func (m FormData) TSTypeRaw() string { return "FormData" }
 
 type RiverAppConfig struct {
 	Wave *wave.Wave

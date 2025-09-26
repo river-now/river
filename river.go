@@ -31,6 +31,13 @@ type (
 	ActionFunc[Ctx any, I any, O any] = func(*Ctx) (O, error)
 	LoadersRouterOptions              = rf.LoadersRouterOptions
 	ActionsRouterOptions              = rf.ActionsRouterOptions
+	// Set this as your input type when you want to work with standard
+	// HTTP forms (whether "application/x-www-form-urlencoded" or
+	// "multipart/form-data"). This is just an empty struct with a
+	// marker method to ensure the API client knows to accept FormData
+	// as the input type. To get the actual form values, use the underlying
+	// *http.Request (by calling `Request()` on your action ctx).
+	FormData = rf.FormData
 )
 
 var (

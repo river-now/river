@@ -2,6 +2,7 @@ package tsgen
 
 import (
 	"encoding/json"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -101,6 +102,9 @@ func optsToMerged(opts Opts) tsgencore.Results {
 	}
 	for _, item := range opts.Collection {
 		for _, phantomType := range item.PhantomTypes {
+			if _, isTSTypeRaw := phantomType.TypeInstance.(TSTyperRaw); isTSTypeRaw {
+				continue
+			}
 			adHocTypes = append(adHocTypes, &AdHocType{
 				TypeInstance: phantomType.TypeInstance,
 				TSTypeName:   phantomType.TSTypeName,
@@ -109,6 +113,10 @@ func optsToMerged(opts Opts) tsgencore.Results {
 	}
 
 	return tsgencore.ProcessTypes(adHocTypes)
+}
+
+type TSTyperRaw interface {
+	TSTypeRaw() string
 }
 
 func getCollectionStr(opts Opts, merged tsgencore.Results) (string, error) {
@@ -155,29 +163,40 @@ func getCollectionStr(opts Opts, merged tsgencore.Results) (string, error) {
 			write(phantomTypeLine, propertyName)
 			write(phantomTypeLine, ": ")
 
-			typeInfo := merged.GetTypeInfo(&adHocType)
-
-			// NOTE: This assumes that your handlers are resilient
-			// against return nil values. Technically, Go's JSON
-			// marshalling would return "null" for nil values, and
-			// the below does NOT reflect that. It assumes that
-			// the type is set to its effective dereferenced (in
-			// the case of pointers) and/or initialized (in the case of
-			// maps or slices) "ultimate" zero value of the type.
-
-			switch {
-			case typeInfo == nil || typeInfo.IsTSNull():
-				continue
-			case typeInfo.IsTSUnknown():
-				write(phantomTypeLine, "null as unknown")
-			case typeInfo.ResolvedName != "":
+			_, isTSTyperRaw := adHocType.TypeInstance.(TSTyperRaw)
+			if isTSTyperRaw {
+				t := reflect.TypeOf(adHocType.TypeInstance)
+				if t.Kind() == reflect.Ptr {
+					t = t.Elem()
+				}
+				x := reflect.New(t).Interface().(TSTyperRaw)
 				write(phantomTypeLine, "null as unknown as ")
-				write(phantomTypeLine, typeInfo.ResolvedName)
-			case typeInfo.TSStr == "Record<never, never>":
-				continue
-			default:
-				write(phantomTypeLine, "null as unknown as ")
-				write(phantomTypeLine, typeInfo.TSStr)
+				write(phantomTypeLine, x.TSTypeRaw())
+			} else {
+				typeInfo := merged.GetTypeInfo(&adHocType)
+
+				// NOTE: This assumes that your handlers are resilient
+				// against return nil values. Technically, Go's JSON
+				// marshalling would return "null" for nil values, and
+				// the below does NOT reflect that. It assumes that
+				// the type is set to its effective dereferenced (in
+				// the case of pointers) and/or initialized (in the case of
+				// maps or slices) "ultimate" zero value of the type.
+
+				switch {
+				case typeInfo == nil || typeInfo.IsTSNull():
+					continue
+				case typeInfo.IsTSUnknown():
+					write(phantomTypeLine, "null as unknown")
+				case typeInfo.ResolvedName != "":
+					write(phantomTypeLine, "null as unknown as ")
+					write(phantomTypeLine, typeInfo.ResolvedName)
+				case typeInfo.TSStr == "Record<never, never>":
+					continue
+				default:
+					write(phantomTypeLine, "null as unknown as ")
+					write(phantomTypeLine, typeInfo.TSStr)
+				}
 			}
 
 			write(phantomTypeLine, ",", 1)

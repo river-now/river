@@ -81,7 +81,6 @@ func (h *River) generateTypeScript(opts *tsGenOptions) (string, error) {
 	}
 
 	// add any client-defined paths that don't have loaders
-	// (loaders are optional, client routes are obviously required)
 	maybeExtraLoaderPaths := h._paths
 	for _, path := range maybeExtraLoaderPaths {
 		if _, ok := seen[path.OriginalPattern]; ok {

@@ -213,6 +213,23 @@ export function buildMutationURL(
 	return buildURL({ riverAppConfig, props, type: "mutation" });
 }
 
+export function resolveBody(props: Props): BodyInit | null | undefined {
+	const { input } = props;
+	if (
+		input == null ||
+		typeof input === "string" ||
+		input instanceof Blob ||
+		input instanceof FormData ||
+		input instanceof URLSearchParams ||
+		input instanceof ReadableStream ||
+		input instanceof ArrayBuffer ||
+		ArrayBuffer.isView(input)
+	) {
+		return input;
+	}
+	return JSON.stringify(input);
+}
+
 function buildURL(opts: APIClientHelperOpts): URL {
 	const base_path = stripTrailingSlash(
 		opts.riverAppConfig.actionsRouterMountRoot,
