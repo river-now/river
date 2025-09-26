@@ -1,4 +1,9 @@
-import { buildMutationURL, buildQueryURL, submit } from "river.now/client";
+import {
+	buildMutationURL,
+	buildQueryURL,
+	resolveBody,
+	submit,
+} from "river.now/client";
 import {
 	riverAppConfig,
 	type MutationOutput,
@@ -28,7 +33,7 @@ async function mutate<P extends MutationPattern>(props: MutationProps<P>) {
 		{
 			method: "POST",
 			...props.requestInit,
-			body: JSON.stringify(props.input),
+			body: resolveBody(props),
 		},
 		props.options,
 	);
