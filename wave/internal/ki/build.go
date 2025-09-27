@@ -127,7 +127,7 @@ func (c *Config) BuildWave(opts BuildOptions) error {
 	go_compile_start := time.Now()
 
 	if opts.RecompileGoBinary {
-		if err := c.compile_go_binary(); err != nil {
+		if err := c.compile_go_binary(opts.IsDev); err != nil {
 			return fmt.Errorf("error compiling binary: %w", err)
 		}
 	}

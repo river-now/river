@@ -301,7 +301,7 @@ func (c *Config) mustHandleFileChange(
 
 func (c *Config) callback(wfc *WatchedFile, evtDetails *EvtDetails) error {
 	if evtDetails.isGo {
-		return c.compile_go_binary()
+		return c.compile_go_binary(true)
 	}
 
 	if evtDetails.isWaveCSS {

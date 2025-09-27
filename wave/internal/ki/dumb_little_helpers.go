@@ -231,12 +231,15 @@ func (c *Config) get_binary_output_path() string {
 /////// COMPILE GO BINARY
 /////////////////////////////////////////////////////////////////////
 
-func (c *Config) compile_go_binary() error {
+func (c *Config) compile_go_binary(isDev bool) error {
 	a := time.Now()
 	c.Logger.Info("Compiling Go binary...")
 	buildDest := c.get_binary_output_path()
 	in := fmt.Sprintf(".%c%s", filepath.Separator, filepath.Clean(c._uc.Core.MainAppEntry))
 	buildCmd := exec.Command("go", "build", "-o", buildDest, in)
+	if !isDev {
+		buildCmd = exec.Command("go", "build", "-tags=prod", "-o", buildDest, in)
+	}
 	buildCmd.Stdout = os.Stdout
 	buildCmd.Stderr = os.Stderr
 	err := buildCmd.Run()
