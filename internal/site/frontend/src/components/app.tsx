@@ -1,7 +1,7 @@
 import { done, isStarted, start } from "nprogress";
 import { setupGlobalLoadingIndicator } from "river.now/client";
 import { setTheme, THEMES } from "river.now/kit/theme";
-import { RiverLink, RiverRootOutlet } from "river.now/solid";
+import { RiverRootOutlet } from "river.now/solid";
 import { Link, theme, useRouterData } from "../river.utils.tsx";
 import "../styles/tailwind.css";
 
@@ -49,13 +49,13 @@ export function App() {
 				</div>
 
 				<div class="flex nav-right gap-1 flex-wrap">
-					<RiverLink href="/docs" class="nav-item">
+					<Link pattern="/*" splatValues={["docs"]} class="nav-item">
 						Docs
-					</RiverLink>
+					</Link>
 
-					<RiverLink href="/blog" class="nav-item">
+					<Link pattern="/*" splatValues={["blog"]} class="nav-item">
 						Blog
-					</RiverLink>
+					</Link>
 
 					<a
 						href="https://github.com/river-now/river"
