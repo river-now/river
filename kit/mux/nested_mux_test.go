@@ -501,7 +501,7 @@ func BenchmarkNestedRouter(b *testing.B) {
 
 func createRequestWithTasksCtx(method, url string) *http.Request {
 	req := httptest.NewRequest(method, url, nil)
-	tasksCtx := tasks.NewTasksCtx(req.Context())
+	tasksCtx := tasks.NewCtx(req.Context())
 	rd := &rdTransport{tasksCtx: tasksCtx, req: req}
 	return requestStore.GetRequestWithContext(req, rd)
 }

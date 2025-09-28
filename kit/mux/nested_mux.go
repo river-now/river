@@ -231,8 +231,8 @@ func RunNestedTasks(
 	compiledRoutes := nestedRouter.compiledRoutes.Load().([]compiledRoute)
 	routeIndexMap := nestedRouter.routeIndexMap.Load().(map[string]int)
 
-	// Pre-allocate callables based on estimated task count
-	callables := make([]tasks.Callable, 0, numMatches/2) // Assume ~50% have handlers
+	// Pre-allocate boundTasks based on estimated task count
+	boundTasks := make([]tasks.BoundTask, 0, numMatches/2) // Assume ~50% have handlers
 
 	// Track pooled objects for cleanup
 	pooledReqData := make([]*ReqData[None], 0, numMatches/2)
@@ -294,17 +294,17 @@ func RunNestedTasks(
 		reqData.responseProxy = proxy
 		pooledReqData = append(pooledReqData, reqData)
 
-		callable := &optimizedTaskCallable{
+		boundTask := &optimizedBoundTask{
 			taskHandler: compiled.taskHandler,
 			reqData:     reqData,
 			result:      result,
 		}
-		callables = append(callables, callable)
+		boundTasks = append(boundTasks, boundTask)
 	}
 
 	// Execute all tasks in parallel if we have any
-	if len(callables) > 0 {
-		if err := tasks.Go(tasksCtx, callables...); err != nil {
+	if len(boundTasks) > 0 {
+		if err := tasksCtx.RunParallel(boundTasks...); err != nil {
 			muxLog.Error("tasks.Go reported an error during nested task execution", "error", err)
 		}
 	}
@@ -349,17 +349,15 @@ func (nr *NestedRouter) addCompiledRoute(compiled compiledRoute) {
 	atomic.AddUint64(&nr.version, 1)
 }
 
-type optimizedTaskCallable struct {
+type optimizedBoundTask struct {
 	taskHandler tasks.AnyTask
 	reqData     *ReqData[None]
 	result      *NestedTasksResult
 }
 
-func (oc *optimizedTaskCallable) Run(ctx *tasks.TasksCtx) error {
-	data, err := oc.taskHandler.Do(ctx, oc.reqData)
+func (oc *optimizedBoundTask) Run(ctx *tasks.Ctx) error {
+	data, err := oc.taskHandler.RunWithAnyInput(ctx, oc.reqData)
 	oc.result.data = data
 	oc.result.err = err
 	return err
 }
-
-func (oc *optimizedTaskCallable) IsCallable() {}

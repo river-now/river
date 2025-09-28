@@ -46,7 +46,7 @@ type (
 type ReqData[I any] struct {
 	params        Params
 	splatVals     []string
-	tasksCtx      *tasks.TasksCtx
+	tasksCtx      *tasks.Ctx
 	input         I
 	req           *http.Request
 	responseProxy *response.Proxy
@@ -167,13 +167,13 @@ func NewRouter(options ...*Options) *Router {
 // be particularly convenient for sending JSON. If you need to send a different
 // content type, use a traditional http.Handler instead.
 func TaskHandlerFromFunc[I any, O any](taskHandlerFunc TaskHandlerFunc[I, O]) *TaskHandler[I, O] {
-	return tasks.NewTask(func(c *tasks.TasksCtx, rd *ReqData[I]) (O, error) {
+	return tasks.NewTask(func(c *tasks.Ctx, rd *ReqData[I]) (O, error) {
 		return taskHandlerFunc(rd)
 	})
 }
 
 func TaskMiddlewareFromFunc[O any](userFunc TaskMiddlewareFunc[O]) *TaskMiddleware[O] {
-	return tasks.NewTask(func(c *tasks.TasksCtx, rd *ReqData[None]) (O, error) {
+	return tasks.NewTask(func(c *tasks.Ctx, rd *ReqData[None]) (O, error) {
 		return userFunc(rd)
 	})
 }
@@ -300,12 +300,12 @@ func RegisterHandler(
 
 func (rd *ReqData[I]) Params() Params                 { return rd.params }
 func (rd *ReqData[I]) SplatValues() []string          { return rd.splatVals }
-func (rd *ReqData[I]) TasksCtx() *tasks.TasksCtx      { return rd.tasksCtx }
+func (rd *ReqData[I]) TasksCtx() *tasks.Ctx           { return rd.tasksCtx }
 func (rd *ReqData[I]) Request() *http.Request         { return rd.req }
 func (rd *ReqData[I]) ResponseProxy() *response.Proxy { return rd.responseProxy }
 func (rd *ReqData[I]) Input() I                       { return rd.input }
 
-func GetTasksCtx(r *http.Request) *tasks.TasksCtx {
+func GetTasksCtx(r *http.Request) *tasks.Ctx {
 	if rd := requestStore.GetValueFromContext(r.Context()); rd != nil {
 		return rd.tasksCtx
 	}
@@ -368,7 +368,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Slow path: create TasksCtx and full request data
-	tasksCtx := tasks.NewTasksCtx(r.Context())
+	tasksCtx := tasks.NewCtx(r.Context())
 	rd := &rdTransport{
 		params:        match.Params,
 		splatVals:     match.SplatValues,
@@ -410,7 +410,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type rdTransport struct {
 	params        Params
 	splatVals     []string
-	tasksCtx      *tasks.TasksCtx
+	tasksCtx      *tasks.Ctx
 	req           *http.Request
 	responseProxy *response.Proxy
 }
@@ -447,17 +447,15 @@ func applyHTTPMiddlewares(
 	return handler
 }
 
-type middlewareTaskCallable struct {
+type middlewareBoundTask struct {
 	taskToRun tasks.AnyTask
 	input     *ReqData[None]
 }
 
-func (m *middlewareTaskCallable) Run(ctx *tasks.TasksCtx) error {
-	_, err := m.taskToRun.Do(ctx, m.input)
+func (m *middlewareBoundTask) Run(ctx *tasks.Ctx) error {
+	_, err := m.taskToRun.RunWithAnyInput(ctx, m.input)
 	return err
 }
-
-func (m *middlewareTaskCallable) IsCallable() {}
 
 func (rt *Router) gatherAllTaskMiddlewares(
 	methodMatcher *methodMatcher, routeMarker AnyRoute,
@@ -479,7 +477,7 @@ func (rt *Router) createTaskFinalHandler(route AnyRoute, reqDataMarker reqDataMa
 		res := response.New(w)
 		taskHandler := route.getTaskHandler()
 		inputData := reqDataMarker.getUnderlyingReqDataInstance()
-		data, err := taskHandler.Do(reqDataMarker.TasksCtx(), inputData)
+		data, err := taskHandler.RunWithAnyInput(reqDataMarker.TasksCtx(), inputData)
 		if err != nil {
 			muxLog.Error("Error executing task handler", "error", err, "pattern", route.OriginalPattern())
 			res.InternalServerError()
@@ -501,7 +499,7 @@ func (rt *Router) createTaskFinalHandler(route AnyRoute, reqDataMarker reqDataMa
 }
 
 func (rt *Router) runAppropriateMws(
-	tasksCtx *tasks.TasksCtx,
+	tasksCtx *tasks.Ctx,
 	reqDataMarker reqDataMarker,
 	methodMatcher *methodMatcher,
 	routeMarker AnyRoute,
@@ -518,7 +516,7 @@ func (rt *Router) runAppropriateMws(
 		return handlerWithHTTPMws
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		callables := make([]tasks.Callable, 0, len(collected))
+		boundTasks := make([]tasks.BoundTask, 0, len(collected))
 		reqDataInstances := make([]*ReqData[None], 0, len(collected))
 		for _, taskWithOpts := range collected {
 			if taskWithOpts.opts != nil && taskWithOpts.opts.If != nil && !taskWithOpts.opts.If(r) {
@@ -533,12 +531,12 @@ func (rt *Router) runAppropriateMws(
 				responseProxy: response.NewProxy(),
 			}
 			reqDataInstances = append(reqDataInstances, rdForMw)
-			callables = append(callables, &middlewareTaskCallable{
+			boundTasks = append(boundTasks, &middlewareBoundTask{
 				taskToRun: taskWithOpts.mw,
 				input:     rdForMw,
 			})
 		}
-		if err := tasks.Go(tasksCtx, callables...); err != nil {
+		if err := tasksCtx.RunParallel(boundTasks...); err != nil {
 			muxLog.Error("Error during parallel middleware execution", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
@@ -572,7 +570,7 @@ func (rt *Router) registerRoute(route AnyRoute) {
 
 func createReqDataGetter[I any, O any](route *Route[I, O]) reqDataGetter {
 	return reqDataGetterImpl[I](
-		func(r *http.Request, tasksCtx *tasks.TasksCtx, match *matcher.BestMatch) (*ReqData[I], error) {
+		func(r *http.Request, tasksCtx *tasks.Ctx, match *matcher.BestMatch) (*ReqData[I], error) {
 			reqData := new(ReqData[I])
 			reqData.params = match.Params
 			reqData.splatVals = match.SplatValues
@@ -694,7 +692,7 @@ type reqDataMarker interface {
 	getUnderlyingReqDataInstance() any
 	Params() Params
 	SplatValues() []string
-	TasksCtx() *tasks.TasksCtx
+	TasksCtx() *tasks.Ctx
 	Request() *http.Request
 	ResponseProxy() *response.Proxy
 }
@@ -704,16 +702,16 @@ func (rd *ReqData[I]) getUnderlyingReqDataInstance() any { return rd }
 
 type reqDataGetter interface {
 	getReqData(
-		r *http.Request, tasksCtx *tasks.TasksCtx, match *matcher.BestMatch,
+		r *http.Request, tasksCtx *tasks.Ctx, match *matcher.BestMatch,
 	) (reqDataMarker, error)
 }
 
 type reqDataGetterImpl[I any] func(
-	*http.Request, *tasks.TasksCtx, *matcher.BestMatch,
+	*http.Request, *tasks.Ctx, *matcher.BestMatch,
 ) (*ReqData[I], error)
 
 func (f reqDataGetterImpl[I]) getReqData(
-	r *http.Request, tasksCtx *tasks.TasksCtx, m *matcher.BestMatch,
+	r *http.Request, tasksCtx *tasks.Ctx, m *matcher.BestMatch,
 ) (reqDataMarker, error) {
 	return f(r, tasksCtx, m)
 }
@@ -750,7 +748,7 @@ func InjectTasksCtxMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		tasksCtx := tasks.NewTasksCtx(r.Context())
+		tasksCtx := tasks.NewCtx(r.Context())
 		rd := &rdTransport{
 			tasksCtx:      tasksCtx,
 			req:           r,

@@ -12,12 +12,12 @@ import (
 
 func TestTasks(t *testing.T) {
 	t.Run("BasicTaskExecution", func(t *testing.T) {
-		task := NewTask(func(c *TasksCtx, input string) (string, error) {
+		task := NewTask(func(c *Ctx, input string) (string, error) {
 			return "Hello, " + input, nil
 		})
 
-		ctx := NewTasksCtx(context.Background())
-		result, err := Do(ctx, task, "World")
+		ctx := NewCtx(context.Background())
+		result, err := task.Run(ctx, "World")
 
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
@@ -28,31 +28,32 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("ParallelExecution", func(t *testing.T) {
-		task1 := NewTask(func(c *TasksCtx, input int) (int, error) {
+		task1 := NewTask(func(c *Ctx, input int) (int, error) {
 			time.Sleep(100 * time.Millisecond)
 			return input * 2, nil
 		})
 
-		task2 := NewTask(func(c *TasksCtx, input int) (int, error) {
+		task2 := NewTask(func(c *Ctx, input string) (string, error) {
 			time.Sleep(100 * time.Millisecond)
-			return input * 3, nil
+			return input + "3", nil
 		})
 
-		ctx := NewTasksCtx(context.Background())
+		ctx := NewCtx(context.Background())
 		start := time.Now()
 
-		var result1, result2 int
-		err := Go(ctx,
-			Bind(task1, 5).AssignTo(&result1),
-			Bind(task2, 5).AssignTo(&result2),
+		var result1 int
+		var result2 string
+		err := ctx.RunParallel(
+			task1.Bind(5, &result1),
+			task2.Bind("3", &result2),
 		)
 		duration := time.Since(start)
 
 		if err != nil {
 			t.Errorf("Expected no errors, got %v", err)
 		}
-		if result1 != 10 || result2 != 15 {
-			t.Errorf("Expected 10 and 15, got %d and %d", result1, result2)
+		if result1 != 10 || result2 != "33" {
+			t.Errorf("Expected 10 and 15, got %d and %s", result1, result2)
 		}
 		if duration > 150*time.Millisecond {
 			t.Errorf("Expected parallel execution (<150ms), took %v", duration)
@@ -60,20 +61,20 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("TaskDependencies", func(t *testing.T) {
-		authTask := NewTask(func(c *TasksCtx, input string) (string, error) {
+		authTask := NewTask(func(c *Ctx, input string) (string, error) {
 			return "token-" + input, nil
 		})
 
-		userTask := NewTask(func(c *TasksCtx, input string) (string, error) {
-			token, err := Do(c, authTask, input)
+		userTask := NewTask(func(c *Ctx, input string) (string, error) {
+			token, err := authTask.Run(c, input)
 			if err != nil {
 				return "", err
 			}
 			return "user-" + token, nil
 		})
 
-		ctx := NewTasksCtx(context.Background())
-		result, err := Do(ctx, userTask, "123")
+		ctx := NewCtx(context.Background())
+		result, err := userTask.Run(ctx, "123")
 
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
@@ -84,20 +85,20 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("ContextCancellation", func(t *testing.T) {
-		task := NewTask(func(c *TasksCtx, _ string) (string, error) {
+		task := NewTask(func(c *Ctx, _ string) (string, error) {
 			time.Sleep(200 * time.Millisecond)
 			return "done", nil
 		})
 
 		parentCtx, cancel := context.WithCancel(context.Background())
-		ctx := NewTasksCtx(parentCtx)
+		ctx := NewCtx(parentCtx)
 
 		go func() {
 			time.Sleep(50 * time.Millisecond)
 			cancel()
 		}()
 
-		_, err := Do(ctx, task, "test")
+		_, err := runTask(ctx, task, "test")
 		if err == nil {
 			t.Error("Expected context cancellation error, got nil")
 		}
@@ -107,12 +108,12 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("ErrorHandling", func(t *testing.T) {
-		task := NewTask(func(c *TasksCtx, _ string) (string, error) {
+		task := NewTask(func(c *Ctx, _ string) (string, error) {
 			return "", errors.New("task failed")
 		})
 
-		ctx := NewTasksCtx(context.Background())
-		result, err := Do(ctx, task, "test")
+		ctx := NewCtx(context.Background())
+		result, err := runTask(ctx, task, "test")
 
 		if err == nil {
 			t.Error("Expected error, got nil")
@@ -127,20 +128,20 @@ func TestTasks(t *testing.T) {
 
 	t.Run("OnceExecution", func(t *testing.T) {
 		var counter int32
-		task := NewTask(func(c *TasksCtx, _ string) (string, error) {
+		task := NewTask(func(c *Ctx, _ string) (string, error) {
 			atomic.AddInt32(&counter, 1)
 			time.Sleep(50 * time.Millisecond)
 			return "done", nil
 		})
 
-		ctx := NewTasksCtx(context.Background())
+		ctx := NewCtx(context.Background())
 		var wg sync.WaitGroup
 		wg.Add(3)
 
 		for range 3 {
 			go func() {
 				defer wg.Done()
-				_, err := Do(ctx, task, "test")
+				_, err := runTask(ctx, task, "test")
 				if err != nil {
 					t.Errorf("Unexpected error: %v", err)
 				}
@@ -157,14 +158,14 @@ func TestTasks(t *testing.T) {
 func TestTasksWithSharedDependencies(t *testing.T) {
 	t.Run("ParallelTasksWithSharedDependencies", func(t *testing.T) {
 		var authCounter int32
-		authTask := NewTask(func(c *TasksCtx, _ struct{}) (int, error) {
+		authTask := NewTask(func(c *Ctx, _ struct{}) (int, error) {
 			atomic.AddInt32(&authCounter, 1)
 			time.Sleep(100 * time.Millisecond)
 			return 123, nil
 		})
 
-		userTask := NewTask(func(c *TasksCtx, _ string) (string, error) {
-			token, err := Do(c, authTask, struct{}{})
+		userTask := NewTask(func(c *Ctx, _ string) (string, error) {
+			token, err := runTask(c, authTask, struct{}{})
 			if err != nil {
 				return "", err
 			}
@@ -172,8 +173,8 @@ func TestTasksWithSharedDependencies(t *testing.T) {
 			return fmt.Sprintf("user-%d", token), nil
 		})
 
-		user2Task := NewTask(func(c *TasksCtx, _ string) (string, error) {
-			token, err := Do(c, authTask, struct{}{})
+		user2Task := NewTask(func(c *Ctx, _ string) (string, error) {
+			token, err := runTask(c, authTask, struct{}{})
 			if err != nil {
 				return "", err
 			}
@@ -181,15 +182,15 @@ func TestTasksWithSharedDependencies(t *testing.T) {
 			return fmt.Sprintf("user2-%d", token), nil
 		})
 
-		ctx := NewTasksCtx(context.Background())
+		ctx := NewCtx(context.Background())
 		var userData, user2Data string
-		err := Go(ctx,
-			Bind(userTask, "test").AssignTo(&userData),
-			Bind(user2Task, "test").AssignTo(&user2Data),
+		err := ctx.RunParallel(
+			userTask.Bind("test", &userData),
+			user2Task.Bind("test", &user2Data),
 		)
 
 		if err != nil {
-			t.Fatal("Go failed with an unexpected error:", err)
+			t.Fatal("runTasks failed with an unexpected error:", err)
 		}
 
 		expectedUserData := "user-123"
@@ -223,7 +224,7 @@ func TestComprehensiveSharedDependencies(t *testing.T) {
 	var stateMu sync.Mutex // A single mutex to protect all test state slices/maps
 
 	// Define Tasks using the new API
-	authTask := NewTask(func(c *TasksCtx, _ struct{}) (int, error) {
+	authTask := NewTask(func(c *Ctx, _ struct{}) (int, error) {
 		recordExecution("auth-start")
 		atomic.AddInt32(&authCounter, 1)
 		time.Sleep(50 * time.Millisecond)
@@ -231,14 +232,14 @@ func TestComprehensiveSharedDependencies(t *testing.T) {
 		return 123, nil
 	})
 
-	userTask := NewTask(func(c *TasksCtx, input string) (string, error) {
+	userTask := NewTask(func(c *Ctx, input string) (string, error) {
 		recordExecution("user-start")
 		atomic.AddInt32(&userCounter, 1)
 		if input == "" {
 			t.Error("Expected non-empty input in userTask")
 		}
 
-		token, err := Do(c, authTask, struct{}{})
+		token, err := runTask(c, authTask, struct{}{})
 		if err != nil {
 			return "", err
 		}
@@ -253,14 +254,14 @@ func TestComprehensiveSharedDependencies(t *testing.T) {
 		return fmt.Sprintf("user-%s-%d", input, token), nil
 	})
 
-	user2Task := NewTask(func(c *TasksCtx, input string) (string, error) {
+	user2Task := NewTask(func(c *Ctx, input string) (string, error) {
 		recordExecution("user2-start")
 		atomic.AddInt32(&user2Counter, 1)
 		if input == "" {
 			t.Error("Expected non-empty input in user2Task")
 		}
 
-		token, err := Do(c, authTask, struct{}{})
+		token, err := runTask(c, authTask, struct{}{})
 		if err != nil {
 			return "", err
 		}
@@ -275,14 +276,14 @@ func TestComprehensiveSharedDependencies(t *testing.T) {
 		return fmt.Sprintf("user2-%s-%d", input, token), nil
 	})
 
-	profileTask := NewTask(func(c *TasksCtx, input string) (map[string]string, error) {
+	profileTask := NewTask(func(ctx *Ctx, input string) (map[string]string, error) {
 		recordExecution("profile-start")
 		atomic.AddInt32(&profileCounter, 1)
 
 		var userData, user2Data string
-		err := Go(c,
-			Bind(userTask, input).AssignTo(&userData),
-			Bind(user2Task, input+"_alt").AssignTo(&user2Data),
+		err := ctx.RunParallel(
+			userTask.Bind(input, &userData),
+			user2Task.Bind(input+"_alt", &user2Data),
 		)
 		if err != nil {
 			return nil, err
@@ -303,12 +304,12 @@ func TestComprehensiveSharedDependencies(t *testing.T) {
 	const testInput2 = "test_input_2"
 
 	// Execution for first context
-	ctx1 := NewTasksCtx(context.Background())
-	profileResult1, profileErr1 := Do(ctx1, profileTask, testInput1)
+	ctx1 := NewCtx(context.Background())
+	profileResult1, profileErr1 := runTask(ctx1, profileTask, testInput1)
 
 	// Execution for second context
-	ctx2 := NewTasksCtx(context.Background())
-	profileResult2, profileErr2 := Do(ctx2, profileTask, testInput2)
+	ctx2 := NewCtx(context.Background())
+	profileResult2, profileErr2 := runTask(ctx2, profileTask, testInput2)
 
 	// --- VERIFICATIONS ---
 	if profileErr1 != nil {
@@ -389,17 +390,17 @@ func TestComprehensiveSharedDependencies(t *testing.T) {
 func TestTasksWithDifferentInputs(t *testing.T) {
 	t.Run("Same_Input_Uses_Cache", func(t *testing.T) {
 		var execCount int32
-		task := NewTask(func(ctx *TasksCtx, input string) (string, error) {
+		task := NewTask(func(ctx *Ctx, input string) (string, error) {
 			atomic.AddInt32(&execCount, 1)
 			return "result-" + input, nil
 		})
 
-		ctx := NewTasksCtx(context.Background())
+		ctx := NewCtx(context.Background())
 
 		// Call 3 times with same input
-		r1, _ := Do(ctx, task, "foo")
-		r2, _ := Do(ctx, task, "foo")
-		r3, _ := Do(ctx, task, "foo")
+		r1, _ := runTask(ctx, task, "foo")
+		r2, _ := runTask(ctx, task, "foo")
+		r3, _ := runTask(ctx, task, "foo")
 
 		if r1 != "result-foo" || r2 != "result-foo" || r3 != "result-foo" {
 			t.Error("Expected same result for same input")
@@ -415,7 +416,7 @@ func TestTasksWithDifferentInputs(t *testing.T) {
 		execInputs := make([]string, 0)
 		var mu sync.Mutex
 
-		task := NewTask(func(ctx *TasksCtx, input string) (string, error) {
+		task := NewTask(func(ctx *Ctx, input string) (string, error) {
 			atomic.AddInt32(&execCount, 1)
 			mu.Lock()
 			execInputs = append(execInputs, input)
@@ -423,16 +424,16 @@ func TestTasksWithDifferentInputs(t *testing.T) {
 			return "result-" + input, nil
 		})
 
-		ctx := NewTasksCtx(context.Background())
+		ctx := NewCtx(context.Background())
 
 		// Call with different inputs
-		r1, _ := Do(ctx, task, "foo")
-		r2, _ := Do(ctx, task, "bar")
-		r3, _ := Do(ctx, task, "baz")
+		r1, _ := runTask(ctx, task, "foo")
+		r2, _ := runTask(ctx, task, "bar")
+		r3, _ := runTask(ctx, task, "baz")
 
 		// Call again with same inputs (should use cache)
-		r1b, _ := Do(ctx, task, "foo")
-		r2b, _ := Do(ctx, task, "bar")
+		r1b, _ := runTask(ctx, task, "foo")
+		r2b, _ := runTask(ctx, task, "bar")
 
 		// Verify results
 		if r1 != "result-foo" || r1b != "result-foo" {
@@ -458,15 +459,15 @@ func TestTasksWithDifferentInputs(t *testing.T) {
 
 	t.Run("Different_Input_Types", func(t *testing.T) {
 		// Test with int inputs
-		intTask := NewTask(func(ctx *TasksCtx, input int) (int, error) {
+		intTask := NewTask(func(ctx *Ctx, input int) (int, error) {
 			return input * 2, nil
 		})
 
-		ctx := NewTasksCtx(context.Background())
+		ctx := NewCtx(context.Background())
 
-		r1, _ := Do(ctx, intTask, 5)
-		r2, _ := Do(ctx, intTask, 10)
-		r3, _ := Do(ctx, intTask, 5) // Same as r1
+		r1, _ := runTask(ctx, intTask, 5)
+		r2, _ := runTask(ctx, intTask, 10)
+		r3, _ := runTask(ctx, intTask, 5) // Same as r1
 
 		if r1 != 10 || r3 != 10 {
 			t.Error("Expected same result for same int input")
@@ -483,19 +484,19 @@ func TestTasksWithDifferentInputs(t *testing.T) {
 		}
 
 		var execCount int32
-		task := NewTask(func(ctx *TasksCtx, p Person) (string, error) {
+		task := NewTask(func(ctx *Ctx, p Person) (string, error) {
 			atomic.AddInt32(&execCount, 1)
 			return fmt.Sprintf("%s is %d", p.Name, p.Age), nil
 		})
 
-		ctx := NewTasksCtx(context.Background())
+		ctx := NewCtx(context.Background())
 
 		p1 := Person{Name: "Alice", Age: 30}
 		p2 := Person{Name: "Bob", Age: 25}
 
-		r1, _ := Do(ctx, task, p1)
-		r2, _ := Do(ctx, task, p2)
-		r3, _ := Do(ctx, task, p1) // Same as first
+		r1, _ := runTask(ctx, task, p1)
+		r2, _ := runTask(ctx, task, p2)
+		r3, _ := runTask(ctx, task, p1) // Same as first
 
 		if r1 != "Alice is 30" || r3 != "Alice is 30" {
 			t.Error("Expected same result for same struct")
@@ -511,19 +512,19 @@ func TestTasksWithDifferentInputs(t *testing.T) {
 
 	t.Run("Parallel_Different_Inputs", func(t *testing.T) {
 		var execCount int32
-		task := NewTask(func(ctx *TasksCtx, input string) (string, error) {
+		task := NewTask(func(ctx *Ctx, input string) (string, error) {
 			atomic.AddInt32(&execCount, 1)
 			time.Sleep(50 * time.Millisecond)
 			return "result-" + input, nil
 		})
 
-		ctx := NewTasksCtx(context.Background())
+		ctx := NewCtx(context.Background())
 
 		var result1, result2, result3 string
-		err := Go(ctx,
-			Bind(task, "alpha").AssignTo(&result1),
-			Bind(task, "beta").AssignTo(&result2),
-			Bind(task, "alpha").AssignTo(&result3), // Duplicate
+		err := ctx.RunParallel(
+			task.Bind("alpha", &result1),
+			task.Bind("beta", &result2),
+			task.Bind("alpha", &result3), // Duplicate
 		)
 
 		if err != nil {

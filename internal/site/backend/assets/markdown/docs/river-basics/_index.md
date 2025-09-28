@@ -1,7 +1,7 @@
 ---
-title: Advanced Topics
-description: Additional documentation on advanced River topics
-order: 3
+title: River Basics
+description: Core documentation for the River framework
+order: 1
 ---
 
 **NOTE:** These docs are a work-in-progress. If you need help with anything not

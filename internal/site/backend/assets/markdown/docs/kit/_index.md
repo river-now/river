@@ -1,7 +1,7 @@
 ---
-title: Advanced Topics
-description: Additional documentation on advanced River topics
-order: 3
+title: Kit Primitives
+description: Documentation for various river/kit primitives
+order: 2
 ---
 
 **NOTE:** These docs are a work-in-progress. If you need help with anything not

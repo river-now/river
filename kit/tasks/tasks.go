@@ -6,9 +6,9 @@ package tasks
 // lifecycle), even if invoked repeatedly during the lifetime of the execution
 // context.
 //
-// One cool thing is that Tasks are automatically protected from circular deps
-// by Go's compile-time "initialization cycle" errors (assuming they are defined
-// via top-level var declarations).
+// Tasks are automatically protected from circular deps by Go's compile-time
+// "initialization cycle" errors (assuming they are defined as package-level
+// variables).
 
 import (
 	"context"
@@ -21,28 +21,30 @@ import (
 )
 
 type AnyTask interface {
-	Do(ctx *TasksCtx, input any) (any, error)
+	RunWithAnyInput(ctx *Ctx, input any) (any, error)
 }
 
 type Task[I comparable, O any] struct {
-	fn func(ctx *TasksCtx, input I) (O, error)
+	fn func(ctx *Ctx, input I) (O, error)
 }
 
-func NewTask[I comparable, O any](fn func(ctx *TasksCtx, input I) (O, error)) *Task[I, O] {
+func NewTask[I comparable, O any](fn func(ctx *Ctx, input I) (O, error)) *Task[I, O] {
 	if fn == nil {
 		return nil
 	}
 	return &Task[I, O]{fn: fn}
 }
 
-func (t *Task[I, O]) Do(ctx *TasksCtx, input any) (any, error) {
-	if t == nil {
-		return nil, errors.New("tasks: called Do on a nil Task pointer")
-	}
-	if t.fn == nil {
-		return nil, errors.New("tasks: Task's underlying function is nil")
-	}
-	return Do(ctx, t, genericsutil.AssertOrZero[I](input))
+func (t *Task[I, O]) RunWithAnyInput(ctx *Ctx, input any) (any, error) {
+	return runTask(ctx, t, genericsutil.AssertOrZero[I](input))
+}
+
+func (t *Task[I, O]) Run(ctx *Ctx, input I) (O, error) {
+	return runTask(ctx, t, input)
+}
+
+func (t *Task[I, O]) Bind(input I, dest *O) BoundTask {
+	return bindTask(t, input, dest)
 }
 
 // taskKey is used for map lookups to avoid allocating anonymous structs
@@ -51,28 +53,32 @@ type taskKey struct {
 	input   any
 }
 
-type TasksCtx struct {
+type Ctx struct {
 	mu      *sync.RWMutex
 	results map[taskKey]*TaskResult
 	ctx     context.Context
 }
 
-func NewTasksCtx(parent context.Context) *TasksCtx {
+func NewCtx(parent context.Context) *Ctx {
 	if parent == nil {
 		parent = context.Background()
 	}
-	return &TasksCtx{
+	return &Ctx{
 		mu:      &sync.RWMutex{},
 		results: make(map[taskKey]*TaskResult, 4), // Pre-allocate for typical request size
 		ctx:     parent,
 	}
 }
 
-func (c *TasksCtx) NativeContext() context.Context {
+func (c *Ctx) NativeContext() context.Context {
 	return c.ctx
 }
 
-func Do[I comparable, O any](c *TasksCtx, task *Task[I, O], input I) (result O, err error) {
+func (c *Ctx) RunParallel(tasks ...BoundTask) error {
+	return runTasks(c, tasks...)
+}
+
+func runTask[I comparable, O any](c *Ctx, task *Task[I, O], input I) (result O, err error) {
 	if c == nil {
 		return result, errors.New("tasks: nil TasksCtx")
 	}
@@ -109,7 +115,7 @@ func Do[I comparable, O any](c *TasksCtx, task *Task[I, O], input I) (result O, 
 	return genericsutil.AssertOrZero[O](r.Data), nil
 }
 
-func (c *TasksCtx) getOrCreateResult(taskPtr any, input any) *TaskResult {
+func (c *Ctx) getOrCreateResult(taskPtr any, input any) *TaskResult {
 	// Use uintptr for task pointer to avoid allocation
 	key := taskKey{
 		taskPtr: reflect.ValueOf(taskPtr).Pointer(),
@@ -150,59 +156,53 @@ func (r *TaskResult) OK() bool {
 	return r.Err == nil
 }
 
-type Callable interface {
-	Run(ctx *TasksCtx) error
-	IsCallable()
+type BoundTask interface {
+	Run(ctx *Ctx) error
 }
 
-type BoundCall[O any] struct {
-	runner    func(ctx *TasksCtx) (O, error)
-	resultPtr *O
+type boundTask[O any] struct {
+	runner func(ctx *Ctx) (O, error)
+	dest   *O
 }
 
-func Bind[I comparable, O any](task *Task[I, O], input I) *BoundCall[O] {
+func bindTask[I comparable, O any](task *Task[I, O], input I, dest *O) BoundTask {
 	if task == nil || task.fn == nil {
-		return &BoundCall[O]{
-			runner: func(ctx *TasksCtx) (O, error) {
+		return &boundTask[O]{
+			runner: func(ctx *Ctx) (O, error) {
 				var zero O
-				return zero, errors.New("tasks: Bind called with a nil or invalid task")
+				return zero, errors.New("tasks: PrepareTask called with a nil or invalid task")
 			},
+			dest: dest,
 		}
 	}
-	return &BoundCall[O]{
-		runner: func(ctx *TasksCtx) (O, error) {
-			return Do(ctx, task, input)
+	return &boundTask[O]{
+		runner: func(ctx *Ctx) (O, error) {
+			return runTask(ctx, task, input)
 		},
+		dest: dest,
 	}
 }
 
-func (bc *BoundCall[O]) AssignTo(ptr *O) Callable {
-	bc.resultPtr = ptr
-	return bc
-}
-
-func (bc *BoundCall[O]) Run(ctx *TasksCtx) error {
+func (bc *boundTask[O]) Run(ctx *Ctx) error {
 	if ctx == nil {
-		return errors.New("tasks: BoundCall.Run called with nil TasksCtx")
+		return errors.New("tasks: boundTask.Run called with nil TasksCtx")
 	}
 	if bc.runner == nil {
-		return errors.New("tasks: BoundCall runner is nil (task may have been invalid at Bind)")
+		return errors.New("tasks: boundTask runner is nil (task may have been invalid at Bind)")
 	}
 	res, err := bc.runner(ctx)
 	if err != nil {
 		return err
 	}
-	if bc.resultPtr != nil {
-		*bc.resultPtr = res
+	if bc.dest != nil {
+		*bc.dest = res
 	}
 	return nil
 }
 
-func (bc *BoundCall[O]) IsCallable() {}
-
-func Go(ctx *TasksCtx, calls ...Callable) error {
+func runTasks(ctx *Ctx, calls ...BoundTask) error {
 	if ctx == nil {
-		return errors.New("tasks: Go called with nil TasksCtx")
+		return errors.New("tasks: runTasks called with nil TasksCtx")
 	}
 	if err := ctx.ctx.Err(); err != nil {
 		return err
@@ -220,7 +220,7 @@ func Go(ctx *TasksCtx, calls ...Callable) error {
 		return valid[0].Run(ctx)
 	}
 	g, gCtx := errgroup.WithContext(ctx.ctx)
-	shared := &TasksCtx{
+	shared := &Ctx{
 		mu:      ctx.mu,
 		results: ctx.results,
 		ctx:     gCtx,
