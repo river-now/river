@@ -42,6 +42,7 @@ export function MD(props: RouteProps<"/*">) {
 			<Show when={loaderData()?.BackItem}>
 				{(backUrl) => (
 					<RiverLink
+						prefetch="intent"
 						href={backUrl()}
 						class="back-link self-start my-2"
 					>
@@ -61,8 +62,8 @@ export function MD(props: RouteProps<"/*">) {
 							{(item) => (
 								<li>
 									<RiverLink
-										href={item.url}
 										prefetch="intent"
+										href={item.url}
 										class="index-card"
 									>
 										<h2>{`${item.isFolder ? "📁 " : ""}${item.title}`}</h2>
