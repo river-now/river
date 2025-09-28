@@ -1,7 +1,7 @@
 import { done, isStarted, start } from "nprogress";
 import { setupGlobalLoadingIndicator } from "river.now/client";
 import { setTheme, THEMES } from "river.now/kit/theme";
-import { RiverRootOutlet } from "river.now/solid";
+import { RiverLink, RiverRootOutlet } from "river.now/solid";
 import { Link, theme, useRouterData } from "../river.utils.tsx";
 import "../styles/tailwind.css";
 
@@ -31,7 +31,7 @@ export function App() {
 
 	return (
 		<>
-			<nav class="w-full flex items-center">
+			<nav class="w-full flex items-center flex-wrap">
 				<div class="flex items-baseline">
 					<Link pattern="/">
 						<h1 class="logo">
@@ -48,10 +48,24 @@ export function App() {
 					</div>
 				</div>
 
-				<div class="flex nav-right">
-					<Link pattern="/*" splatValues={["docs"]} class="nav-item">
+				<div class="flex nav-right gap-1 flex-wrap">
+					<RiverLink href="/docs" class="nav-item">
 						Docs
-					</Link>
+					</RiverLink>
+
+					<RiverLink href="/blog" class="nav-item">
+						Blog
+					</RiverLink>
+
+					<a
+						href="https://github.com/river-now/river"
+						class="nav-item"
+						target="_blank"
+						rel="noreferrer"
+						title="GitHub repository"
+					>
+						⭐ GitHub
+					</a>
 
 					<button
 						type="button"

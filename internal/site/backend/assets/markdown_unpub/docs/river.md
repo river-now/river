@@ -1,3 +1,9 @@
+---
+title: Docs 2
+description: Documentation for the River framework
+order: 3
+---
+
 # River Documentation
 
 ## Starting a New River Project

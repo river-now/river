@@ -1,6 +1,7 @@
 ---
-title: Docs
+title: Bob
 description: Documentation for the River framework
+order: 2
 ---
 
 ## Bootstrapping a New River Project

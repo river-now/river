@@ -20,10 +20,13 @@
 	--resolved-green: light-dark(var(--dark-green), var(--light-green));
 
 	/* Layout */
-	--nav-item-x-padding: 0.5rem;
+	--nav-item-x-padding: 0.375rem;
 
 	/* System */
 	--css1-loaded: 1;
+
+	--soft: color-mix(in srgb, var(--fg), transparent 30%);
+	--very-soft: color-mix(in srgb, var(--fg), transparent 70%);
 }
 
 /* Theme-specific variables */
@@ -186,7 +189,8 @@ p {
 
 /* Links in content */
 p a,
-li a {
+li a,
+.back-link {
 	text-decoration: underline;
 	text-underline-offset: 0.25em;
 	text-decoration-color: #7777;
@@ -194,7 +198,8 @@ li a {
 }
 
 p a:hover,
-li a:hover {
+li a:hover,
+.back-link:hover {
 	text-decoration-color: var(--color-nice-blue);
 }
 
@@ -286,6 +291,8 @@ pre {
 	display: flex;
 	gap: 1.25rem;
 	color: #fff;
+	font-size: 0.8em;
+	position: relative;
 }
 
 pre code {
@@ -296,12 +303,69 @@ pre code {
 }
 
 /* ============================================
+   BLOG LIST
+   ============================================ */
+
+.index-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+	gap: 1rem;
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.index-grid li {
+	display: contents;
+}
+
+.index-card {
+	display: block;
+	padding: 1rem;
+	border: 1px solid var(--very-soft);
+	border-radius: 8px;
+	text-decoration: none;
+	color: inherit;
+	transition:
+		transform 0.2s,
+		box-shadow 0.2s;
+}
+
+.index-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.index-card h2 {
+	margin: 0 0 0.4rem 0;
+	font-size: 1.2rem;
+	font-weight: 400;
+	line-height: 1.35;
+}
+
+.index-card time {
+	display: block;
+	color: var(--soft);
+	font-size: 0.7rem;
+	font-style: italic;
+	margin-bottom: 0.4rem;
+}
+
+.index-card p {
+	margin: 0;
+	color: var(--soft);
+	font-size: 0.8rem;
+	font-weight: 300;
+	line-height: 1.5;
+}
+
+/* ============================================
    NAVIGATION
    ============================================ */
 nav {
 	display: flex;
 	flex-wrap: wrap;
-	margin-top: 1.5rem;
+	margin-top: 1.25rem;
 	align-items: center;
 	justify-content: space-between;
 }
@@ -335,6 +399,12 @@ nav .logo:hover {
 	color: #fdba74;
 }
 
+@media screen and (max-width: 460px) {
+	nav .logo span {
+		display: none;
+	}
+}
+
 .nav-item {
 	padding: 0 var(--nav-item-x-padding);
 	border-radius: 0.25rem;
@@ -343,7 +413,8 @@ nav .logo:hover {
 	display: flex;
 	align-items: center;
 	line-height: 1;
-	font-weight: 700;
+	font-weight: 500;
+	font-size: 0.875rem;
 }
 
 .nav-item:hover {
@@ -371,15 +442,16 @@ nav .logo:hover {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
+	max-width: 860px;
+	margin: 0 auto;
 }
 
 .root-outlet-wrapper {
 	display: flex;
 	flex-direction: column;
 	gap: 2rem;
-	width: 40rem;
-	max-width: 100%;
-	margin: 3rem auto 2rem;
+	margin: 3rem 0 2rem;
+	flex: 1;
 }
 
 .content {
@@ -387,6 +459,7 @@ nav .logo:hover {
 	display: flex;
 	flex-direction: column;
 	gap: 1.5rem;
+	width: 100%;
 }
 
 /* ============================================

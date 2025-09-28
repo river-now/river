@@ -95,10 +95,19 @@ func (c *Config) add_directory_to_watcher(path string) error {
 			if c.get_is_ignored(walkedPath, c.ignoredDirPatterns) {
 				return filepath.SkipDir
 			}
+
+			// Check if already watching using thread-safe Load
+			if _, exists := c.watchedDirs.Load(walkedPath); exists {
+				return nil
+			}
+
 			err := c.watcher.Add(walkedPath)
 			if err != nil {
 				return fmt.Errorf("error adding directory to watcher: %w", err)
 			}
+
+			// Mark as watched using thread-safe Store
+			c.watchedDirs.Store(walkedPath, true)
 		}
 		return nil
 	})

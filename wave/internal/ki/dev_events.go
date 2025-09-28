@@ -157,6 +157,17 @@ func (c *Config) process_batched_events(events []fsnotify.Event) {
 			},
 		)
 	}
+
+	// Periodically clean up watchers for renamed/deleted directories
+	c.watchedDirs.Range(func(path, _ any) bool {
+		if pathStr, ok := path.(string); ok {
+			if _, err := os.Stat(pathStr); os.IsNotExist(err) {
+				c.watcher.Remove(pathStr)
+				c.watchedDirs.Delete(pathStr)
+			}
+		}
+		return true
+	})
 }
 
 func getNeedsHardReloadEvenIfNonGo(wfc *WatchedFile) bool {

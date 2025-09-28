@@ -1,66 +1,61 @@
 ---
-title: Using River With A Third-Party Router
+title: Using River With A Third-Party Router (Like Chi)
 description: Using River with a third-party router like Chi
 ---
 
-The River framework's HTTP layer is built on top of its own `river/kit/mux`
-package, and for most projects, we recommend using that for your core router.
-It's fast, simple, and flexible.
+The River framework's HTTP layer is built on top of its own lower-level
+`river/kit/mux` package, and for most projects, we recommend just using that for
+your core router. It's fast, simple, flexible, and works out of the box. This is
+what the River bootstrapper CLI will set up for you.
 
-However, if you prefer using a third-party router (such as
-[Chi](https://go-chi.io/)), that is supported as well. All you need to do is add
+However, third-party routers (such as [Chi](https://go-chi.io/)) are fully
+supported as well. At the end of the day, River boils down to standard
+`http.Handler` instances that you can mount anywhere. All you need to do is add
 `river.EnableThirdPartyRouter` in your middleware stack.
 
 For example, here is how you might use River with Chi:
 
 ```go
+// backend/src/router/router.go
+
 package router
 
 import (
-	"your-app/backend"
+    "your-app/backend"
 
-	"github.com/go-chi/chi/v5"
-	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/river-now/river"
-	"github.com/river-now/river/kit/middleware/etag"
-	"github.com/river-now/river/kit/middleware/healthcheck"
-	"github.com/river-now/river/kit/middleware/robotstxt"
-	"github.com/river-now/river/kit/middleware/secureheaders"
+    "github.com/go-chi/chi/v5"
+    "github.com/river-now/river"
+    "github.com/river-now/river/kit/middleware/healthcheck"
 )
 
-var supportedAPIMethods = map[string]struct{}{
-	"GET": {}, "POST": {}, "PUT": {}, "DELETE": {}, "PATCH": {},
-}
+var App = river.NewRiverApp(river.RiverAppConfig{
+    Wave: backend.Wave,
+    // ... your config
+})
 
-func Core() *chi.Mux {
-	r := chi.NewRouter()
+func Init() (addr string, handler http.Handler) {
+    App.Init()
 
-	// Apply global middlewares
-	r.Use(chimw.Logger)
-	r.Use(chimw.Recoverer)
-	r.Use(etag.Auto())
-	r.Use(chimw.Compress(5))
-	r.Use(backend.Wave.ServeStatic(true))
-	r.Use(secureheaders.Middleware)
-	r.Use(healthcheck.Healthz)
-	r.Use(robotstxt.Allow)
-	r.Use(backend.Wave.FaviconRedirect())
+    r := chi.NewRouter()
+    loaders, actions := App.Loaders(), App.Actions()
 
-	// **IMPORTANT**: Add compat middleware
-	r.Use(river.EnableThirdPartyRouter)
+    // Apply global middlewares
+    r.Use(App.ServeStatic())
+    r.Use(healthcheck.Healthz)
+    r.Use(river.EnableThirdPartyRouter) // <-- KEY PIECE
 
-	// Register GET handler for loaders
-	r.Method("GET", "/*", backend.River.GetLoadersHandler(LoadersRouter))
+    // Register GET handler for loaders
+    r.Method("GET", loaders.HandlerMountPattern(), loaders.Handler())
 
-	// Register handlers for API methods
-	for method := range supportedAPIMethods {
-		r.Method(
-			method,
-			ActionsRouter.MountRoot("*"),
-			backend.River.GetActionsHandler(ActionsRouter),
-		)
-	}
+    // Register handlers for API methods
+    for method := range actions.SupportedMethods() {
+        r.Method(
+            method,
+            actions.HandlerMountPattern(),
+            actions.Handler(),
+        )
+    }
 
-	return r
+    return App.ServerAddr(), r
 }
 ```

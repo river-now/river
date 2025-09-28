@@ -74,7 +74,6 @@ type Router struct {
 	notFoundHandler    http.Handler
 	mountRoot          string
 	allRoutes          []AnyRoute
-	injectTasksCtx     bool
 }
 
 func (rt *Router) AllRoutes() []AnyRoute {
@@ -128,8 +127,6 @@ type Options struct {
 	// and mutate the input ptr to the desired value (this is what will ultimately
 	// be returned by c.Input()).
 	ParseInput func(r *http.Request, inputPtr any) error
-	// If true, automatically injects a TasksCtx into the request context.
-	InjectTasksCtx bool
 }
 
 func NewRouter(options ...*Options) *Router {
@@ -163,7 +160,6 @@ func NewRouter(options ...*Options) *Router {
 		mountRoot:          mountRootToUse,
 		httpMws:            emptyHTTPMws,
 		taskMws:            emptyTaskMws,
-		injectTasksCtx:     opts.InjectTasksCtx,
 	}
 }
 
@@ -354,7 +350,6 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Fast path for pure HTTP handlers without task middleware
 	if route.getHandlerType() == "http" &&
 		!rt.hasAnyTaskMiddleware(mm, route) &&
-		!rt.injectTasksCtx &&
 		!route.getNeedsTasksCtx() {
 		if len(match.Params) > 0 || len(match.SplatValues) > 0 {
 			rd := &rdTransport{

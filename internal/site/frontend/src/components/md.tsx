@@ -1,5 +1,5 @@
 import { RiverLink } from "river.now/solid";
-import { Show } from "solid-js";
+import { For, Show } from "solid-js";
 import {
 	addClientLoader,
 	useLoaderData,
@@ -38,7 +38,17 @@ export function MD(props: RouteProps<"/*">) {
 	// console.log("_y", _y());
 
 	return (
-		<div class="content">
+		<div class="flex flex-col gap-6">
+			<Show when={loaderData()?.BackItem}>
+				{(backUrl) => (
+					<RiverLink
+						href={backUrl()}
+						class="back-link self-start my-2"
+					>
+						↑ Go to parent folder
+					</RiverLink>
+				)}
+			</Show>
 			<Show when={splatClientLoaderData()}>{(n) => <h1>{n()}</h1>}</Show>
 			<Show when={loaderData()?.Date}>{(n) => <i>{n()}</i>}</Show>
 			<Show when={loaderData()?.Content}>
@@ -46,22 +56,27 @@ export function MD(props: RouteProps<"/*">) {
 			</Show>
 			<Show when={loaderData()?.IndexSitemap}>
 				{(n) => (
-					<div class={"content"}>
-						<ul>
-							{n().map((x) => {
-								return (
-									<li>
-										<RiverLink
-											href={x.url}
-											prefetch="intent"
-										>
-											{x.title}
-										</RiverLink>
-									</li>
-								);
-							})}
-						</ul>
-					</div>
+					<ul class="index-grid">
+						<For each={n()}>
+							{(item) => (
+								<li>
+									<RiverLink
+										href={item.url}
+										prefetch="intent"
+										class="index-card"
+									>
+										<h2>{`${item.isFolder ? "📁 " : ""}${item.title}`}</h2>
+										<Show when={item.date}>
+											<time>{item.date}</time>
+										</Show>
+										<Show when={item.description}>
+											<p>{item.description}</p>
+										</Show>
+									</RiverLink>
+								</li>
+							)}
+						</For>
+					</ul>
 				)}
 			</Show>
 		</div>

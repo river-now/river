@@ -39,6 +39,7 @@ export type DetailedPage = {
 	Title?: string;
 	Description?: string;
 	Date?: string;
+	Order?: number;
 	Content?: string;
 	URL?: string;
 	IsFolder?: boolean;
@@ -56,6 +57,9 @@ export type Sitemap = Array<SitemapItem>;
 export type SitemapItem = {
 	title: string;
 	url: string;
+	description?: string;
+	date?: string;
+	isFolder?: boolean;
 	isActive?: boolean;
 };
 

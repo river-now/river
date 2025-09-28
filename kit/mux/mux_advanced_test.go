@@ -9,8 +9,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-
-	"github.com/river-now/river/kit/tasks"
 )
 
 func TestTaskMiddleware_Interactions(t *testing.T) {
@@ -512,53 +510,9 @@ func TestParseInputEdgeCases(t *testing.T) {
 	})
 }
 
-func TestInjectTasksCtx(t *testing.T) {
-	t.Run("InjectTasksCtx_Creates_TasksCtx_For_HTTP_Handlers", func(t *testing.T) {
-		router := NewRouter(&Options{
-			InjectTasksCtx: true,
-		})
-
-		var capturedTasksCtx *tasks.TasksCtx
-		RegisterHandlerFunc(router, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
-			capturedTasksCtx = GetTasksCtx(r)
-			w.WriteHeader(http.StatusOK)
-		})
-
-		req := httptest.NewRequest(http.MethodGet, "/test", nil)
-		rec := httptest.NewRecorder()
-		router.ServeHTTP(rec, req)
-
-		if capturedTasksCtx == nil {
-			t.Error("TasksCtx should be injected when InjectTasksCtx is true")
-		}
-	})
-
-	t.Run("InjectTasksCtx_False_No_TasksCtx_Without_Middleware", func(t *testing.T) {
-		router := NewRouter(&Options{
-			InjectTasksCtx: false,
-		})
-
-		var capturedTasksCtx *tasks.TasksCtx
-		RegisterHandlerFunc(router, http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
-			capturedTasksCtx = GetTasksCtx(r)
-			w.WriteHeader(http.StatusOK)
-		})
-
-		req := httptest.NewRequest(http.MethodGet, "/test", nil)
-		rec := httptest.NewRecorder()
-		router.ServeHTTP(rec, req)
-
-		if capturedTasksCtx != nil {
-			t.Error("TasksCtx should not be injected when InjectTasksCtx is false and no task middleware")
-		}
-	})
-}
-
 func TestTasksCtxRequirer(t *testing.T) {
 	t.Run("TasksCtxRequirer_Gets_TasksCtx_Even_Without_Middleware", func(t *testing.T) {
-		router := NewRouter(&Options{
-			InjectTasksCtx: false, // Explicitly false
-		})
+		router := NewRouter()
 
 		// Create a handler that implements TasksCtxRequirer
 		handler := TasksCtxRequirerFunc(func(w http.ResponseWriter, r *http.Request) {

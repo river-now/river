@@ -31,6 +31,7 @@ type dev struct {
 	naiveIgnoreDirPatterns []string
 	defaultWatchedFiles    []WatchedFile
 	matchResults           *safecache.CacheMap[potentialMatch, string, bool]
+	watchedDirs            sync.Map
 }
 
 /////////////////////////////////////////////////////////////////////

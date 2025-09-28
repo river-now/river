@@ -59,6 +59,7 @@ type Page struct {
 	Title       string `yaml:"title"`
 	Description string `yaml:"description"`
 	Date        string `yaml:"date"`
+	Order       int    `yaml:"order"`
 	Content     template.HTML
 	URL         string
 	IsFolder    bool
@@ -72,9 +73,12 @@ type DetailedPage struct {
 }
 
 type SitemapItem struct {
-	Title    string `json:"title"`
-	URL      string `json:"url"`
-	IsActive bool   `json:"isActive,omitempty"`
+	Title       string `json:"title"`
+	URL         string `json:"url"`
+	Description string `json:"description,omitempty"`
+	Date        string `json:"date,omitempty"`
+	IsFolder    bool   `json:"isFolder,omitempty"`
+	IsActive    bool   `json:"isActive,omitempty"`
 }
 
 type Sitemap []SitemapItem
@@ -179,6 +183,18 @@ func (inst *Instance) generateSitemap(input generateSitemapInput) (*generateSite
 
 		// Sort pages by date
 		sort.Slice(pages, func(i, j int) bool {
+			// If both have order, use that
+			if pages[i].Order != 0 && pages[j].Order != 0 {
+				return pages[i].Order < pages[j].Order
+			}
+			// If only one has order, it comes first
+			if pages[i].Order != 0 {
+				return true
+			}
+			if pages[j].Order != 0 {
+				return false
+			}
+			// Otherwise, fall back to date (newest first)
 			return pages[i].Date > pages[j].Date
 		})
 
@@ -202,7 +218,14 @@ func (inst *Instance) generateSitemap(input generateSitemapInput) (*generateSite
 		sitemap = append(sitemap, item)
 	}
 	for _, p := range innerData.Pages {
-		item := SitemapItem{Title: p.Title, URL: p.URL, IsActive: p.URL == input.CleanPath}
+		item := SitemapItem{
+			Title:       p.Title,
+			URL:         p.URL,
+			Description: p.Description,
+			Date:        p.Date,
+			IsFolder:    p.IsFolder,
+			IsActive:    p.URL == input.CleanPath,
+		}
 		sitemap = append(sitemap, item)
 	}
 
