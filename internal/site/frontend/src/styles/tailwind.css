@@ -8,4 +8,8 @@
 
 @theme {
 	--color-nice-blue: rgb(59 130 246);
+	--color-dark: var(--dark);
+	--color-light: var(--light);
+	--color-bg: var(--bg);
+	--color-fg: var(--fg);
 }

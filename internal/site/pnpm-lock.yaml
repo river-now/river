@@ -14,6 +14,9 @@ importers:
       '@types/nprogress':
         specifier: ^0.2.3
         version: 0.2.3
+      '@types/turndown':
+        specifier: ^5.0.5
+        version: 5.0.5
       '@vercel/node':
         specifier: ^5.3.21
         version: 5.3.21
@@ -32,6 +35,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.13
         version: 4.1.13
+      turndown:
+        specifier: ^7.2.1
+        version: 7.2.1
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
@@ -344,6 +350,9 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  '@mixmark-io/domino@2.2.0':
+    resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
+
   '@napi-rs/wasm-runtime@1.0.3':
     resolution: {integrity: sha512-rZxtMsLwjdXkMUGC3WwsPwLNVqVqnTJT6MNIB6e+5fhMcSCPP0AOsNWuMQ5mdCq6HNjs/ZeWAEchpqeprqBD2Q==}
 
@@ -583,6 +592,9 @@ packages:
 
   '@types/nprogress@0.2.3':
     resolution: {integrity: sha512-k7kRA033QNtC+gLc4VPlfnue58CM1iQLgn1IMAU8VPHGOj7oIHPp9UlhedEnD/Gl8evoCjwkZjlBORtZ3JByUA==}
+
+  '@types/turndown@5.0.5':
+    resolution: {integrity: sha512-TL2IgGgc7B5j78rIccBtlYAnkuv8nUQqhQc+DSYV5j9Be9XOcm/SKOVRuA47xAVI3680Tk9B1d8flK2GWT2+4w==}
 
   '@vercel/build-utils@12.1.0':
     resolution: {integrity: sha512-yqpAh2KHm9iWUXo/aRWiLIxi8dMAwFtse2iZsg2QNEMs9W20va6L8PMFvdAa5MX9pgRwc38gbjD3V7drxSwq4g==}
@@ -1419,6 +1431,9 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  turndown@7.2.1:
+    resolution: {integrity: sha512-7YiPJw6rLClQL3oUKN3KgMaXeJJ2lAyZItclgKDurqnH61so4k4IH/qwmMva0zpuJc/FhRExBBnk7EbeFANlgQ==}
+
   typescript@4.9.5:
     resolution: {integrity: sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==}
     engines: {node: '>=4.2.0'}
@@ -1768,6 +1783,8 @@ snapshots:
       - encoding
       - supports-color
 
+  '@mixmark-io/domino@2.2.0': {}
+
   '@napi-rs/wasm-runtime@1.0.3':
     dependencies:
       '@emnapi/core': 1.5.0
@@ -1965,6 +1982,8 @@ snapshots:
   '@types/node@16.18.11': {}
 
   '@types/nprogress@0.2.3': {}
+
+  '@types/turndown@5.0.5': {}
 
   '@vercel/build-utils@12.1.0': {}
 
@@ -2705,6 +2724,10 @@ snapshots:
 
   tslib@2.8.1:
     optional: true
+
+  turndown@7.2.1:
+    dependencies:
+      '@mixmark-io/domino': 2.2.0
 
   typescript@4.9.5: {}
 

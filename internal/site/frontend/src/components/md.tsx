@@ -1,5 +1,6 @@
 import { RiverLink } from "river.now/solid";
 import { For, Show } from "solid-js";
+import { turndownServer } from "../highlight.ts";
 import {
 	addClientLoader,
 	useLoaderData,
@@ -38,18 +39,33 @@ export function MD(props: RouteProps<"/*">) {
 	// console.log("_y", _y());
 
 	return (
-		<div class="flex flex-col gap-6">
-			<Show when={loaderData()?.BackItem}>
-				{(backUrl) => (
-					<RiverLink
-						prefetch="intent"
-						href={backUrl()}
-						class="back-link self-start my-2"
+		<div class="flex flex-col gap-6" id="md-route">
+			<div class="flex flex-wrap gap-6 items-center">
+				<Show when={loaderData()?.BackItem}>
+					{(backUrl) => (
+						<RiverLink
+							prefetch="intent"
+							href={backUrl()}
+							class="back-link self-start my-2"
+						>
+							↑ Go to parent folder
+						</RiverLink>
+					)}
+				</Show>
+
+				<Show when={loaderData().Content && !loaderData().IsFolder}>
+					<button
+						class="sm:ml-auto px-2 py-1 text-xs bg-dark rounded-sm text-light border-1 border-[#7777] font-normal tracking-wide hover:outline-3 hover:outline-nice-blue hover:outline-offset-1 hover:cursor-pointer uppercase"
+						onClick={async () => {
+							const ld = loaderData();
+							const markdown = `# ${ld.Title}\n\n${turndownServer.turndown(ld.Content || "")}`;
+							navigator.clipboard.writeText(markdown);
+						}}
 					>
-						↑ Go to parent folder
-					</RiverLink>
-				)}
-			</Show>
+						✨ Copy as Markdown
+					</button>
+				</Show>
+			</div>
 			<Show when={splatClientLoaderData()}>{(n) => <h1>{n()}</h1>}</Show>
 			<Show when={loaderData()?.Date}>{(n) => <i>{n()}</i>}</Show>
 			<Show when={loaderData()?.Content}>
