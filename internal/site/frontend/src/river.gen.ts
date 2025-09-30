@@ -41,6 +41,7 @@ export type DetailedPage = {
 	Date?: string;
 	Order?: number;
 	Content?: string;
+	RawContent?: string;
 	URL?: string;
 	IsFolder?: boolean;
 	Sitemap: Array<SitemapItem>;

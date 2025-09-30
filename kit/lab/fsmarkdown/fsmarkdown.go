@@ -61,6 +61,7 @@ type Page struct {
 	Date        string `yaml:"date"`
 	Order       int    `yaml:"order"`
 	Content     template.HTML
+	RawContent  string
 	URL         string
 	IsFolder    bool
 }
@@ -140,6 +141,23 @@ func (inst *Instance) GetPageDetails(r *http.Request) (detailedPage *DetailedPag
 	inst.pageDetailsCache.Set(cleanPath, p, !found)
 
 	return p, nil
+}
+
+func (inst *Instance) GetPlainMarkdown(r *http.Request) (string, error) {
+	p, err := inst.GetPageDetails(r)
+	if err != nil {
+		return "", err
+	}
+
+	var result strings.Builder
+	if p.Title != "" {
+		result.WriteString("# ")
+		result.WriteString(p.Title)
+		result.WriteString("\n")
+	}
+	result.WriteString(p.RawContent)
+
+	return result.String(), nil
 }
 
 type generateSitemapInput struct {
@@ -362,6 +380,7 @@ func (inst *Instance) parseMarkdown(fileBytes []byte, cleanPath string, isFolder
 		return nil, err
 	}
 
+	p.RawContent = string(rest)
 	p.Content = template.HTML(inst.MarkdownParser(rest))
 	p.URL = cleanPath
 	p.IsFolder = isFolder
