@@ -17,7 +17,4 @@ for (const lang of languages) {
 	highlight.registerLanguage(lang, first);
 }
 
-const { default: TurndownService } = await import("turndown");
-const turndownServer = new TurndownService({ codeBlockStyle: "fenced" });
-
-export { highlight, turndownServer };
+export { highlight };

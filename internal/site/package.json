@@ -3,14 +3,13 @@
 	"devDependencies": {
 		"@tailwindcss/vite": "^4.1.13",
 		"@types/nprogress": "^0.2.3",
-		"@types/turndown": "^5.0.5",
 		"@vercel/node": "^5.3.21",
 		"highlight.js": "^11.11.1",
+		"mdream": "0.11.0",
 		"nprogress": "^0.2.0",
 		"river.now": "link:../..",
 		"solid-js": "^1.9.9",
 		"tailwindcss": "^4.1.13",
-		"turndown": "^7.2.1",
 		"typescript": "^5.9.2",
 		"vite": "npm:rolldown-vite@latest",
 		"vite-plugin-solid": "^2.11.8"

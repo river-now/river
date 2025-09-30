@@ -1,6 +1,6 @@
 import { RiverLink } from "river.now/solid";
 import { For, Show } from "solid-js";
-import { turndownServer } from "../highlight.ts";
+import { htmlToMarkdown } from "../html_to_md.ts";
 import {
 	addClientLoader,
 	useLoaderData,
@@ -58,7 +58,7 @@ export function MD(props: RouteProps<"/*">) {
 						class="sm:ml-auto px-2 py-1 text-xs bg-dark rounded-sm text-light border-1 border-[#7777] font-normal tracking-wide hover:outline-3 hover:outline-nice-blue hover:outline-offset-1 hover:cursor-pointer uppercase"
 						onClick={async () => {
 							const ld = loaderData();
-							const markdown = `# ${ld.Title}\n\n${turndownServer.turndown(ld.Content || "")}`;
+							const markdown = `# ${ld.Title}\n\n${htmlToMarkdown(ld.Content || "")}`;
 							navigator.clipboard.writeText(markdown);
 						}}
 					>
