@@ -402,7 +402,7 @@ nav .logo:hover {
 	color: #fdba74;
 }
 
-@media screen and (max-width: 460px) {
+@media screen and (max-width: 520px) {
 	nav .logo span {
 		display: none;
 	}
