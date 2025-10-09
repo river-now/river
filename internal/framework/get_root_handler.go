@@ -47,7 +47,7 @@ func (h *River) GetLoadersHandler(nestedRouter *mux.NestedRouter) mux.TasksCtxRe
 			return
 		}
 
-		uiRouteData := h.getUIRouteData(w, r, nestedRouter)
+		uiRouteData := h.getUIRouteData(w, r, nestedRouter, isJSON)
 
 		if uiRouteData.notFound {
 			res.NotFound()

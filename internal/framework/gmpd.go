@@ -265,8 +265,11 @@ func (h *River) get_ui_data_stage_1(
 	return ui_data
 }
 
-func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
+func (h *River) getUIRouteData(
+	w http.ResponseWriter,
+	r *http.Request,
 	nestedRouter *mux.NestedRouter,
+	isJSON bool,
 ) *ui_data_all {
 	res := response.New(w)
 
@@ -313,7 +316,11 @@ func (h *River) getUIRouteData(w http.ResponseWriter, r *http.Request,
 
 	publicPathPrefix := h.Wave.GetPublicPathPrefix()
 
-	if !h._isDev {
+	// For client transitions (JSON), AssetManager injects
+	// modulepreload links before head els get rendered,
+	// so there is no need (and it would be wasteful) to
+	// include them here.
+	if !h._isDev && !isJSON {
 		if uiRoutesData.ui_data_core.Deps != nil {
 			for _, dep := range uiRoutesData.ui_data_core.Deps {
 				el := &htmlutil.Element{

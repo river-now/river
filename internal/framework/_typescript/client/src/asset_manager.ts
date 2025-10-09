@@ -4,7 +4,11 @@ import { __riverClientGlobal } from "./river_ctx/river_ctx.ts";
 export class AssetManager {
 	static preloadModule(url: string): void {
 		const href = resolvePublicHref(url);
-		if (document.querySelector(`link[href="${CSS.escape(href)}"]`)) {
+		if (
+			document.querySelector(
+				`link[rel="modulepreload"][href="${CSS.escape(href)}"]`,
+			)
+		) {
 			return;
 		}
 
