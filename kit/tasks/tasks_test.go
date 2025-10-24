@@ -544,3 +544,487 @@ func TestTasksWithDifferentInputs(t *testing.T) {
 		}
 	})
 }
+
+func TestTTL_BasicExpiration(t *testing.T) {
+	var execCount int32
+	task := NewTask(func(ctx *Ctx, input string) (string, error) {
+		count := atomic.AddInt32(&execCount, 1)
+		return input + "-" + string(rune('0'+count)), nil
+	})
+
+	ttl := 100 * time.Millisecond
+	ctx := NewCtxWithTTL(context.Background(), ttl)
+
+	// First execution
+	result1, err := task.Run(ctx, "test")
+	if err != nil {
+		t.Fatalf("First execution failed: %v", err)
+	}
+	if result1 != "test-1" {
+		t.Errorf("Expected 'test-1', got '%s'", result1)
+	}
+
+	// Second execution (within TTL, should use cache)
+	time.Sleep(50 * time.Millisecond)
+	result2, err := task.Run(ctx, "test")
+	if err != nil {
+		t.Fatalf("Second execution failed: %v", err)
+	}
+	if result2 != "test-1" {
+		t.Errorf("Expected cached 'test-1', got '%s'", result2)
+	}
+
+	// Third execution (after TTL, should re-execute)
+	time.Sleep(60 * time.Millisecond)
+	result3, err := task.Run(ctx, "test")
+	if err != nil {
+		t.Fatalf("Third execution failed: %v", err)
+	}
+	if result3 != "test-2" {
+		t.Errorf("Expected new 'test-2', got '%s'", result3)
+	}
+
+	if atomic.LoadInt32(&execCount) != 2 {
+		t.Errorf("Expected 2 executions, got %d", execCount)
+	}
+}
+
+func TestTTL_NoTTL_NeverExpires(t *testing.T) {
+	var execCount int32
+	task := NewTask(func(ctx *Ctx, input string) (string, error) {
+		atomic.AddInt32(&execCount, 1)
+		return "result", nil
+	})
+
+	// Using NewCtx (no TTL)
+	ctx := NewCtx(context.Background())
+
+	// Execute multiple times with delays
+	for i := 0; i < 5; i++ {
+		_, err := task.Run(ctx, "test")
+		if err != nil {
+			t.Fatalf("Execution %d failed: %v", i, err)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	if atomic.LoadInt32(&execCount) != 1 {
+		t.Errorf("Expected 1 execution (cache should never expire), got %d", execCount)
+	}
+}
+
+func TestTTL_ZeroTTL_NeverExpires(t *testing.T) {
+	var execCount int32
+	task := NewTask(func(ctx *Ctx, input string) (string, error) {
+		atomic.AddInt32(&execCount, 1)
+		return "result", nil
+	})
+
+	// Explicitly set TTL to 0
+	ctx := NewCtxWithTTL(context.Background(), 0)
+
+	// Execute multiple times with delays
+	for i := 0; i < 5; i++ {
+		_, err := task.Run(ctx, "test")
+		if err != nil {
+			t.Fatalf("Execution %d failed: %v", i, err)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	if atomic.LoadInt32(&execCount) != 1 {
+		t.Errorf("Expected 1 execution (zero TTL should never expire), got %d", execCount)
+	}
+}
+
+func TestTTL_DifferentInputs_SeparateExpiration(t *testing.T) {
+	var execCount int32
+	task := NewTask(func(ctx *Ctx, input string) (string, error) {
+		count := atomic.AddInt32(&execCount, 1)
+		return input + "-" + string(rune('0'+count)), nil
+	})
+
+	ttl := 100 * time.Millisecond
+	ctx := NewCtxWithTTL(context.Background(), ttl)
+
+	// Execute with input "a"
+	result1, _ := task.Run(ctx, "a")
+	if result1 != "a-1" {
+		t.Errorf("Expected 'a-1', got '%s'", result1)
+	}
+
+	// Wait 50ms, execute with input "b"
+	time.Sleep(50 * time.Millisecond)
+	result2, _ := task.Run(ctx, "b")
+	if result2 != "b-2" {
+		t.Errorf("Expected 'b-2', got '%s'", result2)
+	}
+
+	// Wait another 60ms (110ms total, "a" expired but "b" still valid)
+	time.Sleep(60 * time.Millisecond)
+
+	// "a" should be expired and re-execute
+	result3, _ := task.Run(ctx, "a")
+	if result3 != "a-3" {
+		t.Errorf("Expected 'a-3' (expired), got '%s'", result3)
+	}
+
+	// "b" should still be cached
+	result4, _ := task.Run(ctx, "b")
+	if result4 != "b-2" {
+		t.Errorf("Expected 'b-2' (cached), got '%s'", result4)
+	}
+
+	if atomic.LoadInt32(&execCount) != 3 {
+		t.Errorf("Expected 3 executions, got %d", execCount)
+	}
+}
+
+func TestTTL_Cleanup_RemovesExpiredEntries(t *testing.T) {
+	task := NewTask(func(ctx *Ctx, input int) (int, error) {
+		return input * 2, nil
+	})
+
+	ttl := 100 * time.Millisecond
+	ctx := NewCtxWithTTL(context.Background(), ttl)
+
+	// Create many entries
+	for i := 0; i < 10; i++ {
+		_, err := task.Run(ctx, i)
+		if err != nil {
+			t.Fatalf("Failed to execute task with input %d: %v", i, err)
+		}
+	}
+
+	// Verify all entries are cached
+	initialSize := len(ctx.results)
+	if initialSize != 10 {
+		t.Errorf("Expected 10 cache entries, got %d", initialSize)
+	}
+
+	// Wait for entries to expire and trigger cleanup
+	time.Sleep(ttl + 10*time.Millisecond)
+
+	// Access any task to trigger cleanup
+	_, _ = task.Run(ctx, 100)
+
+	// Check that old entries were cleaned up
+	ctx.mu.RLock()
+	finalSize := len(ctx.results)
+	ctx.mu.RUnlock()
+
+	// Should have 1 entry (the new one with input 100)
+	if finalSize != 1 {
+		t.Errorf("Expected cleanup to reduce entries to 1, got %d", finalSize)
+	}
+}
+
+func TestTTL_Cleanup_OnlyRunsOncePerTTLPeriod(t *testing.T) {
+	task := NewTask(func(ctx *Ctx, input int) (int, error) {
+		return input, nil
+	})
+
+	ttl := 200 * time.Millisecond
+	ctx := NewCtxWithTTL(context.Background(), ttl)
+
+	// Create initial entry
+	_, _ = task.Run(ctx, 1)
+
+	// Record initial cleanup time
+	initialCleanup := ctx.lastCleanup.Load()
+
+	// Wait less than TTL
+	time.Sleep(50 * time.Millisecond)
+
+	// Try to trigger cleanup by accessing an expired entry
+	// (won't actually expire yet, but tests the cleanup timing logic)
+	_, _ = task.Run(ctx, 2)
+
+	// Cleanup timestamp should not have changed
+	if ctx.lastCleanup.Load() != initialCleanup {
+		t.Error("Cleanup ran too early (before TTL period elapsed)")
+	}
+
+	// Wait for TTL to elapse
+	time.Sleep(160 * time.Millisecond)
+
+	// Now trigger cleanup
+	_, _ = task.Run(ctx, 3)
+
+	// Cleanup timestamp should have updated
+	if ctx.lastCleanup.Load() == initialCleanup {
+		t.Error("Cleanup did not run after TTL period elapsed")
+	}
+}
+
+func TestTTL_ConcurrentAccess_WithExpiration(t *testing.T) {
+	var execCount int32
+	task := NewTask(func(ctx *Ctx, input string) (string, error) {
+		count := atomic.AddInt32(&execCount, 1)
+		time.Sleep(10 * time.Millisecond)
+		return input + "-" + string(rune('0'+count)), nil
+	})
+
+	ttl := 100 * time.Millisecond
+	ctx := NewCtxWithTTL(context.Background(), ttl)
+
+	// Phase 1: Concurrent access within TTL (should use cache)
+	var wg sync.WaitGroup
+	results := make([]string, 10)
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			result, err := task.Run(ctx, "test")
+			if err != nil {
+				t.Errorf("Goroutine %d error: %v", idx, err)
+			}
+			results[idx] = result
+		}(i)
+	}
+	wg.Wait()
+
+	// All should have same result
+	for i, result := range results {
+		if result != "test-1" {
+			t.Errorf("Goroutine %d got '%s', expected 'test-1'", i, result)
+		}
+	}
+
+	// Wait for expiration
+	time.Sleep(110 * time.Millisecond)
+
+	// Phase 2: Concurrent access after expiration (should re-execute once)
+	results2 := make([]string, 10)
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			result, err := task.Run(ctx, "test")
+			if err != nil {
+				t.Errorf("Goroutine %d error: %v", idx, err)
+			}
+			results2[idx] = result
+		}(i)
+	}
+	wg.Wait()
+
+	// All should have same new result
+	for i, result := range results2 {
+		if result != "test-2" {
+			t.Errorf("Goroutine %d got '%s', expected 'test-2'", i, result)
+		}
+	}
+
+	if atomic.LoadInt32(&execCount) != 2 {
+		t.Errorf("Expected 2 executions total, got %d", execCount)
+	}
+}
+
+func TestTTL_ParallelExecution_WithSharedDependency(t *testing.T) {
+	var authCount, task1Count, task2Count int32
+
+	authTask := NewTask(func(ctx *Ctx, _ struct{}) (int, error) {
+		count := atomic.AddInt32(&authCount, 1)
+		time.Sleep(20 * time.Millisecond)
+		return int(count), nil
+	})
+
+	task1 := NewTask(func(ctx *Ctx, _ string) (string, error) {
+		atomic.AddInt32(&task1Count, 1)
+		token, err := authTask.Run(ctx, struct{}{})
+		if err != nil {
+			return "", err
+		}
+		return "task1-" + string(rune('0'+token)), nil
+	})
+
+	task2 := NewTask(func(ctx *Ctx, _ string) (string, error) {
+		atomic.AddInt32(&task2Count, 1)
+		token, err := authTask.Run(ctx, struct{}{})
+		if err != nil {
+			return "", err
+		}
+		return "task2-" + string(rune('0'+token)), nil
+	})
+
+	ttl := 100 * time.Millisecond
+	ctx := NewCtxWithTTL(context.Background(), ttl)
+
+	// First parallel execution
+	var r1, r2 string
+	err := ctx.RunParallel(
+		task1.Bind("input", &r1),
+		task2.Bind("input", &r2),
+	)
+	if err != nil {
+		t.Fatalf("First parallel execution failed: %v", err)
+	}
+
+	if r1 != "task1-1" || r2 != "task2-1" {
+		t.Errorf("Expected 'task1-1' and 'task2-1', got '%s' and '%s'", r1, r2)
+	}
+
+	// Second parallel execution (within TTL, should use cache)
+	time.Sleep(50 * time.Millisecond)
+	var r3, r4 string
+	err = ctx.RunParallel(
+		task1.Bind("input", &r3),
+		task2.Bind("input", &r4),
+	)
+	if err != nil {
+		t.Fatalf("Second parallel execution failed: %v", err)
+	}
+
+	if r3 != "task1-1" || r4 != "task2-1" {
+		t.Errorf("Expected cached values, got '%s' and '%s'", r3, r4)
+	}
+
+	// Third parallel execution (after TTL expiration)
+	time.Sleep(60 * time.Millisecond)
+	var r5, r6 string
+	err = ctx.RunParallel(
+		task1.Bind("input", &r5),
+		task2.Bind("input", &r6),
+	)
+	if err != nil {
+		t.Fatalf("Third parallel execution failed: %v", err)
+	}
+
+	if r5 != "task1-2" || r6 != "task2-2" {
+		t.Errorf("Expected new values after expiration, got '%s' and '%s'", r5, r6)
+	}
+
+	// Verify execution counts
+	if atomic.LoadInt32(&authCount) != 2 {
+		t.Errorf("Expected authTask to execute 2 times, got %d", authCount)
+	}
+	if atomic.LoadInt32(&task1Count) != 2 {
+		t.Errorf("Expected task1 to execute 2 times, got %d", task1Count)
+	}
+	if atomic.LoadInt32(&task2Count) != 2 {
+		t.Errorf("Expected task2 to execute 2 times, got %d", task2Count)
+	}
+}
+
+func TestTTL_ExpiredResultsAllowRetry(t *testing.T) {
+	var execCount int32
+	shouldFail := true
+
+	task := NewTask(func(ctx *Ctx, _ string) (string, error) {
+		atomic.AddInt32(&execCount, 1)
+		if shouldFail {
+			return "", errors.New("intentional error")
+		}
+		return "success", nil
+	})
+
+	ttl := 100 * time.Millisecond
+	ctx := NewCtxWithTTL(context.Background(), ttl)
+
+	// First call should fail
+	_, err := task.Run(ctx, "test")
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+
+	// Immediate retry should still fail (errors are cached by sync.Once)
+	_, err = task.Run(ctx, "test")
+	if err == nil {
+		t.Fatal("Expected error on retry, got nil")
+	}
+
+	// Wait for TTL and change behavior
+	time.Sleep(110 * time.Millisecond)
+	shouldFail = false
+
+	// After TTL, should create new result and succeed
+	result, err := task.Run(ctx, "test")
+	if err != nil {
+		t.Fatalf("Expected success after TTL, got error: %v", err)
+	}
+	if result != "success" {
+		t.Errorf("Expected 'success', got '%s'", result)
+	}
+
+	// Note: Because of sync.Once, the first execution (error) is permanently
+	// cached in that TaskResult. The TTL causes a NEW TaskResult to be created.
+	// So we expect 2 executions total.
+	if atomic.LoadInt32(&execCount) != 2 {
+		t.Errorf("Expected 2 executions, got %d", execCount)
+	}
+}
+
+func TestTTL_VeryShortTTL(t *testing.T) {
+	var execCount int32
+	task := NewTask(func(ctx *Ctx, _ string) (int, error) {
+		return int(atomic.AddInt32(&execCount, 1)), nil
+	})
+
+	// Very short TTL
+	ttl := 10 * time.Millisecond
+	ctx := NewCtxWithTTL(context.Background(), ttl)
+
+	results := make([]int, 0)
+
+	// Execute multiple times with delays
+	for i := 0; i < 5; i++ {
+		result, err := task.Run(ctx, "test")
+		if err != nil {
+			t.Fatalf("Execution %d failed: %v", i, err)
+		}
+		results = append(results, result)
+		time.Sleep(15 * time.Millisecond) // Longer than TTL
+	}
+
+	// Each execution should have been fresh (not cached)
+	for i, result := range results {
+		expected := i + 1
+		if result != expected {
+			t.Errorf("Iteration %d: expected %d, got %d", i, expected, result)
+		}
+	}
+
+	if atomic.LoadInt32(&execCount) != 5 {
+		t.Errorf("Expected 5 executions, got %d", execCount)
+	}
+}
+
+func TestTTL_MultipleContexts_IndependentCaches(t *testing.T) {
+	var execCount int32
+	task := NewTask(func(ctx *Ctx, input string) (string, error) {
+		count := atomic.AddInt32(&execCount, 1)
+		return input + "-" + string(rune('0'+count)), nil
+	})
+
+	ttl := 100 * time.Millisecond
+	ctx1 := NewCtxWithTTL(context.Background(), ttl)
+	ctx2 := NewCtxWithTTL(context.Background(), ttl)
+
+	// Execute in both contexts
+	result1, _ := task.Run(ctx1, "test")
+	result2, _ := task.Run(ctx2, "test")
+
+	// Should execute twice (once per context)
+	if result1 != "test-1" {
+		t.Errorf("Context 1: expected 'test-1', got '%s'", result1)
+	}
+	if result2 != "test-2" {
+		t.Errorf("Context 2: expected 'test-2', got '%s'", result2)
+	}
+
+	// Within TTL, both contexts should cache independently
+	result1b, _ := task.Run(ctx1, "test")
+	result2b, _ := task.Run(ctx2, "test")
+
+	if result1b != "test-1" {
+		t.Errorf("Context 1 cache: expected 'test-1', got '%s'", result1b)
+	}
+	if result2b != "test-2" {
+		t.Errorf("Context 2 cache: expected 'test-2', got '%s'", result2b)
+	}
+
+	if atomic.LoadInt32(&execCount) != 2 {
+		t.Errorf("Expected 2 executions, got %d", execCount)
+	}
+}

@@ -1,20 +1,20 @@
-package tasks
-
 // A "Task", as used in this package, is simply a function that takes in input,
 // returns data (or an error), and runs a maximum of one time per execution
-// context / input value pairing (typically, but not necessarily, a web request
-// lifecycle), even if invoked repeatedly during the lifetime of the execution
-// context.
+// context / input value pairing, even if invoked repeatedly during the lifetime
+// of the execution context.
 //
 // Tasks are automatically protected from circular deps by Go's compile-time
 // "initialization cycle" errors (assuming they are defined as package-level
 // variables).
+package tasks
 
 import (
 	"context"
 	"errors"
 	"reflect"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/river-now/river/kit/genericsutil"
 	"golang.org/x/sync/errgroup"
@@ -54,20 +54,47 @@ type taskKey struct {
 }
 
 type Ctx struct {
-	mu      *sync.RWMutex
-	results map[taskKey]*TaskResult
-	ctx     context.Context
+	mu          *sync.RWMutex
+	results     map[taskKey]*cacheEntry
+	ctx         context.Context
+	ttl         time.Duration
+	lastCleanup *atomic.Int64 // Unix timestamp in nanoseconds (nil when TTL disabled)
 }
 
+type cacheEntry struct {
+	result    *TaskResult
+	expiresAt time.Time
+}
+
+// NewCtx creates a new task execution context with no TTL.
+// The context will cache task results indefinitely until the Ctx is discarded.
 func NewCtx(parent context.Context) *Ctx {
+	return NewCtxWithTTL(parent, 0)
+}
+
+// NewCtxWithTTL creates a new task execution context with a TTL for cached results.
+// When ttl > 0, cached results expire after the specified duration and will be
+// re-executed on subsequent access. Expired entries are lazily removed from memory
+// during cache access, at most once per TTL period.
+func NewCtxWithTTL(parent context.Context, ttl time.Duration) *Ctx {
 	if parent == nil {
 		parent = context.Background()
 	}
-	return &Ctx{
+
+	c := &Ctx{
 		mu:      &sync.RWMutex{},
-		results: make(map[taskKey]*TaskResult, 4), // Pre-allocate for typical request size
+		results: make(map[taskKey]*cacheEntry, 4),
 		ctx:     parent,
+		ttl:     ttl,
 	}
+
+	// Only initialize lastCleanup if TTL is enabled
+	if ttl > 0 {
+		c.lastCleanup = &atomic.Int64{}
+		c.lastCleanup.Store(time.Now().UnixNano())
+	}
+
+	return c
 }
 
 func (c *Ctx) NativeContext() context.Context {
@@ -122,24 +149,75 @@ func (c *Ctx) getOrCreateResult(taskPtr any, input any) *TaskResult {
 		input:   input,
 	}
 
+	// Only do time operations if TTL is enabled
+	if c.ttl > 0 {
+		now := time.Now()
+
+		// Lazy cleanup: remove expired entries at most once per TTL period
+		lastCleanupNano := c.lastCleanup.Load()
+		lastCleanupTime := time.Unix(0, lastCleanupNano)
+		if now.Sub(lastCleanupTime) >= c.ttl {
+			c.cleanupExpired(now)
+		}
+	}
+
+	// Fast path: check if valid cached result exists
 	c.mu.RLock()
-	if r, ok := c.results[key]; ok {
-		c.mu.RUnlock()
-		return r
+	if entry, ok := c.results[key]; ok {
+		// Check if entry is still valid (not expired)
+		if c.ttl == 0 || time.Now().Before(entry.expiresAt) {
+			c.mu.RUnlock()
+			return entry.result
+		}
+		// Entry expired, fall through to recreate
 	}
 	c.mu.RUnlock()
 
+	// Slow path: need to create new result
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	now := time.Now()
+
+	// Double-check after acquiring write lock
+	if entry, ok := c.results[key]; ok {
+		// Check again if still valid (another goroutine may have refreshed it)
+		if c.ttl == 0 || now.Before(entry.expiresAt) {
+			return entry.result
+		}
+		// Still expired, will overwrite below
+	}
+
+	// Create new result and cache entry
+	r := newTaskResult()
+	c.results[key] = &cacheEntry{result: r}
+	if c.ttl > 0 {
+		c.results[key].expiresAt = now.Add(c.ttl)
+	}
+	return r
+}
+
+// cleanupExpired removes all expired entries from the cache.
+// This is called lazily during getOrCreateResult, at most once per TTL period.
+func (c *Ctx) cleanupExpired(now time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	// Double-check after acquiring write lock
-	if r, ok := c.results[key]; ok {
-		return r
+	lastCleanupNano := c.lastCleanup.Load()
+	lastCleanupTime := time.Unix(0, lastCleanupNano)
+	if now.Sub(lastCleanupTime) < c.ttl {
+		return
 	}
 
-	r := newTaskResult()
-	c.results[key] = r
-	return r
+	// Remove all expired entries
+	for key, entry := range c.results {
+		if now.After(entry.expiresAt) {
+			delete(c.results, key)
+		}
+	}
+
+	c.lastCleanup.Store(now.UnixNano())
 }
 
 type TaskResult struct {
@@ -221,9 +299,11 @@ func runTasks(ctx *Ctx, calls ...BoundTask) error {
 	}
 	g, gCtx := errgroup.WithContext(ctx.ctx)
 	shared := &Ctx{
-		mu:      ctx.mu,
-		results: ctx.results,
-		ctx:     gCtx,
+		mu:          ctx.mu,
+		results:     ctx.results,
+		ctx:         gCtx,
+		ttl:         ctx.ttl,
+		lastCleanup: ctx.lastCleanup,
 	}
 	for _, call := range valid {
 		c := call

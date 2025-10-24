@@ -1,6 +1,6 @@
 {
 	"name": "create-river",
-	"version": "0.79.0",
+	"version": "0.80.0",
 	"description": "CLI for creating new River applications.",
 	"type": "module",
 	"license": "BSD-3-Clause",

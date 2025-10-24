@@ -35,6 +35,8 @@ the task set.
 5. **Type-Safe**: Generic types ensure compile-time safety
 6. **Parallel Execution**: First-class ergonomic support for running multiple
    tasks concurrently
+7. **Optional Ctx-Level TTL**: Time-based expiration for cached results to
+   prevent thundering herd at a global level
 
 ## Usage Examples
 
@@ -122,9 +124,57 @@ var EnrichedUserTask = tasks.NewTask(func(ctx *tasks.Ctx, userID int) (*Enriched
 		return nil, err
 	}
 
-    return &EnrichedUser{
-        User:   user,
-        Orders: orders,
-    }, nil
+	return &EnrichedUser{
+		User:   user,
+		Orders: orders,
+	}, nil
 })
 ```
+
+## Time-To-Live (TTL) for Cache Expiration
+
+By default, task results are cached indefinitely within a context's lifetime
+(typically a single request). For longer-lived contexts or global-level caching,
+you can use TTL to expire cached results after a specified duration.
+
+### When to Use TTL
+
+TTL is primarily useful for preventing thundering herd problems at a global
+level:
+
+- **Longer-lived contexts**: Background workers, daemons, or services that reuse
+  the same task context across multiple operations
+- **Rate limiting**: Preventing excessive calls to external APIs or databases
+- **Stale data tolerance**: When slightly outdated data is acceptable and you
+  want to reduce load on upstream services
+
+<lightbulb>
+You can vary the TTL by creating purpose-specific task context instances (e.g., a different TTL for user profiles than for API key validity, or whatever).
+</lightbulb>
+
+### Using TTL
+
+```go
+// Create a context with 5-minute TTL for cached results
+ctx := tasks.NewCtxWithTTL(context.Background(), 5*time.Minute)
+
+// First call executes the task
+user, err := FetchUserTask.Run(ctx, 123)
+
+// Within 5 minutes: uses cached result
+user, err = FetchUserTask.Run(ctx, 123)
+
+// After 5 minutes: re-executes the task with fresh data
+time.Sleep(6 * time.Minute)
+user, err = FetchUserTask.Run(ctx, 123)
+```
+
+### TTL Behavior Details
+
+- **Lazy cleanup**: Expired entries are removed from memory at most once per TTL
+  period during cache access
+- **Per-input expiration**: Each unique input has its own expiration timer
+- **Error caching**: Errors are cached via `sync.Once` within a `TaskResult`.
+  After TTL expiration, a new `TaskResult` is created, allowing the task to
+  retry
+- **Thread-safe**: All TTL operations are safe for concurrent access
