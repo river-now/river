@@ -199,6 +199,10 @@ type AppKeysetConfig struct {
 	// Passed into the salt parameter of downstream HKDF functions.
 	// Once set, do not change this unless you want and entirely new keyset.
 	ApplicationName string
+	// When instantiated via MustAppKeyset, if this is true, panics
+	// due to misconfiguration are deferred to the first use of the
+	// keyset rather than at instantiation time.
+	DeferPanic bool
 }
 
 type AppKeyset struct {
@@ -209,15 +213,24 @@ type AppKeyset struct {
 func (ak *AppKeyset) Root() *Keyset                      { return ak.rootFn() }
 func (ak *AppKeyset) HKDF(purpose string) func() *Keyset { return ak.hkdfFnMaker(purpose) }
 
-// Panics if anything is misconfigured.
+// Panics if anything is misconfigured. If desired, you can defer the panic to the first
+// use (rather than at instantiation) by passing in a true boolean as the second argument.
 func MustAppKeyset(cfg AppKeysetConfig) *AppKeyset {
-	if len(cfg.LatestFirstEnvVarNames) == 0 {
-		panic("at least 1 env var key is required for AppKeysetConfig.LatestFirstEnvVarNames")
+	var validateOrPanic = func() {
+		if len(cfg.LatestFirstEnvVarNames) == 0 {
+			panic("at least 1 env var key is required for AppKeysetConfig.LatestFirstEnvVarNames")
+		}
+		if cfg.ApplicationName == "" {
+			panic("AppKeysetConfig.ApplicationName cannot be empty")
+		}
 	}
-	if cfg.ApplicationName == "" {
-		panic("AppKeysetConfig.ApplicationName cannot be empty")
+	if !cfg.DeferPanic {
+		validateOrPanic()
 	}
 	rootFn := lazyget.New(func() *Keyset {
+		if cfg.DeferPanic {
+			validateOrPanic()
+		}
 		rootKeyset, err := LoadRootKeyset(cfg.LatestFirstEnvVarNames...)
 		if err != nil {
 			panic(fmt.Sprintf("error loading root keyset: %v", err))
@@ -228,6 +241,9 @@ func MustAppKeyset(cfg AppKeysetConfig) *AppKeyset {
 		rootFn: rootFn,
 		hkdfFnMaker: func(purpose string) func() *Keyset {
 			return lazyget.New(func() *Keyset {
+				if cfg.DeferPanic {
+					validateOrPanic()
+				}
 				if purpose == "" {
 					panic("HKDF purpose cannot be empty")
 				}

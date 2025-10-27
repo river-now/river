@@ -554,6 +554,158 @@ func TestMustAppKeyset(t *testing.T) {
 	})
 }
 
+func TestMustAppKeyset_DeferredValidation(t *testing.T) {
+	os.Setenv("TEST_DEFERRED_SECRET", generateTestSecret())
+	defer os.Unsetenv("TEST_DEFERRED_SECRET")
+
+	t.Run("deferred validation does not panic on construction", func(t *testing.T) {
+		// Should not panic during construction even with invalid config
+		appKeyset := MustAppKeyset(AppKeysetConfig{
+			LatestFirstEnvVarNames: []string{},
+			ApplicationName:        "",
+			DeferPanic:             true,
+		})
+
+		if appKeyset == nil {
+			t.Error("expected non-nil AppKeyset even with deferred validation")
+		}
+	})
+
+	t.Run("deferred validation panics on Root access with empty env vars", func(t *testing.T) {
+		appKeyset := MustAppKeyset(AppKeysetConfig{
+			LatestFirstEnvVarNames: []string{},
+			ApplicationName:        "test-app",
+			DeferPanic:             true,
+		})
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic when accessing Root with invalid config")
+			} else {
+				panicStr := fmt.Sprintf("%v", r)
+				if !strings.Contains(panicStr, "at least 1 env var key is required") {
+					t.Errorf("unexpected panic message: %s", panicStr)
+				}
+			}
+		}()
+
+		_ = appKeyset.Root()
+	})
+
+	t.Run("deferred validation panics on Root access with empty application name", func(t *testing.T) {
+		appKeyset := MustAppKeyset(AppKeysetConfig{
+			LatestFirstEnvVarNames: []string{"TEST_DEFERRED_SECRET"},
+			ApplicationName:        "",
+			DeferPanic:             true,
+		})
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic when accessing Root with invalid config")
+			} else {
+				panicStr := fmt.Sprintf("%v", r)
+				if !strings.Contains(panicStr, "ApplicationName cannot be empty") {
+					t.Errorf("unexpected panic message: %s", panicStr)
+				}
+			}
+		}()
+
+		_ = appKeyset.Root()
+	})
+
+	t.Run("deferred validation panics on HKDF access with empty env vars", func(t *testing.T) {
+		appKeyset := MustAppKeyset(AppKeysetConfig{
+			LatestFirstEnvVarNames: []string{},
+			ApplicationName:        "test-app",
+			DeferPanic:             true,
+		})
+
+		hkdfFn := appKeyset.HKDF("test-purpose")
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic when accessing HKDF with invalid config")
+			} else {
+				panicStr := fmt.Sprintf("%v", r)
+				if !strings.Contains(panicStr, "at least 1 env var key is required") {
+					t.Errorf("unexpected panic message: %s", panicStr)
+				}
+			}
+		}()
+
+		_ = hkdfFn()
+	})
+
+	t.Run("deferred validation panics on HKDF access with empty application name", func(t *testing.T) {
+		appKeyset := MustAppKeyset(AppKeysetConfig{
+			LatestFirstEnvVarNames: []string{"TEST_DEFERRED_SECRET"},
+			ApplicationName:        "",
+			DeferPanic:             true,
+		})
+
+		hkdfFn := appKeyset.HKDF("test-purpose")
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic when accessing HKDF with invalid config")
+			} else {
+				panicStr := fmt.Sprintf("%v", r)
+				if !strings.Contains(panicStr, "ApplicationName cannot be empty") {
+					t.Errorf("unexpected panic message: %s", panicStr)
+				}
+			}
+		}()
+
+		_ = hkdfFn()
+	})
+
+	t.Run("deferred validation with valid config works correctly", func(t *testing.T) {
+		appKeyset := MustAppKeyset(AppKeysetConfig{
+			LatestFirstEnvVarNames: []string{"TEST_DEFERRED_SECRET"},
+			ApplicationName:        "test-app",
+			DeferPanic:             true,
+		})
+
+		// Should not panic with valid config
+		root := appKeyset.Root()
+		if root == nil {
+			t.Error("expected non-nil root keyset")
+		}
+
+		hkdfFn := appKeyset.HKDF("test-purpose")
+		derived := hkdfFn()
+		if derived == nil {
+			t.Error("expected non-nil derived keyset")
+		}
+	})
+
+	t.Run("default behavior unchanged when false passed explicitly", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected immediate panic with false argument")
+			}
+		}()
+
+		MustAppKeyset(AppKeysetConfig{
+			LatestFirstEnvVarNames: []string{},
+			ApplicationName:        "test-app",
+		})
+	})
+
+	t.Run("default behavior unchanged when no argument passed", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected immediate panic with no argument")
+			}
+		}()
+
+		MustAppKeyset(AppKeysetConfig{
+			LatestFirstEnvVarNames: []string{},
+			ApplicationName:        "test-app",
+		})
+	})
+}
+
 func TestAppKeyset_MultipleHKDFPurposes(t *testing.T) {
 	os.Setenv("TEST_MULTI_SECRET", generateTestSecret())
 	defer os.Unsetenv("TEST_MULTI_SECRET")
