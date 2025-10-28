@@ -11,8 +11,8 @@ export const THEMES = {
 } as const;
 
 const THEME_VALUES = Object.values(THEMES);
-const THEME_COOKIE_NAME = "kit_theme";
-const RESOLVED_THEME_COOKIE_NAME = "kit_resolved_theme";
+const THEME_KEY = "kit_theme";
+const RESOLVED_THEME_KEY = "kit_resolved_theme";
 const PREFERS_DARK_QUERY = window.matchMedia("(prefers-color-scheme: dark)");
 const CLASSLIST = window.document.documentElement.classList;
 const THEME_CHANGE_EVENT_KEY = "theme_change";
@@ -66,19 +66,38 @@ PREFERS_DARK_QUERY.addEventListener("change", () => {
 /////////////////////////////////////////////////////////////////////
 
 export function getTheme(): Theme {
-	const theme = getClientCookie(THEME_COOKIE_NAME);
+	const theme = getClientCookie(THEME_KEY);
+	return __isTheme(theme) ? theme : THEMES.System;
+}
+
+export function getThemeLocal(): Theme {
+	const theme = localStorage.getItem(THEME_KEY);
 	return __isTheme(theme) ? theme : THEMES.System;
 }
 
 export function getResolvedTheme(): ResolvedTheme {
-	const resolvedTheme = getClientCookie(RESOLVED_THEME_COOKIE_NAME);
+	const resolvedTheme = getClientCookie(RESOLVED_THEME_KEY);
+	return __isResolvedTheme(resolvedTheme) ? resolvedTheme : THEMES.Light;
+}
+
+export function getResolvedThemeLocal(): ResolvedTheme {
+	const resolvedTheme = localStorage.getItem(RESOLVED_THEME_KEY);
 	return __isResolvedTheme(resolvedTheme) ? resolvedTheme : THEMES.Light;
 }
 
 export function setTheme(theme: Theme) {
 	const resolvedTheme = __getResolvedThemeFromTheme(theme);
-	setClientCookie(THEME_COOKIE_NAME, theme);
-	setClientCookie(RESOLVED_THEME_COOKIE_NAME, resolvedTheme);
+	setClientCookie(THEME_KEY, theme);
+	setClientCookie(RESOLVED_THEME_KEY, resolvedTheme);
+	const detail: ThemeChangeEventDetail = { theme, resolvedTheme };
+	__setClassesAndDispatchEvent(detail);
+	bc.postMessage(detail);
+}
+
+export function setThemeLocal(theme: Theme) {
+	const resolvedTheme = __getResolvedThemeFromTheme(theme);
+	localStorage.setItem(THEME_KEY, theme);
+	localStorage.setItem(RESOLVED_THEME_KEY, resolvedTheme);
 	const detail: ThemeChangeEventDetail = { theme, resolvedTheme };
 	__setClassesAndDispatchEvent(detail);
 	bc.postMessage(detail);
@@ -89,20 +108,26 @@ export function addThemeChangeListener(
 ): CleanupFunction {
 	window.addEventListener(THEME_CHANGE_EVENT_KEY, listener as EventListener);
 	return () => {
-		window.removeEventListener(THEME_CHANGE_EVENT_KEY, listener as EventListener);
+		window.removeEventListener(
+			THEME_CHANGE_EVENT_KEY,
+			listener as EventListener,
+		);
 	};
 }
 
 type CleanupFunction = () => void;
 
-export function safeInitThemeCookies() {
-	const hasMainCookie = __isTheme(getClientCookie(THEME_COOKIE_NAME));
-	const hasResolvedCookie = __isResolvedTheme(
-		getClientCookie(RESOLVED_THEME_COOKIE_NAME),
+export function initLocal() {
+	const theme = localStorage.getItem(THEME_KEY) || THEMES.System;
+	const resolvedTheme = __getResolvedThemeFromTheme(
+		__isTheme(theme) ? theme : THEMES.System,
 	);
-	if (!hasMainCookie || !hasResolvedCookie) {
-		setTheme(THEMES.System);
+	CLASSLIST.add(theme);
+	if (theme === THEMES.System) {
+		CLASSLIST.add(resolvedTheme);
 	}
+	localStorage.setItem(THEME_KEY, theme);
+	localStorage.setItem(RESOLVED_THEME_KEY, resolvedTheme);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -130,10 +155,12 @@ function __setClassesAndDispatchEvent(detail: ThemeChangeEventDetail) {
 /////// TYPE GUARDS
 /////////////////////////////////////////////////////////////////////
 
-function __isTheme(theme: string | undefined): theme is Theme {
+function __isTheme(theme: string | undefined | null): theme is Theme {
 	return THEME_VALUES.includes(theme as Theme);
 }
 
-function __isResolvedTheme(theme: string | undefined): theme is ResolvedTheme {
+function __isResolvedTheme(
+	theme: string | undefined | null,
+): theme is ResolvedTheme {
 	return theme === THEMES.Dark || theme === THEMES.Light;
 }

@@ -1,6 +1,6 @@
 {
 	"name": "river.now",
-	"version": "0.80.1",
+	"version": "0.80.2",
 	"description": "Vite-powered web framework for building full-stack applications with Go and TypeScript",
 	"type": "module",
 	"sideEffects": false,
