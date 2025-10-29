@@ -3862,9 +3862,8 @@ describe("Comprehensive Navigation Test Suite", () => {
 						importURLs: ["/layout.js", "/page.js", "/error.js"],
 						exportKeys: ["Layout", "Page", "ErrorBoundary"],
 						// Point to the 3rd module in the list (index 2)
-						outermostErrorIdx: 2,
-						// Specify the exact named export to use for the error boundary
-						errorExportKey: "ErrorBoundary",
+						outermostServerErrorIdx: 2,
+						errorExportKeys: ["", "", "ErrorBoundary"],
 						cssBundles: [],
 					}),
 				);
@@ -3900,7 +3899,7 @@ describe("Comprehensive Navigation Test Suite", () => {
 				vi.mocked(fetch).mockResolvedValue(
 					createMockResponse({
 						importURLs: [],
-						outermostErrorIdx: 0, // No component at this index
+						outermostServerErrorIdx: 0, // No component at this index
 						cssBundles: [],
 					}),
 				);
@@ -4718,8 +4717,8 @@ describe("Comprehensive Navigation Test Suite", () => {
 				createMockResponse({
 					importURLs: ["/error1.js"],
 					exportKeys: ["ErrorBoundary"],
-					outermostErrorIdx: 0,
-					errorExportKey: "ErrorBoundary",
+					outermostServerErrorIdx: 0,
+					errorExportKeys: ["ErrorBoundary"],
 					cssBundles: [],
 				}),
 			);
@@ -4736,8 +4735,8 @@ describe("Comprehensive Navigation Test Suite", () => {
 				createMockResponse({
 					importURLs: ["/error2.js"],
 					exportKeys: ["ErrorBoundary"],
-					outermostErrorIdx: 0,
-					errorExportKey: "ErrorBoundary",
+					outermostServerErrorIdx: 0,
+					errorExportKeys: ["ErrorBoundary"],
 					cssBundles: [],
 				}),
 			);

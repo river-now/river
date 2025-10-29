@@ -11,6 +11,8 @@ import { AssetManager } from "./asset_manager.ts";
 import {
 	completeClientLoaders,
 	findPartialMatchesOnClient,
+	setClientLoadersState,
+	type ClientLoadersResult,
 } from "./client_loaders.ts";
 import {
 	dispatchBuildIDEvent,
@@ -68,7 +70,7 @@ type NavigationResult =
 			| {
 					json: GetRouteDataOutput;
 					cssBundlePromises: Array<Promise<any>>;
-					waitFnPromise: Promise<any> | undefined;
+					waitFnPromise: Promise<ClientLoadersResult> | undefined;
 			  }
 			| { redirectData: RedirectData }
 	  ))
@@ -112,6 +114,7 @@ interface NavigationEntry {
 interface SubmissionEntry {
 	control: NavigationControl;
 	startTime: number;
+	skipGlobalLoadingIndicator?: boolean;
 }
 
 class NavigationStateManager {
@@ -524,9 +527,9 @@ class NavigationStateManager {
 						splatValues: skipCheck.matchResult.splatValues,
 						deps: [],
 						cssBundles: [],
-						outermostError: undefined,
-						outermostErrorIdx: undefined,
-						errorExportKey: undefined,
+						outermostServerError: undefined,
+						outermostServerErrorIdx: undefined,
+						errorExportKeys: [],
 						title: undefined,
 						metaHeadEls: undefined,
 						restHeadEls: undefined,
@@ -693,14 +696,6 @@ class NavigationStateManager {
 							splatValues,
 							serverDataPromise,
 							signal: controller.signal,
-						}).catch((error: any) => {
-							if (!isAbortError(error)) {
-								logError(
-									`Client loader error for pattern ${pattern}:`,
-									error,
-								);
-							}
-							return undefined;
 						});
 
 						runningLoaders.set(pattern, loaderPromise);
@@ -815,16 +810,19 @@ class NavigationStateManager {
 				const matchedPatterns = result.json.matchedPatterns || [];
 				const importURLs = result.json.importURLs || [];
 				const exportKeys = result.json.exportKeys || [];
+				const errorExportKeys = result.json.errorExportKeys || [];
 
 				for (let i = 0; i < matchedPatterns.length; i++) {
 					const pattern = matchedPatterns[i];
 					const importURL = importURLs[i];
 					const exportKey = exportKeys[i];
+					const errorExportKey = errorExportKeys[i];
 
 					if (pattern && importURL) {
 						clientModuleMap[pattern] = {
 							importURL,
 							exportKey: exportKey || "default",
+							errorExportKey: errorExportKey || "",
 						};
 					}
 				}
@@ -867,9 +865,9 @@ class NavigationStateManager {
 				dispatchBuildIDEvent({ newID, oldID });
 			}
 
-			// Wait for client loaders
-			const clientLoadersData = await result.waitFnPromise;
-			__riverClientGlobal.set("clientLoadersData", clientLoadersData);
+			// Wait for client loaders and set state
+			const clientLoadersResult = await result.waitFnPromise;
+			setClientLoadersState(clientLoadersResult);
 
 			// Wait for CSS
 			if (result.cssBundlePromises.length > 0) {
@@ -956,6 +954,7 @@ class NavigationStateManager {
 				promise: Promise.resolve() as any,
 			},
 			startTime: Date.now(),
+			skipGlobalLoadingIndicator: options?.skipGlobalLoadingIndicator,
 		};
 
 		this._submissions.set(submissionKey, entry);
@@ -1079,7 +1078,9 @@ class NavigationStateManager {
 			(nav) => nav.type === "revalidation" && nav.phase !== "complete",
 		);
 
-		const isSubmitting = submissions.length > 0;
+		const isSubmitting = submissions.some(
+			(x) => !x.skipGlobalLoadingIndicator,
+		);
 
 		return { isNavigating, isSubmitting, isRevalidating };
 	}
@@ -1162,6 +1163,7 @@ export async function revalidate() {
 export type SubmitOptions = {
 	dedupeKey?: string;
 	revalidate?: boolean;
+	skipGlobalLoadingIndicator?: boolean;
 };
 
 export async function submit<T = any>(

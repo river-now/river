@@ -35,9 +35,9 @@ type cachedItemSubset struct {
 /////////////////////////////////////////////////////////////////////
 
 type ui_data_core struct {
-	OutermostError    string `json:"outermostError,omitempty"`
-	OutermostErrorIdx *int   `json:"outermostErrorIdx,omitempty"`
-	ErrorExportKey    string `json:"errorExportKey,omitempty"`
+	OutermostServerError    string   `json:"outermostServerError,omitempty"`
+	OutermostServerErrorIdx *int     `json:"outermostServerErrorIdx,omitempty"`
+	ErrorExportKeys         []string `json:"errorExportKeys,omitempty"`
 
 	MatchedPatterns []string `json:"matchedPatterns,omitempty"`
 	LoadersData     []any    `json:"loadersData,omitempty"`
@@ -215,9 +215,9 @@ func (h *River) get_ui_data_stage_1(
 
 		ui_data := &ui_data_all{
 			ui_data_core: &ui_data_core{
-				OutermostError:    loadersErrs[derefOuterMostErrorIdx].Error(),
-				OutermostErrorIdx: outermostErrorIdx,
-				ErrorExportKey:    _cachedItemSubset.ErrorExportKeys[derefOuterMostErrorIdx],
+				OutermostServerError:    loadersErrs[derefOuterMostErrorIdx].Error(),
+				OutermostServerErrorIdx: outermostErrorIdx,
+				ErrorExportKeys:         _cachedItemSubset.ErrorExportKeys[:cutIdx],
 
 				MatchedPatterns: matchedPatterns[:cutIdx],
 				LoadersData:     loadersData[:cutIdx],
@@ -244,8 +244,9 @@ func (h *River) get_ui_data_stage_1(
 
 	ui_data := &ui_data_all{
 		ui_data_core: &ui_data_core{
-			OutermostError:    "",
-			OutermostErrorIdx: nil,
+			OutermostServerError:    "",
+			OutermostServerErrorIdx: nil,
+			ErrorExportKeys:         _cachedItemSubset.ErrorExportKeys,
 
 			MatchedPatterns: matchedPatterns,
 			LoadersData:     loadersData,

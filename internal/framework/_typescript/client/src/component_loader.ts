@@ -2,6 +2,29 @@ import { jsonDeepEquals } from "river.now/kit/json";
 import { resolvePublicHref } from "./resolve_public_href.ts";
 import { __riverClientGlobal } from "./river_ctx/river_ctx.ts";
 
+export function getEffectiveErrorData(): {
+	index: number | undefined;
+	error: string | undefined;
+} {
+	const serverErrorIdx = __riverClientGlobal.get("outermostServerErrorIdx");
+	const clientErrorIdx = __riverClientGlobal.get("outermostClientErrorIdx");
+	let errorIdx: number | undefined;
+	if (serverErrorIdx != null && clientErrorIdx != null) {
+		errorIdx = Math.min(serverErrorIdx, clientErrorIdx);
+	} else {
+		errorIdx = serverErrorIdx ?? clientErrorIdx;
+	}
+	return {
+		index: errorIdx,
+		error:
+			errorIdx === serverErrorIdx
+				? __riverClientGlobal.get("outermostServerError")
+				: errorIdx === clientErrorIdx
+					? __riverClientGlobal.get("outermostClientError")
+					: undefined,
+	};
+}
+
 export class ComponentLoader {
 	static async loadComponents(
 		importURLs: string[],
@@ -13,7 +36,6 @@ export class ComponentLoader {
 				return import(/* @vite-ignore */ resolvePublicHref(url));
 			}),
 		);
-
 		return new Map(dedupedURLs.map((url, i) => [url, modules[i]]));
 	}
 
@@ -40,16 +62,25 @@ export class ComponentLoader {
 		) {
 			__riverClientGlobal.set("activeComponents", newActiveComponents);
 		}
+	}
+
+	static async handleErrorBoundaryComponent(
+		importURLs: string[],
+	): Promise<void> {
+		const modulesMap = await this.loadComponents(importURLs);
+		const originalImportURLs = __riverClientGlobal.get("importURLs");
 
 		// Handle error boundary
-		const errorIdx = __riverClientGlobal.get("outermostErrorIdx");
+		const errorIdx = getEffectiveErrorData().index;
+
 		if (errorIdx != null) {
 			const errorModuleURL = originalImportURLs[errorIdx];
 			let errorComponent;
 
 			if (errorModuleURL) {
 				const errorModule = modulesMap.get(errorModuleURL);
-				const errorKey = __riverClientGlobal.get("errorExportKey");
+				const errorKeys = __riverClientGlobal.get("errorExportKeys");
+				const errorKey = errorKeys ? errorKeys[errorIdx] : null;
 				if (errorKey && errorModule) {
 					errorComponent = errorModule[errorKey];
 				}

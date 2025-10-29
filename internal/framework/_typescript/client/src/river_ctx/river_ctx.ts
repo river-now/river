@@ -15,14 +15,18 @@ type Meta = {
 };
 
 type shared = {
-	outermostError?: string;
-	outermostErrorIdx?: number;
-	errorExportKey?: string;
+	outermostServerError?: string;
+	outermostClientError?: string;
+	outermostServerErrorIdx?: number;
+	outermostClientErrorIdx?: number;
+	outermostError?: string; // derived from above
+	outermostErrorIdx?: number; // derived from above
 
 	matchedPatterns: Array<string>;
 	loadersData: Array<any>;
 	importURLs: Array<string>;
 	exportKeys: Array<string>;
+	errorExportKeys: string[];
 	hasRootData: boolean;
 
 	params: Record<string, string>;
@@ -77,7 +81,14 @@ export type RiverClientGlobal = shared & {
 	// anyway
 	routeManifest: Record<string, number> | undefined;
 	// built up as we navigate
-	clientModuleMap: Record<string, { importURL: string; exportKey: string }>;
+	clientModuleMap: Record<
+		string,
+		{
+			importURL: string;
+			exportKey: string;
+			errorExportKey: string;
+		}
+	>;
 	patternRegistry: PatternRegistry;
 };
 

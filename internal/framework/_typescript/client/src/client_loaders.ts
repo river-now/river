@@ -1,6 +1,6 @@
 import { findNestedMatches } from "river.now/kit/matcher/find-nested";
 import { registerPattern } from "river.now/kit/matcher/register";
-import { ComponentLoader } from "./component_loader.ts";
+import { ComponentLoader, getEffectiveErrorData } from "./component_loader.ts";
 import {
 	__riverClientGlobal,
 	type GetRouteDataOutput,
@@ -8,8 +8,27 @@ import {
 import { isAbortError } from "./utils/errors.ts";
 import { logError } from "./utils/logging.ts";
 
+export function setClientLoadersState(
+	clr: ClientLoadersResult | undefined,
+): void {
+	if (clr) {
+		__riverClientGlobal.set("clientLoadersData", clr.data ?? []);
+		__riverClientGlobal.set(
+			"outermostClientErrorIdx",
+			clr.errorMessage ? clr.data.length - 1 : undefined,
+		);
+		__riverClientGlobal.set("outermostClientError", clr.errorMessage);
+	}
+}
+
+export function deriveAndSetErrorState(): void {
+	const effectiveErrData = getEffectiveErrorData();
+	__riverClientGlobal.set("outermostErrorIdx", effectiveErrData.index);
+	__riverClientGlobal.set("outermostError", effectiveErrData.error);
+}
+
 export async function setupClientLoaders(): Promise<void> {
-	const clientLoadersData = await runWaitFns(
+	const clientLoadersResult = await runWaitFns(
 		{
 			hasRootData: __riverClientGlobal.get("hasRootData"),
 			importURLs: __riverClientGlobal.get("importURLs"),
@@ -22,7 +41,8 @@ export async function setupClientLoaders(): Promise<void> {
 		new AbortController().signal,
 	);
 
-	__riverClientGlobal.set("clientLoadersData", clientLoadersData);
+	setClientLoadersState(clientLoadersResult);
+	deriveAndSetErrorState();
 }
 
 export async function __registerClientLoaderPattern(
@@ -77,61 +97,61 @@ type PartialWaitFnJSON = Pick<
 	| "importURLs"
 >;
 
-async function runWaitFns(
+export type ClientLoadersResult = {
+	data: Array<any>;
+	errorMessage?: string;
+};
+
+async function executeClientLoaders(
 	json: PartialWaitFnJSON,
 	buildID: string,
 	signal: AbortSignal,
-): Promise<Array<any>> {
+	runningLoaders?: Map<string, Promise<any>>,
+): Promise<ClientLoadersResult> {
 	await ComponentLoader.loadComponents(json.importURLs);
 
 	const matchedPatterns = json.matchedPatterns ?? [];
 	const patternToWaitFnMap = __riverClientGlobal.get("patternToWaitFnMap");
-	const waitFnPromises: Array<Promise<any>> = [];
+	const outermostServerErrorIdx = __riverClientGlobal.get(
+		"outermostServerErrorIdx",
+	);
 
+	const loaderPromises: Array<Promise<any>> = [];
+	const abortControllers: Array<AbortController | null> = [];
+
+	// Build arrays of all promises and their corresponding abort controllers
 	let i = 0;
 	for (const pattern of matchedPatterns) {
-		if (patternToWaitFnMap[pattern]) {
-			const serverDataPromise = Promise.resolve({
-				matchedPatterns: json.matchedPatterns,
-				loaderData: json.loadersData[i],
-				rootData: json.hasRootData ? json.loadersData[0] : null,
-				buildID: buildID,
-			});
-
-			waitFnPromises.push(
-				patternToWaitFnMap[pattern]({
-					params: json.params || {},
-					splatValues: json.splatValues || [],
-					serverDataPromise,
-					signal,
-				}),
-			);
-		} else {
-			waitFnPromises.push(Promise.resolve());
+		if (
+			outermostServerErrorIdx !== undefined &&
+			i === outermostServerErrorIdx
+		) {
+			// This route has a server error, skip its client loader
+			loaderPromises.push(Promise.resolve());
+			abortControllers.push(null);
+			i++;
+			continue;
 		}
-		i++;
-	}
 
-	return Promise.all(waitFnPromises);
-}
-
-export async function completeClientLoaders(
-	json: PartialWaitFnJSON,
-	buildID: string,
-	runningLoaders: Map<string, Promise<any>>,
-	signal: AbortSignal,
-): Promise<Array<any>> {
-	await ComponentLoader.loadComponents(json.importURLs);
-
-	const matchedPatterns = json.matchedPatterns ?? [];
-	const patternToWaitFnMap = __riverClientGlobal.get("patternToWaitFnMap");
-	const finalPromises: Array<Promise<any>> = [];
-
-	let i = 0;
-	for (const pattern of matchedPatterns) {
-		if (runningLoaders.has(pattern)) {
-			finalPromises.push(runningLoaders.get(pattern)!);
+		if (runningLoaders?.has(pattern)) {
+			// This loader is already running (started parallel to fetch)
+			loaderPromises.push(runningLoaders.get(pattern)!);
+			// We can't create a new controller for it, but we can wrap it
+			abortControllers.push(null);
 		} else if (patternToWaitFnMap[pattern]) {
+			// This is a new client loader we need to run
+			const controller = new AbortController();
+			abortControllers.push(controller);
+
+			// Wire up the main navigation signal to this loader's controller
+			if (signal.aborted) {
+				controller.abort();
+			} else {
+				signal.addEventListener("abort", () => controller.abort(), {
+					once: true,
+				});
+			}
+
 			const serverDataPromise = Promise.resolve({
 				matchedPatterns: json.matchedPatterns,
 				loaderData: json.loadersData[i],
@@ -140,25 +160,90 @@ export async function completeClientLoaders(
 			});
 
 			const loaderPromise = patternToWaitFnMap[pattern]({
-				splatValues: json.splatValues || [],
 				params: json.params || {},
+				splatValues: json.splatValues || [],
 				serverDataPromise,
-				signal,
-			}).catch((error: any) => {
-				if (!isAbortError(error)) {
-					logError(
-						`Client loader error for pattern ${pattern}:`,
-						error,
-					);
-				}
-				return undefined;
+				signal: controller.signal,
 			});
-			finalPromises.push(loaderPromise);
+			loaderPromises.push(loaderPromise);
 		} else {
-			finalPromises.push(Promise.resolve());
+			// No client loader for this route
+			loaderPromises.push(Promise.resolve());
+			abortControllers.push(null);
 		}
 		i++;
 	}
 
-	return Promise.all(finalPromises);
+	// Wrap all promises with the child-aborting logic
+	const wrappedPromises = loaderPromises.map(async (promise, index) => {
+		return promise.catch((error) => {
+			// If this promise failed with a true error (not just an abort)
+			if (!isAbortError(error)) {
+				// Abort all subsequent (child) loaders immediately
+				for (let j = index + 1; j < abortControllers.length; j++) {
+					abortControllers[j]?.abort();
+				}
+			}
+			// Re-throw the error so Promise.allSettled sees it as 'rejected'
+			throw error;
+		});
+	});
+
+	// Await all wrapped promises. They run in parallel,
+	// but a rejection in one now triggers aborts in its children.
+	const results = await Promise.allSettled(wrappedPromises);
+
+	// Process the results
+	const data: Array<any> = [];
+	let errorMessage: string | undefined;
+
+	for (let i = 0; i < results.length; i++) {
+		const result = results[i];
+		if (!result) {
+			data.push(undefined);
+			continue;
+		}
+
+		if (result.status === "fulfilled") {
+			data.push(result.value);
+		} else {
+			// This is a rejection
+			if (!isAbortError(result.reason)) {
+				// This is the first true error we've hit
+				const pattern = matchedPatterns[i];
+				logError(
+					`Client loader error for pattern ${pattern}:`,
+					result.reason,
+				);
+				errorMessage =
+					result.reason instanceof Error
+						? result.reason.message
+						: String(result.reason);
+
+				// We found the highest error. Stop processing.
+				// The .catch() wrapper already aborted any children.
+			}
+			data.push(undefined);
+			break; // Stop at the first error
+		}
+	}
+
+	return { data, errorMessage };
+}
+
+async function runWaitFns(
+	json: PartialWaitFnJSON,
+	buildID: string,
+	signal: AbortSignal,
+): Promise<ClientLoadersResult> {
+	return executeClientLoaders(json, buildID, signal);
+}
+
+export async function completeClientLoaders(
+	json: PartialWaitFnJSON,
+	buildID: string,
+	runningLoaders: Map<string, Promise<any>>,
+	signal: AbortSignal,
+): Promise<ClientLoadersResult> {
+	return executeClientLoaders(json, buildID, signal, runningLoaders);
 }

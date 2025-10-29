@@ -1,5 +1,6 @@
 import { AssetManager } from "./asset_manager.ts";
 import type { RiverNavigationType } from "./client.ts";
+import { deriveAndSetErrorState } from "./client_loaders.ts";
 import { ComponentLoader } from "./component_loader.ts";
 import { dispatchRouteChangeEvent } from "./events.ts";
 import { updateHeadEls } from "./head_elements/head_elements.ts";
@@ -45,9 +46,9 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 
 	// Update global state
 	const stateKeys = [
-		"outermostError",
-		"outermostErrorIdx",
-		"errorExportKey",
+		"outermostServerError",
+		"outermostServerErrorIdx",
+		"errorExportKeys",
 		"matchedPatterns",
 		"loadersData",
 		"importURLs",
@@ -61,8 +62,11 @@ async function __reRenderAppInner(props: RerenderAppProps): Promise<void> {
 		__riverClientGlobal.set(key, json[key]);
 	}
 
-	// Load components
+	deriveAndSetErrorState();
+
+	// Load components and error boundary
 	await ComponentLoader.handleComponents(json.importURLs);
+	await ComponentLoader.handleErrorBoundaryComponent(json.importURLs);
 
 	// Handle history and scroll
 	let scrollStateToDispatch: ScrollState | undefined;

@@ -37,16 +37,20 @@ export async function initClient(options: {
 		__riverClientGlobal.get("matchedPatterns") || [];
 	const initialImportURLs = __riverClientGlobal.get("importURLs") || [];
 	const initialExportKeys = __riverClientGlobal.get("exportKeys") || [];
+	const initialErrorExportKeys =
+		__riverClientGlobal.get("errorExportKeys") || [];
 
 	for (let i = 0; i < initialMatchedPatterns.length; i++) {
 		const pattern = initialMatchedPatterns[i];
 		const importURL = initialImportURLs[i];
 		const exportKey = initialExportKeys[i];
+		const errorExportKey = initialErrorExportKeys[i];
 
 		if (pattern && importURL) {
 			clientModuleMap[pattern] = {
 				importURL,
 				exportKey: exportKey || "default",
+				errorExportKey: errorExportKey || "",
 			};
 		}
 	}
@@ -102,13 +106,16 @@ export async function initClient(options: {
 		HistoryManager.getInstance().replace(url.href);
 	}
 
+	const importURLs = __riverClientGlobal.get("importURLs");
+
 	// Load initial components
-	await ComponentLoader.handleComponents(
-		__riverClientGlobal.get("importURLs"),
-	);
+	await ComponentLoader.handleComponents(importURLs);
 
 	// Setup client loaders
 	await setupClientLoaders();
+
+	// Handle error boundary component (must come after setupClientLoaders)
+	await ComponentLoader.handleErrorBoundaryComponent(importURLs);
 
 	// Render
 	options.renderFn();
