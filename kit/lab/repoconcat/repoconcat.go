@@ -14,11 +14,13 @@ import (
 )
 
 type Config struct {
-	Root        string   // Directory to scan
-	Output      string   // Output file path
-	IgnoreDirs  []string // Directory patterns to skip entirely
-	IgnoreFiles []string // File patterns to skip
-	Verbose     bool     // Log included files and folders
+	Root         string   // Deprecated: use IncludeDirs instead
+	IncludeDirs  []string // Directories to scan (starting points)
+	IncludeFiles []string // Individual files to include
+	Output       string   // Output file path
+	IgnoreDirs   []string // Directory patterns to skip entirely
+	IgnoreFiles  []string // File patterns to skip
+	Verbose      bool     // Log included files and folders
 }
 
 // isTextFile checks if a file is valid UTF-8 text
@@ -48,6 +50,11 @@ func matchesPattern(pattern, path string) bool {
 
 // Concat concatenates all files according to config
 func Concat(cfg Config) error {
+	// Backward compatibility: if Root is set, add it to IncludeDirs
+	if cfg.Root != "" {
+		cfg.IncludeDirs = append([]string{cfg.Root}, cfg.IncludeDirs...)
+	}
+
 	// Create output file
 	outFile, err := os.Create(cfg.Output)
 	if err != nil {
@@ -80,128 +87,198 @@ func Concat(cfg Config) error {
 		"**/bun.lockb",
 	}
 
-	// Cache for gitignore patterns by directory
-	gitignoreCache := make(map[string][]string)
-
 	// Statistics
 	var includedFiles, skippedBinary int
 
-	err = filepath.Walk(cfg.Root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Skip the output file itself
-		absPath, _ := filepath.Abs(path)
+	// Process individual files first
+	for _, filePath := range cfg.IncludeFiles {
+		absPath, _ := filepath.Abs(filePath)
 		if absPath == absOutput {
-			return nil
+			continue
 		}
 
-		// Get relative path and normalize to forward slashes
-		relPath, _ := filepath.Rel(cfg.Root, path)
-		relPath = filepath.ToSlash(relPath)
+		info, err := os.Stat(filePath)
+		if err != nil {
+			if cfg.Verbose {
+				fmt.Printf("[SKIP] %s (error: %v)\n", filePath, err)
+			}
+			continue
+		}
 
-		// Handle directories
 		if info.IsDir() {
-			// Check user-provided directory patterns
-			for _, pattern := range cfg.IgnoreDirs {
-				if matchesPattern(filepath.ToSlash(pattern), relPath) {
-					return filepath.SkipDir
-				}
+			if cfg.Verbose {
+				fmt.Printf("[SKIP] %s (is a directory, use IncludeDirs)\n", filePath)
 			}
-
-			// Check default directory patterns
-			for _, pattern := range defaultIgnoreDirs {
-				if matchesPattern(pattern, relPath) {
-					return filepath.SkipDir
-				}
-			}
-
-			// Check gitignore for directory patterns
-			patterns := getGitignorePatterns(path, cfg.Root, gitignoreCache)
-			for _, pattern := range patterns {
-				// Directory patterns from gitignore
-				if strings.HasSuffix(pattern, "/**") {
-					dirPattern := strings.TrimSuffix(pattern, "/**")
-					if matchesPattern(dirPattern, relPath) {
-						return filepath.SkipDir
-					}
-				}
-			}
-
-			return nil
+			continue
 		}
 
-		// Handle files
-
-		// Check user-provided file patterns
-		for _, pattern := range cfg.IgnoreFiles {
-			if matchesPattern(filepath.ToSlash(pattern), relPath) {
-				return nil
-			}
-		}
-
-		// Check default file patterns
-		for _, pattern := range defaultIgnoreFiles {
-			if matchesPattern(pattern, relPath) {
-				return nil
-			}
-		}
-
-		// Check gitignore for file patterns
-		patterns := getGitignorePatterns(path, cfg.Root, gitignoreCache)
-		for _, pattern := range patterns {
-			if matchesPattern(pattern, relPath) {
-				return nil
-			}
+		// Check if file should be ignored
+		if shouldIgnoreFile(filePath, cfg.IgnoreFiles, defaultIgnoreFiles) {
+			continue
 		}
 
 		// Skip binary files
-		if !isTextFile(path) {
+		if !isTextFile(filePath) {
 			skippedBinary++
-			return nil
+			continue
 		}
 
 		// Include this file
-		if cfg.Verbose {
+		if err := writeFile(writer, filePath, filePath, info, cfg.Verbose); err == nil {
 			includedFiles++
-			fmt.Printf("[FILE] %s (%.2f KB)\n", relPath, float64(info.Size())/1024)
 		}
+	}
 
-		// Write file header
-		fmt.Fprintf(writer, "\n%s\n", strings.Repeat("=", 80))
-		fmt.Fprintf(writer, "FILE: %s\n", relPath)
-		fmt.Fprintf(writer, "%s\n\n", strings.Repeat("=", 80))
+	// Process directories
+	for _, rootDir := range cfg.IncludeDirs {
+		// Cache for gitignore patterns by directory
+		gitignoreCache := make(map[string][]string)
 
-		// Copy file contents
-		file, err := os.Open(path)
-		if err != nil {
-			fmt.Fprintf(writer, "[ERROR READING FILE: %v]\n", err)
-			if cfg.Verbose {
-				fmt.Printf("  ERROR: Could not read file: %v\n", err)
+		err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
 			}
+
+			// Skip the output file itself
+			absPath, _ := filepath.Abs(path)
+			if absPath == absOutput {
+				return nil
+			}
+
+			// Get relative path and normalize to forward slashes
+			relPath, _ := filepath.Rel(rootDir, path)
+			relPath = filepath.ToSlash(relPath)
+
+			// Handle directories
+			if info.IsDir() {
+				// Check user-provided directory patterns
+				for _, pattern := range cfg.IgnoreDirs {
+					if matchesPattern(filepath.ToSlash(pattern), relPath) {
+						return filepath.SkipDir
+					}
+				}
+
+				// Check default directory patterns
+				for _, pattern := range defaultIgnoreDirs {
+					if matchesPattern(pattern, relPath) {
+						return filepath.SkipDir
+					}
+				}
+
+				// Check gitignore for directory patterns
+				patterns := getGitignorePatterns(path, rootDir, gitignoreCache)
+				for _, pattern := range patterns {
+					// Directory patterns from gitignore
+					if strings.HasSuffix(pattern, "/**") {
+						dirPattern := strings.TrimSuffix(pattern, "/**")
+						if matchesPattern(dirPattern, relPath) {
+							return filepath.SkipDir
+						}
+					}
+				}
+
+				return nil
+			}
+
+			// Handle files
+
+			// Check user-provided file patterns
+			for _, pattern := range cfg.IgnoreFiles {
+				if matchesPattern(filepath.ToSlash(pattern), relPath) {
+					return nil
+				}
+			}
+
+			// Check default file patterns
+			for _, pattern := range defaultIgnoreFiles {
+				if matchesPattern(pattern, relPath) {
+					return nil
+				}
+			}
+
+			// Check gitignore for file patterns
+			patterns := getGitignorePatterns(path, rootDir, gitignoreCache)
+			for _, pattern := range patterns {
+				if matchesPattern(pattern, relPath) {
+					return nil
+				}
+			}
+
+			// Skip binary files
+			if !isTextFile(path) {
+				skippedBinary++
+				return nil
+			}
+
+			// Include this file
+			if err := writeFile(writer, path, relPath, info, cfg.Verbose); err == nil {
+				includedFiles++
+			}
+
 			return nil
-		}
-		defer file.Close()
+		})
 
-		_, err = io.Copy(writer, file)
 		if err != nil {
-			fmt.Fprintf(writer, "\n[ERROR COPYING FILE: %v]\n", err)
-			if cfg.Verbose {
-				fmt.Printf("  ERROR: Could not copy file: %v\n", err)
-			}
+			return err
 		}
+	}
 
-		fmt.Fprintln(writer)
-		return nil
-	})
-
-	if cfg.Verbose && err == nil {
+	if cfg.Verbose {
 		fmt.Printf("\nSummary: %d files included, %d binary files skipped\n",
 			includedFiles, skippedBinary)
 	}
 
-	return err
+	return nil
+}
+
+// shouldIgnoreFile checks if a file matches any ignore patterns
+func shouldIgnoreFile(path string, userPatterns, defaultPatterns []string) bool {
+	for _, pattern := range userPatterns {
+		if matchesPattern(filepath.ToSlash(pattern), path) {
+			return true
+		}
+	}
+	for _, pattern := range defaultPatterns {
+		if matchesPattern(pattern, path) {
+			return true
+		}
+	}
+	return false
+}
+
+// writeFile writes a file to the output
+func writeFile(writer *bufio.Writer, path, displayPath string, info os.FileInfo, verbose bool) error {
+	if verbose {
+		fmt.Printf("[FILE] %s (%.2f KB)\n", displayPath, float64(info.Size())/1024)
+	}
+
+	// Write file header
+	fmt.Fprintf(writer, "\n%s\n", strings.Repeat("=", 80))
+	fmt.Fprintf(writer, "FILE: %s\n", displayPath)
+	fmt.Fprintf(writer, "%s\n\n", strings.Repeat("=", 80))
+
+	// Copy file contents
+	file, err := os.Open(path)
+	if err != nil {
+		fmt.Fprintf(writer, "[ERROR READING FILE: %v]\n", err)
+		if verbose {
+			fmt.Printf("  ERROR: Could not read file: %v\n", err)
+		}
+		return err
+	}
+	defer file.Close()
+
+	_, err = io.Copy(writer, file)
+	if err != nil {
+		fmt.Fprintf(writer, "\n[ERROR COPYING FILE: %v]\n", err)
+		if verbose {
+			fmt.Printf("  ERROR: Could not copy file: %v\n", err)
+		}
+		return err
+	}
+
+	fmt.Fprintln(writer)
+	return nil
 }
 
 // getGitignorePatterns returns all applicable gitignore patterns for a path
